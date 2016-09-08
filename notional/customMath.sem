@@ -1,0 +1,33 @@
+import semlang.v0.float64
+import semlang.v0.integer
+
+module sampleMath {
+
+  // TODO: Have some way to prove that this works, to have this not require
+  // a post-check...
+  function square(number: float64[!it.isNan()]): float64[it >= float64.0] {
+    number * number 
+  }
+
+  function pythagoras(a: float64, b: float64) {
+    return float64.NaN if a.equals(float64.NaN) | b.equals(float64.NaN)
+    let aSquared: float64[it >= float64.0] = a.times(a)
+    let bSquared: float64[it >= float64.0] = b.times(b)
+    let sumOfSquares: float64[it >= float64.0] = aSquared.plus(bSquared)
+    return float64.squareRoot(sumOfSquares) // return is optional
+  }
+
+  function fibonacci(number: natural): integer {
+    let fibonacci[n: natural] = {
+      (n == natural.0) => { integer.0 },
+      (n == natural.1) => { integer.1 },
+      (n > natural.1) => { fibonacci[n - 2] + fibonacci[n - 1] }
+    }
+    fibonacci[natural]
+  }
+  
+  struct integer.point2D {
+    x: integer
+    y: integer
+  }
+}
