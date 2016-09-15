@@ -1,19 +1,24 @@
 import semlang.v0.float64
 import semlang.v0.integer
 
+// Type nicknames
+define double as float64
+
 module sampleMath {
 
-  // TODO: Have some way to prove that this works, to have this not require
-  // a post-check...
-  function square(number: float64[!it.isNan()]): float64[it >= float64.0] {
+  function square(number: double): double {
     number * number 
   }
 
   function pythagoras(a: float64, b: float64) {
+    // This is a nicer way to have "return if () {} else {}" but we might leave to a dialect
     return float64.NaN if a.equals(float64.NaN) | b.equals(float64.NaN)
-    let aSquared: float64[it >= float64.0] = a.times(a)
-    let bSquared: float64[it >= float64.0] = b.times(b)
-    let sumOfSquares: float64[it >= float64.0] = aSquared.plus(bSquared)
+    // Type restrictions are non-essential for v0
+    // Note use of "generator" functions for constants
+    // float64.0 could also be written as float64."0" or float64.generator("0")
+    let aSquared: float64 = a.times(a)
+    let bSquared: float64 = b.times(b)
+    let sumOfSquares: float64 = aSquared.plus(bSquared)
     return float64.squareRoot(sumOfSquares) // return is optional
   }
 
@@ -23,9 +28,9 @@ module sampleMath {
       (n == natural.1) => { integer.1 },
       (n > natural.1) => { fibonacci[n - 2] + fibonacci[n - 1] }
     }
-    fibonacci[natural]
+    fibonacci[number]
   }
-  
+
   struct integer.point2D {
     x: integer
     y: integer
