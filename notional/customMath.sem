@@ -35,4 +35,6 @@ module sampleMath {
     x: integer
     y: integer
   }
+  
+  //TODO: Include generic structs/types
 }
