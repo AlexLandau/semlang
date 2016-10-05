@@ -1,3 +1,5 @@
+include 'java-interpreter'
 include 'java-parser'
+include 'kotlin-api'
 
 rootProject.name = 'semlang'
