@@ -11,9 +11,9 @@ sealed class Type {
     }
 }
 sealed class Expression {
-    data class Variable(val name: String)
-    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block)
-    data class FunctionCall(val functionId: FunctionId, val arguments: List<Expression>)
+    class Variable(val name: String): Expression()
+    class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block): Expression()
+    class FunctionCall(val functionId: FunctionId, val arguments: List<Expression>): Expression()
 }
 data class Assignment(val name: String, val expression: Expression)
 data class Argument(val name: String, val type: Type)
