@@ -1,0 +1,10 @@
+
+
+function mvpPythagoreanTripleCheck(a: natural, b: natural, c: natural): boolean {
+  let aSquared: natural = a.times(a)
+  let bSquared: natural = b.times(b)
+  let cSquared: natural = c.times(c)
+  let sumOfSquares: natural = aSquared.plus(bSquared)
+  let result: boolean = sumOfSquares == cSquared
+  return result
+}

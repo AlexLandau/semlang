@@ -1,0 +1,12 @@
+
+
+
+// TODO: Use List<...> instead
+function example.sort(list: Int32List): Int32List {
+  struct PartialSorting {
+
+  }
+  let sorting[n: natural]: PartialSorting{} = {
+    (n == natural.0) =>
+  }
+}
