@@ -28,7 +28,7 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
             }
             assignments.put(name, value)
         }
-        return evaluateExpression(block.returnedExpresssion, assignments)
+        return evaluateExpression(block.returnedExpression, assignments)
     }
 
     private fun evaluateExpression(expression: Expression, assignments: Map<String, Any>): Any {
