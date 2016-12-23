@@ -21,7 +21,7 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
     private fun evaluateBlock(block: Block, initialAssignments: Map<String, Any>): Any {
 //        throw UnsupportedOperationException("not implemented") //To change body of created functions use File | Settings | File Templates.
         val assignments: MutableMap<String, Any> = HashMap(initialAssignments)
-        for ((name, expression) in block.assignments) {
+        for ((name, type, expression) in block.assignments) {
             val value = evaluateExpression(expression, assignments)
             if (assignments.containsKey(name)) {
                 throw IllegalStateException("Tried to double-assign variable $name")
@@ -50,6 +50,16 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
             }
+            is Expression.Equals -> {
+                val left = evaluateExpression(expression.left, assignments)
+                val right = evaluateExpression(expression.right, assignments)
+                return valueEquals(left, right)
+            }
         }
+    }
+
+    private fun valueEquals(left: Any, right: Any): Boolean {
+        //TODO: I'm probably doing something wrong here...
+        return left.equals(right)
     }
 }
