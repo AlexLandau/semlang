@@ -8,9 +8,15 @@ import java.util.HashMap
 // These are Semlang objects that are stored and handled by the interpreter.
 // These should know their type.
 sealed class SemObject {
+    abstract fun getType(): Type
+
     // TODO: Someday, these should become data classes...
     // See https://youtrack.jetbrains.com/issue/KT-10330 (waiting on Kotlin 1.1)
     class Integer(val value: BigInteger) : SemObject() {
+        override fun getType(): Type {
+            return Type.INTEGER
+        }
+
         override fun equals(other: Any?): kotlin.Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -31,6 +37,9 @@ sealed class SemObject {
         }
     }
     class Boolean(val value: kotlin.Boolean) : SemObject() {
+        override fun getType(): Type {
+            return Type.BOOLEAN
+        }
         override fun equals(other: Any?): kotlin.Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -52,8 +61,7 @@ sealed class SemObject {
     }
 }
 
-class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val numArgs: Int) {
-}
+class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val numArgs: Int)
 
 class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
     private val nativeFunctions: Map<FunctionId, NativeFunction> = getNativeFunctions()
@@ -91,26 +99,26 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
     }
 
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
-        // TODO: Validate argument types
-        // TODO: Handle "native" functions
+        // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {
-            val function: NativeFunction = nativeFunction
-            if (arguments.size != function.numArgs) {
+            if (arguments.size != nativeFunction.numArgs) {
                 throw IllegalArgumentException("Wrong number of arguments for function $functionId")
             }
-//            for ((value, argumentDefinition) in arguments.zip(function.arguments)) {
-//                variableAssignments.put(argumentDefinition.name, value)
-//            }
-//            return function//(function.block, variableAssignments)
-            return function.apply(arguments)
+            // TODO: Validate argument types
+            return nativeFunction.apply(arguments)
         }
+
+        // Handle non-native functions
         val variableAssignments: MutableMap<String, SemObject> = HashMap()
         val function: Function = knownFunctions.getOrElse(functionId, fun (): Function {throw IllegalArgumentException("Unrecognized function ID $functionId")})
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
         for ((value, argumentDefinition) in arguments.zip(function.arguments)) {
+            if (value.getType() != argumentDefinition.type) {
+                throw IllegalArgumentException("Type mismatch in function argument: ${value.getType()} vs. ${argumentDefinition.type}")
+            }
             variableAssignments.put(argumentDefinition.name, value)
         }
         return evaluateBlock(function.block, variableAssignments)
