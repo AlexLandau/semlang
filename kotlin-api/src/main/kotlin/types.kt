@@ -6,9 +6,21 @@ sealed class Type {
     // TODO: Some kind of toString() handling for these
     object INT_S32 : Type()
     object INT_S64 : Type()
-    object INTEGER : Type()
-    object NATURAL : Type()
-    object BOOLEAN : Type()
+    object INTEGER : Type() {
+        override fun toString(): String {
+            return "Integer"
+        }
+    }
+    object NATURAL : Type() {
+        override fun toString(): String {
+            return "Natural"
+        }
+    }
+    object BOOLEAN : Type() {
+        override fun toString(): String {
+            return "Boolean"
+        }
+    }
 }
 sealed class Expression {
     class Variable(val name: String): Expression()

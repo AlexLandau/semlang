@@ -62,7 +62,10 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
         return Expression.FunctionCall(functionId, arguments)
     }
 
-    return Expression.Variable(expression.ID().text)
+    if (expression.ID() != null) {
+        return Expression.Variable(expression.ID().text)
+    }
+    throw IllegalArgumentException("Couldn't parse ${expression.toString()}")
 }
 
 fun parseCdExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
@@ -148,9 +151,9 @@ class MyListener : SemlangParserBaseListener() {
     }
 }
 
-fun tokenize(code: String): List<Function> {
+fun tokenize(filename: String = "../notional/mvp.sem"): List<Function> {
 
-    val input = ANTLRFileStream("../notional/mvp.sem")
+    val input = ANTLRFileStream(filename)
 //    val lexer = SemlangLexer(input)
 //    val tokens = CommonTokenStream(lexer)
 
