@@ -1,12 +1,36 @@
 
+struct PartialSorting {
+  sorted: Int32List
+  unsorted: Int32List
+}
 
+function example.PartialSorting.fullySorted(sorting: PartialSorting): boolean {
+  return Int32List.isEmpty(sorting.unsorted)
+}
 
 // TODO: Use List<...> instead
+// This represents a selection sort approach.
 function example.sort(list: Int32List): Int32List {
-  struct PartialSorting {
-
-  }
   let sorting[n: natural]: PartialSorting{} = {
-    (n == natural.0) =>
+    (n == natural.0) => {
+      return PartialSorting(Int32List.empty(), list)
+    }
+    (n > natural.0) => {
+      let lastStep: PartialSorting = sorting[n - 1]
+      let smallestLeft: Int32? = lastStep.unsorted.reduce(Int32.maxValue, Int32.min)
+      let newSorted: Int32List = if (is(smallestLeft)) {
+        return Int32List.append(lastStep.sorted, get(smallestLeft))
+      } else {
+        return lastStep.sorted
+      }
+      let newUnsorted: Int32List = if (is(smallestLeft)) {
+        return Int32List.removeFirst(lastStep.unsorted, get(smallestLeft))
+      } else {
+        return lastStep.unsorted
+      }
+      return PartialSorting(newSorted, newUnsorted)
+    }
   }
+  let finishedSorting: PartialSorting = first(sorting, example.PartialSorting.fullySorted)
+  return finishedSorting.sorted
 }

@@ -1,0 +1,22 @@
+- (Validate) calling one function from another
+- Clean up, organize code and sample Semlang code
+- Primitive values
+- Function definitions as tests
+- Function types
+- "Natural" primitive type
+- Generic types
+- List type (index, map, reduce)
+- Sequences and "first"
+- Additional primitive types (natural, N-bit integers, floating-point numbers, rationals?, strings, characters)
+- Enum types
+- Structs and "dereferencing"
+- Real package/module declarations and use
+- Code writing into Java
+- Annotations and multiple function definitions
+- Interfaces/instances
+- Monads (e.g. start with support for console-out)
+- Start to create dialects with simpler syntax, type inference, etc.
+
+As things are completed:
+- Project Euler
+- http://benchmarksgame.alioth.debian.org/
