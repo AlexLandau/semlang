@@ -36,5 +36,17 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
         }
     }, 2))
 
+    // integer.equals
+    val integerEqualsId = FunctionId(integerPackage, "equals")
+    map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject> ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Integer && right is SemObject.Integer) {
+            SemObject.Boolean(left.value == right.value)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }, 2))
+
     return map
 }

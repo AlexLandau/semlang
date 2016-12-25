@@ -5,6 +5,6 @@ function mvpPythagoreanTripleCheck(a: integer, b: integer, c: integer): boolean 
   let bSquared: integer = integer.times(b, b)
   let cSquared: integer = integer.times(c, c)
   let sumOfSquares: integer = integer.plus(aSquared, bSquared)
-  let result: boolean = sumOfSquares == cSquared
+  let result: boolean = integer.equals(sumOfSquares, cSquared)
   return result
 }

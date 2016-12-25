@@ -48,5 +48,5 @@ assignment : LET ID COLON type ASSIGN expression ;
 return_statement: RETURN expression ;
 
 type : ID ;
-expression : ID | expression EQUALS expression | function_id LPAREN cd_expressions RPAREN ;
+expression : ID | function_id LPAREN cd_expressions RPAREN ;
 cd_expressions : | expression | expression COMMA cd_expressions ;

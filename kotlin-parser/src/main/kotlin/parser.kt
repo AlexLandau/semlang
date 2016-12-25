@@ -51,11 +51,6 @@ fun parseAssignment(assignment: SemlangParser.AssignmentContext): Assignment {
 }
 
 fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
-    if (expression.EQUALS() != null) {
-        val left = parseExpression(expression.expression(0))
-        val right = parseExpression(expression.expression(1))
-        return Expression.Equals(left, right)
-    }
     if (expression.LPAREN() != null) {
         val functionId = parseFunctionId(expression.function_id())
         val arguments = parseCdExpressions(expression.cd_expressions())

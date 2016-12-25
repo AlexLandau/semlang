@@ -66,11 +66,6 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
             }
-            is Expression.Equals -> {
-                val left = evaluateExpression(expression.left, assignments)
-                val right = evaluateExpression(expression.right, assignments)
-                return valueEquals(left, right)
-            }
         }
     }
 

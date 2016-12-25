@@ -1,5 +1,8 @@
 - (Validate) calling one function from another
 - Clean up, organize code and sample Semlang code
+- Validation of argument types in native method calls (interpreter)
+- If-then expressions
+- Backwards-chaining interpreter
 - Primitive values
 - Function definitions as tests
 - Function types
