@@ -13,7 +13,7 @@
 - Additional primitive types (natural, N-bit integers, floating-point numbers, rationals?, strings, characters)
 - Enum types
 - Structs and "dereferencing"
-- Real package/module declarations and use
+- Real package/module declarations and use, including "import as"
 - Code writing into Java
 - Annotations and multiple function definitions
 - Interfaces/instances

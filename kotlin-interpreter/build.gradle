@@ -20,12 +20,8 @@ repositories {
 }
 
 dependencies {
-  compile project(':antlr-parser')
   compile project(':kotlin-api')
-  testCompile project(':kotlin-interpreter')
   // Kotlin library
-  compile "org.antlr:antlr4:4.5"
-//  compile "org.antlr:antlr4-runtime:4.5"
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // The production code uses the SLF4J logging API at compile time
     compile 'org.slf4j:slf4j-api:1.7.18'
