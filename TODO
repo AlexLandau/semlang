@@ -1,7 +1,6 @@
 - (Validate) calling one function from another
 - Clean up, organize code and sample Semlang code
-- Validation of argument types in native method calls (interpreter)
-- If-then expressions
+- If-then expressions (test)
 - Backwards-chaining interpreter
 - Primitive values
 - Function definitions as tests
@@ -13,12 +12,14 @@
 - Additional primitive types (natural, N-bit integers, floating-point numbers, rationals?, strings, characters)
 - Enum types
 - Structs and "dereferencing"
-- Real package/module declarations and use, including "import as"
+- Real package/module declarations and use, including "import as" (note: "import as" could be a dialect)
 - Code writing into Java
 - Annotations and multiple function definitions
 - Interfaces/instances
 - Monads (e.g. start with support for console-out)
 - Start to create dialects with simpler syntax, type inference, etc.
+- Semlang -> Semlang optimizations, etc.
+- Port "code writing into Java" to Semlang
 
 As things are completed:
 - Project Euler

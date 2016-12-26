@@ -13,10 +13,14 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
         // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {
-            if (arguments.size != nativeFunction.numArgs) {
+            if (arguments.size != nativeFunction.argTypes.size) {
                 throw IllegalArgumentException("Wrong number of arguments for function $functionId")
             }
-            // TODO: Validate argument types
+            for ((value, type) in arguments.zip(nativeFunction.argTypes)) {
+                if (value.getType() != type) {
+                    throw IllegalArgumentException("Type mismatch in function argument: ${value.getType()} vs. ${type}")
+                }
+            }
             return nativeFunction.apply(arguments)
         }
 
@@ -67,10 +71,5 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                 return interpret(expression.functionId, arguments)
             }
         }
-    }
-
-    private fun valueEquals(left: SemObject, right: SemObject): SemObject.Boolean {
-        //TODO: I'm probably doing something wrong here...
-        return SemObject.Boolean(left.equals(right))
     }
 }

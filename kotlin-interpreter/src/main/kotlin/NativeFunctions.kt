@@ -2,10 +2,11 @@ package semlang.interpreter
 
 import semlang.api.FunctionId
 import semlang.api.Package
+import semlang.api.Type
 import semlang.interpreter.SemObject
 import java.util.*
 
-class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val numArgs: Int)
+class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val argTypes: List<Type>)
 
 fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     val map = HashMap<FunctionId, NativeFunction>()
@@ -22,7 +23,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
         } else {
             throw IllegalArgumentException()
         }
-    }, 2))
+    }, listOf(Type.INTEGER, Type.INTEGER)))
 
     // integer.plus
     val integerPlusId = FunctionId(integerPackage, "plus")
@@ -34,7 +35,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
         } else {
             throw IllegalArgumentException()
         }
-    }, 2))
+    }, listOf(Type.INTEGER, Type.INTEGER)))
 
     // integer.equals
     val integerEqualsId = FunctionId(integerPackage, "equals")
@@ -46,7 +47,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
         } else {
             throw IllegalArgumentException()
         }
-    }, 2))
+    }, listOf(Type.INTEGER, Type.INTEGER)))
 
     return map
 }
