@@ -1,7 +1,6 @@
-- (Validate) calling one function from another
 - Clean up, organize code and sample Semlang code
 - If-then expressions (test)
-- Backwards-chaining interpreter
+- Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
 - Primitive values
 - Function definitions as tests
 - Function types

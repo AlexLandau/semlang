@@ -1,6 +1,6 @@
 
 
-function mvpPythagoreanTripleCheck(a: integer, b: integer, c: integer): boolean {
+function pythagoreanTripleCheck(a: integer, b: integer, c: integer): boolean {
   let aSquared: integer = integer.times(a, a)
   let bSquared: integer = integer.times(b, b)
   let cSquared: integer = integer.times(c, c)

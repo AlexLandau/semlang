@@ -15,10 +15,6 @@ fun parse(function: SemlangParser.FunctionContext): Function {
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
     val block: Block = parseBlock(function.block())
-//            Block(listOf(
-//            Assignment("fooVar", Expression.Variable("fixmeName"))
-//    ),
-//            Expression.Variable("fooVar"))
     return Function(id, arguments, returnType, block)
 }
 
@@ -149,31 +145,14 @@ class MyListener : SemlangParserBaseListener() {
 fun tokenize(filename: String = "../notional/mvp.sem"): List<Function> {
 
     val input = ANTLRFileStream(filename)
-//    val lexer = SemlangLexer(input)
-//    val tokens = CommonTokenStream(lexer)
-
     val lexer = SemlangLexer(input)
     val tokens = CommonTokenStream(lexer)
     val parser = SemlangParser(tokens)
-    val tree: SemlangParser.FunctionContext = parser.function() // maybe should be File
+    val tree: SemlangParser.FileContext = parser.file()
 
     val extractor = MyListener()
-    System.err.println("About to walk the tree");
-    ParseTreeWalker.DEFAULT.walk(extractor, tree) // initiate walk of tree with listener in use of default walker
-    System.err.println("Just walked the tree");
+    ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
     return extractor.functions
-
-//    val parser = ExprParser(tokens)
-//    parser.getInterpreter().setPredictionMode(PredictionMode.SLL)
-//    try {
-//        parser.stat()  // STAGE 1
-//    } catch (ex: Exception) {
-//        tokens.reset() // rewind input stream
-//        parser.reset()
-//        parser.getInterpreter().setPredictionMode(PredictionMode.LL)
-//        parser.stat()  // STAGE 2
-//        // if we parse ok, it's LL not SLL
-//    }
 }
 

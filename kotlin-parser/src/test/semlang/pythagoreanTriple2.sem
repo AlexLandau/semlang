@@ -1,0 +1,13 @@
+
+function myCode.square(n: integer): integer {
+  return integer.times(n, n)
+}
+
+function pythagoreanTripleCheck(a: integer, b: integer, c: integer): boolean {
+  let aSquared: integer = myCode.square(a)
+  let bSquared: integer = myCode.square(b)
+  let cSquared: integer = myCode.square(c)
+  let sumOfSquares: integer = integer.plus(aSquared, bSquared)
+  let result: boolean = integer.equals(sumOfSquares, cSquared)
+  return result
+}
