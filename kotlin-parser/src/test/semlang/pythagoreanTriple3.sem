@@ -1,0 +1,13 @@
+
+function myCode.square(n: natural): natural {
+  return natural.times(n, n)
+}
+
+function pythagoreanTripleCheck(a: natural, b: natural, c: natural): boolean {
+  let aSquared: natural = myCode.square(a)
+  let bSquared: natural = myCode.square(b)
+  let cSquared: natural = myCode.square(c)
+  let sumOfSquares: natural = natural.plus(aSquared, bSquared)
+  let result: boolean = natural.equals(sumOfSquares, cSquared)
+  return result
+}

@@ -13,31 +13,41 @@ import java.math.BigInteger
 class JUnitTests {
     @Test
     fun runPythagoreanTripleFunction1() {
-        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple1.sem")
+        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple1.sem", ::int)
     }
 
     @Test
     fun runPythagoreanTripleFunction2() {
         // Tests the use of an additional function
-        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple2.sem")
+        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple2.sem", ::int)
     }
 
-    private fun testPythagoreanTripleFunction(filename: String) {
+    @Test
+    fun runPythagoreanTripleFunction3() {
+        // Tests the use of the natural number type
+        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple3.sem", ::natural)
+    }
+
+    private fun testPythagoreanTripleFunction(filename: String, toNumType: (Int) -> SemObject) {
         val functions = tokenize(filename)
         val functionsMap = mapById(functions)
         val mainFunctionId = FunctionId(Package(listOf()), "pythagoreanTripleCheck")
         val interpreter = SemlangForwardInterpreter(functionsMap)
-        val result123 = interpreter.interpret(mainFunctionId, listOf(int(1), int(2), int(3)))
+        val result123 = interpreter.interpret(mainFunctionId, listOf(toNumType(1), toNumType(2), toNumType(3)))
         assertEquals(SemObject.Boolean(false), result123)
-        val result345 = interpreter.interpret(mainFunctionId, listOf(int(3), int(4), int(5)))
+        val result345 = interpreter.interpret(mainFunctionId, listOf(toNumType(3), toNumType(4), toNumType(5)))
         assertEquals(SemObject.Boolean(true), result345)
     }
+}
 
-    private fun mapById(functions: List<Function>): Map<FunctionId, Function> {
-        return functions.associateBy(Function::id)
-    }
+private fun mapById(functions: List<Function>): Map<FunctionId, Function> {
+    return functions.associateBy(Function::id)
+}
 
-    private fun int(i: Int): SemObject {
-        return SemObject.Integer(BigInteger.valueOf(i.toLong()))
-    }
+private fun int(i: Int): SemObject {
+    return SemObject.Integer(BigInteger.valueOf(i.toLong()))
+}
+
+private fun natural(i: Int): SemObject {
+    return SemObject.Natural(BigInteger.valueOf(i.toLong()))
 }

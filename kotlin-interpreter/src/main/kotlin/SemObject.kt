@@ -34,6 +34,36 @@ sealed class SemObject {
             return "Integer(value=$value)"
         }
     }
+    class Natural(val value: BigInteger) : SemObject() {
+        init {
+            if (value.compareTo(BigInteger.ZERO) < 0) {
+                throw IllegalArgumentException("Naturals can't be less than zero; was $value")
+            }
+        }
+
+        override fun getType(): Type {
+            return Type.NATURAL
+        }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as Natural
+
+            if (value != other.value) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return value.hashCode()
+        }
+
+        override fun toString(): String {
+            return "Integer(value=$value)"
+        }
+    }
     class Boolean(val value: kotlin.Boolean) : SemObject() {
         override fun getType(): Type {
             return Type.BOOLEAN
