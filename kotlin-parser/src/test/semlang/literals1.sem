@@ -1,6 +1,6 @@
 
 function myFunction(n: integer): integer {
     let a: integer = integer.times(n, n)
-    let b1: integer = integer."1"
-    return integer.plus(a, b1)
+    let 1: integer = integer."1"
+    return integer.plus(a, 1)
 }

@@ -59,6 +59,16 @@ class JUnitTests {
         assertEquals(int(1), interpreter.interpret(fnId, listOf(int(0))))
         assertEquals(int(2), interpreter.interpret(fnId, listOf(int(-1))))
     }
+
+    @Test
+    fun testLiterals2() {
+        val functions = getFunctionsInFile("src/test/semlang/literals2.sem")
+        val fnId = functions.keys.single()
+        val interpreter = SemlangForwardInterpreter(functions)
+        assertEquals(natural(2), interpreter.interpret(fnId, listOf(natural(1))))
+        assertEquals(natural(5), interpreter.interpret(fnId, listOf(natural(2))))
+        assertEquals(natural(1), interpreter.interpret(fnId, listOf(natural(0))))
+    }
 }
 
 private fun mapById(functions: List<Function>): Map<FunctionId, Function> {

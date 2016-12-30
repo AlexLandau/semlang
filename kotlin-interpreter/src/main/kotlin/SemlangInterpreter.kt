@@ -76,6 +76,8 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                     return evaluateBooleanLiteral(expression.literal)
                 } else if (type == Type.INTEGER) {
                     return evaluateIntegerLiteral(expression.literal)
+                } else if (type == Type.NATURAL) {
+                    return evaluateNaturalLiteral(expression.literal)
                 } else {
                     throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
                 }
@@ -85,6 +87,14 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
 
     private fun evaluateIntegerLiteral(literal: String): SemObject {
         return SemObject.Integer(BigInteger(literal))
+    }
+
+    private fun evaluateNaturalLiteral(literal: String): SemObject {
+        val bigint = BigInteger(literal)
+        if (bigint.compareTo(BigInteger.ZERO) < 0) {
+            throw IllegalArgumentException("Natural numbers can't be negative; literal was: $literal")
+        }
+        return SemObject.Natural(bigint)
     }
 
     private fun evaluateBooleanLiteral(literal: String): SemObject {

@@ -1,0 +1,6 @@
+
+function myFunction(n: natural): natural {
+    let a: natural = natural.times(n, n)
+    let 1: natural = natural."1"
+    return natural.plus(a, 1)
+}
