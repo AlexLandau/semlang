@@ -19,7 +19,7 @@ IF                 : 'if';
 ELSE               : 'else';
 
 // Literals
-LITERAL            : '"' ([^"\\] | '\\'.)* '"' ;
+LITERAL            : '"' ( ~["\\] | '\\' . )* '"' ;
 
 // Operators
 DOT                : '.' ;

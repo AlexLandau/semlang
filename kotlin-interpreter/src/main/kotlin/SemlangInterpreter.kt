@@ -74,11 +74,17 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                 val type = expression.type
                 if (type == Type.BOOLEAN) {
                     return evaluateBooleanLiteral(expression.literal)
+                } else if (type == Type.INTEGER) {
+                    return evaluateIntegerLiteral(expression.literal)
                 } else {
                     throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
                 }
             }
         }
+    }
+
+    private fun evaluateIntegerLiteral(literal: String): SemObject {
+        return SemObject.Integer(BigInteger(literal))
     }
 
     private fun evaluateBooleanLiteral(literal: String): SemObject {

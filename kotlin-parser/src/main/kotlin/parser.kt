@@ -56,7 +56,7 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
 
     if (expression.LITERAL() != null) {
         val type = parseSimpleType(expression.simple_type_id())
-        val literal = expression.LITERAL().text
+        val literal = expression.LITERAL().text.drop(1).dropLast(1)
         return Expression.Literal(type, literal)
     }
 
