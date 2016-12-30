@@ -19,8 +19,7 @@ IF                 : 'if';
 ELSE               : 'else';
 
 // Literals
-INTLIT             : '0'|[1-9][0-9]* ;
-DECLIT             : '0'|[1-9][0-9]* '.' [0-9]+ ;
+LITERAL            : '"' ([^"\\] | '\\'.)* '"' ;
 
 // Operators
 DOT                : '.' ;
@@ -38,4 +37,4 @@ D_QUOTE            : '"' ;
 S_QUOTE            : '\'' ;
 
 // Identifiers
-ID                 : [_]*[a-z][A-Za-z0-9_]* ;
+ID                 : [_]*[a-z0-9][A-Za-z0-9_]* ;

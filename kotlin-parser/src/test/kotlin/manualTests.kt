@@ -28,6 +28,12 @@ class JUnitTests {
         testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple3.sem", ::natural)
     }
 
+    @Test
+    fun runPythagoreanTripleFunction4() {
+        // Tests the use of boolean literals
+        testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple4.sem", ::int)
+    }
+
     private fun testPythagoreanTripleFunction(filename: String, toNumType: (Int) -> SemObject) {
         val functions = tokenize(filename)
         val functionsMap = mapById(functions)

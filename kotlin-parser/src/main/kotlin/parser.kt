@@ -47,6 +47,19 @@ fun parseAssignment(assignment: SemlangParser.AssignmentContext): Assignment {
 }
 
 fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
+    if (expression.IF() != null) {
+        val condition = parseExpression(expression.expression())
+        val thenBlock = parseBlock(expression.block(0))
+        val elseBlock = parseBlock(expression.block(1))
+        return Expression.IfThen(condition, thenBlock, elseBlock)
+    }
+
+    if (expression.LITERAL() != null) {
+        val type = parseSimpleType(expression.simple_type_id())
+        val literal = expression.LITERAL().text
+        return Expression.Literal(type, literal)
+    }
+
     if (expression.LPAREN() != null) {
         val functionId = parseFunctionId(expression.function_id())
         val arguments = parseCdExpressions(expression.cd_expressions())
@@ -120,7 +133,14 @@ fun parsePackage(packag: SemlangParser.PackagContext): Package {
 }
 
 fun parseType(type: SemlangParser.TypeContext): Type {
-    val typeId = type.ID().text
+    if (type.simple_type_id() != null) {
+        return parseSimpleType(type.simple_type_id())
+    }
+    throw IllegalArgumentException("Unparsed type " + type)
+}
+
+fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
+    val typeId = simple_type_id.ID().text
     if (typeId.toLowerCase().equals("natural")) {
         return Type.NATURAL
     } else if (typeId.toLowerCase().equals("integer")) {

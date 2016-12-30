@@ -55,9 +55,9 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
         return when (expression) {
             is Expression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name $expression.name")
             is Expression.IfThen -> {
-                val condition: Any = evaluateExpression(expression.condition, assignments)
-                if (condition is Boolean) {
-                    return if (condition) {
+                val condition = evaluateExpression(expression.condition, assignments)
+                if (condition is SemObject.Boolean) {
+                    return if (condition.value) {
                         evaluateBlock(expression.thenBlock, assignments)
                     } else {
                         evaluateBlock(expression.elseBlock, assignments)
@@ -70,6 +70,24 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
             }
+            is Expression.Literal -> {
+                val type = expression.type
+                if (type == Type.BOOLEAN) {
+                    return evaluateBooleanLiteral(expression.literal)
+                } else {
+                    throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
+                }
+            }
+        }
+    }
+
+    private fun evaluateBooleanLiteral(literal: String): SemObject {
+        if (literal == "true") {
+            return SemObject.Boolean(true)
+        } else if (literal == "false") {
+            return SemObject.Boolean(false)
+        } else {
+            throw IllegalArgumentException("Unhandled literal \"$literal\" of type Boolean")
         }
     }
 }

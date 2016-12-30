@@ -15,8 +15,7 @@ tokens {
   LET,
   IF,
   ELSE,
-  INTLIT,
-  DECLIT,
+  LITERAL,
   DOT,
   COMMA,
   COLON,
@@ -47,6 +46,8 @@ assignments : | assignment | assignment assignments ;
 assignment : LET ID COLON type ASSIGN expression ;
 return_statement: RETURN expression ;
 
-type : ID ;
-expression : ID | function_id LPAREN cd_expressions RPAREN ;
+type : simple_type_id ;
+// A "simple type ID" has no type parameters
+simple_type_id : ID | packag DOT ID ;
+expression : ID | function_id LPAREN cd_expressions RPAREN | simple_type_id DOT LITERAL | IF LPAREN expression RPAREN block ELSE block ;
 cd_expressions : | expression | expression COMMA cd_expressions ;
