@@ -3,9 +3,6 @@ package semlang.api
 data class Package(val strings: List<String>)
 data class FunctionId(val thePackage: Package, val functionName: String)
 sealed class Type {
-    // TODO: Some kind of toString() handling for these
-    object INT_S32 : Type()
-    object INT_S64 : Type()
     object INTEGER : Type() {
         override fun toString(): String {
             return "Integer"
@@ -21,7 +18,7 @@ sealed class Type {
             return "Boolean"
         }
     }
-    //TODO: Data class
+    //TODO: Make this a data class when possible
     //TODO: When this is constructed, validate that it does not share a name with a default type
     class NamedType(val id: FunctionId): Type() {
         override fun equals(other: Any?): Boolean {

@@ -102,7 +102,7 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
     if (expression.ID() != null) {
         return Expression.Variable(expression.ID().text)
     }
-    throw IllegalArgumentException("Couldn't parseFunction ${expression.toString()}")
+    throw IllegalArgumentException("Couldn't parseFunction ${expression}")
 }
 
 fun parseCdExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
