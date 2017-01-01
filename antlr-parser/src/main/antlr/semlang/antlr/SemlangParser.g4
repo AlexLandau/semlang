@@ -35,7 +35,7 @@ tokens {
 
 file : functions_or_structs EOF ;
 
-functions_or_structs : | function functions_or_structs | sstruct functions_or_structs ;
+functions_or_structs : | function functions_or_structs | struct functions_or_structs ;
 function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block ;
 function_id : ID | packag DOT ID ;
 packag : ID | ID DOT packag ; // Antlr doesn't like the word "package"
@@ -43,7 +43,7 @@ block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
-sstruct : STRUCT function_id LBRACE struct_components RBRACE ;
+struct : STRUCT function_id LBRACE struct_components RBRACE ;
 struct_components : | struct_component struct_components ;
 struct_component : ID COLON type ;
 

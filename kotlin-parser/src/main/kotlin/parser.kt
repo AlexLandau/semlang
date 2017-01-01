@@ -18,7 +18,7 @@ fun parseFunction(function: SemlangParser.FunctionContext): Function {
     return Function(id, arguments, returnType, block)
 }
 
-fun parseStruct(ctx: SemlangParser.SstructContext): Struct {
+fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
     val members: List<Member> = parseMembers(ctx.struct_components())
     return Struct(id, members)
@@ -200,8 +200,8 @@ class MyListener : SemlangParserBaseListener() {
         }
     }
 
-    override fun enterSstruct(ctx: SemlangParser.SstructContext?) {
-        super.enterSstruct(ctx)
+    override fun enterStruct(ctx: SemlangParser.StructContext?) {
+        super.enterStruct(ctx)
         if (ctx != null) {
             val struct = parseStruct(ctx)
             structs.add(struct)
