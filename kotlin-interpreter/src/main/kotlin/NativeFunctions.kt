@@ -44,6 +44,18 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.INTEGER, Type.INTEGER)))
 
+    // integer.minus
+    val integerMinusId = FunctionId(integerPackage, "minus")
+    map.put(integerMinusId, NativeFunction(integerMinusId, { args: List<SemObject> ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Integer && right is SemObject.Integer) {
+            SemObject.Integer(left.value - right.value)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }, listOf(Type.INTEGER, Type.INTEGER)))
+
     // integer.equals
     val integerEqualsId = FunctionId(integerPackage, "equals")
     map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject> ->

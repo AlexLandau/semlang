@@ -10,12 +10,39 @@ import semlang.api.*
 import semlang.api.Function
 import java.util.*
 
-fun parse(function: SemlangParser.FunctionContext): Function {
+fun parseFunction(function: SemlangParser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
     val block: Block = parseBlock(function.block())
     return Function(id, arguments, returnType, block)
+}
+
+fun parseStruct(ctx: SemlangParser.SstructContext): Struct {
+    val id: FunctionId = parseFunctionId(ctx.function_id())
+    val members: List<Member> = parseMembers(ctx.struct_components())
+    return Struct(id, members)
+}
+
+fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> {
+    val results = ArrayList<Member>()
+    var inputs = members
+    while (true) {
+        if (inputs.struct_component() != null) {
+            results.add(parseMember(inputs.struct_component()))
+        }
+        if (inputs.struct_components() == null) {
+            break
+        }
+        inputs = inputs.struct_components()
+    }
+    return results
+}
+
+fun parseMember(member: SemlangParser.Struct_componentContext): Member {
+    val name = member.ID().text
+    val type = parseType(member.type())
+    return Member(name, type)
 }
 
 fun parseBlock(block: SemlangParser.BlockContext): Block {
@@ -60,6 +87,12 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
         return Expression.Literal(type, literal)
     }
 
+    if (expression.ARROW() != null) {
+        val inner = parseExpression(expression.expression())
+        val name = expression.ID().text
+        return Expression.Follow(inner, name)
+    }
+
     if (expression.LPAREN() != null) {
         val functionId = parseFunctionId(expression.function_id())
         val arguments = parseCdExpressions(expression.cd_expressions())
@@ -69,7 +102,7 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
     if (expression.ID() != null) {
         return Expression.Variable(expression.ID().text)
     }
-    throw IllegalArgumentException("Couldn't parse ${expression.toString()}")
+    throw IllegalArgumentException("Couldn't parseFunction ${expression.toString()}")
 }
 
 fun parseCdExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
@@ -140,6 +173,10 @@ fun parseType(type: SemlangParser.TypeContext): Type {
 }
 
 fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
+    if (simple_type_id.packag() != null) {
+        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text))
+    }
+
     val typeId = simple_type_id.ID().text
     if (typeId.toLowerCase().equals("natural")) {
         return Type.NATURAL
@@ -148,21 +185,33 @@ fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
     } else if (typeId.toLowerCase().equals("boolean")) {
         return Type.BOOLEAN
     }
+
     throw IllegalArgumentException("Unparsed type " + typeId)
 }
 
 class MyListener : SemlangParserBaseListener() {
+    val structs: MutableList<Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
 
     override fun enterFunction(ctx: SemlangParser.FunctionContext?) {
         super.enterFunction(ctx)
         if (ctx != null) {
-            functions.add(parse(ctx))
+            functions.add(parseFunction(ctx))
+        }
+    }
+
+    override fun enterSstruct(ctx: SemlangParser.SstructContext?) {
+        super.enterSstruct(ctx)
+        if (ctx != null) {
+            val struct = parseStruct(ctx)
+            structs.add(struct)
         }
     }
 }
 
-fun tokenize(filename: String = "../notional/mvp.sem"): List<Function> {
+//data class FunctionsAndStructs(val functions: List<Function>, val structs: List<Struct>)
+
+fun parseFile(filename: String = "../notional/mvp.sem"): InterpreterContext {
 
     val input = ANTLRFileStream(filename)
     val lexer = SemlangLexer(input)
@@ -173,6 +222,14 @@ fun tokenize(filename: String = "../notional/mvp.sem"): List<Function> {
     val extractor = MyListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
-    return extractor.functions
+    return InterpreterContext(indexById(extractor.functions), indexStructsById(extractor.structs))
+}
+
+fun indexStructsById(structs: MutableList<Struct>): Map<FunctionId, Struct> {
+    return structs.associateBy(Struct::id)
+}
+
+fun indexById(functions: MutableList<Function>): Map<FunctionId, Function> {
+    return functions.associateBy(Function::id)
 }
 

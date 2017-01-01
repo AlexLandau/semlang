@@ -7,7 +7,7 @@ import semlang.api.FunctionId
 import semlang.api.Package
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
-import semlang.parser.tokenize
+import semlang.parser.parseFile
 import java.math.BigInteger
 
 class JUnitTests {
@@ -35,7 +35,7 @@ class JUnitTests {
     }
 
     private fun testPythagoreanTripleFunction(filename: String, toNumType: (Int) -> SemObject) {
-        val functionsMap = getFunctionsInFile(filename)
+        val functionsMap = parseFile(filename)
         val mainFunctionId = FunctionId(Package(listOf()), "pythagoreanTripleCheck")
         val interpreter = SemlangForwardInterpreter(functionsMap)
         val result123 = interpreter.interpret(mainFunctionId, listOf(toNumType(1), toNumType(2), toNumType(3)))
@@ -44,15 +44,10 @@ class JUnitTests {
         assertEquals(SemObject.Boolean(true), result345)
     }
 
-    private fun getFunctionsInFile(filename: String): Map<FunctionId, Function> {
-        val functions = tokenize(filename)
-        return mapById(functions)
-    }
-
     @Test
     fun testLiterals1() {
-        val functions = getFunctionsInFile("src/test/semlang/literals1.sem")
-        val fnId = functions.keys.single()
+        val functions = parseFile("src/test/semlang/literals1.sem")
+        val fnId = functions.functions.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(int(2), interpreter.interpret(fnId, listOf(int(1))))
         assertEquals(int(5), interpreter.interpret(fnId, listOf(int(2))))
@@ -62,12 +57,24 @@ class JUnitTests {
 
     @Test
     fun testLiterals2() {
-        val functions = getFunctionsInFile("src/test/semlang/literals2.sem")
-        val fnId = functions.keys.single()
+        val functions = parseFile("src/test/semlang/literals2.sem")
+        val fnId = functions.functions.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(natural(2), interpreter.interpret(fnId, listOf(natural(1))))
         assertEquals(natural(5), interpreter.interpret(fnId, listOf(natural(2))))
         assertEquals(natural(1), interpreter.interpret(fnId, listOf(natural(0))))
+    }
+
+    @Test
+    fun testStructs1() {
+        val functionsMap = parseFile("src/test/semlang/structs1.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val mainFunctionId = FunctionId(myStuff, "myFunction")
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(-1), interpreter.interpret(mainFunctionId, listOf(int(0))))
+        assertEquals(int(0), interpreter.interpret(mainFunctionId, listOf(int(1))))
+        assertEquals(int(3), interpreter.interpret(mainFunctionId, listOf(int(2))))
+        assertEquals(int(8), interpreter.interpret(mainFunctionId, listOf(int(3))))
     }
 }
 

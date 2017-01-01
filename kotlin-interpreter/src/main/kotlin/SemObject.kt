@@ -87,4 +87,31 @@ sealed class SemObject {
             return "Boolean(value=$value)"
         }
     }
+    class Struct(val struct: semlang.api.Struct, val objects: List<SemObject>): SemObject() {
+        override fun getType(): Type {
+            return Type.NamedType(struct.id)
+        }
+
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as Struct
+
+            if (struct != other.struct) return false
+            if (objects != other.objects) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = struct.hashCode()
+            result = 31 * result + objects.hashCode()
+            return result
+        }
+
+        override fun toString(): String {
+            return "Struct(struct=$struct, objects=$objects)"
+        }
+    }
 }

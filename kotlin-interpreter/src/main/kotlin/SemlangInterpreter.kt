@@ -5,8 +5,7 @@ import semlang.api.Function
 import java.math.BigInteger
 import java.util.HashMap
 
-
-class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
+class SemlangForwardInterpreter(val context: InterpreterContext) {
     private val nativeFunctions: Map<FunctionId, NativeFunction> = getNativeFunctions()
 
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
@@ -26,7 +25,13 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
 
         // Handle non-native functions
         val variableAssignments: MutableMap<String, SemObject> = HashMap()
-        val function: Function = knownFunctions.getOrElse(functionId, fun (): Function {throw IllegalArgumentException("Unrecognized function ID $functionId")})
+
+        val structFunction: Struct? = context.structs[functionId]
+        if (structFunction != null) {
+            return evaluateStructConstructor(structFunction, arguments)
+        }
+        val function: Function = context.functions.getOrElse(functionId, fun (): Function {throw IllegalArgumentException("Unrecognized function ID $functionId")})
+
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
@@ -37,6 +42,18 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
             variableAssignments.put(argumentDefinition.name, value)
         }
         return evaluateBlock(function.block, variableAssignments)
+    }
+
+    private fun evaluateStructConstructor(structFunction: Struct, arguments: List<SemObject>): SemObject {
+        if (arguments.size != structFunction.members.size) {
+            throw IllegalArgumentException("Wrong number of arguments for struct constructor " + structFunction)
+        }
+        for ((value, memberDefinition) in arguments.zip(structFunction.members)) {
+            if (value.getType() != memberDefinition.type) {
+                throw IllegalArgumentException("Type mismatch in struct constructor argument: ${value.getType()} vs. ${memberDefinition.type}")
+            }
+        }
+        return SemObject.Struct(structFunction, arguments)
     }
 
     private fun evaluateBlock(block: Block, initialAssignments: Map<String, SemObject>): SemObject {
@@ -66,6 +83,16 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
                     throw IllegalStateException("Condition block in if-then is not a boolean value")
                 }
             }
+            is Expression.Follow -> {
+                val innerResult = evaluateExpression(expression.expression, assignments)
+                val name = expression.id
+                if (innerResult is SemObject.Struct) {
+                    val index = innerResult.struct.getIndexForName(name)
+                    return innerResult.objects[index]
+                } else {
+                    throw IllegalStateException("Trying to use -> on a non-struct object")
+                }
+            }
             is Expression.FunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
@@ -84,26 +111,27 @@ class SemlangForwardInterpreter(val knownFunctions: Map<FunctionId, Function>) {
             }
         }
     }
+}
 
-    private fun evaluateIntegerLiteral(literal: String): SemObject {
-        return SemObject.Integer(BigInteger(literal))
+private fun evaluateIntegerLiteral(literal: String): SemObject {
+    return SemObject.Integer(BigInteger(literal))
+}
+
+private fun evaluateNaturalLiteral(literal: String): SemObject {
+    val bigint = BigInteger(literal)
+    if (bigint.compareTo(BigInteger.ZERO) < 0) {
+        throw IllegalArgumentException("Natural numbers can't be negative; literal was: $literal")
     }
+    return SemObject.Natural(bigint)
+}
 
-    private fun evaluateNaturalLiteral(literal: String): SemObject {
-        val bigint = BigInteger(literal)
-        if (bigint.compareTo(BigInteger.ZERO) < 0) {
-            throw IllegalArgumentException("Natural numbers can't be negative; literal was: $literal")
-        }
-        return SemObject.Natural(bigint)
-    }
-
-    private fun evaluateBooleanLiteral(literal: String): SemObject {
-        if (literal == "true") {
-            return SemObject.Boolean(true)
-        } else if (literal == "false") {
-            return SemObject.Boolean(false)
-        } else {
-            throw IllegalArgumentException("Unhandled literal \"$literal\" of type Boolean")
-        }
+private fun evaluateBooleanLiteral(literal: String): SemObject {
+    if (literal == "true") {
+        return SemObject.Boolean(true)
+    } else if (literal == "false") {
+        return SemObject.Boolean(false)
+    } else {
+        throw IllegalArgumentException("Unhandled literal \"$literal\" of type Boolean")
     }
 }
+

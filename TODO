@@ -1,5 +1,6 @@
 - Clean up, organize code and sample Semlang code
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
+- Compiler-like validator of semlang (static type-checking stage, basically)
 - Function definitions as tests
 - Function types
 - Generic types
@@ -7,7 +8,6 @@
 - Sequences and "first"
 - Additional primitive types (natural, N-bit integers, floating-point numbers, rationals?, strings, characters)
 - Enum types
-- Structs and "dereferencing"
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect)
 - Code writing into Java
 - Annotations and multiple function definitions

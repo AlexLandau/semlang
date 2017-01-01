@@ -35,6 +35,7 @@ LBRACE             : '{' ;
 RBRACE             : '}' ;
 D_QUOTE            : '"' ;
 S_QUOTE            : '\'' ;
+ARROW              : '->' ;
 
 // Identifiers
-ID                 : [_]*[a-z0-9][A-Za-z0-9_]* ;
+ID                 : [_]*[a-zA-Z0-9][A-Za-z0-9_]* ;
