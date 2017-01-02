@@ -18,7 +18,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
 }
 
 private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val integerPackage = Package(listOf("integer"))
+    val integerPackage = Package(listOf("Integer"))
 
     // integer.times
     val integerTimesId = FunctionId(integerPackage, "times")
@@ -70,7 +70,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 }
 
 private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val naturalPackage = Package(listOf("natural"))
+    val naturalPackage = Package(listOf("Natural"))
 
     // natural.times
     val naturalTimesId = FunctionId(naturalPackage, "times")

@@ -178,11 +178,11 @@ fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
     }
 
     val typeId = simple_type_id.ID().text
-    if (typeId.toLowerCase().equals("natural")) {
+    if (typeId.equals("Natural")) {
         return Type.NATURAL
-    } else if (typeId.toLowerCase().equals("integer")) {
+    } else if (typeId.equals("Integer")) {
         return Type.INTEGER
-    } else if (typeId.toLowerCase().equals("boolean")) {
+    } else if (typeId.equals("Boolean")) {
         return Type.BOOLEAN
     }
 

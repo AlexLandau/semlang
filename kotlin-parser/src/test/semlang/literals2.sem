@@ -1,6 +1,6 @@
 
-function myFunction(n: natural): natural {
-    let a: natural = natural.times(n, n)
-    let 1: natural = natural."1"
-    return natural.plus(a, 1)
+function myFunction(n: Natural): Natural {
+    let a: Natural = Natural.times(n, n)
+    let 1: Natural = Natural."1"
+    return Natural.plus(a, 1)
 }
