@@ -5,7 +5,7 @@ import semlang.api.Function
 import java.math.BigInteger
 import java.util.HashMap
 
-class SemlangForwardInterpreter(val context: InterpreterContext) {
+class SemlangForwardInterpreter(val context: ValidatedContext) {
     private val nativeFunctions: Map<FunctionId, NativeFunction> = getNativeFunctions()
 
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
@@ -30,7 +30,7 @@ class SemlangForwardInterpreter(val context: InterpreterContext) {
         if (structFunction != null) {
             return evaluateStructConstructor(structFunction, arguments)
         }
-        val function: Function = context.functions.getOrElse(functionId, fun (): Function {throw IllegalArgumentException("Unrecognized function ID $functionId")})
+        val function: ValidatedFunction = context.functions.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
 
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
@@ -56,7 +56,7 @@ class SemlangForwardInterpreter(val context: InterpreterContext) {
         return SemObject.Struct(structFunction, arguments)
     }
 
-    private fun evaluateBlock(block: Block, initialAssignments: Map<String, SemObject>): SemObject {
+    private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
         for ((name, type, expression) in block.assignments) {
             val value = evaluateExpression(expression, assignments)
@@ -68,10 +68,10 @@ class SemlangForwardInterpreter(val context: InterpreterContext) {
         return evaluateExpression(block.returnedExpression, assignments)
     }
 
-    private fun evaluateExpression(expression: Expression, assignments: Map<String, SemObject>): SemObject {
+    private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>): SemObject {
         return when (expression) {
-            is Expression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name $expression.name")
-            is Expression.IfThen -> {
+            is TypedExpression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name $expression.name")
+            is TypedExpression.IfThen -> {
                 val condition = evaluateExpression(expression.condition, assignments)
                 if (condition is SemObject.Boolean) {
                     return if (condition.value) {
@@ -83,7 +83,7 @@ class SemlangForwardInterpreter(val context: InterpreterContext) {
                     throw IllegalStateException("Condition block in if-then is not a boolean value")
                 }
             }
-            is Expression.Follow -> {
+            is TypedExpression.Follow -> {
                 val innerResult = evaluateExpression(expression.expression, assignments)
                 val name = expression.id
                 if (innerResult is SemObject.Struct) {
@@ -93,11 +93,11 @@ class SemlangForwardInterpreter(val context: InterpreterContext) {
                     throw IllegalStateException("Trying to use -> on a non-struct object")
                 }
             }
-            is Expression.FunctionCall -> {
+            is TypedExpression.FunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
             }
-            is Expression.Literal -> {
+            is TypedExpression.Literal -> {
                 val type = expression.type
                 if (type == Type.BOOLEAN) {
                     return evaluateBooleanLiteral(expression.literal)

@@ -1,6 +1,10 @@
 - Clean up, organize code and sample Semlang code
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
-- Compiler-like validator of semlang (static type-checking stage, basically)
+- Finish up static validation TODOs
+  - Validate struct member names
+  - Validate function argument names
+  - Static validation of literal values
+  - Make code style more consistent
 - Function definitions as tests
 - Function types
 - Generic types
