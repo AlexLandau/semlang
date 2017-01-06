@@ -88,6 +88,18 @@ class JUnitTests {
         assertEquals(int(3), interpreter.interpret(mainFunctionId, listOf(int(2))))
         assertEquals(int(8), interpreter.interpret(mainFunctionId, listOf(int(3))))
     }
+
+    @Test
+    fun testStructs3() {
+        val functionsMap = parseFile("src/test/semlang/structs3.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val mainFunctionId = FunctionId(myStuff, "myFunction")
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(-1), interpreter.interpret(mainFunctionId, listOf(int(0))))
+        assertEquals(int(0), interpreter.interpret(mainFunctionId, listOf(int(1))))
+        assertEquals(int(3), interpreter.interpret(mainFunctionId, listOf(int(2))))
+        assertEquals(int(8), interpreter.interpret(mainFunctionId, listOf(int(3))))
+    }
 }
 
 private fun mapById(functions: List<Function>): Map<FunctionId, Function> {

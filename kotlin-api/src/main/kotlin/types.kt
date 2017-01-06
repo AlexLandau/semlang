@@ -40,6 +40,29 @@ sealed class Type {
             return "NamedType(id=$id)"
         }
     }
+    class ParameterizedType(val simpleType: Type, val parameterizedTypes: List<Type>): Type() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as ParameterizedType
+
+            if (simpleType != other.simpleType) return false
+            if (parameterizedTypes != other.parameterizedTypes) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = simpleType.hashCode()
+            result = 31 * result + parameterizedTypes.hashCode()
+            return result
+        }
+
+        override fun toString(): String {
+            return "ParameterizedType($simpleType<$parameterizedTypes>)"
+        }
+    }
 }
 sealed class Expression {
     class Variable(val name: String): Expression()
@@ -52,7 +75,7 @@ data class Assignment(val name: String, val type: Type, val expression: Expressi
 data class Argument(val name: String, val type: Type)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class Function(val id: FunctionId, val arguments: List<Argument>, val returnType: Type, val block: Block)
-data class Struct(val id: FunctionId, val members: List<Member>) {
+data class Struct(val id: FunctionId, val typeParameters: List<String>, val members: List<Member>) {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
     }

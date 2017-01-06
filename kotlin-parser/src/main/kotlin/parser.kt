@@ -20,8 +20,31 @@ fun parseFunction(function: SemlangParser.FunctionContext): Function {
 
 fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
+
+    // TODO: Make use of type parameters appropriately
+    val typeParameters: List<String> = if (ctx.cd_ids() != null) {
+        parseCommaDelimitedIds(ctx.cd_ids())
+    } else {
+        listOf()
+    }
+
     val members: List<Member> = parseMembers(ctx.struct_components())
-    return Struct(id, members)
+    return Struct(id, typeParameters, members)
+}
+
+fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<String> {
+    val results = ArrayList<String>()
+    var inputs = cd_ids
+    while (true) {
+        if (inputs.ID() != null) {
+            results.add(inputs.ID().text)
+        }
+        if (inputs.cd_ids() == null) {
+            break
+        }
+        inputs = inputs.cd_ids()
+    }
+    return results
 }
 
 fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> {
@@ -166,10 +189,31 @@ fun parsePackage(packag: SemlangParser.PackagContext): Package {
 }
 
 fun parseType(type: SemlangParser.TypeContext): Type {
+    if (type.LESS_THAN() != null) {
+        val simpleType = parseSimpleType(type.simple_type_id())
+        val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
+        return Type.ParameterizedType(simpleType, parameterTypes)
+    }
+
     if (type.simple_type_id() != null) {
         return parseSimpleType(type.simple_type_id())
     }
     throw IllegalArgumentException("Unparsed type " + type)
+}
+
+fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type> {
+    val results = ArrayList<Type>()
+    var inputs = cd_types
+    while (true) {
+        if (inputs.type() != null) {
+            results.add(parseType(inputs.type()))
+        }
+        if (inputs.cd_types() == null) {
+            break
+        }
+        inputs = inputs.cd_types()
+    }
+    return results
 }
 
 fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
@@ -186,7 +230,7 @@ fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
         return Type.BOOLEAN
     }
 
-    throw IllegalArgumentException("Unparsed type " + typeId)
+    return Type.NamedType(FunctionId(Package(listOf()), typeId))
 }
 
 class MyListener : SemlangParserBaseListener() {
