@@ -64,6 +64,7 @@ cd_types : type | type COMMA cd_types ;
 simple_type_id : ID | packag DOT ID ;
 expression : ID
   | function_id LPAREN cd_expressions RPAREN
+  | function_id LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
   | simple_type_id DOT LITERAL
   | IF LPAREN expression RPAREN block ELSE block
   | expression ARROW ID ;

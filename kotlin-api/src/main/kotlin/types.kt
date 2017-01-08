@@ -3,6 +3,11 @@ package semlang.api
 // TODO: Rename this file to "language.kt"; will want a separate file for type arithmetic
 data class Package(val strings: List<String>)
 data class FunctionId(val thePackage: Package, val functionName: String)
+interface ParameterizableType {
+    fun getParameterizedTypes(): List<Type>
+    fun withParameters(newParameters: List<Type>): Type
+}
+
 sealed class Type {
     object INTEGER : Type() {
         override fun toString(): String {
@@ -19,9 +24,19 @@ sealed class Type {
             return "Boolean"
         }
     }
-    //TODO: Make this a data class when possible
+
+
+    //TODO: Make this a data class when/if possible
     //TODO: When this is constructed, validate that it does not share a name with a default type
-    class NamedType(val id: FunctionId): Type() {
+    class NamedType(val id: FunctionId, val parameters: List<Type>): Type(), ParameterizableType {
+        override fun withParameters(newParameters: List<Type>): Type {
+            return NamedType(id, newParameters)
+        }
+
+        override fun getParameterizedTypes(): List<Type> {
+            return parameters
+        }
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
@@ -29,46 +44,27 @@ sealed class Type {
             other as NamedType
 
             if (id != other.id) return false
+            if (parameters != other.parameters) return false
 
             return true
         }
 
         override fun hashCode(): Int {
-            return id.hashCode()
-        }
-
-        override fun toString(): String {
-            return "NamedType(id=$id)"
-        }
-    }
-    class ParameterizedType(val simpleType: Type, val parameterizedTypes: List<Type>): Type() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-
-            other as ParameterizedType
-
-            if (simpleType != other.simpleType) return false
-            if (parameterizedTypes != other.parameterizedTypes) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = simpleType.hashCode()
-            result = 31 * result + parameterizedTypes.hashCode()
+            var result = id.hashCode()
+            result = 31 * result + parameters.hashCode()
             return result
         }
 
         override fun toString(): String {
-            return "ParameterizedType($simpleType<$parameterizedTypes>)"
+            return "NamedType(id=$id, parameters=$parameters)"
         }
     }
+
 }
 sealed class Expression {
     class Variable(val name: String): Expression()
     class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block): Expression()
-    class FunctionCall(val functionId: FunctionId, val arguments: List<Expression>): Expression()
+    class FunctionCall(val functionId: FunctionId, val arguments: List<Expression>, val chosenParameters: List<Type>): Expression()
     class Literal(val type: Type, val literal: String): Expression()
     class Follow(val expression: Expression, val id: String): Expression()
 }
@@ -86,8 +82,8 @@ data class ValidatedAssignment(val name: String, val type: Type, val expression:
 data class Argument(val name: String, val type: Type)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: FunctionId, val arguments: List<Argument>, val returnType: Type, val block: Block) : HasFunctionId
-data class ValidatedFunction(val id: FunctionId, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock)
+data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block) : HasFunctionId
+data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock)
 data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }

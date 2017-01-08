@@ -1,4 +1,5 @@
 - Clean up, organize code and sample Semlang code
+- Validator: Set up infrastructure for many simple positive tests and negative tests
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
 - Finish up static validation TODOs
   - Validate struct member names

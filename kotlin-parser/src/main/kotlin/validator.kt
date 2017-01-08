@@ -4,10 +4,10 @@ import semlang.api.*
 import semlang.api.Function
 import java.util.*
 
-sealed class Try<T> {
+sealed class Try<out T> {
     abstract fun <U> ifGood(function: (T) -> Try<U>): Try<U>
     abstract fun assume(): T
-    class Success<T>(val result: T) : Try<T>() {
+    class Success<out T>(val result: T) : Try<T>() {
         override fun assume(): T {
             return result
         }
@@ -16,7 +16,7 @@ sealed class Try<T> {
             return function.invoke(result)
         }
     }
-    class Error<T>(val errorMessage: String) : Try<T>() {
+    class Error<out T>(val errorMessage: String) : Try<T>() {
         override fun assume(): T {
             throw IllegalArgumentException("Try did not complete successfully: " + errorMessage)
         }
@@ -30,8 +30,9 @@ sealed class Try<T> {
             return this as Try.Error<U>
         }
     }
-
 }
+
+data class GroundedTypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type)
 
 fun validateContext(context: InterpreterContext): Try<ValidatedContext> {
     // TODO: Validate the structs
@@ -59,13 +60,14 @@ fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatur
 
 fun validateFunction(function: Function, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Try<ValidatedFunction> {
     //TODO: Validate that no two arguments have the same name
+    //TODO: Validate that type parameters don't share a name with something important
     val variableTypes = getArgumentVariableTypes(function.arguments)
     return validateBlock(function.block, variableTypes, functionTypeSignatures, structs, function.id).ifGood { block ->
         if (function.returnType != block.type) {
             Try.Error<ValidatedFunction>("Function ${function.id}'s stated return type ${function.returnType} does " +
                     "not match the block's actual return type ${block.type}")
         } else {
-            Try.Success(ValidatedFunction(function.id, function.arguments, function.returnType, block))
+            Try.Success(ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block))
         }
     }
 }
@@ -130,7 +132,12 @@ fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<S
     if (index < 0) {
         return Try.Error("In function $containingFunctionId, we try to dereference a non-existent member '${expression.id}' of the struct type $structType")
     }
-    val type = struct.members[index].type
+    // Type parameters come from the struct definition itself
+    // Chosen types come from the struct type known for the variable
+    val typeParameters = struct.typeParameters
+    val chosenTypes = structType.getParameterizedTypes()
+    val type = parameterizeType(struct.members[index].type, typeParameters, chosenTypes)
+    //TODO: Ground this if needed
 
     return Try.Success(TypedExpression.Follow(type, innerExpression, expression.id))
 }
@@ -153,11 +160,53 @@ fun validateFunctionCallExpression(expression: Expression.FunctionCall, variable
     if (signature == null) {
         return Try.Error("The function $containingFunctionId references a function $functionId that was not found")
     }
-    if (argumentTypes != signature.argumentTypes) {
-        return Try.Error("The function $containingFunctionId tries to call $functionId with argument types $argumentTypes, but the function expects argument types ${signature.argumentTypes}")
+    //TODO: Maybe compare argument size before grounding?
+
+    //Ground the signature
+    val groundSignature = ground(signature, expression.chosenParameters)
+    if (argumentTypes != groundSignature.argumentTypes) {
+        return Try.Error("The function $containingFunctionId tries to call $functionId with argument types $argumentTypes, but the function expects argument types ${groundSignature.argumentTypes}")
     }
 
-    return Try.Success(TypedExpression.FunctionCall(signature.outputType, functionId, arguments))
+    return Try.Success(TypedExpression.FunctionCall(groundSignature.outputType, functionId, arguments))
+}
+
+fun ground(signature: TypeSignature, chosenTypes: List<Type>): GroundedTypeSignature {
+    val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes) }
+    val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes)
+    return GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType)
+}
+
+fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<String>, chosenTypes: List<Type>): Type {
+    if (typeParameters.size != chosenTypes.size) {
+        throw IllegalArgumentException("Disagreement in type parameter list lengths; this should be handled smoothly elsewhere in the verifier")
+    }
+    val type: Type = if (typeWithWrongParameters is ParameterizableType) {
+        val oldParameters = typeWithWrongParameters.getParameterizedTypes()
+        val newParameters = oldParameters.map { type -> parameterizeType(type, typeParameters, chosenTypes) }
+        typeWithWrongParameters.withParameters(newParameters)
+    } else {
+        typeWithWrongParameters
+    }
+    return when (type) {
+        is Type.NamedType -> {
+            if (type.id.thePackage.strings.size > 0) {
+                type
+            } else if (type.parameters.size > 0) {
+                type
+            } else {
+                val index = typeParameters.indexOf(type.id.functionName)
+                if (index == -1) {
+                    type
+                } else {
+                    chosenTypes[index]
+                }
+            }
+        }
+        Type.INTEGER -> type
+        Type.NATURAL -> type
+        Type.BOOLEAN -> type
+    }
 }
 
 fun validateLiteralExpression(expression: Expression.Literal): Try<TypedExpression> {
@@ -245,10 +294,13 @@ fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
 
 fun getFunctionSignature(function: Function): TypeSignature {
     val argumentTypes = function.arguments.map(Argument::type)
-    return TypeSignature(function.id, argumentTypes, function.returnType)
+    return TypeSignature(function.id, argumentTypes, function.returnType, function.typeParameters)
 }
 
 fun getStructSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
-    return TypeSignature(struct.id, argumentTypes, Type.NamedType(struct.id))
+    val typeParameters = struct.typeParameters
+    // TODO: Method for making a type parameter type (String -> Type)
+    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType(FunctionId(Package(listOf()), id), listOf()) })
+    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }

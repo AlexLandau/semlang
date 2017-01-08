@@ -2,7 +2,7 @@ package semlang.api
 
 import java.util.*
 
-data class TypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type)
+data class TypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<String> = listOf())
 
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     val definitions = HashMap<FunctionId, TypeSignature>()

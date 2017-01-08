@@ -12,10 +12,12 @@ import java.util.*
 
 fun parseFunction(function: SemlangParser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
+    //TODO: Allow function definitions with type parameters
+    val typeParameters: List<String> = listOf()
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
     val block: Block = parseBlock(function.block())
-    return Function(id, arguments, returnType, block)
+    return Function(id, typeParameters, arguments, returnType, block)
 }
 
 fun parseStruct(ctx: SemlangParser.StructContext): Struct {
@@ -118,8 +120,13 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
 
     if (expression.LPAREN() != null) {
         val functionId = parseFunctionId(expression.function_id())
-        val arguments = parseCdExpressions(expression.cd_expressions())
-        return Expression.FunctionCall(functionId, arguments)
+        val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+        val groundParameters = if (expression.LESS_THAN() != null) {
+            parseCommaDelimitedTypes(expression.cd_types())
+        } else {
+            listOf()
+        }
+        return Expression.FunctionCall(functionId, arguments, groundParameters)
     }
 
     if (expression.ID() != null) {
@@ -128,7 +135,7 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
     throw IllegalArgumentException("Couldn't parseFunction ${expression}")
 }
 
-fun parseCdExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
+fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
     val expressions = ArrayList<Expression>()
     var inputs = cd_expressions
     while (true) {
@@ -192,7 +199,14 @@ fun parseType(type: SemlangParser.TypeContext): Type {
     if (type.LESS_THAN() != null) {
         val simpleType = parseSimpleType(type.simple_type_id())
         val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-        return Type.ParameterizedType(simpleType, parameterTypes)
+//        return Type.ParameterizedType(simpleType, parameterTypes)
+//        return simpleType.withParameters(parameterTypes)
+        return when (simpleType) {
+            is Type.NamedType -> {
+                Type.NamedType(simpleType.id, parameterTypes)
+            }
+            else -> throw IllegalArgumentException("Type $simpleType does not accept parameters")
+        }
     }
 
     if (type.simple_type_id() != null) {
@@ -218,7 +232,7 @@ fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type
 
 fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
     if (simple_type_id.packag() != null) {
-        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text))
+        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), listOf())
     }
 
     val typeId = simple_type_id.ID().text
@@ -230,7 +244,7 @@ fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
         return Type.BOOLEAN
     }
 
-    return Type.NamedType(FunctionId(Package(listOf()), typeId))
+    return Type.NamedType(FunctionId(Package(listOf()), typeId), listOf())
 }
 
 class MyListener : SemlangParserBaseListener() {

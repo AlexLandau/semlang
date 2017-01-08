@@ -15,11 +15,6 @@ class SemlangForwardInterpreter(val context: ValidatedContext) {
             if (arguments.size != nativeFunction.argTypes.size) {
                 throw IllegalArgumentException("Wrong number of arguments for function $functionId")
             }
-            for ((value, type) in arguments.zip(nativeFunction.argTypes)) {
-                if (value.getType() != type) {
-                    throw IllegalArgumentException("Type mismatch in function argument: ${value.getType()} vs. ${type}")
-                }
-            }
             return nativeFunction.apply(arguments)
         }
 
@@ -36,9 +31,6 @@ class SemlangForwardInterpreter(val context: ValidatedContext) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
         for ((value, argumentDefinition) in arguments.zip(function.arguments)) {
-            if (value.getType() != argumentDefinition.type) {
-                throw IllegalArgumentException("Type mismatch in function argument: ${value.getType()} vs. ${argumentDefinition.type}")
-            }
             variableAssignments.put(argumentDefinition.name, value)
         }
         return evaluateBlock(function.block, variableAssignments)
@@ -47,11 +39,6 @@ class SemlangForwardInterpreter(val context: ValidatedContext) {
     private fun evaluateStructConstructor(structFunction: Struct, arguments: List<SemObject>): SemObject {
         if (arguments.size != structFunction.members.size) {
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + structFunction)
-        }
-        for ((value, memberDefinition) in arguments.zip(structFunction.members)) {
-            if (value.getType() != memberDefinition.type) {
-                throw IllegalArgumentException("Type mismatch in struct constructor argument: ${value.getType()} vs. ${memberDefinition.type}")
-            }
         }
         return SemObject.Struct(structFunction, arguments)
     }
@@ -119,7 +106,7 @@ private fun evaluateIntegerLiteral(literal: String): SemObject {
 
 private fun evaluateNaturalLiteral(literal: String): SemObject {
     val bigint = BigInteger(literal)
-    if (bigint.compareTo(BigInteger.ZERO) < 0) {
+    if (bigint < BigInteger.ZERO) {
         throw IllegalArgumentException("Natural numbers can't be negative; literal was: $literal")
     }
     return SemObject.Natural(bigint)
