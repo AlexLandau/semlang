@@ -1,0 +1,14 @@
+
+struct myStuff.Point<T> {
+  x: T
+  y: T
+}
+
+function myStuff.myFunction(input: Integer): Integer {
+  let 1: Integer = Integer."1"
+  let newX: Integer = Integer.plus(input, 1)
+  let newY: Integer = Integer.minus(input, 1)
+  let object: myStuff.Point<Integer> = myStuff.Point<Integer>(newX, newY)
+  let output: Natural = Natural.times(object->x, object->y)
+  return output
+}

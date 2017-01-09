@@ -8,6 +8,7 @@ import semlang.antlr.SemlangParser
 import semlang.antlr.SemlangParserBaseListener
 import semlang.api.*
 import semlang.api.Function
+import java.io.File
 import java.util.*
 
 fun parseFunction(function: SemlangParser.FunctionContext): Function {
@@ -269,8 +270,11 @@ class MyListener : SemlangParserBaseListener() {
 
 //data class FunctionsAndStructs(val functions: List<Function>, val structs: List<Struct>)
 
-fun parseFile(filename: String = "../notional/mvp.sem"): InterpreterContext {
+fun parseFile(file: File): InterpreterContext {
+    return parseFileNamed(file.absolutePath)
+}
 
+fun parseFileNamed(filename: String): InterpreterContext {
     val input = ANTLRFileStream(filename)
     val lexer = SemlangLexer(input)
     val tokens = CommonTokenStream(lexer)

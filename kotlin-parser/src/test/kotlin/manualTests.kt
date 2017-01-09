@@ -8,7 +8,7 @@ import semlang.api.Package
 import semlang.api.ValidatedContext
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
-import semlang.parser.parseFile
+import semlang.parser.parseFileNamed
 import semlang.parser.validateContext
 import java.math.BigInteger
 
@@ -104,14 +104,9 @@ class JUnitTests {
     }
 
     private fun parseAndValidateFile(filename: String): ValidatedContext {
-        val functionsMap2 = parseFile(filename)
-        val functionsMap = validateContext(functionsMap2).assume()
-        return functionsMap
+        val functionsMap2 = parseFileNamed(filename)
+        return validateContext(functionsMap2).assume()
     }
-}
-
-private fun mapById(functions: List<Function>): Map<FunctionId, Function> {
-    return functions.associateBy(Function::id)
 }
 
 private fun int(i: Int): SemObject {
