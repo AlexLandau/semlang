@@ -100,7 +100,6 @@
         </SOURCES>
       </library>
     </orderEntry>
-    <orderEntry module-name="kotlin-interpreter" type="module" scope="TEST"/>
     <orderEntry type="module-library" scope="TEST">
       <library>
         <CLASSES>
