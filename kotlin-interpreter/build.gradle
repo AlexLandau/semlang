@@ -21,6 +21,7 @@ repositories {
 
 dependencies {
   compile project(':kotlin-api')
+  testCompile project(':kotlin-parser')
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // The production code uses the SLF4J logging API at compile time

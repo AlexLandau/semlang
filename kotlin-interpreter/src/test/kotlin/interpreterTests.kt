@@ -1,4 +1,4 @@
-package semlang.parser.test
+package semlang.interpreter.test
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -12,7 +12,7 @@ import semlang.parser.parseFileNamed
 import semlang.parser.validateContext
 import java.math.BigInteger
 
-class JUnitTests {
+class InterpreterTests {
     @Test
     fun testPythagoreanTripleFunction1() {
         testPythagoreanTripleFunction("src/test/semlang/pythagoreanTriple1.sem", ::int)
