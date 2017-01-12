@@ -1,23 +1,27 @@
 - Clean up, organize code and sample Semlang code
+  - Make things private when they can be
+- Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
+  - Try to squeeze out the obvious possibilities of wrongness
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
+  - Write some cases where this should skip actual work, check that it works as expected
 - Finish up static validation TODOs
   - Validate struct member names
   - Validate function argument names
   - Static validation of literal values
   - Make code style more consistent
 - Function definitions as tests
-- Function types
-- Generic types
+- Function reference types
 - List type (index, map, reduce)
 - Sequences and "first"
-- Additional primitive types (natural, N-bit integers, floating-point numbers, rationals?, strings, characters)
+- Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect)
 - Code writing into Java
 - Annotations and multiple function definitions
 - Interfaces/instances
 - Monads (e.g. start with support for console-out)
+- Real IDE-like editor environment
 - Start to create dialects with simpler syntax, type inference, etc.
 - Semlang -> Semlang optimizations, etc.
 - Port "code writing into Java" to Semlang
