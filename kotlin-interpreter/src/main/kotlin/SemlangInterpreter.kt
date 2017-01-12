@@ -5,10 +5,14 @@ import semlang.api.Function
 import java.math.BigInteger
 import java.util.HashMap
 
-class SemlangForwardInterpreter(val context: ValidatedContext) {
+interface SemlangInterpreter {
+    fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject
+}
+
+class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpreter {
     private val nativeFunctions: Map<FunctionId, NativeFunction> = getNativeFunctions()
 
-    fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
+    override fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
         // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {

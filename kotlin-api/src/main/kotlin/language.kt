@@ -1,6 +1,5 @@
 package semlang.api
 
-// TODO: Rename this file to "language.kt"; will want a separate file for type arithmetic
 data class Package(val strings: List<String>)
 data class FunctionId(val thePackage: Package, val functionName: String)
 interface ParameterizableType {
@@ -27,7 +26,7 @@ sealed class Type {
 
 
     //TODO: Make this a data class when/if possible
-    //TODO: When this is constructed, validate that it does not share a name with a default type
+    //TODO: In the validator, validate that it does not share a name with a default type
     class NamedType(val id: FunctionId, val parameters: List<Type>): Type(), ParameterizableType {
         override fun withParameters(newParameters: List<Type>): Type {
             return NamedType(id, newParameters)

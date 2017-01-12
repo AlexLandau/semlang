@@ -11,7 +11,7 @@ import semlang.api.Function
 import java.io.File
 import java.util.*
 
-fun parseFunction(function: SemlangParser.FunctionContext): Function {
+private fun parseFunction(function: SemlangParser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
     //TODO: Allow function definitions with type parameters
     val typeParameters: List<String> = listOf()
@@ -21,10 +21,9 @@ fun parseFunction(function: SemlangParser.FunctionContext): Function {
     return Function(id, typeParameters, arguments, returnType, block)
 }
 
-fun parseStruct(ctx: SemlangParser.StructContext): Struct {
+private fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
 
-    // TODO: Make use of type parameters appropriately
     val typeParameters: List<String> = if (ctx.cd_ids() != null) {
         parseCommaDelimitedIds(ctx.cd_ids())
     } else {
@@ -35,7 +34,7 @@ fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     return Struct(id, typeParameters, members)
 }
 
-fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<String> {
+private fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<String> {
     val results = ArrayList<String>()
     var inputs = cd_ids
     while (true) {
@@ -50,7 +49,7 @@ fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<String> {
     return results
 }
 
-fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> {
+private fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> {
     val results = ArrayList<Member>()
     var inputs = members
     while (true) {
@@ -65,19 +64,19 @@ fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> 
     return results
 }
 
-fun parseMember(member: SemlangParser.Struct_componentContext): Member {
+private fun parseMember(member: SemlangParser.Struct_componentContext): Member {
     val name = member.ID().text
     val type = parseType(member.type())
     return Member(name, type)
 }
 
-fun parseBlock(block: SemlangParser.BlockContext): Block {
+private fun parseBlock(block: SemlangParser.BlockContext): Block {
     val assignments = parseAssignments(block.assignments())
     val returnedExpression = parseExpression(block.return_statement().expression())
     return Block(assignments, returnedExpression)
 }
 
-fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<Assignment> {
+private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<Assignment> {
     val results = ArrayList<Assignment>()
     var inputs = assignments
     while (true) {
@@ -92,14 +91,14 @@ fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<Assign
     return results
 }
 
-fun parseAssignment(assignment: SemlangParser.AssignmentContext): Assignment {
+private fun parseAssignment(assignment: SemlangParser.AssignmentContext): Assignment {
     val name = assignment.ID().text
     val type = parseType(assignment.type())
     val expression = parseExpression(assignment.expression())
     return Assignment(name, type, expression)
 }
 
-fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
+private fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
     if (expression.IF() != null) {
         val condition = parseExpression(expression.expression())
         val thenBlock = parseBlock(expression.block(0))
@@ -136,7 +135,7 @@ fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
     throw IllegalArgumentException("Couldn't parseFunction ${expression}")
 }
 
-fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
+private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
     val expressions = ArrayList<Expression>()
     var inputs = cd_expressions
     while (true) {
@@ -151,7 +150,7 @@ fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsC
     return expressions
 }
 
-fun parseFunctionArguments(function_arguments: SemlangParser.Function_argumentsContext): List<Argument> {
+private fun parseFunctionArguments(function_arguments: SemlangParser.Function_argumentsContext): List<Argument> {
     val arguments = ArrayList<Argument>()
     var inputs = function_arguments
     while (true) {
@@ -166,13 +165,13 @@ fun parseFunctionArguments(function_arguments: SemlangParser.Function_argumentsC
     return arguments
 }
 
-fun parseFunctionArgument(function_argument: SemlangParser.Function_argumentContext): Argument {
+private fun parseFunctionArgument(function_argument: SemlangParser.Function_argumentContext): Argument {
     val name = function_argument.ID().text
     val type = parseType(function_argument.type())
     return Argument(name, type)
 }
 
-fun parseFunctionId(function_id: SemlangParser.Function_idContext): FunctionId {
+private fun parseFunctionId(function_id: SemlangParser.Function_idContext): FunctionId {
     if (function_id.packag() != null) {
         val packag = parsePackage(function_id.packag())
         return FunctionId(packag, function_id.ID().text)
@@ -181,7 +180,7 @@ fun parseFunctionId(function_id: SemlangParser.Function_idContext): FunctionId {
     }
 }
 
-fun parsePackage(packag: SemlangParser.PackagContext): Package {
+private fun parsePackage(packag: SemlangParser.PackagContext): Package {
     val parts = ArrayList<String>()
     var inputs = packag
     while (true) {
@@ -196,7 +195,7 @@ fun parsePackage(packag: SemlangParser.PackagContext): Package {
     return Package(parts)
 }
 
-fun parseType(type: SemlangParser.TypeContext): Type {
+private fun parseType(type: SemlangParser.TypeContext): Type {
     if (type.LESS_THAN() != null) {
         val simpleType = parseSimpleType(type.simple_type_id())
         val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
@@ -216,7 +215,7 @@ fun parseType(type: SemlangParser.TypeContext): Type {
     throw IllegalArgumentException("Unparsed type " + type)
 }
 
-fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type> {
+private fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type> {
     val results = ArrayList<Type>()
     var inputs = cd_types
     while (true) {
@@ -231,7 +230,7 @@ fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type
     return results
 }
 
-fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
+private fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
     if (simple_type_id.packag() != null) {
         return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), listOf())
     }
@@ -248,7 +247,7 @@ fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
     return Type.NamedType(FunctionId(Package(listOf()), typeId), listOf())
 }
 
-class MyListener : SemlangParserBaseListener() {
+private class MyListener : SemlangParserBaseListener() {
     val structs: MutableList<Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
 
@@ -268,8 +267,6 @@ class MyListener : SemlangParserBaseListener() {
     }
 }
 
-//data class FunctionsAndStructs(val functions: List<Function>, val structs: List<Struct>)
-
 fun parseFile(file: File): InterpreterContext {
     return parseFileNamed(file.absolutePath)
 }
@@ -287,11 +284,11 @@ fun parseFileNamed(filename: String): InterpreterContext {
     return InterpreterContext(indexById(extractor.functions), indexStructsById(extractor.structs))
 }
 
-fun indexStructsById(structs: MutableList<Struct>): Map<FunctionId, Struct> {
+private fun indexStructsById(structs: MutableList<Struct>): Map<FunctionId, Struct> {
     return structs.associateBy(Struct::id)
 }
 
-fun indexById(functions: MutableList<Function>): Map<FunctionId, Function> {
+private fun indexById(functions: MutableList<Function>): Map<FunctionId, Function> {
     return functions.associateBy(Function::id)
 }
 

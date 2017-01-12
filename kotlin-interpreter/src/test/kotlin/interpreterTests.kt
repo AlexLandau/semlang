@@ -2,7 +2,6 @@ package semlang.interpreter.test
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import semlang.api.Function
 import semlang.api.FunctionId
 import semlang.api.Package
 import semlang.api.ValidatedContext

@@ -45,7 +45,7 @@ fun validateContext(context: InterpreterContext): Try<ValidatedContext> {
     }
 }
 
-fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Try<Map<FunctionId, ValidatedFunction>> {
+private fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Try<Map<FunctionId, ValidatedFunction>> {
     val validatedFunctions = HashMap<FunctionId, ValidatedFunction>()
     functions.entries.forEach { entry ->
         val (id, function) = entry
@@ -58,7 +58,7 @@ fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatur
     return Try.Success(validatedFunctions)
 }
 
-fun validateFunction(function: Function, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Try<ValidatedFunction> {
+private fun validateFunction(function: Function, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Try<ValidatedFunction> {
     //TODO: Validate that no two arguments have the same name
     //TODO: Validate that type parameters don't share a name with something important
     val variableTypes = getArgumentVariableTypes(function.arguments)
@@ -72,11 +72,11 @@ fun validateFunction(function: Function, functionTypeSignatures: Map<FunctionId,
     }
 }
 
-fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
+private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
     return arguments.associate { argument -> Pair(argument.name, argument.type) }
 }
 
-fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedBlock> {
+private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedBlock> {
     val variableTypes = HashMap(externalVariableTypes)
     val validatedAssignments = ArrayList<ValidatedAssignment>()
     block.assignments.forEach { assignment ->
@@ -102,7 +102,7 @@ fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, functi
     }
 }
 
-fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
     return when (expression) {
         is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
         is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
@@ -112,7 +112,7 @@ fun validateExpression(expression: Expression, variableTypes: Map<String, Type>,
     }
 }
 
-fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
     val innerExpressionMaybe = validateExpression(expression.expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
     val innerExpression = when (innerExpressionMaybe) {
         is Try.Error -> return innerExpressionMaybe
@@ -142,7 +142,7 @@ fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<S
     return Try.Success(TypedExpression.Follow(type, innerExpression, expression.id))
 }
 
-fun validateFunctionCallExpression(expression: Expression.FunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateFunctionCallExpression(expression: Expression.FunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
     val functionId = expression.functionId
 
     val arguments = ArrayList<TypedExpression>()
@@ -171,13 +171,13 @@ fun validateFunctionCallExpression(expression: Expression.FunctionCall, variable
     return Try.Success(TypedExpression.FunctionCall(groundSignature.outputType, functionId, arguments))
 }
 
-fun ground(signature: TypeSignature, chosenTypes: List<Type>): GroundedTypeSignature {
+private fun ground(signature: TypeSignature, chosenTypes: List<Type>): GroundedTypeSignature {
     val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes) }
     val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes)
     return GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType)
 }
 
-fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<String>, chosenTypes: List<Type>): Type {
+private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<String>, chosenTypes: List<Type>): Type {
     if (typeParameters.size != chosenTypes.size) {
         throw IllegalArgumentException("Disagreement in type parameter list lengths; this should be handled smoothly elsewhere in the verifier")
     }
@@ -209,12 +209,12 @@ fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<String>
     }
 }
 
-fun validateLiteralExpression(expression: Expression.Literal): Try<TypedExpression> {
+private fun validateLiteralExpression(expression: Expression.Literal): Try<TypedExpression> {
     // TODO: Some day we'll validate literals at compile-time; not yet, though
     return Try.Success(TypedExpression.Literal(expression.type, expression.literal))
 }
 
-fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
     val conditionMaybe = validateExpression(expression.condition, variableTypes, functionTypeSignatures, structs, containingFunctionId)
     //TODO: Use this pattern elsewhere
     val condition = when (conditionMaybe) {
@@ -246,7 +246,7 @@ fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<S
     return Try.Success(TypedExpression.IfThen(type, condition, thenBlock, elseBlock))
 }
 
-fun typeUnion(type1: Type, type2: Type): Try<Type> {
+private fun typeUnion(type1: Type, type2: Type): Try<Type> {
     // TODO: Handle actual type unions, inheritance as these things get added
     // TODO: Then move this stuff to the API level
     if (type1 == type2) {
@@ -255,7 +255,7 @@ fun typeUnion(type1: Type, type2: Type): Try<Type> {
     return Try.Error("Types $type1 and $type2 cannot be unioned")
 }
 
-fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, containingFunctionId: FunctionId): Try<TypedExpression> {
     val type = variableTypes[expression.name]
     if (type != null) {
         return Try.Success(TypedExpression.Variable(type, expression.name))
@@ -264,7 +264,7 @@ fun validateVariableExpression(expression: Expression.Variable, variableTypes: M
     }
 }
 
-fun getFunctionTypeSignatures(context: InterpreterContext): Try<Map<FunctionId, TypeSignature>> {
+private fun getFunctionTypeSignatures(context: InterpreterContext): Try<Map<FunctionId, TypeSignature>> {
     val signatures = HashMap<FunctionId, TypeSignature>()
     addNativeFunctions(signatures)
     context.structs.entries.forEach { entry ->
@@ -288,16 +288,16 @@ fun getFunctionTypeSignatures(context: InterpreterContext): Try<Map<FunctionId, 
     return Try.Success(signatures)
 }
 
-fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
+private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
     signatures.putAll(getNativeFunctionDefinitions())
 }
 
-fun getFunctionSignature(function: Function): TypeSignature {
+private fun getFunctionSignature(function: Function): TypeSignature {
     val argumentTypes = function.arguments.map(Argument::type)
     return TypeSignature(function.id, argumentTypes, function.returnType, function.typeParameters)
 }
 
-fun getStructSignature(struct: Struct): TypeSignature {
+private fun getStructSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
     val typeParameters = struct.typeParameters
     // TODO: Method for making a type parameter type (String -> Type)
