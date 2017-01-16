@@ -12,7 +12,7 @@ import java.io.File
 @RunWith(Parameterized::class)
 class ValidatorPositiveTests(private val file: File) {
     companion object ParametersSource {
-        @Parameterized.Parameters
+        @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
             val folder = File("src/test/semlang/validatorTests/pass")
@@ -32,7 +32,7 @@ class ValidatorPositiveTests(private val file: File) {
 @RunWith(Parameterized::class)
 class ValidatorNegativeTests(private val file: File) {
     companion object ParametersSource {
-        @Parameterized.Parameters
+        @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
             val folder = File("src/test/semlang/validatorTests/fail")

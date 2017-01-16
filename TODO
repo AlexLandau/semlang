@@ -1,5 +1,6 @@
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
+- Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
@@ -8,7 +9,6 @@
 - Finish up static validation TODOs
   - Validate struct member names
   - Validate function argument names
-  - Static validation of literal values
   - Make code style more consistent
 - Function definitions as tests
 - Function reference types
@@ -25,6 +25,11 @@
 - Start to create dialects with simpler syntax, type inference, etc.
 - Semlang -> Semlang optimizations, etc.
 - Port "code writing into Java" to Semlang
+
+Probable dependencies of the type work:
+- Function types/references depending on tuples
+- Sequences depending on function references
+- Interfaces depending on function references
 
 As things are completed:
 - Project Euler

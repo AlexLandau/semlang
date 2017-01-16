@@ -1,0 +1,3 @@
+function myStuff.myFunction(): Integer {
+  return Integer."-0"
+}

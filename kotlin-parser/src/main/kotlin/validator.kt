@@ -2,6 +2,8 @@ package semlang.parser
 
 import semlang.api.*
 import semlang.api.Function
+import semlang.interpreter.TypeValidator
+import semlang.interpreter.getTypeValidatorFor
 import java.util.*
 
 sealed class Try<out T> {
@@ -210,7 +212,11 @@ private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List
 }
 
 private fun validateLiteralExpression(expression: Expression.Literal): Try<TypedExpression> {
-    // TODO: Some day we'll validate literals at compile-time; not yet, though
+    val nativeType = getTypeValidatorFor(expression.type)
+    val isValid = nativeType.validate(expression.literal)
+    if (!isValid) {
+        return Try.Error("Invalid literal value '${expression.literal}' for type '${expression.type}'")
+    }
     return Try.Success(TypedExpression.Literal(expression.type, expression.literal))
 }
 
