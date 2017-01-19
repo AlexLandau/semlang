@@ -12,6 +12,7 @@
   - Make code style more consistent
 - Function definitions as tests
 - Function reference types
+  - Also, don't rule out support for currying (e.g. as needed for a "compose" method)
 - List type (index, map, reduce)
 - Sequences and "first"
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
