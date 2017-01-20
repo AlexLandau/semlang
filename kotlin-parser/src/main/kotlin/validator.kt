@@ -83,8 +83,12 @@ private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>
     val validatedAssignments = ArrayList<ValidatedAssignment>()
     block.assignments.forEach { assignment ->
         if (variableTypes.containsKey(assignment.name)) {
-            return Try.Error("In function $containingFunctionId, there is a reassignment of the already-assigned variable $assignment.name")
+            return Try.Error("In function $containingFunctionId, there is a reassignment of the already-assigned variable ${assignment.name}")
         }
+        if (isInvalidVariableName(assignment.name, functionTypeSignatures, structs)) {
+            return Try.Error("In function $containingFunctionId, there is an invalid variable name ${assignment.name}")
+        }
+
         val validatedExpression = validateExpression(assignment.expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
         when (validatedExpression) {
             is Try.Error -> return validatedExpression.cast()
@@ -102,6 +106,14 @@ private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>
     return validateExpression(block.returnedExpression, variableTypes, functionTypeSignatures, structs, containingFunctionId).ifGood { returnedExpression ->
         Try.Success(TypedBlock(returnedExpression.type, validatedAssignments, returnedExpression))
     }
+}
+
+//TODO: Construct this more sensibly from more centralized lists
+private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Natural", "Boolean", "function", "let", "return", "if", "else", "struct")
+
+private fun isInvalidVariableName(name: String, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Boolean {
+    val nameAsFunctionId = FunctionId(Package.EMPTY, name)
+    return functionTypeSignatures.containsKey(nameAsFunctionId) || structs.containsKey(nameAsFunctionId) || INVALID_VARIABLE_NAMES.contains(name)
 }
 
 private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
@@ -307,6 +319,6 @@ private fun getStructSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
     val typeParameters = struct.typeParameters
     // TODO: Method for making a type parameter type (String -> Type)
-    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType(FunctionId(Package(listOf()), id), listOf()) })
+    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType(FunctionId(Package.EMPTY, id), listOf()) })
     return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }

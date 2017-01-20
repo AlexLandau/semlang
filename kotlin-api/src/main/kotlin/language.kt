@@ -1,6 +1,10 @@
 package semlang.api
 
-data class Package(val strings: List<String>)
+data class Package(val strings: List<String>) {
+    companion object {
+        val EMPTY = Package(listOf())
+    }
+}
 data class FunctionId(val thePackage: Package, val functionName: String)
 interface ParameterizableType {
     fun getParameterizedTypes(): List<Type>

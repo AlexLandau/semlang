@@ -27,6 +27,10 @@
 - Semlang -> Semlang optimizations, etc.
 - Port "code writing into Java" to Semlang
 
+Design choices to reconsider:
+- Alternative keyword to "return" that better reflects how it's used in blocks in general?
+  - "use", "choose", "be", "select"
+
 Probable dependencies of the type work:
 - Function types/references depending on tuples
 - Sequences depending on function references

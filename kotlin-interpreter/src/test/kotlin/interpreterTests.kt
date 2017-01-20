@@ -37,7 +37,7 @@ class InterpreterTests {
 
     private fun testPythagoreanTripleFunction(filename: String, toNumType: (Int) -> SemObject) {
         val functionsMap = parseAndValidateFile(filename)
-        val mainFunctionId = FunctionId(Package(listOf()), "pythagoreanTripleCheck")
+        val mainFunctionId = FunctionId(Package.EMPTY, "pythagoreanTripleCheck")
         val interpreter = SemlangForwardInterpreter(functionsMap)
         val result123 = interpreter.interpret(mainFunctionId, listOf(toNumType(1), toNumType(2), toNumType(3)))
         assertEquals(SemObject.Boolean(false), result123)

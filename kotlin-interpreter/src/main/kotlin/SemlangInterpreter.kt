@@ -22,18 +22,18 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             return nativeFunction.apply(arguments)
         }
 
-        // Handle non-native functions
-        val variableAssignments: MutableMap<String, SemObject> = HashMap()
-
+        // Handle struct constructors
         val structFunction: Struct? = context.structs[functionId]
         if (structFunction != null) {
             return evaluateStructConstructor(structFunction, arguments)
         }
-        val function: ValidatedFunction = context.functions.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
 
+        // Handle non-native functions
+        val function: ValidatedFunction = context.functions.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
+        val variableAssignments: MutableMap<String, SemObject> = HashMap()
         for ((value, argumentDefinition) in arguments.zip(function.arguments)) {
             variableAssignments.put(argumentDefinition.name, value)
         }
@@ -125,4 +125,3 @@ private fun evaluateBooleanLiteral(literal: String): SemObject {
         throw IllegalArgumentException("Unhandled literal \"$literal\" of type Boolean")
     }
 }
-
