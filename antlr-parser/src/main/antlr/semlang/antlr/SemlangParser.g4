@@ -38,7 +38,8 @@ tokens {
 file : functions_or_structs EOF ;
 
 functions_or_structs : | function functions_or_structs | struct functions_or_structs ;
-function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block ;
+function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
+         | FUNCTION LESS_THAN cd_ids GREATER_THAN function_id LPAREN function_arguments RPAREN COLON type block ;
 function_id : ID | packag DOT ID ;
 packag : ID | ID DOT packag ; // Antlr doesn't like the word "package"
 block : LBRACE assignments return_statement RBRACE ;

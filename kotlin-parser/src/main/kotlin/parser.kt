@@ -14,7 +14,11 @@ import java.util.*
 private fun parseFunction(function: SemlangParser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
     //TODO: Allow function definitions with type parameters
-    val typeParameters: List<String> = listOf()
+    val typeParameters: List<String> = if (function.cd_ids() != null) {
+        parseCommaDelimitedIds(function.cd_ids())
+    } else {
+        listOf()
+    }
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
     val block: Block = parseBlock(function.block())
