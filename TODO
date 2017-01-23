@@ -30,6 +30,7 @@
 Design choices to reconsider:
 - Alternative keyword to "return" that better reflects how it's used in blocks in general?
   - "use", "choose", "be", "select"
+- Figure out what to do about recursive function calls
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples
