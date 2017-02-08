@@ -25,12 +25,28 @@
 - Real IDE-like editor environment
 - Start to create dialects with simpler syntax, type inference, etc.
 - Semlang -> Semlang optimizations, etc.
+  - Ground all uses of generics within a program, so a parser can just treat it as an extension of the identifier
 - Port "code writing into Java" to Semlang
 
 Design choices to reconsider:
 - Alternative keyword to "return" that better reflects how it's used in blocks in general?
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
+
+How will function types be represented? for (int, int) -> int:
+- Function<(Integer, Integer), Integer>: Tuple inputs
+  - Then how do we express in syntax "pass this tuple as the argument list"? Is that another native function?
+  - Function<I: Tuple, O> as generic expression? Function<I extends Tuple, O>?
+- Function<Integer, Integer, Integer>: Assume last is
+  - Then can we genericize over functions of different arities? Should we?
+- Function<2, Integer, Integer, Integer> or Function<2><Integer, Integer, Integer>
+  - Seems potentially messy or silly...
+  - Again, what do the generics look like? Function<N>? Function<N, T...>?
+- Function2<Integer, Integer, Integer>
+  - Does that give up composing over multiple functions?
+  - compose() arguably only makes sense when the second is 1-arity anyway...
+- (Integer, Integer) -> Integer
+  - Abandon regularity of types; might make sense given the () "operator"
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples

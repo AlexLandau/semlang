@@ -6,6 +6,7 @@ import semlang.interpreter.TypeValidator
 import semlang.interpreter.getTypeValidatorFor
 import java.util.*
 
+// TODO: This type is probably not the right long-term solution vs. using well-thought-out exception handling
 sealed class Try<out T> {
     abstract fun <U> ifGood(function: (T) -> Try<U>): Try<U>
     abstract fun assume(): T
@@ -150,7 +151,11 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     // Chosen types come from the struct type known for the variable
     val typeParameters = struct.typeParameters
     val chosenTypes = structType.getParameterizedTypes()
-    val type = parameterizeType(struct.members[index].type, typeParameters, chosenTypes)
+    val typeMaybe = parameterizeType(struct.members[index].type, typeParameters, chosenTypes)
+    val type = when (typeMaybe) {
+        is Try.Error -> return typeMaybe.cast()
+        is Try.Success -> typeMaybe.result
+    }
     //TODO: Ground this if needed
 
     return Try.Success(TypedExpression.Follow(type, innerExpression, expression.id))
@@ -177,7 +182,11 @@ private fun validateFunctionCallExpression(expression: Expression.FunctionCall, 
     //TODO: Maybe compare argument size before grounding?
 
     //Ground the signature
-    val groundSignature = ground(signature, expression.chosenParameters)
+    val groundSignatureMaybe = ground(signature, expression.chosenParameters)
+    val groundSignature = when (groundSignatureMaybe) {
+        is Try.Error -> return groundSignatureMaybe.cast()
+        is Try.Success -> groundSignatureMaybe.result
+    }
     if (argumentTypes != groundSignature.argumentTypes) {
         return Try.Error("The function $containingFunctionId tries to call $functionId with argument types $argumentTypes, but the function expects argument types ${groundSignature.argumentTypes}")
     }
@@ -185,42 +194,47 @@ private fun validateFunctionCallExpression(expression: Expression.FunctionCall, 
     return Try.Success(TypedExpression.FunctionCall(groundSignature.outputType, functionId, arguments))
 }
 
-private fun ground(signature: TypeSignature, chosenTypes: List<Type>): GroundedTypeSignature {
+private fun ground(signature: TypeSignature, chosenTypes: List<Type>): Try<GroundedTypeSignature> {
     val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes) }
-    val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes)
-    return GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType)
+            .map { tMaybe -> when (tMaybe) {
+                is Try.Error -> return tMaybe.cast()
+                is Try.Success -> tMaybe.result
+            } }
+    val groundedOutputTypeMaybe = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes)
+    val groundedOutputType = when (groundedOutputTypeMaybe) {
+        is Try.Error -> return groundedOutputTypeMaybe.cast()
+        is Try.Success -> groundedOutputTypeMaybe.result
+    }
+    return Try.Success(GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType))
 }
 
-private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<String>, chosenTypes: List<Type>): Type {
-    if (typeParameters.size != chosenTypes.size) {
-        throw IllegalArgumentException("Disagreement in type parameter list lengths; this should be handled smoothly elsewhere in the verifier")
+private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): Try<Map<Type, Type>> {
+    if (parameters.size != chosenTypes.size) {
+        return Try.Error("Disagreement in type parameter list lengths")
     }
-    val type: Type = if (typeWithWrongParameters is ParameterizableType) {
-        val oldParameters = typeWithWrongParameters.getParameterizedTypes()
-        val newParameters = oldParameters.map { type -> parameterizeType(type, typeParameters, chosenTypes) }
-        typeWithWrongParameters.withParameters(newParameters)
-    } else {
-        typeWithWrongParameters
-    }
-    return when (type) {
-        is Type.NamedType -> {
-            if (type.id.thePackage.strings.size > 0) {
-                type
-            } else if (type.parameters.size > 0) {
-                type
-            } else {
-                val index = typeParameters.indexOf(type.id.functionName)
-                if (index == -1) {
-                    type
-                } else {
-                    chosenTypes[index]
-                }
-            }
+    val map: MutableMap<Type, Type> = HashMap()
+
+    parameters.zip(chosenTypes).forEach { pair ->
+        val (parameter, chosenType) = pair
+        val existingValue = map.get(parameter)
+        if (existingValue != null) {
+            // I think this is correct behavior...
+            return Try.Error("Not anticipating seeing the same parameter type twice")
         }
-        Type.INTEGER -> type
-        Type.NATURAL -> type
-        Type.BOOLEAN -> type
+        map.put(parameter, chosenType)
     }
+
+    return Try.Success(map)
+}
+
+private fun parameterizeType(typeWithWrongParameters: Type, typeParameterStrings: List<String>, chosenTypes: List<Type>): Try<Type> {
+    val typeParameters = typeParameterStrings.map { string -> Type.NamedType(FunctionId(Package.EMPTY, string), listOf()) }
+    val parameterMapMaybe = makeParameterMap(typeParameters, chosenTypes)
+    val parameterMap = when (parameterMapMaybe) {
+        is Try.Error -> return parameterMapMaybe.cast()
+        is Try.Success -> parameterMapMaybe.result
+    }
+    return Try.Success(typeWithWrongParameters.replacingParameters(parameterMap));
 }
 
 private fun validateLiteralExpression(expression: Expression.Literal): Try<TypedExpression> {
