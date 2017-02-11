@@ -55,7 +55,32 @@ sealed class Type {
         }
     }
 
-    class FunctionType(val argTypes: List<Type>, val outputType: Type): Type() {
+    class List(val parameter: Type): Type() {
+        override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
+            return List(parameter.replacingParameters(parameterMap))
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as List
+
+            if (parameter != other.parameter) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return parameter.hashCode()
+        }
+
+        override fun toString(): String {
+            return "List<$parameter>"
+        }
+    }
+
+    class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
                     outputType.replacingParameters(parameterMap))
@@ -86,7 +111,7 @@ sealed class Type {
 
     //TODO: Make this a data class when/if possible
     //TODO: In the validator, validate that it does not share a name with a default type
-    class NamedType(val id: FunctionId, val parameters: List<Type>): Type(), ParameterizableType {
+    class NamedType(val id: FunctionId, val parameters: kotlin.collections.List<Type>): Type(), ParameterizableType {
         companion object {
             fun forParameter(name: String): NamedType {
                 return NamedType(FunctionId.of(name), listOf())
@@ -102,7 +127,7 @@ sealed class Type {
                     replaceParameters(parameters, parameterMap))
         }
 
-        override fun getParameterizedTypes(): List<Type> {
+        override fun getParameterizedTypes(): kotlin.collections.List<Type> {
             return parameters
         }
 

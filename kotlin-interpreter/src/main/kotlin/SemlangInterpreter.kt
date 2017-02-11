@@ -16,9 +16,6 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {
-            if (arguments.size != nativeFunction.argTypes.size) {
-                throw IllegalArgumentException("Wrong number of arguments for function $functionId")
-            }
             return nativeFunction.apply(arguments)
         }
 

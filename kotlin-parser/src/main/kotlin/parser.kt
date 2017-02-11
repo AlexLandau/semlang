@@ -165,7 +165,7 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
     }
 
     if (expression.LITERAL() != null) {
-        val type = parseSimpleType(expression.simple_type_id())
+        val type = parseTypeGivenParameters(expression.simple_type_id(), listOf())
         val literal = expression.LITERAL().text.drop(1).dropLast(1)
         return AmbiguousExpression.Literal(type, literal)
     }
@@ -195,7 +195,7 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         }
         return AmbiguousExpression.VariableOrFunctionReference(parseFunctionId(expression.function_id()), chosenParameters)
     }
-    throw IllegalArgumentException("Couldn't parseFunction ${expression}")
+    throw IllegalArgumentException("Couldn't parseFunction $expression")
 }
 
 private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<AmbiguousExpression> {
@@ -267,18 +267,12 @@ private fun parseType(type: SemlangParser.TypeContext): Type {
     }
 
     if (type.LESS_THAN() != null) {
-        val simpleType = parseSimpleType(type.simple_type_id())
         val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-        return when (simpleType) {
-            is Type.NamedType -> {
-                Type.NamedType(simpleType.id, parameterTypes)
-            }
-            else -> throw IllegalArgumentException("Type $simpleType does not accept parameters")
-        }
+        return parseTypeGivenParameters(type.simple_type_id(), parameterTypes)
     }
 
     if (type.simple_type_id() != null) {
-        return parseSimpleType(type.simple_type_id())
+        return parseTypeGivenParameters(type.simple_type_id(), listOf())
     }
     throw IllegalArgumentException("Unparsed type " + type)
 }
@@ -298,21 +292,26 @@ private fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): L
     return results
 }
 
-private fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext): Type {
+private fun parseTypeGivenParameters(simple_type_id: SemlangParser.Simple_type_idContext, parameters: List<Type>): Type {
     if (simple_type_id.packag() != null) {
-        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), listOf())
+        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), parameters)
     }
 
     val typeId = simple_type_id.ID().text
-    if (typeId.equals("Natural")) {
+    if (typeId == "Natural") {
         return Type.NATURAL
-    } else if (typeId.equals("Integer")) {
+    } else if (typeId == "Integer") {
         return Type.INTEGER
-    } else if (typeId.equals("Boolean")) {
+    } else if (typeId == "Boolean") {
         return Type.BOOLEAN
+    } else if (typeId == "List") {
+        if (parameters.size != 1) {
+            error("List should only accept a single parameter; parameters were: $parameters")
+        }
+        return Type.List(parameters[0])
     }
 
-    return Type.NamedType.forParameter(typeId)
+    return Type.NamedType(FunctionId.of(typeId), parameters)
 }
 
 private class MyListener : SemlangParserBaseListener() {

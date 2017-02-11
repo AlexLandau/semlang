@@ -146,6 +146,15 @@ class InterpreterTests {
         assertEquals(int(20), interpreter.interpret(mainFunctionId, listOf(natural(3))))
     }
 
+    @Test
+    fun testLists1() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/lists1.sem")
+        val myStuff = Package(listOf("myCode"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(natural(2), interpreter.interpret(FunctionId(myStuff, "listSize2"), listOf()))
+        assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "listSize3"), listOf()))
+    }
+
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
         return validateContext(functionsMap2).assume()

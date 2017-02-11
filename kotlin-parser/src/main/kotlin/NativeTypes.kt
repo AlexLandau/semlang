@@ -39,6 +39,7 @@ fun getTypeValidatorFor(type: Type): TypeValidator {
         Type.INTEGER -> TypeValidator.INTEGER
         Type.NATURAL -> TypeValidator.NATURAL
         Type.BOOLEAN -> TypeValidator.BOOLEAN
+        is Type.List -> throw IllegalArgumentException("No type validator for List: $type")
         is Type.NamedType -> throw IllegalArgumentException("No type validator for NamedTypes: $type")
         is Type.FunctionType -> throw IllegalArgumentException("No type validator for FunctionTypes: $type")
     }

@@ -1,0 +1,16 @@
+
+function myCode.listSize2(): Natural {
+  let emptyList: List<Integer> = List.empty<Integer>()
+  let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")
+  let listTwo: List<Integer> = List.append<Integer>(listOne, Integer."10")
+  let listThree: List<Integer> = List.append<Integer>(listTwo, Integer."50")
+  return List.size<Integer>(listTwo)
+}
+
+function myCode.listSize3(): Natural {
+  let emptyList: List<Integer> = List.empty<Integer>()
+  let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")
+  let listTwo: List<Integer> = List.append<Integer>(listOne, Integer."10")
+  let listThree: List<Integer> = List.append<Integer>(listTwo, Integer."50")
+  return List.size<Integer>(listThree)
+}

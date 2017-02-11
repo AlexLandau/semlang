@@ -2,54 +2,79 @@ package semlang.api
 
 import java.util.*
 
-data class TypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<String> = listOf())
+data class TypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf())
 
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
-    val definitions = HashMap<FunctionId, TypeSignature>()
+    val definitions = ArrayList<TypeSignature>()
 
     addIntegerFunctions(definitions)
     addNaturalFunctions(definitions)
+    addListFunctions(definitions)
 
-    return definitions
+    return toMap(definitions)
+}
+
+private fun toMap(definitions: ArrayList<TypeSignature>): Map<FunctionId, TypeSignature> {
+    val map = HashMap<FunctionId, TypeSignature>()
+    definitions.forEach { signature ->
+        if (map.containsKey(signature.id)) {
+            error("Duplicate native function ID ${signature.id}")
+        }
+        map.put(signature.id, signature)
+    }
+    return map
 }
 
 
-private fun addIntegerFunctions(map: HashMap<FunctionId, TypeSignature>) {
+private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     val integerPackage = Package(listOf("Integer"))
 
     // Integer.times
-    val integerTimesId = FunctionId(integerPackage, "times")
-    map.put(integerTimesId, TypeSignature(integerTimesId, listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature(FunctionId(integerPackage, "times"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.plus
-    val integerPlusId = FunctionId(integerPackage, "plus")
-    map.put(integerPlusId, TypeSignature(integerPlusId, listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature(FunctionId(integerPackage, "plus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.minus
-    val integerMinusId = FunctionId(integerPackage, "minus")
-    map.put(integerMinusId, TypeSignature(integerMinusId, listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature(FunctionId(integerPackage, "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.equals
-    val integerEqualsId = FunctionId(integerPackage, "equals")
-    map.put(integerEqualsId, TypeSignature(integerEqualsId, listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(TypeSignature(FunctionId(integerPackage, "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
 
     // Integer.fromNatural
-    val integerFromNaturalId = FunctionId(integerPackage, "fromNatural")
-    map.put(integerFromNaturalId, TypeSignature(integerFromNaturalId, listOf(Type.NATURAL), Type.INTEGER))
+    definitions.add(TypeSignature(FunctionId(integerPackage, "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
 }
 
-private fun addNaturalFunctions(map: HashMap<FunctionId, TypeSignature>) {
+private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     val naturalPackage = Package(listOf("Natural"))
 
     // Natural.times
-    val naturalTimesId = FunctionId(naturalPackage, "times")
-    map.put(naturalTimesId, TypeSignature(naturalTimesId, listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "times"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
     // Natural.plus
-    val naturalPlusId = FunctionId(naturalPackage, "plus")
-    map.put(naturalPlusId, TypeSignature(naturalPlusId, listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
     // Natural.equals
-    val naturalEqualsId = FunctionId(naturalPackage, "equals")
-    map.put(naturalEqualsId, TypeSignature(naturalEqualsId, listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+}
+
+private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
+    val listPackage = Package(listOf("List"))
+
+    val paramT = Type.NamedType.forParameter("T")
+
+    // List.empty
+    definitions.add(TypeSignature(FunctionId(listPackage, "empty"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(),
+            outputType = Type.List(paramT)))
+
+    // List.append
+    definitions.add(TypeSignature(FunctionId(listPackage, "append"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), paramT),
+            outputType = Type.List(paramT)))
+
+    // List.size
+    definitions.add(TypeSignature(FunctionId(listPackage, "size"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT)),
+            outputType = Type.NATURAL))
 }

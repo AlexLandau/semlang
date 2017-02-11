@@ -138,7 +138,7 @@ fun validateFunctionReference(expression: Expression.FunctionReference, function
     if (chosenParameters.size != signature.typeParameters.size) {
         return Try.Error("In function $containingFunctionId, referenced a function $functionId with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
     }
-    val typeParameters = signature.typeParameters.map { string -> Type.NamedType.forParameter(string) }
+    val typeParameters = signature.typeParameters
 
     val parameterMapMaybe = makeParameterMap(typeParameters, chosenParameters)
     val parameterMap = when (parameterMapMaybe) {
@@ -174,7 +174,7 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     }
     // Type parameters come from the struct definition itself
     // Chosen types come from the struct type known for the variable
-    val typeParameters = struct.typeParameters
+    val typeParameters = struct.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
     val chosenTypes = structType.getParameterizedTypes()
     val typeMaybe = parameterizeType(struct.members[index].type, typeParameters, chosenTypes)
     val type = when (typeMaybe) {
@@ -281,8 +281,7 @@ private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): T
     return Try.Success(map)
 }
 
-private fun parameterizeType(typeWithWrongParameters: Type, typeParameterStrings: List<String>, chosenTypes: List<Type>): Try<Type> {
-    val typeParameters = typeParameterStrings.map { string -> Type.NamedType.forParameter(string) }
+private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>): Try<Type> {
     val parameterMapMaybe = makeParameterMap(typeParameters, chosenTypes)
     val parameterMap = when (parameterMapMaybe) {
         is Try.Error -> return parameterMapMaybe.cast()
@@ -380,13 +379,14 @@ private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
 
 private fun getFunctionSignature(function: Function): TypeSignature {
     val argumentTypes = function.arguments.map(Argument::type)
-    return TypeSignature(function.id, argumentTypes, function.returnType, function.typeParameters)
+    val typeParameters = function.typeParameters.map { id -> Type.NamedType.forParameter(id) }
+    return TypeSignature(function.id, argumentTypes, function.returnType, typeParameters)
 }
 
 private fun getStructSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
-    val typeParameters = struct.typeParameters
+    val typeParameters = struct.typeParameters.map { id -> Type.NamedType.forParameter(id) }
     // TODO: Method for making a type parameter type (String -> Type)
-    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType.forParameter(id) })
+    val outputType = Type.NamedType(struct.id, typeParameters)
     return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }

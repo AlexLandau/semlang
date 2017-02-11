@@ -2,16 +2,17 @@ package semlang.interpreter
 
 import semlang.api.FunctionId
 import semlang.api.Package
-import semlang.api.Type
+import java.math.BigInteger
 import java.util.*
 
-class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val argTypes: List<Type>)
+class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject)
 
 fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     val map = HashMap<FunctionId, NativeFunction>()
 
     addIntegerFunctions(map)
     addNaturalFunctions(map)
+    addListFunctions(map)
 
     return map
 }
@@ -29,7 +30,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.INTEGER, Type.INTEGER)))
+    }))
 
     // Integer.plus
     val integerPlusId = FunctionId(integerPackage, "plus")
@@ -41,7 +42,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.INTEGER, Type.INTEGER)))
+    }))
 
     // Integer.minus
     val integerMinusId = FunctionId(integerPackage, "minus")
@@ -53,7 +54,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.INTEGER, Type.INTEGER)))
+    }))
 
     // Integer.equals
     val integerEqualsId = FunctionId(integerPackage, "equals")
@@ -65,7 +66,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.INTEGER, Type.INTEGER)))
+    }))
 
     // Integer.fromNatural
     val integerFromNaturalId = FunctionId(integerPackage, "fromNatural")
@@ -76,7 +77,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.NATURAL)))
+    }))
 }
 
 private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
@@ -92,7 +93,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.NATURAL, Type.NATURAL)))
+    }))
 
     // Natural.plus
     val naturalPlusId = FunctionId(naturalPackage, "plus")
@@ -104,7 +105,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.NATURAL, Type.NATURAL)))
+    }))
 
     // Natural.equals
     val naturalEqualsId = FunctionId(naturalPackage, "equals")
@@ -116,5 +117,39 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
         } else {
             throw IllegalArgumentException()
         }
-    }, listOf(Type.NATURAL, Type.NATURAL)))
+    }))
+}
+
+
+private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
+    val listPackage = Package(listOf("List"))
+
+    // List.empty
+    val listEmptyId = FunctionId(listPackage, "empty")
+    map.put(listEmptyId, NativeFunction(listEmptyId, { args: List<SemObject> ->
+        SemObject.SemList(ArrayList())
+    }))
+
+    // List.append
+    val listAppendId = FunctionId(listPackage, "append")
+    map.put(listAppendId, NativeFunction(listAppendId, { args: List<SemObject> ->
+        val list = args[0]
+        val item = args[1]
+        if (list is SemObject.SemList) {
+            SemObject.SemList(list.contents + item)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // List.size
+    val listSizeId = FunctionId(listPackage, "size")
+    map.put(listSizeId, NativeFunction(listSizeId, { args: List<SemObject> ->
+        val list = args[0]
+        if (list is SemObject.SemList) {
+            SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
 }
