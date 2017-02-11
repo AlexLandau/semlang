@@ -46,6 +46,26 @@ class InterpreterTests {
     }
 
     @Test
+    fun testFunctionRef1() {
+        testPythagoreanTripleFunction("src/test/semlang/functionRef1.sem", ::int)
+    }
+
+    @Test
+    fun testFunctionRef2() {
+        testPythagoreanTripleFunction("src/test/semlang/functionRef2.sem", ::int)
+    }
+
+    @Test
+    fun testFunctionRef3() {
+        testPythagoreanTripleFunction("src/test/semlang/functionRef3.sem", ::int)
+    }
+
+    @Test
+    fun testFunctionRef4() {
+        testPythagoreanTripleFunction("src/test/semlang/functionRef3.sem", ::int)
+    }
+
+    @Test
     fun testLiterals1() {
         val functions = parseAndValidateFile("src/test/semlang/literals1.sem")
         val fnId = functions.functions.keys.single()
@@ -112,6 +132,18 @@ class InterpreterTests {
         assertEquals(int(0), interpreter.interpret(mainFunctionId, listOf(int(1))))
         assertEquals(int(3), interpreter.interpret(mainFunctionId, listOf(int(2))))
         assertEquals(int(8), interpreter.interpret(mainFunctionId, listOf(int(3))))
+    }
+
+    @Test
+    fun testStructs5() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/structs5.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val mainFunctionId = FunctionId(myStuff, "myFunction")
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(2), interpreter.interpret(mainFunctionId, listOf(natural(0))))
+        assertEquals(int(6), interpreter.interpret(mainFunctionId, listOf(natural(1))))
+        assertEquals(int(12), interpreter.interpret(mainFunctionId, listOf(natural(2))))
+        assertEquals(int(20), interpreter.interpret(mainFunctionId, listOf(natural(3))))
     }
 
     private fun parseAndValidateFile(filename: String): ValidatedContext {

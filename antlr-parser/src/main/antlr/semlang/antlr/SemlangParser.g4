@@ -37,11 +37,12 @@ tokens {
 
 file : functions_or_structs EOF ;
 
+packag : ID | ID DOT packag ; // Antlr doesn't like the word "package"
+function_id : ID | packag DOT ID ;
+
 functions_or_structs : | function functions_or_structs | struct functions_or_structs ;
 function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
          | FUNCTION LESS_THAN cd_ids GREATER_THAN function_id LPAREN function_arguments RPAREN COLON type block ;
-function_id : ID | packag DOT ID ;
-packag : ID | ID DOT packag ; // Antlr doesn't like the word "package"
 block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
@@ -58,13 +59,16 @@ assignments : | assignment | assignment assignments ;
 assignment : LET ID COLON type ASSIGN expression ;
 return_statement: RETURN expression ;
 
-type : simple_type_id | simple_type_id LESS_THAN cd_types GREATER_THAN ;
+type : simple_type_id
+  | simple_type_id LESS_THAN cd_types GREATER_THAN
+  | LPAREN cd_types RPAREN ARROW type ;
 // cd_types is nonempty
 cd_types : type | type COMMA cd_types ;
 // A "simple type ID" has no type parameters
 simple_type_id : ID | packag DOT ID ;
-expression : ID
-  | function_id LPAREN cd_expressions RPAREN
+expression : function_id // Function reference OR variable
+  | function_id LESS_THAN cd_types GREATER_THAN // Function reference with type parameters
+  | function_id LPAREN cd_expressions RPAREN // Again: function reference OR variable
   | function_id LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
   | simple_type_id DOT LITERAL
   | IF LPAREN expression RPAREN block ELSE block

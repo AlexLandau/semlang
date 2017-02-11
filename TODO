@@ -13,6 +13,7 @@
 - Function definitions as tests
 - Function reference types
   - Also, don't rule out support for currying (e.g. as needed for a "compose" method)
+  - Support references to struct constructors
 - List type (index, map, reduce)
 - Sequences and "first"
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
@@ -32,6 +33,7 @@ Design choices to reconsider:
 - Alternative keyword to "return" that better reflects how it's used in blocks in general?
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
+- Integer.fromNatural or Natural.toInteger?
 
 How will function types be represented? for (int, int) -> int:
 - Function<(Integer, Integer), Integer>: Tuple inputs

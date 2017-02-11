@@ -13,7 +13,7 @@ import java.util.*
 
 private fun parseFunction(function: SemlangParser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
-    //TODO: Allow function definitions with type parameters
+
     val typeParameters: List<String> = if (function.cd_ids() != null) {
         parseCommaDelimitedIds(function.cd_ids())
     } else {
@@ -21,9 +21,63 @@ private fun parseFunction(function: SemlangParser.FunctionContext): Function {
     }
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
-    val block: Block = parseBlock(function.block())
+
+    val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
+    val argumentVariableIds = arguments.map { arg -> FunctionId.of(arg.name) }
+    val block = scopeBlock(argumentVariableIds, ambiguousBlock)
+
     return Function(id, typeParameters, arguments, returnType, block)
 }
+
+private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: AmbiguousBlock): Block {
+    val localVariableIds = ArrayList(externalVariableIds)
+    val assignments: MutableList<Assignment> = ArrayList()
+    for (assignment in ambiguousBlock.assignments) {
+        val expression = scopeExpression(localVariableIds, assignment.expression)
+        localVariableIds.add(FunctionId.of(assignment.name))
+        assignments.add(Assignment(assignment.name, assignment.type, expression))
+    }
+    val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
+    return Block(assignments, returnedExpression)
+}
+
+fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpression): Expression {
+    return when (expression) {
+        is AmbiguousExpression.Follow -> Expression.Follow(
+                scopeExpression(varIds, expression.expression),
+                expression.id)
+        is AmbiguousExpression.VariableOrFunctionReference -> {
+            if (varIds.contains(expression.nameOrFunctionId)) {
+                if (expression.chosenParameters.isNotEmpty()) {
+                    error("Known variable name ${expression.nameOrFunctionId} shouldn't be used with type parameters")
+                }
+                return Expression.Variable(expression.nameOrFunctionId.functionName)
+            } else {
+                return Expression.FunctionReference(expression.nameOrFunctionId, expression.chosenParameters)
+            }
+        }
+        is AmbiguousExpression.IfThen -> Expression.IfThen(
+                scopeExpression(varIds, expression.condition),
+                thenBlock = scopeBlock(varIds, expression.thenBlock),
+                elseBlock = scopeBlock(varIds, expression.elseBlock)
+        )
+        is AmbiguousExpression.FunctionCall -> {
+            if (varIds.contains(expression.functionIdOrVariable)) {
+                return Expression.VariableFunctionCall(
+                        variableName = expression.functionIdOrVariable.functionName,
+                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                        chosenParameters = expression.chosenParameters)
+            } else {
+                return Expression.NamedFunctionCall(
+                        functionId = expression.functionIdOrVariable,
+                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                        chosenParameters = expression.chosenParameters)
+            }
+        }
+        is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal)
+    }
+}
+
 
 private fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
@@ -74,14 +128,14 @@ private fun parseMember(member: SemlangParser.Struct_componentContext): Member {
     return Member(name, type)
 }
 
-private fun parseBlock(block: SemlangParser.BlockContext): Block {
+private fun parseBlock(block: SemlangParser.BlockContext): AmbiguousBlock {
     val assignments = parseAssignments(block.assignments())
     val returnedExpression = parseExpression(block.return_statement().expression())
-    return Block(assignments, returnedExpression)
+    return AmbiguousBlock(assignments, returnedExpression)
 }
 
-private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<Assignment> {
-    val results = ArrayList<Assignment>()
+private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<AmbiguousAssignment> {
+    val results = ArrayList<AmbiguousAssignment>()
     var inputs = assignments
     while (true) {
         if (inputs.assignment() != null) {
@@ -95,31 +149,31 @@ private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): Lis
     return results
 }
 
-private fun parseAssignment(assignment: SemlangParser.AssignmentContext): Assignment {
+private fun parseAssignment(assignment: SemlangParser.AssignmentContext): AmbiguousAssignment {
     val name = assignment.ID().text
     val type = parseType(assignment.type())
     val expression = parseExpression(assignment.expression())
-    return Assignment(name, type, expression)
+    return AmbiguousAssignment(name, type, expression)
 }
 
-private fun parseExpression(expression: SemlangParser.ExpressionContext): Expression {
+private fun parseExpression(expression: SemlangParser.ExpressionContext): AmbiguousExpression {
     if (expression.IF() != null) {
         val condition = parseExpression(expression.expression())
         val thenBlock = parseBlock(expression.block(0))
         val elseBlock = parseBlock(expression.block(1))
-        return Expression.IfThen(condition, thenBlock, elseBlock)
+        return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock)
     }
 
     if (expression.LITERAL() != null) {
         val type = parseSimpleType(expression.simple_type_id())
         val literal = expression.LITERAL().text.drop(1).dropLast(1)
-        return Expression.Literal(type, literal)
+        return AmbiguousExpression.Literal(type, literal)
     }
 
     if (expression.ARROW() != null) {
         val inner = parseExpression(expression.expression())
         val name = expression.ID().text
-        return Expression.Follow(inner, name)
+        return AmbiguousExpression.Follow(inner, name)
     }
 
     if (expression.LPAREN() != null) {
@@ -130,17 +184,22 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Expres
         } else {
             listOf()
         }
-        return Expression.FunctionCall(functionId, arguments, groundParameters)
+        return AmbiguousExpression.FunctionCall(functionId, arguments, groundParameters)
     }
 
-    if (expression.ID() != null) {
-        return Expression.Variable(expression.ID().text)
+    if (expression.function_id() != null) {
+        val chosenParameters = if (expression.LESS_THAN() != null) {
+            parseCommaDelimitedTypes(expression.cd_types())
+        } else {
+            listOf()
+        }
+        return AmbiguousExpression.VariableOrFunctionReference(parseFunctionId(expression.function_id()), chosenParameters)
     }
     throw IllegalArgumentException("Couldn't parseFunction ${expression}")
 }
 
-private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<Expression> {
-    val expressions = ArrayList<Expression>()
+private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<AmbiguousExpression> {
+    val expressions = ArrayList<AmbiguousExpression>()
     var inputs = cd_expressions
     while (true) {
         if (inputs.expression() != null) {
@@ -200,11 +259,16 @@ private fun parsePackage(packag: SemlangParser.PackagContext): Package {
 }
 
 private fun parseType(type: SemlangParser.TypeContext): Type {
+    if (type.ARROW() != null) {
+        //Function type
+        val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
+        val outputType = parseType(type.type())
+        return Type.FunctionType(argumentTypes, outputType)
+    }
+
     if (type.LESS_THAN() != null) {
         val simpleType = parseSimpleType(type.simple_type_id())
         val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-//        return Type.ParameterizedType(simpleType, parameterTypes)
-//        return simpleType.withParameters(parameterTypes)
         return when (simpleType) {
             is Type.NamedType -> {
                 Type.NamedType(simpleType.id, parameterTypes)

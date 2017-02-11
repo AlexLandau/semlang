@@ -2,7 +2,6 @@ package semlang.parser
 
 import semlang.api.*
 import semlang.api.Function
-import semlang.interpreter.TypeValidator
 import semlang.interpreter.getTypeValidatorFor
 import java.util.*
 
@@ -122,9 +121,35 @@ private fun validateExpression(expression: Expression, variableTypes: Map<String
         is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
         is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
         is Expression.Follow -> validateFollowExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
-        is Expression.FunctionCall -> validateFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+        is Expression.VariableFunctionCall -> validateVariableFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+        is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
         is Expression.Literal -> validateLiteralExpression(expression)
+        is Expression.FunctionReference -> validateFunctionReference(expression, functionTypeSignatures, containingFunctionId)
     }
+}
+
+fun validateFunctionReference(expression: Expression.FunctionReference, functionTypeSignatures: Map<FunctionId, TypeSignature>, containingFunctionId: FunctionId): Try<TypedExpression> {
+    val functionId = expression.functionId
+    val signature = functionTypeSignatures.get(functionId)
+    if (signature == null) {
+        return Try.Error("In function $containingFunctionId, could not find a declaration of a function with ID $functionId")
+    }
+    val chosenParameters = expression.chosenParameters
+    if (chosenParameters.size != signature.typeParameters.size) {
+        return Try.Error("In function $containingFunctionId, referenced a function $functionId with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
+    }
+    val typeParameters = signature.typeParameters.map { string -> Type.NamedType(FunctionId(Package.EMPTY, string), listOf()) }
+
+    val parameterMapMaybe = makeParameterMap(typeParameters, chosenParameters)
+    val parameterMap = when (parameterMapMaybe) {
+        is Try.Error -> return parameterMapMaybe.cast()
+        is Try.Success -> parameterMapMaybe.result
+    }
+    val type = Type.FunctionType(
+            signature.argumentTypes.map { type -> type.replacingParameters(parameterMap) },
+            signature.outputType.replacingParameters(parameterMap))
+
+    return Try.Success(TypedExpression.FunctionReference(type, functionId, chosenParameters))
 }
 
 private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
@@ -161,7 +186,35 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     return Try.Success(TypedExpression.Follow(type, innerExpression, expression.id))
 }
 
-private fun validateFunctionCallExpression(expression: Expression.FunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+private fun validateVariableFunctionCallExpression(expression: Expression.VariableFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+    val variableName = expression.variableName
+    val functionType = variableTypes[variableName]
+    if (functionType == null) {
+        return Try.Error("The function $containingFunctionId references a function or variable $variableName that was not found")
+    }
+    if (functionType !is Type.FunctionType) {
+        return Try.Error("The function $containingFunctionId tries to call $variableName like a function, but it has a non-function type $functionType")
+    }
+
+    val arguments = ArrayList<TypedExpression>()
+    expression.arguments.forEach { untypedArgument ->
+        val argumentMaybe = validateExpression(untypedArgument, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+        val argument = when (argumentMaybe) {
+            is Try.Error -> return argumentMaybe
+            is Try.Success -> argumentMaybe.result
+        }
+        arguments.add(argument)
+    }
+    val argumentTypes = arguments.map(TypedExpression::type)
+
+    if (argumentTypes != functionType.argTypes) {
+        return Try.Error("The function $containingFunctionId tries to call function variable $variableName with argument types $argumentTypes, but the function expects argument types ${functionType.argTypes}")
+    }
+
+    return Try.Success(TypedExpression.VariableFunctionCall(functionType.outputType, variableName, arguments))
+}
+
+private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
     val functionId = expression.functionId
 
     val arguments = ArrayList<TypedExpression>()
@@ -191,7 +244,7 @@ private fun validateFunctionCallExpression(expression: Expression.FunctionCall, 
         return Try.Error("The function $containingFunctionId tries to call $functionId with argument types $argumentTypes, but the function expects argument types ${groundSignature.argumentTypes}")
     }
 
-    return Try.Success(TypedExpression.FunctionCall(groundSignature.outputType, functionId, arguments))
+    return Try.Success(TypedExpression.NamedFunctionCall(groundSignature.outputType, functionId, arguments))
 }
 
 private fun ground(signature: TypeSignature, chosenTypes: List<Type>): Try<GroundedTypeSignature> {
@@ -208,6 +261,7 @@ private fun ground(signature: TypeSignature, chosenTypes: List<Type>): Try<Groun
     return Try.Success(GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType))
 }
 
+// TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
 private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): Try<Map<Type, Type>> {
     if (parameters.size != chosenTypes.size) {
         return Try.Error("Disagreement in type parameter list lengths")

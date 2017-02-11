@@ -1,5 +1,6 @@
 package semlang.interpreter
 
+import semlang.api.FunctionId
 import semlang.api.Type
 import java.math.BigInteger
 
@@ -98,6 +99,26 @@ sealed class SemObject {
         override fun toString(): String {
             return "Struct(struct=$struct, objects=$objects)"
         }
+    }
 
+    class FunctionReference(val functionId: FunctionId): SemObject() {
+        override fun equals(other: Any?): kotlin.Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as FunctionReference
+
+            if (functionId != other.functionId) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return functionId.hashCode()
+        }
+
+        override fun toString(): String {
+            return "FunctionReference(functionId=$functionId)"
+        }
     }
 }

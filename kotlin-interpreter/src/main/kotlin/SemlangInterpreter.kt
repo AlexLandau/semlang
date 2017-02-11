@@ -61,7 +61,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
 
     private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>): SemObject {
         return when (expression) {
-            is TypedExpression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name $expression.name")
+            is TypedExpression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name ${expression.name}")
             is TypedExpression.IfThen -> {
                 val condition = evaluateExpression(expression.condition, assignments)
                 if (condition is SemObject.Boolean) {
@@ -84,7 +84,15 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                     throw IllegalStateException("Trying to use -> on a non-struct object")
                 }
             }
-            is TypedExpression.FunctionCall -> {
+            is TypedExpression.VariableFunctionCall -> {
+                val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
+                val function: SemObject = assignments[expression.variableName] ?: throw IllegalArgumentException("No variable defined with name ${expression.variableName}")
+                if (function !is SemObject.FunctionReference) {
+                    throw IllegalArgumentException("Trying to call ${expression.variableName} as a function, but it is not a function")
+                }
+                return interpret(function.functionId, arguments)
+            }
+            is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 return interpret(expression.functionId, arguments)
             }
@@ -99,6 +107,13 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 } else {
                     throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
                 }
+            }
+            is TypedExpression.FunctionReference -> {
+                val functionId = expression.functionId
+                if (!context.functions.containsKey(functionId)) {
+                    error("Function ID not recognized: $functionId")
+                }
+                return SemObject.FunctionReference(functionId)
             }
         }
     }

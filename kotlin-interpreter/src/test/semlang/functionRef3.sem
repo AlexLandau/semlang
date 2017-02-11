@@ -1,0 +1,22 @@
+
+function myCode.square(n: Integer): Integer {
+  return Integer.times(n, n)
+}
+
+function myCode.cube(n: Integer): Integer {
+  return Integer.times(n, Integer.times(n, n))
+}
+
+function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
+  let squareIt: (Integer) -> Integer = myCode.square
+  return generalFermatCheck(a, b, c, squareIt)
+}
+
+function generalFermatCheck(a: Integer, b: Integer, c: Integer, operation: (Integer) -> Integer): Boolean {
+  let aSquared: Integer = operation(a)
+  let bSquared: Integer = operation(b)
+  let cSquared: Integer = operation(c)
+  let sumOfSquares: Integer = Integer.plus(aSquared, bSquared)
+  let result: Boolean = Integer.equals(sumOfSquares, cSquared)
+  return result
+}

@@ -3,7 +3,6 @@ package semlang.interpreter
 import semlang.api.FunctionId
 import semlang.api.Package
 import semlang.api.Type
-import semlang.interpreter.SemObject
 import java.util.*
 
 class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject, val argTypes: List<Type>)
@@ -20,7 +19,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
 private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     val integerPackage = Package(listOf("Integer"))
 
-    // integer.times
+    // Integer.times
     val integerTimesId = FunctionId(integerPackage, "times")
     map.put(integerTimesId, NativeFunction(integerTimesId, { args: List<SemObject> ->
         val left = args[0]
@@ -32,7 +31,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.INTEGER, Type.INTEGER)))
 
-    // integer.plus
+    // Integer.plus
     val integerPlusId = FunctionId(integerPackage, "plus")
     map.put(integerPlusId, NativeFunction(integerPlusId, { args: List<SemObject> ->
         val left = args[0]
@@ -44,7 +43,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.INTEGER, Type.INTEGER)))
 
-    // integer.minus
+    // Integer.minus
     val integerMinusId = FunctionId(integerPackage, "minus")
     map.put(integerMinusId, NativeFunction(integerMinusId, { args: List<SemObject> ->
         val left = args[0]
@@ -56,7 +55,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.INTEGER, Type.INTEGER)))
 
-    // integer.equals
+    // Integer.equals
     val integerEqualsId = FunctionId(integerPackage, "equals")
     map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject> ->
         val left = args[0]
@@ -67,12 +66,23 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
             throw IllegalArgumentException()
         }
     }, listOf(Type.INTEGER, Type.INTEGER)))
+
+    // Integer.fromNatural
+    val integerFromNaturalId = FunctionId(integerPackage, "fromNatural")
+    map.put(integerFromNaturalId, NativeFunction(integerFromNaturalId, { args: List<SemObject> ->
+        val natural = args[0]
+        if (natural is SemObject.Natural) {
+            SemObject.Integer(natural.value)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }, listOf(Type.NATURAL)))
 }
 
 private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     val naturalPackage = Package(listOf("Natural"))
 
-    // natural.times
+    // Natural.times
     val naturalTimesId = FunctionId(naturalPackage, "times")
     map.put(naturalTimesId, NativeFunction(naturalTimesId, { args: List<SemObject> ->
         val left = args[0]
@@ -84,7 +94,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.NATURAL, Type.NATURAL)))
 
-    // natural.plus
+    // Natural.plus
     val naturalPlusId = FunctionId(naturalPackage, "plus")
     map.put(naturalPlusId, NativeFunction(naturalPlusId, { args: List<SemObject> ->
         val left = args[0]
@@ -96,7 +106,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
         }
     }, listOf(Type.NATURAL, Type.NATURAL)))
 
-    // natural.equals
+    // Natural.equals
     val naturalEqualsId = FunctionId(naturalPackage, "equals")
     map.put(naturalEqualsId, NativeFunction(naturalEqualsId, { args: List<SemObject> ->
         val left = args[0]
