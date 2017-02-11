@@ -112,7 +112,7 @@ private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>
 private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Natural", "Boolean", "function", "let", "return", "if", "else", "struct")
 
 private fun isInvalidVariableName(name: String, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>): Boolean {
-    val nameAsFunctionId = FunctionId(Package.EMPTY, name)
+    val nameAsFunctionId = FunctionId.of(name)
     return functionTypeSignatures.containsKey(nameAsFunctionId) || structs.containsKey(nameAsFunctionId) || INVALID_VARIABLE_NAMES.contains(name)
 }
 
@@ -138,7 +138,7 @@ fun validateFunctionReference(expression: Expression.FunctionReference, function
     if (chosenParameters.size != signature.typeParameters.size) {
         return Try.Error("In function $containingFunctionId, referenced a function $functionId with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
     }
-    val typeParameters = signature.typeParameters.map { string -> Type.NamedType(FunctionId(Package.EMPTY, string), listOf()) }
+    val typeParameters = signature.typeParameters.map { string -> Type.NamedType.forParameter(string) }
 
     val parameterMapMaybe = makeParameterMap(typeParameters, chosenParameters)
     val parameterMap = when (parameterMapMaybe) {
@@ -282,7 +282,7 @@ private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): T
 }
 
 private fun parameterizeType(typeWithWrongParameters: Type, typeParameterStrings: List<String>, chosenTypes: List<Type>): Try<Type> {
-    val typeParameters = typeParameterStrings.map { string -> Type.NamedType(FunctionId(Package.EMPTY, string), listOf()) }
+    val typeParameters = typeParameterStrings.map { string -> Type.NamedType.forParameter(string) }
     val parameterMapMaybe = makeParameterMap(typeParameters, chosenTypes)
     val parameterMap = when (parameterMapMaybe) {
         is Try.Error -> return parameterMapMaybe.cast()
@@ -387,6 +387,6 @@ private fun getStructSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
     val typeParameters = struct.typeParameters
     // TODO: Method for making a type parameter type (String -> Type)
-    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType(FunctionId(Package.EMPTY, id), listOf()) })
+    val outputType = Type.NamedType(struct.id, typeParameters.map { id -> Type.NamedType.forParameter(id) })
     return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }

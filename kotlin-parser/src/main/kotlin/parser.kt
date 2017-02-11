@@ -239,7 +239,7 @@ private fun parseFunctionId(function_id: SemlangParser.Function_idContext): Func
         val packag = parsePackage(function_id.packag())
         return FunctionId(packag, function_id.ID().text)
     } else {
-        return FunctionId(Package.EMPTY, function_id.ID().text)
+        return FunctionId.of(function_id.ID().text)
     }
 }
 
@@ -312,7 +312,7 @@ private fun parseSimpleType(simple_type_id: SemlangParser.Simple_type_idContext)
         return Type.BOOLEAN
     }
 
-    return Type.NamedType(FunctionId(Package.EMPTY, typeId), listOf())
+    return Type.NamedType.forParameter(typeId)
 }
 
 private class MyListener : SemlangParserBaseListener() {

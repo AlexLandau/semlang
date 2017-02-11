@@ -87,6 +87,11 @@ sealed class Type {
     //TODO: Make this a data class when/if possible
     //TODO: In the validator, validate that it does not share a name with a default type
     class NamedType(val id: FunctionId, val parameters: List<Type>): Type(), ParameterizableType {
+        companion object {
+            fun forParameter(name: String): NamedType {
+                return NamedType(FunctionId.of(name), listOf())
+            }
+        }
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             val replacement = parameterMap[this]
             if (replacement != null) {
