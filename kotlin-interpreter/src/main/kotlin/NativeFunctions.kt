@@ -13,6 +13,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     addIntegerFunctions(map)
     addNaturalFunctions(map)
     addListFunctions(map)
+    addTryFunctions(map)
 
     return map
 }
@@ -120,7 +121,6 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 }
 
-
 private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
     val listPackage = Package(listOf("List"))
 
@@ -148,6 +148,41 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
         val list = args[0]
         if (list is SemObject.SemList) {
             SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // List.get
+    val listGetId = FunctionId(listPackage, "get")
+    map.put(listGetId, NativeFunction(listGetId, { args: List<SemObject> ->
+        val list = args[0]
+        val index = args[1]
+        if (list is SemObject.SemList && index is SemObject.Natural) {
+            try {
+                SemObject.Try.Success(list.contents[index.value.toInt()])
+            } catch (e: IndexOutOfBoundsException) {
+                SemObject.Try.Failure
+            }
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+}
+
+private fun addTryFunctions(map: HashMap<FunctionId, NativeFunction>) {
+    val tryPackage = Package(listOf("Try"))
+
+    // Try.assume
+    val assumeId = FunctionId(tryPackage, "assume")
+    map.put(assumeId, NativeFunction(assumeId, { args: List<SemObject> ->
+        val theTry = args[0]
+        if (theTry is SemObject.Try) {
+            if (theTry is SemObject.Try.Success) {
+                theTry.contents
+            } else {
+                throw IllegalStateException("Try.assume assumed incorrectly")
+            }
         } else {
             throw IllegalArgumentException()
         }

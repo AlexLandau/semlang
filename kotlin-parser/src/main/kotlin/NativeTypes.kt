@@ -42,5 +42,6 @@ fun getTypeValidatorFor(type: Type): TypeValidator {
         is Type.List -> throw IllegalArgumentException("No type validator for List: $type")
         is Type.NamedType -> throw IllegalArgumentException("No type validator for NamedTypes: $type")
         is Type.FunctionType -> throw IllegalArgumentException("No type validator for FunctionTypes: $type")
+        is Type.Try -> throw IllegalArgumentException("No type validator for Trys: $type")
     }
 }

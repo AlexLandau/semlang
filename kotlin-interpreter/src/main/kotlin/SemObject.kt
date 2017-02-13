@@ -1,7 +1,6 @@
 package semlang.interpreter
 
 import semlang.api.FunctionId
-import semlang.api.Type
 import java.math.BigInteger
 
 // These are Semlang objects that are stored and handled by the interpreter.
@@ -32,7 +31,7 @@ sealed class SemObject {
     }
     class Natural(val value: BigInteger) : SemObject() {
         init {
-            if (value.compareTo(BigInteger.ZERO) < 0) {
+            if (value < BigInteger.ZERO) {
                 throw IllegalArgumentException("Naturals can't be less than zero; was $value")
             }
         }
@@ -99,6 +98,29 @@ sealed class SemObject {
         override fun toString(): String {
             return "Struct(struct=$struct, objects=$objects)"
         }
+    }
+    sealed class Try: SemObject() {
+        class Success(val contents: SemObject): Try() {
+            override fun equals(other: Any?): kotlin.Boolean {
+                if (this === other) return true
+                if (other?.javaClass != javaClass) return false
+
+                other as Success
+
+                if (contents != other.contents) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                return contents.hashCode()
+            }
+
+            override fun toString(): String {
+                return "Success(contents=$contents)"
+            }
+        }
+        object Failure: Try()
     }
     class SemList(val contents: List<SemObject>): SemObject() {
         override fun equals(other: Any?): kotlin.Boolean {

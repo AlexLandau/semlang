@@ -34,6 +34,8 @@ Design choices to reconsider:
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
 - Integer.fromNatural or Natural.toInteger?
+- Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
+  - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 
 How will function types be represented? for (int, int) -> int:
 - Function<(Integer, Integer), Integer>: Tuple inputs

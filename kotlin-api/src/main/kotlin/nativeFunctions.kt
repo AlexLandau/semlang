@@ -10,6 +10,7 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addIntegerFunctions(definitions)
     addNaturalFunctions(definitions)
     addListFunctions(definitions)
+    addTryFunctions(definitions)
 
     return toMap(definitions)
 }
@@ -77,4 +78,20 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(FunctionId(listPackage, "size"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT)),
             outputType = Type.NATURAL))
+
+    // List.get
+    definitions.add(TypeSignature(FunctionId(listPackage, "get"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            outputType = Type.Try(paramT)))
+}
+
+private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
+    val tryPackage = Package(listOf("Try"))
+
+    val paramT = Type.NamedType.forParameter("T")
+
+    // Try.assume
+    definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.Try(paramT)),
+            outputType = paramT))
 }

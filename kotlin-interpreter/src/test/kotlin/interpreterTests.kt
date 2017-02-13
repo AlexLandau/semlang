@@ -155,6 +155,17 @@ class InterpreterTests {
         assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "listSize3"), listOf()))
     }
 
+    @Test
+    fun testLists2() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/lists2.sem")
+        val myStuff = Package(listOf("myCode"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(success(natural(23)), interpreter.interpret(FunctionId(myStuff, "listGet1"), listOf()))
+        assertEquals(success(natural(42)), interpreter.interpret(FunctionId(myStuff, "listGet2"), listOf()))
+        assertEquals(natural(42), interpreter.interpret(FunctionId(myStuff, "listGetAssume"), listOf()))
+        assertEquals(tryFailure(), interpreter.interpret(FunctionId(myStuff, "listGetOutOfBounds"), listOf()))
+    }
+
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
         return validateContext(functionsMap2).assume()
@@ -167,4 +178,12 @@ private fun int(i: Int): SemObject {
 
 private fun natural(i: Int): SemObject {
     return SemObject.Natural(BigInteger.valueOf(i.toLong()))
+}
+
+private fun success(value: SemObject): SemObject {
+    return SemObject.Try.Success(value)
+}
+
+private fun tryFailure(): SemObject {
+    return SemObject.Try.Failure
 }

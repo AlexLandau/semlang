@@ -309,6 +309,11 @@ private fun parseTypeGivenParameters(simple_type_id: SemlangParser.Simple_type_i
             error("List should only accept a single parameter; parameters were: $parameters")
         }
         return Type.List(parameters[0])
+    } else if (typeId == "Try") {
+        if (parameters.size != 1) {
+            error("Try should only accept a single parameter; parameters were: $parameters")
+        }
+        return Type.Try(parameters[0])
     }
 
     return Type.NamedType(FunctionId.of(typeId), parameters)

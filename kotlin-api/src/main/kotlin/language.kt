@@ -80,6 +80,31 @@ sealed class Type {
         }
     }
 
+    class Try(val parameter: Type): Type() {
+        override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
+            return Try(parameter.replacingParameters(parameterMap))
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+
+            other as Try
+
+            if (parameter != other.parameter) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            return parameter.hashCode()
+        }
+
+        override fun toString(): String {
+            return "Try(parameter=$parameter)"
+        }
+    }
+
     class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
