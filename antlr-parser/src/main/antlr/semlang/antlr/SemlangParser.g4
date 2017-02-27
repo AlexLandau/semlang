@@ -32,7 +32,9 @@ tokens {
   ARROW,
   LESS_THAN,
   GREATER_THAN,
-  ID
+  PIPE,
+  ID,
+  UNDERSCORE
 }
 
 file : functions_or_structs EOF ;
@@ -66,12 +68,18 @@ type : simple_type_id
 cd_types : type | type COMMA cd_types ;
 // A "simple type ID" has no type parameters
 simple_type_id : ID | packag DOT ID ;
-expression : function_id // Function reference OR variable
-  | function_id LESS_THAN cd_types GREATER_THAN // Function reference with type parameters
-  | function_id LPAREN cd_expressions RPAREN // Again: function reference OR variable
-  | function_id LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
+expression : IF LPAREN expression RPAREN block ELSE block
   | simple_type_id DOT LITERAL
-  | IF LPAREN expression RPAREN block ELSE block
-  | expression ARROW ID ;
+  | expression ARROW ID
+  | function_id PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
+  | function_id LESS_THAN cd_types GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference with type parameters
+  | function_id LPAREN cd_expressions RPAREN // Calling function reference OR function variable
+  | function_id LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
+  | ID // Variable
+  ;
 // cd_expressions may be empty
 cd_expressions : | expression | expression COMMA cd_expressions ;
+cd_expressions_or_underscores : | expression
+  | UNDERSCORE
+  | expression COMMA cd_expressions_or_underscores
+  | UNDERSCORE COMMA cd_expressions_or_underscores ;

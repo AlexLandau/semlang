@@ -8,8 +8,8 @@ function myCode.cube(n: Integer): Integer {
 }
 
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
-  let squareIt: (Integer) -> Integer = myCode.square
-  return myCode.overlyGeneralFermatCheck<T>(a, b, c, myCode.square, Integer.plus, Integer.equals)
+  let squareIt: (Integer) -> Integer = myCode.square|(_)
+  return myCode.overlyGeneralFermatCheck<T>(a, b, c, myCode.square|(_), Integer.plus|(_, _), Integer.equals|(_, _))
 }
 
 function <T> myCode.overlyGeneralFermatCheck(a: T, b: T, c: T, operation: (T) -> T, plus: (T, T) -> T, equals: (T, T) -> Boolean): Boolean {

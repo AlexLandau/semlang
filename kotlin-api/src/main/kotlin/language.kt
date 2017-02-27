@@ -182,20 +182,23 @@ sealed class Type {
 }
 // Pre-scoping
 sealed class AmbiguousExpression {
-    class VariableOrFunctionReference(val nameOrFunctionId: FunctionId, val chosenParameters: List<Type>): AmbiguousExpression()
+    class Variable(val name: String): AmbiguousExpression()
+    class FunctionBinding(val functionIdOrVariable: FunctionId, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>): AmbiguousExpression()
     class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock): AmbiguousExpression()
     class FunctionCall(val functionIdOrVariable: FunctionId, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>): AmbiguousExpression()
     class Literal(val type: Type, val literal: String): AmbiguousExpression()
     class Follow(val expression: AmbiguousExpression, val id: String): AmbiguousExpression()
 }
+
 // Post-scoping, pre-type-analysis
 sealed class Expression {
     class Variable(val name: String): Expression()
     class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block): Expression()
-    class VariableFunctionCall(val variableName: String, val arguments: List<Expression>, val chosenParameters: List<Type>): Expression()
+    class VariableFunctionCall(val variableName: String, val arguments: List<Expression>): Expression()
     class NamedFunctionCall(val functionId: FunctionId, val arguments: List<Expression>, val chosenParameters: List<Type>): Expression()
     class Literal(val type: Type, val literal: String): Expression()
-    class FunctionReference(val functionId: FunctionId, val chosenParameters: List<Type>): Expression()
+    class VariableFunctionBinding(val variableName: String, val bindings: List<Expression?>): Expression()
+    class NamedFunctionBinding(val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<Expression?>): Expression()
     class Follow(val expression: Expression, val id: String): Expression()
 }
 // Post-type-analysis
@@ -207,7 +210,8 @@ sealed class TypedExpression {
     class NamedFunctionCall(override val type: Type, val functionId: FunctionId, val arguments: List<TypedExpression>): TypedExpression()
     class Literal(override val type: Type, val literal: String): TypedExpression()
     class Follow(override val type: Type, val expression: TypedExpression, val id: String): TypedExpression()
-    class FunctionReference(override val type: Type, val functionId: FunctionId, val chosenParameters: List<Type>) : TypedExpression()
+    class VariableFunctionBinding(override val type: Type, val variableName: String, val bindings: List<TypedExpression?>) : TypedExpression()
+    class NamedFunctionBinding(override val type: Type, val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<TypedExpression?>) : TypedExpression()
 }
 
 data class AmbiguousAssignment(val name: String, val type: Type, val expression: AmbiguousExpression)

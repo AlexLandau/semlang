@@ -142,24 +142,27 @@ sealed class SemObject {
             return "SemList(contents=$contents)"
         }
     }
-    class FunctionReference(val functionId: FunctionId): SemObject() {
+    class FunctionBinding(val functionId: FunctionId, val bindings: List<SemObject?>): SemObject() {
         override fun equals(other: Any?): kotlin.Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
 
-            other as FunctionReference
+            other as FunctionBinding
 
             if (functionId != other.functionId) return false
+            if (bindings != other.bindings) return false
 
             return true
         }
 
         override fun hashCode(): Int {
-            return functionId.hashCode()
+            var result = functionId.hashCode()
+            result = 31 * result + bindings.hashCode()
+            return result
         }
 
         override fun toString(): String {
-            return "FunctionReference(functionId=$functionId)"
+            return "FunctionBinding(functionId=$functionId, bindings=$bindings)"
         }
     }
 }

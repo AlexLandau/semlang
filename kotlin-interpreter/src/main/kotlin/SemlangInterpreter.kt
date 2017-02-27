@@ -3,7 +3,7 @@ package semlang.interpreter
 import semlang.api.*
 import semlang.api.Function
 import java.math.BigInteger
-import java.util.HashMap
+import java.util.*
 
 interface SemlangInterpreter {
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject
@@ -84,10 +84,16 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             is TypedExpression.VariableFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
                 val function: SemObject = assignments[expression.variableName] ?: throw IllegalArgumentException("No variable defined with name ${expression.variableName}")
-                if (function !is SemObject.FunctionReference) {
+                if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to call ${expression.variableName} as a function, but it is not a function")
                 }
-                return interpret(function.functionId, arguments)
+                val inputs = ArrayList<SemObject>()
+                val argumentsItr = arguments.iterator()
+                for (binding: SemObject? in function.bindings) {
+                    inputs.add(binding ?: argumentsItr.next())
+                }
+
+                return interpret(function.functionId, inputs)
             }
             is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
@@ -105,12 +111,30 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                     throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
                 }
             }
-            is TypedExpression.FunctionReference -> {
+            is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
-                if (!context.functions.containsKey(functionId)) {
+                if (!context.functions.containsKey(functionId) && !nativeFunctions.containsKey(functionId)) {
                     error("Function ID not recognized: $functionId")
                 }
-                return SemObject.FunctionReference(functionId)
+                val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
+                return SemObject.FunctionBinding(functionId, bindings)
+            }
+            is TypedExpression.VariableFunctionBinding -> {
+                val function: SemObject = assignments[expression.variableName] ?: throw IllegalArgumentException("No variable defined with name ${expression.variableName}")
+                if (function !is SemObject.FunctionBinding) {
+                    throw IllegalArgumentException("Trying to reference ${expression.variableName} as a function for binding, but it is not a function")
+                }
+                val earlierBindings = function.bindings
+                val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
+
+                // The later bindings replace the underscores (null values) in the earlier bindings.
+                val newBindings = ArrayList<SemObject?>()
+                val laterBindingsItr = laterBindings.iterator()
+                for (binding: SemObject? in earlierBindings) {
+                    newBindings.add(binding ?: laterBindingsItr.next())
+                }
+
+                return SemObject.FunctionBinding(function.functionId, newBindings)
             }
         }
     }

@@ -166,6 +166,32 @@ class InterpreterTests {
         assertEquals(tryFailure(), interpreter.interpret(FunctionId(myStuff, "listGetOutOfBounds"), listOf()))
     }
 
+    @Test
+    fun testFunctionBinding1() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/functionBinding1.sem")
+        val myStuff = Package(listOf("myCode"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(2), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(-1))))
+        assertEquals(int(5), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(2))))
+        assertEquals(int(2), interpreter.interpret(FunctionId(myStuff, "addThreeV2"), listOf(int(-1))))
+        assertEquals(int(5), interpreter.interpret(FunctionId(myStuff, "addThreeV2"), listOf(int(2))))
+    }
+
+    @Test
+    fun testFunctionBinding2() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/functionBinding2.sem")
+        val myStuff = Package(listOf("myCode"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(2), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(-1))))
+        assertEquals(int(5), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(2))))
+        assertEquals(int(2), interpreter.interpret(FunctionId(myStuff, "addThreeV2"), listOf(int(-1))))
+        assertEquals(int(5), interpreter.interpret(FunctionId(myStuff, "addThreeV2"), listOf(int(2))))
+        assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "addThreeV3"), listOf(natural(0))))
+        assertEquals(natural(7), interpreter.interpret(FunctionId(myStuff, "addThreeV3"), listOf(natural(4))))
+        assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "addThreeV4"), listOf(natural(0))))
+        assertEquals(natural(7), interpreter.interpret(FunctionId(myStuff, "addThreeV4"), listOf(natural(4))))
+    }
+
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
         return validateContext(functionsMap2).assume()

@@ -8,7 +8,7 @@ function myCode.cube(n: Integer): Integer {
 }
 
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
-  let squareIt: (Integer) -> Integer = myCode.square
+  let squareIt: (Integer) -> Integer = myCode.square|(_)
   return generalFermatCheck(a, b, c, squareIt)
 }
 

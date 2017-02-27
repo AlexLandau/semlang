@@ -46,14 +46,18 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),
                 expression.id)
-        is AmbiguousExpression.VariableOrFunctionReference -> {
-            if (varIds.contains(expression.nameOrFunctionId)) {
-                if (expression.chosenParameters.isNotEmpty()) {
-                    error("Known variable name ${expression.nameOrFunctionId} shouldn't be used with type parameters")
+        is AmbiguousExpression.FunctionBinding -> {
+            if (varIds.contains(expression.functionIdOrVariable)) {
+                if (expression.chosenParameters.size > 0) {
+                    error("Had explicit parameters in a variable-based function binding")
                 }
-                return Expression.Variable(expression.nameOrFunctionId.functionName)
+                return Expression.VariableFunctionBinding(expression.functionIdOrVariable.functionName,
+                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null })
             } else {
-                return Expression.FunctionReference(expression.nameOrFunctionId, expression.chosenParameters)
+
+                return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
+                        expression.chosenParameters,
+                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null })
             }
         }
         is AmbiguousExpression.IfThen -> Expression.IfThen(
@@ -63,10 +67,12 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
         )
         is AmbiguousExpression.FunctionCall -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
+                if (expression.chosenParameters.size > 0) {
+                    error("Had explicit parameters in a variable-based function call")
+                }
                 return Expression.VariableFunctionCall(
                         variableName = expression.functionIdOrVariable.functionName,
-                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                        chosenParameters = expression.chosenParameters)
+                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) })
             } else {
                 return Expression.NamedFunctionCall(
                         functionId = expression.functionIdOrVariable,
@@ -75,6 +81,7 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
             }
         }
         is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal)
+        is AmbiguousExpression.Variable -> Expression.Variable(expression.name)
     }
 }
 
@@ -176,6 +183,18 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         return AmbiguousExpression.Follow(inner, name)
     }
 
+    if (expression.PIPE() != null) {
+        val functionIdOrVar = parseFunctionId(expression.function_id())
+        val chosenParameters = if (expression.LESS_THAN() != null) {
+            parseCommaDelimitedTypes(expression.cd_types())
+        } else {
+            listOf()
+        }
+        val bindings = parseBindings(expression.cd_expressions_or_underscores())
+
+        return AmbiguousExpression.FunctionBinding(functionIdOrVar, chosenParameters, bindings)
+    }
+
     if (expression.LPAREN() != null) {
         val functionId = parseFunctionId(expression.function_id())
         val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
@@ -187,15 +206,27 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         return AmbiguousExpression.FunctionCall(functionId, arguments, groundParameters)
     }
 
-    if (expression.function_id() != null) {
-        val chosenParameters = if (expression.LESS_THAN() != null) {
-            parseCommaDelimitedTypes(expression.cd_types())
-        } else {
-            listOf()
-        }
-        return AmbiguousExpression.VariableOrFunctionReference(parseFunctionId(expression.function_id()), chosenParameters)
+    if (expression.ID() != null) {
+        return AmbiguousExpression.Variable(expression.ID().text)
     }
     throw IllegalArgumentException("Couldn't parseFunction $expression")
+}
+
+fun parseBindings(cd_expressions_or_underscores: SemlangParser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+    val bindings = ArrayList<AmbiguousExpression?>()
+    var inputs = cd_expressions_or_underscores
+    while (true) {
+        if (inputs.expression() != null) {
+            bindings.add(parseExpression(inputs.expression()))
+        } else if (inputs.UNDERSCORE() != null) {
+            bindings.add(null)
+        }
+        if (inputs.cd_expressions_or_underscores() == null) {
+            break
+        }
+        inputs = inputs.cd_expressions_or_underscores()
+    }
+    return bindings
 }
 
 private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<AmbiguousExpression> {
