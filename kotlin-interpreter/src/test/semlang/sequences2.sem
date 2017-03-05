@@ -1,0 +1,21 @@
+struct TwoNaturals {
+  left: Natural
+  right: Natural
+}
+
+function myStuff.gcd(n1: Natural, n2: Natural): Natural {
+  let base: TwoNaturals = TwoNaturals(n1, n2)
+  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_);
+  let euclidSeq: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
+  return Sequence.first<TwoNaturals>(euclidSeq, TwoNaturals.equal|(_))->left
+}
+
+function TwoNaturals.equal(pair: TwoNaturals): Boolean {
+  return Natural.equals(pair->left, pair->right)
+}
+
+function myStuff.nextPair(pair: TwoNaturals): TwoNaturals {
+  let lesser: Natural = Natural.min(pair->left, pair->right)
+  let absDifference: Natural = Natural.absoluteDifference(pair->left, pair->right)
+  return TwoNaturals(lesser, absDifference)
+}

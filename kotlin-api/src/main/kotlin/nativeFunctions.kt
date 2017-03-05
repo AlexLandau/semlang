@@ -69,6 +69,12 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.equals
     definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+
+    // Natural.min
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "min"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
+    // Natural.absoluteDifference
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
@@ -118,6 +124,11 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     // Sequence.get
     definitions.add(TypeSignature(FunctionId(sequencePackage, "get"), typeParameters = listOf(paramT),
             argumentTypes = listOf(sequenceType, Type.NATURAL),
+            outputType = paramT))
+
+    // Sequence.first
+    definitions.add(TypeSignature(FunctionId(sequencePackage, "first"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(sequenceType, Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
             outputType = paramT))
 }
 

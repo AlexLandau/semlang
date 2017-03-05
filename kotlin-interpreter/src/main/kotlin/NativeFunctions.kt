@@ -122,6 +122,30 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
             throw IllegalArgumentException()
         }
     }))
+
+    // Natural.min
+    val naturalMinId = FunctionId(naturalPackage, "min")
+    map.put(naturalMinId, NativeFunction(naturalMinId, { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Natural && right is SemObject.Natural) {
+            SemObject.Natural(left.value.min(right.value))
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // Natural.absoluteDifference
+    val naturalAbsoluteDifferenceId = FunctionId(naturalPackage, "absoluteDifference")
+    map.put(naturalAbsoluteDifferenceId, NativeFunction(naturalAbsoluteDifferenceId, { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Natural && right is SemObject.Natural) {
+            SemObject.Natural((left.value - right.value).abs())
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
 }
 
 private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
@@ -212,6 +236,36 @@ private fun addSequenceFunctions(map: HashMap<FunctionId, NativeFunction>) {
                     value = apply(successor, listOf(value))
                 }
                 value
+            } else {
+                error("")
+            }
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // Sequence.first
+    val firstId = FunctionId(sequencePackage, "first")
+    map.put(firstId, NativeFunction(firstId, SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
+        val sequence = args[0]
+        val predicate = args[1]
+        if (sequence is SemObject.Struct
+                && predicate is SemObject.FunctionBinding
+                && sequence.struct.id == sequenceStructId) {
+            val successor = sequence.objects[1]
+            if (successor is SemObject.FunctionBinding) {
+                var value = sequence.objects[0]
+                while (true) {
+                    val passes = apply(predicate, listOf(value))
+                    if (passes !is SemObject.Boolean) {
+                        error("")
+                    }
+                    if (passes.value) {
+                        return@SequenceFirst value
+                    }
+                    value = apply(successor, listOf(value))
+                }
+                error("Unreachable") // TODO: Better way to make Kotlin compile here?
             } else {
                 error("")
             }

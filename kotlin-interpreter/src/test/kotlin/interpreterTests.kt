@@ -207,6 +207,18 @@ class InterpreterTests {
         assertEquals(natural(13), interpreter.interpret(FunctionId(myStuff, "fibonacci"), listOf(natural(7))))
     }
 
+    @Test
+    fun testSequences2() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/sequences2.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "gcd"), listOf(natural(3), natural(6))))
+        assertEquals(natural(1), interpreter.interpret(FunctionId(myStuff, "gcd"), listOf(natural(3), natural(7))))
+        assertEquals(natural(4), interpreter.interpret(FunctionId(myStuff, "gcd"), listOf(natural(8), natural(12))))
+        assertEquals(natural(7), interpreter.interpret(FunctionId(myStuff, "gcd"), listOf(natural(49), natural(21))))
+        assertEquals(natural(3), interpreter.interpret(FunctionId(myStuff, "gcd"), listOf(natural(111), natural(54))))
+    }
+
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
         return validateContext(functionsMap2).assume()
