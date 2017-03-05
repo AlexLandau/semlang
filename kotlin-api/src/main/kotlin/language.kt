@@ -55,88 +55,27 @@ sealed class Type {
         }
     }
 
-    class List(val parameter: Type): Type() {
+    data class List(val parameter: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return List(parameter.replacingParameters(parameterMap))
         }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-
-            other as List
-
-            if (parameter != other.parameter) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            return parameter.hashCode()
-        }
-
-        override fun toString(): String {
-            return "List<$parameter>"
-        }
     }
 
-    class Try(val parameter: Type): Type() {
+    data class Try(val parameter: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return Try(parameter.replacingParameters(parameterMap))
         }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-
-            other as Try
-
-            if (parameter != other.parameter) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            return parameter.hashCode()
-        }
-
-        override fun toString(): String {
-            return "Try(parameter=$parameter)"
-        }
     }
 
-    class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
+    data class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
                     outputType.replacingParameters(parameterMap))
         }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-
-            other as FunctionType
-
-            if (argTypes != other.argTypes) return false
-            if (outputType != other.outputType) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = argTypes.hashCode()
-            result = 31 * result + outputType.hashCode()
-            return result
-        }
-
-        override fun toString(): String {
-            return "FunctionType(argTypes=$argTypes, outputType=$outputType)"
-        }
     }
 
-    //TODO: Make this a data class when/if possible
     //TODO: In the validator, validate that it does not share a name with a default type
-    class NamedType(val id: FunctionId, val parameters: kotlin.collections.List<Type>): Type(), ParameterizableType {
+    data class NamedType(val id: FunctionId, val parameters: kotlin.collections.List<Type>): Type(), ParameterizableType {
         companion object {
             fun forParameter(name: String): NamedType {
                 return NamedType(FunctionId.of(name), listOf())
@@ -155,63 +94,41 @@ sealed class Type {
         override fun getParameterizedTypes(): kotlin.collections.List<Type> {
             return parameters
         }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-
-            other as NamedType
-
-            if (id != other.id) return false
-            if (parameters != other.parameters) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = id.hashCode()
-            result = 31 * result + parameters.hashCode()
-            return result
-        }
-
-        override fun toString(): String {
-            return "NamedType(id=$id, parameters=$parameters)"
-        }
     }
 
 }
 // Pre-scoping
 sealed class AmbiguousExpression {
-    class Variable(val name: String): AmbiguousExpression()
-    class FunctionBinding(val functionIdOrVariable: FunctionId, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>): AmbiguousExpression()
-    class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock): AmbiguousExpression()
-    class FunctionCall(val functionIdOrVariable: FunctionId, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>): AmbiguousExpression()
-    class Literal(val type: Type, val literal: String): AmbiguousExpression()
-    class Follow(val expression: AmbiguousExpression, val id: String): AmbiguousExpression()
+    data class Variable(val name: String): AmbiguousExpression()
+    data class FunctionBinding(val functionIdOrVariable: FunctionId, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>): AmbiguousExpression()
+    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock): AmbiguousExpression()
+    data class FunctionCall(val functionIdOrVariable: FunctionId, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>): AmbiguousExpression()
+    data class Literal(val type: Type, val literal: String): AmbiguousExpression()
+    data class Follow(val expression: AmbiguousExpression, val id: String): AmbiguousExpression()
 }
 
 // Post-scoping, pre-type-analysis
 sealed class Expression {
-    class Variable(val name: String): Expression()
-    class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block): Expression()
-    class VariableFunctionCall(val variableName: String, val arguments: List<Expression>): Expression()
-    class NamedFunctionCall(val functionId: FunctionId, val arguments: List<Expression>, val chosenParameters: List<Type>): Expression()
-    class Literal(val type: Type, val literal: String): Expression()
-    class VariableFunctionBinding(val variableName: String, val bindings: List<Expression?>): Expression()
-    class NamedFunctionBinding(val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<Expression?>): Expression()
-    class Follow(val expression: Expression, val id: String): Expression()
+    data class Variable(val name: String): Expression()
+    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block): Expression()
+    data class VariableFunctionCall(val variableName: String, val arguments: List<Expression>): Expression()
+    data class NamedFunctionCall(val functionId: FunctionId, val arguments: List<Expression>, val chosenParameters: List<Type>): Expression()
+    data class Literal(val type: Type, val literal: String): Expression()
+    data class VariableFunctionBinding(val variableName: String, val bindings: List<Expression?>): Expression()
+    data class NamedFunctionBinding(val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<Expression?>): Expression()
+    data class Follow(val expression: Expression, val id: String): Expression()
 }
 // Post-type-analysis
 sealed class TypedExpression {
     abstract val type: Type
-    class Variable(override val type: Type, val name: String): TypedExpression()
-    class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    class VariableFunctionCall(override val type: Type, val variableName: String, val arguments: List<TypedExpression>): TypedExpression()
-    class NamedFunctionCall(override val type: Type, val functionId: FunctionId, val arguments: List<TypedExpression>): TypedExpression()
-    class Literal(override val type: Type, val literal: String): TypedExpression()
-    class Follow(override val type: Type, val expression: TypedExpression, val id: String): TypedExpression()
-    class VariableFunctionBinding(override val type: Type, val variableName: String, val bindings: List<TypedExpression?>) : TypedExpression()
-    class NamedFunctionBinding(override val type: Type, val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<TypedExpression?>) : TypedExpression()
+    data class Variable(override val type: Type, val name: String): TypedExpression()
+    data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
+    data class VariableFunctionCall(override val type: Type, val variableName: String, val arguments: List<TypedExpression>): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, val functionId: FunctionId, val arguments: List<TypedExpression>): TypedExpression()
+    data class Literal(override val type: Type, val literal: String): TypedExpression()
+    data class Follow(override val type: Type, val expression: TypedExpression, val id: String): TypedExpression()
+    data class VariableFunctionBinding(override val type: Type, val variableName: String, val bindings: List<TypedExpression?>) : TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, val functionId: FunctionId, val chosenParameters: List<Type>, val bindings: List<TypedExpression?>) : TypedExpression()
 }
 
 data class AmbiguousAssignment(val name: String, val type: Type, val expression: AmbiguousExpression)
