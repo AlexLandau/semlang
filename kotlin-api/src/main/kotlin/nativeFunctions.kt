@@ -2,7 +2,7 @@ package semlang.api
 
 import java.util.*
 
-data class TypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf())
+data class TypeSignature(override val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasFunctionId
 
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     val definitions = ArrayList<TypeSignature>()
@@ -11,12 +11,25 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addNaturalFunctions(definitions)
     addListFunctions(definitions)
     addTryFunctions(definitions)
+    addSequenceFunctions(definitions)
+
+    getNativeStructs().values.forEach { struct ->
+        definitions.add(toTypeSignature(struct))
+    }
 
     return toMap(definitions)
 }
 
-private fun toMap(definitions: ArrayList<TypeSignature>): Map<FunctionId, TypeSignature> {
-    val map = HashMap<FunctionId, TypeSignature>()
+fun toTypeSignature(struct: Struct): TypeSignature {
+    val argumentTypes = struct.members.map(Member::type)
+    val typeParameters = struct.typeParameters.map { name -> Type.NamedType.forParameter(name) }
+    val outputType = Type.NamedType(struct.id, typeParameters)
+
+    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
+}
+
+private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId, T> {
+    val map = HashMap<FunctionId, T>()
     definitions.forEach { signature ->
         if (map.containsKey(signature.id)) {
             error("Duplicate native function ID ${signature.id}")
@@ -25,7 +38,6 @@ private fun toMap(definitions: ArrayList<TypeSignature>): Map<FunctionId, TypeSi
     }
     return map
 }
-
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     val integerPackage = Package(listOf("Integer"))
@@ -94,4 +106,33 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
             outputType = paramT))
+}
+
+private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
+    val sequencePackage = Package(listOf("Sequence"))
+
+    val paramT = Type.NamedType.forParameter("T")
+
+    val sequenceType = Type.NamedType(FunctionId.of("Sequence"), listOf(paramT))
+
+    // Sequence.get
+    definitions.add(TypeSignature(FunctionId(sequencePackage, "get"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(sequenceType, Type.NATURAL),
+            outputType = paramT))
+}
+
+fun getNativeStructs(): Map<FunctionId, Struct> {
+    val structs = ArrayList<Struct>()
+
+    val typeT = Type.NamedType.forParameter("T")
+
+    structs.add(Struct(
+            FunctionId.of("Sequence"),
+            listOf("T"),
+            listOf(
+                    Member("base", typeT),
+                    Member("successor", Type.FunctionType(listOf(typeT), typeT))
+            )))
+
+    return toMap(structs)
 }

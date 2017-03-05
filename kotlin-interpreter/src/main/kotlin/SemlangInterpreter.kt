@@ -16,7 +16,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {
-            return nativeFunction.apply(arguments)
+            return nativeFunction.apply(arguments, this::interpretBinding)
         }
 
         // Handle struct constructors
@@ -37,6 +37,22 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         return evaluateBlock(function.block, variableAssignments)
     }
 
+    private fun interpretBinding(functionBinding: SemObject.FunctionBinding, args: List<SemObject>): SemObject {
+        val functionId = functionBinding.functionId
+
+        val argsItr = args.iterator()
+        val fullArguments = ArrayList<SemObject>()
+        functionBinding.bindings.forEach { boundArg ->
+            if (boundArg != null) {
+                fullArguments.add(boundArg)
+            } else {
+                fullArguments.add(argsItr.next())
+            }
+        }
+
+        return interpret(functionId, fullArguments)
+    }
+
     private fun evaluateStructConstructor(structFunction: Struct, arguments: List<SemObject>): SemObject {
         if (arguments.size != structFunction.members.size) {
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + structFunction)
@@ -46,7 +62,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
-        for ((name, type, expression) in block.assignments) {
+        for ((name, _, expression) in block.assignments) {
             val value = evaluateExpression(expression, assignments)
             if (assignments.containsKey(name)) {
                 throw IllegalStateException("Tried to double-assign variable $name")

@@ -1,5 +1,5 @@
+include 'antlr-parser'
 include 'kotlin-api'
 include 'kotlin-interpreter'
 include 'kotlin-parser'
-include 'antlr-parser'
 rootProject.name = 'semlang'

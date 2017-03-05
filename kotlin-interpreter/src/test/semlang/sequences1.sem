@@ -1,0 +1,17 @@
+struct TwoNaturals {
+  left: Natural
+  right: Natural
+}
+
+function myStuff.fibonacci(n: Natural): Natural {
+  let base: TwoNaturals = TwoNaturals(Natural."1", Natural."0")
+  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_);
+  let fibonaccis: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
+  return Sequence.get<TwoNaturals>(fibonaccis, n)->right
+}
+
+function myStuff.nextPair(pair: TwoNaturals): TwoNaturals {
+  let nextLeft: Natural = pair->right
+  let nextRight: Natural = Natural.plus(pair->left, pair->right)
+  return TwoNaturals(nextLeft, nextRight)
+}

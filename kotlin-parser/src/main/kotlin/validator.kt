@@ -39,10 +39,11 @@ data class GroundedTypeSignature(val id: FunctionId, val argumentTypes: List<Typ
 fun validateContext(context: InterpreterContext): Try<ValidatedContext> {
     // TODO: Validate the structs
     val functionTypeSignatures = getFunctionTypeSignatures(context)
+    val structs = getStructs(context)
     return functionTypeSignatures.ifGood { functionTypeSignatures ->
-        val validatedFunctions = validateFunctions(context.functions, functionTypeSignatures, context.structs)
+        val validatedFunctions = validateFunctions(context.functions, functionTypeSignatures, structs)
         validatedFunctions.ifGood { validatedFunctions ->
-            Try.Success(ValidatedContext(validatedFunctions, context.structs))
+            Try.Success(ValidatedContext(validatedFunctions, structs))
         }
     }
 }
@@ -455,6 +456,13 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Try<Map<Func
 
 private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
     signatures.putAll(getNativeFunctionDefinitions())
+}
+
+fun getStructs(context: InterpreterContext): Map<FunctionId, Struct> {
+    val structs = HashMap<FunctionId, Struct>()
+    structs.putAll(context.structs)
+    structs.putAll(getNativeStructs())
+    return structs
 }
 
 private fun getFunctionSignature(function: Function): TypeSignature {

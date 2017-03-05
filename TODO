@@ -11,10 +11,10 @@
   - Validate function argument names
   - Make code style more consistent
 - Function definitions as tests
-- Function reference types
-  - Support references to struct constructors
+- Support function references to struct constructors
 - List type (index, map, reduce)
 - Sequences and "first"
+- Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect)
@@ -22,6 +22,7 @@
 - Annotations and multiple function definitions
 - Interfaces/instances
 - Monads (e.g. start with support for console-out)
+- Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment
 - Start to create dialects with simpler syntax, type inference, etc.
 - Semlang -> Semlang optimizations, etc.

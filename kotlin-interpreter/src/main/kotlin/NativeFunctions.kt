@@ -5,7 +5,9 @@ import semlang.api.Package
 import java.math.BigInteger
 import java.util.*
 
-class NativeFunction(val id: FunctionId, val apply: (List<SemObject>) -> SemObject)
+typealias InterpreterCallback = (SemObject.FunctionBinding, List<SemObject>) -> SemObject
+
+class NativeFunction(val id: FunctionId, val apply: (List<SemObject>, InterpreterCallback) -> SemObject)
 
 fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     val map = HashMap<FunctionId, NativeFunction>()
@@ -14,6 +16,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     addNaturalFunctions(map)
     addListFunctions(map)
     addTryFunctions(map)
+    addSequenceFunctions(map)
 
     return map
 }
@@ -23,7 +26,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Integer.times
     val integerTimesId = FunctionId(integerPackage, "times")
-    map.put(integerTimesId, NativeFunction(integerTimesId, { args: List<SemObject> ->
+    map.put(integerTimesId, NativeFunction(integerTimesId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -35,7 +38,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Integer.plus
     val integerPlusId = FunctionId(integerPackage, "plus")
-    map.put(integerPlusId, NativeFunction(integerPlusId, { args: List<SemObject> ->
+    map.put(integerPlusId, NativeFunction(integerPlusId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -47,7 +50,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Integer.minus
     val integerMinusId = FunctionId(integerPackage, "minus")
-    map.put(integerMinusId, NativeFunction(integerMinusId, { args: List<SemObject> ->
+    map.put(integerMinusId, NativeFunction(integerMinusId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -59,7 +62,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Integer.equals
     val integerEqualsId = FunctionId(integerPackage, "equals")
-    map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject> ->
+    map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -71,7 +74,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Integer.fromNatural
     val integerFromNaturalId = FunctionId(integerPackage, "fromNatural")
-    map.put(integerFromNaturalId, NativeFunction(integerFromNaturalId, { args: List<SemObject> ->
+    map.put(integerFromNaturalId, NativeFunction(integerFromNaturalId, { args: List<SemObject>, _: InterpreterCallback ->
         val natural = args[0]
         if (natural is SemObject.Natural) {
             SemObject.Integer(natural.value)
@@ -86,7 +89,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Natural.times
     val naturalTimesId = FunctionId(naturalPackage, "times")
-    map.put(naturalTimesId, NativeFunction(naturalTimesId, { args: List<SemObject> ->
+    map.put(naturalTimesId, NativeFunction(naturalTimesId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -98,7 +101,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Natural.plus
     val naturalPlusId = FunctionId(naturalPackage, "plus")
-    map.put(naturalPlusId, NativeFunction(naturalPlusId, { args: List<SemObject> ->
+    map.put(naturalPlusId, NativeFunction(naturalPlusId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -110,7 +113,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Natural.equals
     val naturalEqualsId = FunctionId(naturalPackage, "equals")
-    map.put(naturalEqualsId, NativeFunction(naturalEqualsId, { args: List<SemObject> ->
+    map.put(naturalEqualsId, NativeFunction(naturalEqualsId, { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -126,13 +129,13 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // List.empty
     val listEmptyId = FunctionId(listPackage, "empty")
-    map.put(listEmptyId, NativeFunction(listEmptyId, { args: List<SemObject> ->
+    map.put(listEmptyId, NativeFunction(listEmptyId, { _: List<SemObject>, _: InterpreterCallback ->
         SemObject.SemList(ArrayList())
     }))
 
     // List.append
     val listAppendId = FunctionId(listPackage, "append")
-    map.put(listAppendId, NativeFunction(listAppendId, { args: List<SemObject> ->
+    map.put(listAppendId, NativeFunction(listAppendId, { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         val item = args[1]
         if (list is SemObject.SemList) {
@@ -144,7 +147,7 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // List.size
     val listSizeId = FunctionId(listPackage, "size")
-    map.put(listSizeId, NativeFunction(listSizeId, { args: List<SemObject> ->
+    map.put(listSizeId, NativeFunction(listSizeId, { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         if (list is SemObject.SemList) {
             SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
@@ -155,7 +158,7 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // List.get
     val listGetId = FunctionId(listPackage, "get")
-    map.put(listGetId, NativeFunction(listGetId, { args: List<SemObject> ->
+    map.put(listGetId, NativeFunction(listGetId, { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         val index = args[1]
         if (list is SemObject.SemList && index is SemObject.Natural) {
@@ -175,13 +178,42 @@ private fun addTryFunctions(map: HashMap<FunctionId, NativeFunction>) {
 
     // Try.assume
     val assumeId = FunctionId(tryPackage, "assume")
-    map.put(assumeId, NativeFunction(assumeId, { args: List<SemObject> ->
+    map.put(assumeId, NativeFunction(assumeId, { args: List<SemObject>, _: InterpreterCallback ->
         val theTry = args[0]
         if (theTry is SemObject.Try) {
             if (theTry is SemObject.Try.Success) {
                 theTry.contents
             } else {
                 throw IllegalStateException("Try.assume assumed incorrectly")
+            }
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+}
+
+private fun addSequenceFunctions(map: HashMap<FunctionId, NativeFunction>) {
+    val sequencePackage = Package(listOf("Sequence"))
+    val sequenceStructId = FunctionId.of("Sequence")
+
+    // Sequence.get
+    val getId = FunctionId(sequencePackage, "get")
+    map.put(getId, NativeFunction(getId, { args: List<SemObject>, apply: InterpreterCallback ->
+        val sequence = args[0]
+        val index = args[1]
+        if (sequence is SemObject.Struct
+                && index is SemObject.Natural
+                && sequence.struct.id == sequenceStructId) {
+            val successor = sequence.objects[1]
+            if (successor is SemObject.FunctionBinding) {
+                var value = sequence.objects[0]
+                // TODO: Obscure error case: Value of index is greater than Integer.MAX_VALUE
+                for (i in 1..index.value.toInt()) {
+                    value = apply(successor, listOf(value))
+                }
+                value
+            } else {
+                error("")
             }
         } else {
             throw IllegalArgumentException()
