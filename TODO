@@ -12,7 +12,6 @@
   - Make code style more consistent
 - Function definitions as tests
 - Function reference types
-  - Also, don't rule out support for currying (e.g. as needed for a "compose" method)
   - Support references to struct constructors
 - List type (index, map, reduce)
 - Sequences and "first"
@@ -27,6 +26,7 @@
 - Start to create dialects with simpler syntax, type inference, etc.
 - Semlang -> Semlang optimizations, etc.
   - Ground all uses of generics within a program, so a parser can just treat it as an extension of the identifier
+  - Function differentials
 - Port "code writing into Java" to Semlang
 
 Design choices to reconsider:
@@ -36,21 +36,6 @@ Design choices to reconsider:
 - Integer.fromNatural or Natural.toInteger?
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
-
-How will function types be represented? for (int, int) -> int:
-- Function<(Integer, Integer), Integer>: Tuple inputs
-  - Then how do we express in syntax "pass this tuple as the argument list"? Is that another native function?
-  - Function<I: Tuple, O> as generic expression? Function<I extends Tuple, O>?
-- Function<Integer, Integer, Integer>: Assume last is
-  - Then can we genericize over functions of different arities? Should we?
-- Function<2, Integer, Integer, Integer> or Function<2><Integer, Integer, Integer>
-  - Seems potentially messy or silly...
-  - Again, what do the generics look like? Function<N>? Function<N, T...>?
-- Function2<Integer, Integer, Integer>
-  - Does that give up composing over multiple functions?
-  - compose() arguably only makes sense when the second is 1-arity anyway...
-- (Integer, Integer) -> Integer
-  - Abandon regularity of types; might make sense given the () "operator"
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples
