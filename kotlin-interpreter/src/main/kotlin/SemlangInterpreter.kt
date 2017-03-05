@@ -1,7 +1,6 @@
 package semlang.interpreter
 
 import semlang.api.*
-import semlang.api.Function
 import java.math.BigInteger
 import java.util.*
 
@@ -41,14 +40,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         val functionId = functionBinding.functionId
 
         val argsItr = args.iterator()
-        val fullArguments = ArrayList<SemObject>()
-        functionBinding.bindings.forEach { boundArg ->
-            if (boundArg != null) {
-                fullArguments.add(boundArg)
-            } else {
-                fullArguments.add(argsItr.next())
-            }
-        }
+        val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
 
         return interpret(functionId, fullArguments)
     }
@@ -103,11 +95,8 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to call ${expression.variableName} as a function, but it is not a function")
                 }
-                val inputs = ArrayList<SemObject>()
                 val argumentsItr = arguments.iterator()
-                for (binding: SemObject? in function.bindings) {
-                    inputs.add(binding ?: argumentsItr.next())
-                }
+                val inputs = function.bindings.map { it ?: argumentsItr.next() }
 
                 return interpret(function.functionId, inputs)
             }
@@ -144,11 +133,8 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
 
                 // The later bindings replace the underscores (null values) in the earlier bindings.
-                val newBindings = ArrayList<SemObject?>()
                 val laterBindingsItr = laterBindings.iterator()
-                for (binding: SemObject? in earlierBindings) {
-                    newBindings.add(binding ?: laterBindingsItr.next())
-                }
+                val newBindings = earlierBindings.map { it ?: laterBindingsItr.next() }
 
                 return SemObject.FunctionBinding(function.functionId, newBindings)
             }
