@@ -10,23 +10,30 @@ typealias InterpreterCallback = (SemObject.FunctionBinding, List<SemObject>) -> 
 class NativeFunction(val id: FunctionId, val apply: (List<SemObject>, InterpreterCallback) -> SemObject)
 
 fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
+    val list = ArrayList<NativeFunction>()
+
+    addIntegerFunctions(list)
+    addNaturalFunctions(list)
+    addListFunctions(list)
+    addTryFunctions(list)
+    addSequenceFunctions(list)
+
+    return toMap(list)
+}
+
+fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
     val map = HashMap<FunctionId, NativeFunction>()
-
-    addIntegerFunctions(map)
-    addNaturalFunctions(map)
-    addListFunctions(map)
-    addTryFunctions(map)
-    addSequenceFunctions(map)
-
+    list.forEach { nativeFunction ->
+        map.put(nativeFunction.id, nativeFunction)
+    }
     return map
 }
 
-private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val integerPackage = Package(listOf("Integer"))
+private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
+    val integerDot = fun(name: String) = FunctionId(Package(listOf("Integer")), name)
 
     // Integer.times
-    val integerTimesId = FunctionId(integerPackage, "times")
-    map.put(integerTimesId, NativeFunction(integerTimesId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -37,8 +44,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Integer.plus
-    val integerPlusId = FunctionId(integerPackage, "plus")
-    map.put(integerPlusId, NativeFunction(integerPlusId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(integerDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -49,8 +55,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Integer.minus
-    val integerMinusId = FunctionId(integerPackage, "minus")
-    map.put(integerMinusId, NativeFunction(integerMinusId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(integerDot("minus"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -61,8 +66,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Integer.equals
-    val integerEqualsId = FunctionId(integerPackage, "equals")
-    map.put(integerEqualsId, NativeFunction(integerEqualsId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(integerDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Integer && right is SemObject.Integer) {
@@ -73,8 +77,7 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Integer.fromNatural
-    val integerFromNaturalId = FunctionId(integerPackage, "fromNatural")
-    map.put(integerFromNaturalId, NativeFunction(integerFromNaturalId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(integerDot("fromNatural"), { args: List<SemObject>, _: InterpreterCallback ->
         val natural = args[0]
         if (natural is SemObject.Natural) {
             SemObject.Integer(natural.value)
@@ -84,12 +87,11 @@ private fun addIntegerFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 }
 
-private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val naturalPackage = Package(listOf("Natural"))
+private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
+    val naturalDot = fun(name: String) = FunctionId(Package(listOf("Natural")), name)
 
     // Natural.times
-    val naturalTimesId = FunctionId(naturalPackage, "times")
-    map.put(naturalTimesId, NativeFunction(naturalTimesId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -100,8 +102,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Natural.plus
-    val naturalPlusId = FunctionId(naturalPackage, "plus")
-    map.put(naturalPlusId, NativeFunction(naturalPlusId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -112,8 +113,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Natural.equals
-    val naturalEqualsId = FunctionId(naturalPackage, "equals")
-    map.put(naturalEqualsId, NativeFunction(naturalEqualsId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -124,8 +124,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Natural.min
-    val naturalMinId = FunctionId(naturalPackage, "min")
-    map.put(naturalMinId, NativeFunction(naturalMinId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -136,8 +135,7 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Natural.absoluteDifference
-    val naturalAbsoluteDifferenceId = FunctionId(naturalPackage, "absoluteDifference")
-    map.put(naturalAbsoluteDifferenceId, NativeFunction(naturalAbsoluteDifferenceId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("absoluteDifference"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
@@ -148,18 +146,16 @@ private fun addNaturalFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 }
 
-private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val listPackage = Package(listOf("List"))
+private fun addListFunctions(list: MutableList<NativeFunction>) {
+    val listDot = fun(name: String) = FunctionId(Package(listOf("List")), name)
 
     // List.empty
-    val listEmptyId = FunctionId(listPackage, "empty")
-    map.put(listEmptyId, NativeFunction(listEmptyId, { _: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(listDot("empty"), { _: List<SemObject>, _: InterpreterCallback ->
         SemObject.SemList(ArrayList())
     }))
 
     // List.append
-    val listAppendId = FunctionId(listPackage, "append")
-    map.put(listAppendId, NativeFunction(listAppendId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(listDot("append"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         val item = args[1]
         if (list is SemObject.SemList) {
@@ -170,8 +166,7 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // List.size
-    val listSizeId = FunctionId(listPackage, "size")
-    map.put(listSizeId, NativeFunction(listSizeId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(listDot("size"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         if (list is SemObject.SemList) {
             SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
@@ -181,8 +176,7 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // List.get
-    val listGetId = FunctionId(listPackage, "get")
-    map.put(listGetId, NativeFunction(listGetId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(listDot("get"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         val index = args[1]
         if (list is SemObject.SemList && index is SemObject.Natural) {
@@ -197,12 +191,11 @@ private fun addListFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 }
 
-private fun addTryFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val tryPackage = Package(listOf("Try"))
+private fun addTryFunctions(list: MutableList<NativeFunction>) {
+    val tryDot = fun(name: String) = FunctionId(Package(listOf("Try")), name)
 
     // Try.assume
-    val assumeId = FunctionId(tryPackage, "assume")
-    map.put(assumeId, NativeFunction(assumeId, { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(tryDot("assume"), { args: List<SemObject>, _: InterpreterCallback ->
         val theTry = args[0]
         if (theTry is SemObject.Try) {
             if (theTry is SemObject.Try.Success) {
@@ -216,13 +209,12 @@ private fun addTryFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 }
 
-private fun addSequenceFunctions(map: HashMap<FunctionId, NativeFunction>) {
-    val sequencePackage = Package(listOf("Sequence"))
+private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
     val sequenceStructId = FunctionId.of("Sequence")
+    val sequenceDot = fun(name: String) = FunctionId(Package(listOf("Sequence")), name)
 
     // Sequence.get
-    val getId = FunctionId(sequencePackage, "get")
-    map.put(getId, NativeFunction(getId, { args: List<SemObject>, apply: InterpreterCallback ->
+    list.add(NativeFunction(sequenceDot("get"), { args: List<SemObject>, apply: InterpreterCallback ->
         val sequence = args[0]
         val index = args[1]
         if (sequence is SemObject.Struct
@@ -245,8 +237,7 @@ private fun addSequenceFunctions(map: HashMap<FunctionId, NativeFunction>) {
     }))
 
     // Sequence.first
-    val firstId = FunctionId(sequencePackage, "first")
-    map.put(firstId, NativeFunction(firstId, SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
+    list.add(NativeFunction(sequenceDot("first"), SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
         val sequence = args[0]
         val predicate = args[1]
         if (sequence is SemObject.Struct
