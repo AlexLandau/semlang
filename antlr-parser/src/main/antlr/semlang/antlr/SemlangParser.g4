@@ -7,6 +7,8 @@ parser grammar SemlangParser;
 tokens {
   NEWLINE,
   WS,
+  LINE_COMMENT,
+  BLOCK_COMMENT,
   PACKAGE,
   IMPORT,
   FUNCTION,

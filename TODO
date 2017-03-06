@@ -2,6 +2,7 @@
   - Make things private when they can be
 - Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
+- Test block comment parsing, line comments at end of files
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
@@ -12,8 +13,7 @@
   - Make code style more consistent
 - Function definitions as tests
 - Support function references to struct constructors
-- List type (index, map, reduce)
-- Sequences and "first"
+- List type (firstIndex, map)
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
@@ -46,3 +46,7 @@ Probable dependencies of the type work:
 As things are completed:
 - Project Euler
 - http://benchmarksgame.alioth.debian.org/
+
+Less important, orthogonal to-dos:
+- Clean up Gradle builds
+- Consistent naming convention for .kt files

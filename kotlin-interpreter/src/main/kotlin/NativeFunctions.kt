@@ -12,6 +12,7 @@ class NativeFunction(val id: FunctionId, val apply: (List<SemObject>, Interprete
 fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     val list = ArrayList<NativeFunction>()
 
+    addBooleanFunctions(list)
     addIntegerFunctions(list)
     addNaturalFunctions(list)
     addListFunctions(list)
@@ -27,6 +28,22 @@ fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
         map.put(nativeFunction.id, nativeFunction)
     }
     return map
+}
+
+
+private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
+    val booleanDot = fun(name: String) = FunctionId(Package(listOf("Boolean")), name)
+
+    // Boolean.or
+    list.add(NativeFunction(booleanDot("or"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Boolean && right is SemObject.Boolean) {
+            SemObject.Boolean(left.value || right.value)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
 }
 
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
@@ -134,12 +151,46 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
+    // Natural.remainder
+    list.add(NativeFunction(naturalDot("remainder"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Natural && right is SemObject.Natural) {
+            SemObject.Natural(left.value.remainder(right.value))
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
     // Natural.absoluteDifference
     list.add(NativeFunction(naturalDot("absoluteDifference"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
         val right = args[1]
         if (left is SemObject.Natural && right is SemObject.Natural) {
             SemObject.Natural((left.value - right.value).abs())
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // Natural.rangeInclusive
+    list.add(NativeFunction(naturalDot("rangeInclusive"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        if (left is SemObject.Natural && right is SemObject.Natural) {
+            if (left.value > right.value) {
+                SemObject.SemList(listOf())
+            } else {
+                // This approach reduces issues around large numbers that are still close to each other
+                val difference = right.value.minus(left.value).longValueExact()
+                val range = (0..difference)
+                        .asSequence()
+                        .map { left.value.plus(BigInteger.valueOf(it)) }
+                        .map { SemObject.Natural(it) }
+                        .toList()
+                SemObject.SemList(range)
+            }
+//            SemObject.Natural((left.value - right.value).abs())
         } else {
             throw IllegalArgumentException()
         }
@@ -160,6 +211,38 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         val item = args[1]
         if (list is SemObject.SemList) {
             SemObject.SemList(list.contents + item)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // List.filter
+    list.add(NativeFunction(listDot("filter"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val list = args[0]
+        val filter = args[1]
+        if (list is SemObject.SemList
+                && filter is SemObject.FunctionBinding) {
+            val filtered = list.contents.filter { semObject ->
+                val callbackResult = apply(filter, listOf(semObject))
+                (callbackResult as? SemObject.Boolean)?.value ?: error("")
+            }
+            SemObject.SemList(filtered)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
+    // List.reduce
+    list.add(NativeFunction(listDot("reduce"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val list = args[0]
+        var result = args[1]
+        val reducer = args[2]
+        if (list is SemObject.SemList
+                && reducer is SemObject.FunctionBinding) {
+            list.contents.forEach { item ->
+                result = apply(reducer, listOf(result, item))
+            }
+            result
         } else {
             throw IllegalArgumentException()
         }
@@ -223,8 +306,8 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
             val successor = sequence.objects[1]
             if (successor is SemObject.FunctionBinding) {
                 var value = sequence.objects[0]
-                // TODO: Obscure error case: Value of index is greater than Integer.MAX_VALUE
-                for (i in 1..index.value.toInt()) {
+                // TODO: Obscure error case: Value of index is greater than Long.MAX_VALUE
+                for (i in 1..index.value.longValueExact()) {
                     value = apply(successor, listOf(value))
                 }
                 value

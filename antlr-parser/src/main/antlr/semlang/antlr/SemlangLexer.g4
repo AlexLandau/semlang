@@ -8,6 +8,10 @@ lexer grammar SemlangLexer;
 NEWLINE            : ('\r\n' | 'r' | '\n') -> skip ;
 WS                 : [\t ]+ -> skip ;
 
+// Comments
+LINE_COMMENT       : '//' (~[\n\r])* (NEWLINE | EOF) -> skip ;
+BLOCK_COMMENT       : '/*' .*? '*/' -> skip;
+
 // Keywords
 PACKAGE            : 'package';
 IMPORT             : 'import';

@@ -7,6 +7,7 @@ data class TypeSignature(override val id: FunctionId, val argumentTypes: List<Ty
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     val definitions = ArrayList<TypeSignature>()
 
+    addBooleanFunctions(definitions)
     addIntegerFunctions(definitions)
     addNaturalFunctions(definitions)
     addListFunctions(definitions)
@@ -37,6 +38,13 @@ private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId,
         map.put(signature.id, signature)
     }
     return map
+}
+
+private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
+    val booleanPackage = Package(listOf("Boolean"))
+
+    // Boolean.or
+    definitions.add(TypeSignature(FunctionId(booleanPackage, "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
@@ -73,8 +81,14 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.min
     definitions.add(TypeSignature(FunctionId(naturalPackage, "min"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
+    // Natural.remainder
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "remainder"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
     // Natural.absoluteDifference
     definitions.add(TypeSignature(FunctionId(naturalPackage, "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
+    // Natural.rangeInclusive
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "rangeInclusive"), listOf(Type.NATURAL, Type.NATURAL), Type.List(Type.NATURAL)))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
@@ -91,6 +105,17 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(FunctionId(listPackage, "append"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), paramT),
             outputType = Type.List(paramT)))
+
+    // List.filter
+    definitions.add(TypeSignature(FunctionId(listPackage, "filter"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
+            outputType = Type.List(paramT)))
+
+    // List.reduce
+    val paramU = Type.NamedType.forParameter("U")
+    definitions.add(TypeSignature(FunctionId(listPackage, "reduce"), typeParameters = listOf(paramT, paramU),
+            argumentTypes = listOf(Type.List(paramT), paramU, Type.FunctionType(listOf(paramU, paramT), paramU)),
+            outputType = paramU))
 
     // List.size
     definitions.add(TypeSignature(FunctionId(listPackage, "size"), typeParameters = listOf(paramT),
