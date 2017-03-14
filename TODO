@@ -12,7 +12,9 @@
   - Validate function argument names
   - Make code style more consistent
 - Function definitions as tests
+- Can we remove TypedExpression.NamedFunctionBinding#chosenParameters?
 - Support function references to struct constructors
+- Support e.g. foo->bar() calls and foo->bar|() bindings directly, if the parser doesn't hate it
 - List type (firstIndex, map)
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
