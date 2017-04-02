@@ -5,15 +5,15 @@ import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import semlang.antlr.SemlangLexer
-import semlang.antlr.SemlangParser
-import semlang.antlr.SemlangParserBaseListener
+import sem1.antlr.Sem1Lexer
+import sem1.antlr.Sem1Parser
+import sem1.antlr.Sem1ParserBaseListener
 import semlang.api.*
 import semlang.api.Function
 import java.io.File
 import java.util.*
 
-private fun parseFunction(function: SemlangParser.FunctionContext): Function {
+private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
     val id: FunctionId = parseFunctionId(function.function_id())
 
     val typeParameters: List<String> = if (function.cd_ids() != null) {
@@ -103,7 +103,7 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
 }
 
 
-private fun parseStruct(ctx: SemlangParser.StructContext): Struct {
+private fun parseStruct(ctx: Sem1Parser.StructContext): Struct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
 
     val typeParameters: List<String> = if (ctx.cd_ids() != null) {
@@ -116,7 +116,7 @@ private fun parseStruct(ctx: SemlangParser.StructContext): Struct {
     return Struct(id, typeParameters, members)
 }
 
-private fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<String> {
+private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
     val results = ArrayList<String>()
     var inputs = cd_ids
     while (true) {
@@ -131,7 +131,7 @@ private fun parseCommaDelimitedIds(cd_ids: SemlangParser.Cd_idsContext): List<St
     return results
 }
 
-private fun parseMembers(members: SemlangParser.Struct_componentsContext): List<Member> {
+private fun parseMembers(members: Sem1Parser.Struct_componentsContext): List<Member> {
     val results = ArrayList<Member>()
     var inputs = members
     while (true) {
@@ -146,19 +146,19 @@ private fun parseMembers(members: SemlangParser.Struct_componentsContext): List<
     return results
 }
 
-private fun parseMember(member: SemlangParser.Struct_componentContext): Member {
+private fun parseMember(member: Sem1Parser.Struct_componentContext): Member {
     val name = member.ID().text
     val type = parseType(member.type())
     return Member(name, type)
 }
 
-private fun parseBlock(block: SemlangParser.BlockContext): AmbiguousBlock {
+private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
     val assignments = parseAssignments(block.assignments())
     val returnedExpression = parseExpression(block.return_statement().expression())
     return AmbiguousBlock(assignments, returnedExpression)
 }
 
-private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): List<AmbiguousAssignment> {
+private fun parseAssignments(assignments: Sem1Parser.AssignmentsContext): List<AmbiguousAssignment> {
     val results = ArrayList<AmbiguousAssignment>()
     var inputs = assignments
     while (true) {
@@ -173,14 +173,14 @@ private fun parseAssignments(assignments: SemlangParser.AssignmentsContext): Lis
     return results
 }
 
-private fun parseAssignment(assignment: SemlangParser.AssignmentContext): AmbiguousAssignment {
+private fun parseAssignment(assignment: Sem1Parser.AssignmentContext): AmbiguousAssignment {
     val name = assignment.ID().text
     val type = parseType(assignment.type())
     val expression = parseExpression(assignment.expression())
     return AmbiguousAssignment(name, type, expression)
 }
 
-private fun parseExpression(expression: SemlangParser.ExpressionContext): AmbiguousExpression {
+private fun parseExpression(expression: Sem1Parser.ExpressionContext): AmbiguousExpression {
     if (expression.IF() != null) {
         val condition = parseExpression(expression.expression())
         val thenBlock = parseBlock(expression.block(0))
@@ -238,7 +238,7 @@ fun positionOf(expression: ParserRuleContext): Position {
     )
 }
 
-fun parseBindings(cd_expressions_or_underscores: SemlangParser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
     val bindings = ArrayList<AmbiguousExpression?>()
     var inputs = cd_expressions_or_underscores
     while (true) {
@@ -255,7 +255,7 @@ fun parseBindings(cd_expressions_or_underscores: SemlangParser.Cd_expressions_or
     return bindings
 }
 
-private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expressionsContext): List<AmbiguousExpression> {
+private fun parseCommaDelimitedExpressions(cd_expressions: Sem1Parser.Cd_expressionsContext): List<AmbiguousExpression> {
     val expressions = ArrayList<AmbiguousExpression>()
     var inputs = cd_expressions
     while (true) {
@@ -270,7 +270,7 @@ private fun parseCommaDelimitedExpressions(cd_expressions: SemlangParser.Cd_expr
     return expressions
 }
 
-private fun parseFunctionArguments(function_arguments: SemlangParser.Function_argumentsContext): List<Argument> {
+private fun parseFunctionArguments(function_arguments: Sem1Parser.Function_argumentsContext): List<Argument> {
     val arguments = ArrayList<Argument>()
     var inputs = function_arguments
     while (true) {
@@ -285,13 +285,13 @@ private fun parseFunctionArguments(function_arguments: SemlangParser.Function_ar
     return arguments
 }
 
-private fun parseFunctionArgument(function_argument: SemlangParser.Function_argumentContext): Argument {
+private fun parseFunctionArgument(function_argument: Sem1Parser.Function_argumentContext): Argument {
     val name = function_argument.ID().text
     val type = parseType(function_argument.type())
     return Argument(name, type)
 }
 
-private fun parseFunctionId(function_id: SemlangParser.Function_idContext): FunctionId {
+private fun parseFunctionId(function_id: Sem1Parser.Function_idContext): FunctionId {
     if (function_id.packag() != null) {
         val packag = parsePackage(function_id.packag())
         return FunctionId(packag, function_id.ID().text)
@@ -300,7 +300,7 @@ private fun parseFunctionId(function_id: SemlangParser.Function_idContext): Func
     }
 }
 
-private fun parsePackage(packag: SemlangParser.PackagContext): Package {
+private fun parsePackage(packag: Sem1Parser.PackagContext): Package {
     val parts = ArrayList<String>()
     var inputs = packag
     while (true) {
@@ -315,7 +315,7 @@ private fun parsePackage(packag: SemlangParser.PackagContext): Package {
     return Package(parts)
 }
 
-private fun parseType(type: SemlangParser.TypeContext): Type {
+private fun parseType(type: Sem1Parser.TypeContext): Type {
     if (type.ARROW() != null) {
         //Function type
         val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
@@ -334,7 +334,7 @@ private fun parseType(type: SemlangParser.TypeContext): Type {
     throw IllegalArgumentException("Unparsed type " + type)
 }
 
-private fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): List<Type> {
+private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<Type> {
     val results = ArrayList<Type>()
     var inputs = cd_types
     while (true) {
@@ -349,7 +349,7 @@ private fun parseCommaDelimitedTypes(cd_types: SemlangParser.Cd_typesContext): L
     return results
 }
 
-private fun parseTypeGivenParameters(simple_type_id: SemlangParser.Simple_type_idContext, parameters: List<Type>): Type {
+private fun parseTypeGivenParameters(simple_type_id: Sem1Parser.Simple_type_idContext, parameters: List<Type>): Type {
     if (simple_type_id.packag() != null) {
         return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), parameters)
     }
@@ -376,18 +376,18 @@ private fun parseTypeGivenParameters(simple_type_id: SemlangParser.Simple_type_i
     return Type.NamedType(FunctionId.of(typeId), parameters)
 }
 
-private class MyListener : SemlangParserBaseListener() {
+private class MyListener : Sem1ParserBaseListener() {
     val structs: MutableList<Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
 
-    override fun enterFunction(ctx: SemlangParser.FunctionContext?) {
+    override fun enterFunction(ctx: Sem1Parser.FunctionContext?) {
         super.enterFunction(ctx)
         if (ctx != null) {
             functions.add(parseFunction(ctx))
         }
     }
 
-    override fun enterStruct(ctx: SemlangParser.StructContext?) {
+    override fun enterStruct(ctx: Sem1Parser.StructContext?) {
         super.enterStruct(ctx)
         if (ctx != null) {
             val struct = parseStruct(ctx)
@@ -402,10 +402,10 @@ fun parseFile(file: File): InterpreterContext {
 
 fun parseFileNamed(filename: String): InterpreterContext {
     val input = ANTLRFileStream(filename)
-    val lexer = SemlangLexer(input)
+    val lexer = Sem1Lexer(input)
     val tokens = CommonTokenStream(lexer)
-    val parser = SemlangParser(tokens)
-    val tree: SemlangParser.FileContext = parser.file()
+    val parser = Sem1Parser(tokens)
+    val tree: Sem1Parser.FileContext = parser.file()
 
     val extractor = MyListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)

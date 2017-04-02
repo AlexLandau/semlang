@@ -1,7 +1,7 @@
-lexer grammar SemlangLexer;
+lexer grammar Sem1Lexer;
 
 @header {
-  package semlang.antlr;
+  package sem1.antlr;
 }
 
 // Whitespace

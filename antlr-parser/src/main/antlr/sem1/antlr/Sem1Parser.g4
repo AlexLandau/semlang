@@ -1,7 +1,7 @@
-parser grammar SemlangParser;
+parser grammar Sem1Parser;
 
 @header {
-  package semlang.antlr;
+  package sem1.antlr;
 }
 
 tokens {
