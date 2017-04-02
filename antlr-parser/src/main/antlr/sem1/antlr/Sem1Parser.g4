@@ -13,6 +13,7 @@ tokens {
   IMPORT,
   FUNCTION,
   STRUCT,
+  INTERFACE,
   RETURN,
   LET,
   IF,
@@ -39,12 +40,13 @@ tokens {
   UNDERSCORE
 }
 
-file : functions_or_structs EOF ;
+file : top_level_entities EOF ;
 
 packag : ID | ID DOT packag ; // Antlr doesn't like the word "package"
 function_id : ID | packag DOT ID ;
 
-functions_or_structs : | function functions_or_structs | struct functions_or_structs ;
+top_level_entities : | function top_level_entities | struct top_level_entities | interfac top_level_entities ;
+
 function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
          | FUNCTION LESS_THAN cd_ids GREATER_THAN function_id LPAREN function_arguments RPAREN COLON type block ;
 block : LBRACE assignments return_statement RBRACE ;
@@ -55,6 +57,13 @@ struct : STRUCT function_id LBRACE struct_components RBRACE
   | STRUCT function_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_components RBRACE ;
 struct_components : | struct_component struct_components ;
 struct_component : ID COLON type ;
+
+// TODO: Is there a better solution for this than mangling the name?
+interfac : INTERFACE function_id LBRACE interface_components RBRACE
+  | INTERFACE function_id LESS_THAN cd_ids GREATER_THAN LBRACE interface_components RBRACE ;
+interface_components : | interface_component interface_components ;
+interface_component : ID LPAREN function_arguments RPAREN COLON type
+  | ID LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
 
 // cd_ids is nonempty
 cd_ids : ID | ID COMMA cd_ids ;
