@@ -2,6 +2,8 @@ package semlang.parser
 
 import org.antlr.v4.runtime.ANTLRFileStream
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import semlang.antlr.SemlangLexer
 import semlang.antlr.SemlangParser
@@ -18,6 +20,15 @@ private fun parseFunction(function: SemlangParser.FunctionContext): Function {
         parseCommaDelimitedIds(function.cd_ids())
     } else {
         listOf()
+    }
+    if (function.function_arguments() == null) {
+        error("function_arguments() is null: " + function.getText()
+                + "\n function_id: " + function.function_id()
+                + "\n cd_ids: " + function.cd_ids()
+                + "\n function_arguments: " + function.function_arguments()
+                + "\n type:" + function.type()
+                + "\n block:" + function.block()
+        )
     }
     val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
     val returnType: Type = parseType(function.type())
@@ -45,25 +56,29 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
     return when (expression) {
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),
-                expression.id)
+                expression.id,
+                expression.position)
         is AmbiguousExpression.FunctionBinding -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
                 if (expression.chosenParameters.size > 0) {
                     error("Had explicit parameters in a variable-based function binding")
                 }
                 return Expression.VariableFunctionBinding(expression.functionIdOrVariable.functionName,
-                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null })
+                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                        position = expression.position)
             } else {
 
                 return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
                         expression.chosenParameters,
-                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null })
+                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                        position = expression.position)
             }
         }
         is AmbiguousExpression.IfThen -> Expression.IfThen(
                 scopeExpression(varIds, expression.condition),
                 thenBlock = scopeBlock(varIds, expression.thenBlock),
-                elseBlock = scopeBlock(varIds, expression.elseBlock)
+                elseBlock = scopeBlock(varIds, expression.elseBlock),
+                position = expression.position
         )
         is AmbiguousExpression.FunctionCall -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
@@ -72,16 +87,18 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
                 }
                 return Expression.VariableFunctionCall(
                         variableName = expression.functionIdOrVariable.functionName,
-                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) })
+                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                        position = expression.position)
             } else {
                 return Expression.NamedFunctionCall(
                         functionId = expression.functionIdOrVariable,
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                        chosenParameters = expression.chosenParameters)
+                        chosenParameters = expression.chosenParameters,
+                        position = expression.position)
             }
         }
-        is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal)
-        is AmbiguousExpression.Variable -> Expression.Variable(expression.name)
+        is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.position)
+        is AmbiguousExpression.Variable -> Expression.Variable(expression.name, expression.position)
     }
 }
 
@@ -168,19 +185,19 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         val condition = parseExpression(expression.expression())
         val thenBlock = parseBlock(expression.block(0))
         val elseBlock = parseBlock(expression.block(1))
-        return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock)
+        return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock, positionOf(expression))
     }
 
     if (expression.LITERAL() != null) {
         val type = parseTypeGivenParameters(expression.simple_type_id(), listOf())
         val literal = expression.LITERAL().text.drop(1).dropLast(1)
-        return AmbiguousExpression.Literal(type, literal)
+        return AmbiguousExpression.Literal(type, literal, positionOf(expression))
     }
 
     if (expression.ARROW() != null) {
         val inner = parseExpression(expression.expression())
         val name = expression.ID().text
-        return AmbiguousExpression.Follow(inner, name)
+        return AmbiguousExpression.Follow(inner, name, positionOf(expression))
     }
 
     if (expression.PIPE() != null) {
@@ -192,7 +209,7 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         }
         val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-        return AmbiguousExpression.FunctionBinding(functionIdOrVar, chosenParameters, bindings)
+        return AmbiguousExpression.FunctionBinding(functionIdOrVar, chosenParameters, bindings, positionOf(expression))
     }
 
     if (expression.LPAREN() != null) {
@@ -203,13 +220,22 @@ private fun parseExpression(expression: SemlangParser.ExpressionContext): Ambigu
         } else {
             listOf()
         }
-        return AmbiguousExpression.FunctionCall(functionId, arguments, groundParameters)
+        return AmbiguousExpression.FunctionCall(functionId, arguments, groundParameters, positionOf(expression))
     }
 
     if (expression.ID() != null) {
-        return AmbiguousExpression.Variable(expression.ID().text)
+        return AmbiguousExpression.Variable(expression.ID().text, positionOf(expression))
     }
     throw IllegalArgumentException("Couldn't parseFunction $expression")
+}
+
+fun positionOf(expression: ParserRuleContext): Position {
+    return Position(
+            expression.start.line,
+            expression.start.charPositionInLine,
+            expression.start.startIndex,
+            expression.stop.stopIndex
+    )
 }
 
 fun parseBindings(cd_expressions_or_underscores: SemlangParser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {

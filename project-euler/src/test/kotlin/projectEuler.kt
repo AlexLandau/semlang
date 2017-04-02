@@ -1,6 +1,7 @@
 package semlang.interpreter.test
 
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Test
 import semlang.api.FunctionId
 import semlang.api.Package
@@ -22,6 +23,13 @@ class ProjectEulerExamples {
         assertEquals(natural(233168), interpreter.interpret(eulerDot("problem1"), listOf()))
     }
 
+    @Ignore("Blocks on Sequence being made an interface so Sequence.map can work")
+    @Test
+    fun problem3() {
+        val interpreter = parseAndValidateFile("src/test/semlang/problem3.sem")
+        assertEquals(natural(42), interpreter.interpret(eulerDot("getLargestPrimeFactor"), listOf(natural(600851475143))))
+    }
+
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
         val functionsMap2 = parseFileNamed(filename)
         return SemlangForwardInterpreter(validateContext(functionsMap2).assume())
@@ -32,6 +40,6 @@ private fun int(i: Int): SemObject {
     return SemObject.Integer(BigInteger.valueOf(i.toLong()))
 }
 
-private fun natural(i: Int): SemObject {
-    return SemObject.Natural(BigInteger.valueOf(i.toLong()))
+private fun natural(l: Long): SemObject {
+    return SemObject.Natural(BigInteger.valueOf(l))
 }

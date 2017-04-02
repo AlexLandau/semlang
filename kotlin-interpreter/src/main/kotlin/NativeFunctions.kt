@@ -140,6 +140,23 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
+    // Natural.max
+    list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0]
+        if (list is SemObject.SemList) {
+            val max = list.contents.maxBy { semObj ->
+                (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
+            }
+            if (max == null) {
+                SemObject.Try.Failure;
+            } else {
+                SemObject.Try.Success(max);
+            }
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
     // Natural.min
     list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0]
@@ -205,15 +222,17 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         SemObject.SemList(ArrayList())
     }))
 
+    // List.singleton
+    list.add(NativeFunction(listDot("singleton"), { args: List<SemObject>, _: InterpreterCallback ->
+        val element = args[0]
+        SemObject.SemList(listOf(element))
+    }))
+
     // List.append
     list.add(NativeFunction(listDot("append"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0]
+        val list = args[0] as? SemObject.SemList ?: typeError()
         val item = args[1]
-        if (list is SemObject.SemList) {
-            SemObject.SemList(list.contents + item)
-        } else {
-            throw IllegalArgumentException()
-        }
+        SemObject.SemList(list.contents + item)
     }))
 
     // List.filter
@@ -347,4 +366,20 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
             throw IllegalArgumentException()
         }
     }))
+
+    // Sequence.map
+    // TODO: This might actually be easier as a Semlang function?
+//    list.add(NativeFunction(sequenceDot("map"), SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
+//        val sequence = args[0] as? SemObject.Struct ?: typeError()
+//        if (sequence.struct.id != sequenceStructId) typeError()
+//        val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
+//
+//
+//
+//        SemObject.Struct(sequenceStructId, initialValue, function)
+//    }))
+}
+
+private fun typeError(): Nothing {
+    error("Runtime type error")
 }

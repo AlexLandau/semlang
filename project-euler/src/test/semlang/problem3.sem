@@ -1,0 +1,85 @@
+//The prime factors of 13195 are 5, 7, 13 and 29.
+//What is the largest prime factor of the number 600851475143 ?
+
+function euler.getLargestPrimeFactor(n: Natural): Natural {
+    let primeFactors: List<Natural> = getPrimeFactors(n)
+    let largestPrimeFactor: Natural = Try.assume<Natural>(Natural.max(primeFactors))
+    return largestPrimeFactor
+}
+
+function getPrimeFactors(n: Natural): List<Natural> {
+    let primes: Sequence<Natural> = getPrimes();
+    let firstPrimeDivisor: Natural = Sequence.first<Natural>(primes, dividesEvenly|(_, n));
+    return if (Natural.equals(n, firstPrimeDivisor)) {
+        return List.singleton<Natural>(n);
+    } else {
+        let dividend: Natural = Try.assume<Natural>(Natural.divide(n, firstPrimeDivisor))
+        let recursiveFactors: List<Natural> = getPrimeFactors(dividend)
+        return List.append<Natural>(recursiveFactors, firstPrimeDivisor)
+    }
+}
+
+// Library candidate?
+function getPrimes(): Sequence<Natural> {
+    let 2: Natural = Natural."2"
+    return Sequence.createAccumulating<Natural>(2, getNextPrime|(_))
+}
+
+// TODO: Figure out a better name, and put in a standard library for the language
+// TODO: Should also have a version with no initial value specified
+struct AccumulatingSequenceElement<T> {
+    curValue: T
+    accumulatedValues: List<T>
+}
+function <T> Sequence.createAccumulating(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
+    let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence<AccumulatingSequenceElement<T>>(
+        AccumulatingSequenceElement<T>(initialValue, List.singleton<T>(initialValue)),
+        accumulatingSequenceNext<T>|(_, nextValueFunction)
+    )
+    return Sequence.map<AccumulatingSequenceElement<T>, T>(accumulatingSequence, fromAccumulatingSequenceElement<T>|(_))
+}
+function <T> accumulatingSequenceNext(previous: AccumulatingSequenceElement<T>, nextValueFunction: (List<T>) -> T): AccumulatingSequenceElement<T> {
+    let newValue: T = nextValueFunction(previous->accumulatedValues)
+    return AccumulatingSequenceElement<T>(
+        newValue,
+        List.append<T>(previous->accumulatedValues, newValue)
+    )
+}
+function <T> fromAccumulatingSequenceElement(element: AccumulatingSequenceElement<T>): T {
+    return element->curValue
+}
+
+// TODO: Definitely belongs in a standard library
+function <T, U> Sequence.map(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
+    // This is actually hard to do here...
+    // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())
+    // so that the return type of e.g. get() differs from the stored type
+    return Sequence<U>(firstVal, successor)
+}
+
+function getNextPrime(allPreviousPrimes: List<Natural>): Natural {
+    let lastPrime: Natural = Try.assume<Natural>(List.last<Natural>(allPreviousPrimes))
+    let firstCandidate: Natural = Natural.plus(lastPrime, Natural."1")
+    let candidates: Sequence<Natural> = Natural.arithmeticProgression(firstCandidate, Natural."1")
+    return Sequence.first<Natural>(candidates, isNotDivisibleByAny|(_, allPreviousPrimes))
+}
+
+// TODO: Should go in a standard library
+function Natural.arithmeticProgression(initialValue: Natural, increment: Natural): Sequence<Natural> {
+    // TODO: Re-inline
+    let allNaturalsSequence: Sequence<Natural> = Natural.sequence()
+    return Sequence.map<Natural, Natural>(allNaturalsSequence, plusProduct|(initialValue, increment, _))
+}
+function plusProduct(a: Natural, b: Natural, c: Natural): Natural {
+    return Natural.plus(a, Natural.times(b, c))
+}
+
+function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Boolean {
+    let divisibilities: List<Boolean> = List.map<Natural, Boolean>(allPreviousPrimes, dividesEvenly|(_, n))
+    return Boolean.not(Boolean.any(divisibilities))
+}
+
+function dividesEvenly(denominator: Natural, numerator: Natural): Boolean {
+    let remainder: Natural = Natural.remainder(numerator, denominator)
+    return Natural.equals(remainder, Natural."0")
+}

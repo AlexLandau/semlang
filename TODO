@@ -1,5 +1,6 @@
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
+  - Rewrite NativeFunctions implementations with as?/?: for casting
 - Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Test block comment parsing, line comments at end of files
@@ -19,7 +20,7 @@
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
-- Real package/module declarations and use, including "import as" (note: "import as" could be a dialect)
+- Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
 - Code writing into Java
 - Annotations and multiple function definitions
 - Interfaces/instances
@@ -27,9 +28,17 @@
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment
 - Start to create dialects with simpler syntax, type inference, etc.
-- Semlang -> Semlang optimizations, etc.
+  - "sem1" vs. "sem0" for starters
+  - Also type inference for parameters when calling functions, for types that can be inferred (can these be separated somehow?)
+  - Some sort of lambda expressions would be really nice...
+- Semlang -> Semlang transformations, optimizations, etc.
+  - Use only simple (non-nested) expressions
+  - Remove redundant variables and reiterated definitions
   - Ground all uses of generics within a program, so a parser can just treat it as an extension of the identifier
+  - Turn interface definitions into their constituents
   - Function differentials
+  - Compute approximate worst-case computational time of a function, given specific inputs (value is N -> worst-case actual time is O(N))
+  - Given a T -> T function, turn it into a T -> Boolean that returns whether the input would be turned into itself
 - Port "code writing into Java" to Semlang
 
 Design choices to reconsider:
@@ -39,6 +48,7 @@ Design choices to reconsider:
 - Integer.fromNatural or Natural.toInteger?
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
+- Consider moving <T> in function definition to after name
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples

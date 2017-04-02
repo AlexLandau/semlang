@@ -43,8 +43,14 @@ private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId,
 private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
     val booleanPackage = Package(listOf("Boolean"))
 
+    // Boolean.not
+    definitions.add(TypeSignature(FunctionId(booleanPackage, "not"), listOf(Type.BOOLEAN), Type.BOOLEAN))
+
     // Boolean.or
     definitions.add(TypeSignature(FunctionId(booleanPackage, "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+
+    // Boolean.any
+    definitions.add(TypeSignature(FunctionId(booleanPackage, "any"), listOf(Type.List(Type.BOOLEAN)), Type.BOOLEAN))
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
@@ -75,30 +81,46 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.plus
     definitions.add(TypeSignature(FunctionId(naturalPackage, "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
-    // Natural.equals
-    definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-
-    // Natural.min
-    definitions.add(TypeSignature(FunctionId(naturalPackage, "min"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+    // Natural.divide
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "divide"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(Type.NATURAL)))
 
     // Natural.remainder
     definitions.add(TypeSignature(FunctionId(naturalPackage, "remainder"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
+    // Natural.equals
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+
+    // TODO: Resolve these conflicting definitions
+    // Natural.max
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
+    // Natural.min
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "min"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
     // Natural.absoluteDifference
     definitions.add(TypeSignature(FunctionId(naturalPackage, "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
     // Natural.rangeInclusive
     definitions.add(TypeSignature(FunctionId(naturalPackage, "rangeInclusive"), listOf(Type.NATURAL, Type.NATURAL), Type.List(Type.NATURAL)))
+
+    // Natural.sequence
+    val sequenceNatural = Type.NamedType(FunctionId.of("Sequence"), listOf(Type.NATURAL))
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "sequence"), listOf(), sequenceNatural))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val listPackage = Package(listOf("List"))
 
     val paramT = Type.NamedType.forParameter("T")
+    val paramU = Type.NamedType.forParameter("U")
 
     // List.empty
     definitions.add(TypeSignature(FunctionId(listPackage, "empty"), typeParameters = listOf(paramT),
             argumentTypes = listOf(),
+            outputType = Type.List(paramT)))
+
+    // List.singleton
+    definitions.add(TypeSignature(FunctionId(listPackage, "singleton"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(paramT),
             outputType = Type.List(paramT)))
 
     // List.append
@@ -106,13 +128,17 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(Type.List(paramT), paramT),
             outputType = Type.List(paramT)))
 
+    // List.map
+    definitions.add(TypeSignature(FunctionId(listPackage, "map"), typeParameters = listOf(paramT, paramU),
+            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), paramU)),
+            outputType = Type.List(paramU)))
+
     // List.filter
     definitions.add(TypeSignature(FunctionId(listPackage, "filter"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
             outputType = Type.List(paramT)))
 
     // List.reduce
-    val paramU = Type.NamedType.forParameter("U")
     definitions.add(TypeSignature(FunctionId(listPackage, "reduce"), typeParameters = listOf(paramT, paramU),
             argumentTypes = listOf(Type.List(paramT), paramU, Type.FunctionType(listOf(paramU, paramT), paramU)),
             outputType = paramU))
@@ -125,6 +151,16 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     // List.get
     definitions.add(TypeSignature(FunctionId(listPackage, "get"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            outputType = Type.Try(paramT)))
+
+    // List.first TODO: To library
+    definitions.add(TypeSignature(FunctionId(listPackage, "first"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT)),
+            outputType = Type.Try(paramT)))
+
+    // List.last TODO: To library
+    definitions.add(TypeSignature(FunctionId(listPackage, "last"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT)),
             outputType = Type.Try(paramT)))
 }
 
@@ -144,17 +180,18 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 
     val paramT = Type.NamedType.forParameter("T")
 
-    val sequenceType = Type.NamedType(FunctionId.of("Sequence"), listOf(paramT))
+    val sequenceT = Type.NamedType(FunctionId.of("Sequence"), listOf(paramT))
 
     // Sequence.get
     definitions.add(TypeSignature(FunctionId(sequencePackage, "get"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(sequenceType, Type.NATURAL),
+            argumentTypes = listOf(sequenceT, Type.NATURAL),
             outputType = paramT))
 
     // Sequence.first
     definitions.add(TypeSignature(FunctionId(sequencePackage, "first"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(sequenceType, Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
+            argumentTypes = listOf(sequenceT, Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
             outputType = paramT))
+
 }
 
 fun getNativeStructs(): Map<FunctionId, Struct> {

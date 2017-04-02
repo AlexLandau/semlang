@@ -190,7 +190,7 @@ fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, va
     }
     val typeParameters = signature.typeParameters
 
-    val parameterMapMaybe = makeParameterMap(typeParameters, chosenParameters)
+    val parameterMapMaybe = makeParameterMap(typeParameters, chosenParameters, functionId)
     val parameterMap = when (parameterMapMaybe) {
         is Try.Error -> return parameterMapMaybe.cast()
         is Try.Success -> parameterMapMaybe.result
@@ -257,7 +257,7 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     // Chosen types come from the struct type known for the variable
     val typeParameters = struct.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
     val chosenTypes = structType.getParameterizedTypes()
-    val typeMaybe = parameterizeType(struct.members[index].type, typeParameters, chosenTypes)
+    val typeMaybe = parameterizeType(struct.members[index].type, typeParameters, chosenTypes, struct.id)
     val type = when (typeMaybe) {
         is Try.Error -> return typeMaybe.cast()
         is Try.Success -> typeMaybe.result
@@ -316,7 +316,7 @@ private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunc
     //TODO: Maybe compare argument size before grounding?
 
     //Ground the signature
-    val groundSignatureMaybe = ground(signature, expression.chosenParameters)
+    val groundSignatureMaybe = ground(signature, expression.chosenParameters, functionId)
     val groundSignature = when (groundSignatureMaybe) {
         is Try.Error -> return groundSignatureMaybe.cast()
         is Try.Success -> groundSignatureMaybe.result
@@ -328,13 +328,13 @@ private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunc
     return Try.Success(TypedExpression.NamedFunctionCall(groundSignature.outputType, functionId, arguments))
 }
 
-private fun ground(signature: TypeSignature, chosenTypes: List<Type>): Try<GroundedTypeSignature> {
-    val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes) }
+private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: FunctionId): Try<GroundedTypeSignature> {
+    val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes, functionId) }
             .map { tMaybe -> when (tMaybe) {
                 is Try.Error -> return tMaybe.cast()
                 is Try.Success -> tMaybe.result
             } }
-    val groundedOutputTypeMaybe = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes)
+    val groundedOutputTypeMaybe = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes, functionId)
     val groundedOutputType = when (groundedOutputTypeMaybe) {
         is Try.Error -> return groundedOutputTypeMaybe.cast()
         is Try.Success -> groundedOutputTypeMaybe.result
@@ -343,9 +343,9 @@ private fun ground(signature: TypeSignature, chosenTypes: List<Type>): Try<Groun
 }
 
 // TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
-private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): Try<Map<Type, Type>> {
+private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: FunctionId): Try<Map<Type, Type>> {
     if (parameters.size != chosenTypes.size) {
-        return Try.Error("Disagreement in type parameter list lengths")
+        return Try.Error("Disagreement in type parameter list lengths for function $functionId")
     }
     val map: MutableMap<Type, Type> = HashMap()
 
@@ -362,8 +362,8 @@ private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>): T
     return Try.Success(map)
 }
 
-private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>): Try<Type> {
-    val parameterMapMaybe = makeParameterMap(typeParameters, chosenTypes)
+private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>, functionId: FunctionId): Try<Type> {
+    val parameterMapMaybe = makeParameterMap(typeParameters, chosenTypes, functionId)
     val parameterMap = when (parameterMapMaybe) {
         is Try.Error -> return parameterMapMaybe.cast()
         is Try.Success -> parameterMapMaybe.result
