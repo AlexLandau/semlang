@@ -417,9 +417,50 @@ private fun parseTypeGivenParameters(simple_type_id: Sem1Parser.Simple_type_idCo
     return Type.NamedType(FunctionId.of(typeId), parameters)
 }
 
+private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
+    val id = parseFunctionId(interfac.function_id())
+    val typeParameters = if (interfac.GREATER_THAN() != null) {
+        parseCommaDelimitedIds(interfac.cd_ids())
+    } else {
+        listOf()
+    }
+    val methods = parseMethods(interfac.interface_components())
+
+    return Interface(id, typeParameters, methods)
+}
+
+private fun parseMethods(methods: Sem1Parser.Interface_componentsContext): List<Method> {
+    val results = ArrayList<Method>()
+    var inputs = methods
+    while (true) {
+        if (inputs.interface_component() != null) {
+            results.add(parseMethod(inputs.interface_component()))
+        }
+        if (inputs.interface_components() == null) {
+            break
+        }
+        inputs = inputs.interface_components()
+    }
+    return results
+}
+
+private fun parseMethod(method: Sem1Parser.Interface_componentContext): Method {
+    val name = method.ID().text
+    val typeParameters = if (method.GREATER_THAN() != null) {
+        parseCommaDelimitedIds(method.cd_ids())
+    } else {
+        listOf()
+    }
+    val arguments = parseFunctionArguments(method.function_arguments())
+    val returnType = parseType(method.type())
+
+    return Method(name, typeParameters, arguments, returnType)
+}
+
 private class MyListener : Sem1ParserBaseListener() {
     val structs: MutableList<Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
+    val interfaces: MutableList<Interface> = ArrayList()
 
     override fun enterFunction(ctx: Sem1Parser.FunctionContext?) {
         super.enterFunction(ctx)
@@ -431,10 +472,17 @@ private class MyListener : Sem1ParserBaseListener() {
     override fun enterStruct(ctx: Sem1Parser.StructContext?) {
         super.enterStruct(ctx)
         if (ctx != null) {
-            val struct = parseStruct(ctx)
-            structs.add(struct)
+            structs.add(parseStruct(ctx))
         }
     }
+
+    override fun enterInterfac(ctx: Sem1Parser.InterfacContext?) {
+        super.enterInterfac(ctx)
+        if (ctx != null) {
+            interfaces.add(parseInterface(ctx))
+        }
+    }
+
 }
 
 fun parseFile(file: File): InterpreterContext {

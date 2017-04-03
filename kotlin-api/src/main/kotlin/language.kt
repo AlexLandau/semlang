@@ -147,6 +147,7 @@ data class Block(val assignments: List<Assignment>, val returnedExpression: Expr
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
 data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block) : HasFunctionId
 data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock)
+
 data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -157,6 +158,10 @@ interface HasFunctionId {
 }
 data class Member(val name: String, val type: Type)
 
+data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>) : HasFunctionId {
+
+}
+data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type)
 
 //TODO: Put somewhere different?
 //TODO: Validate inputs (non-overlapping keys)
