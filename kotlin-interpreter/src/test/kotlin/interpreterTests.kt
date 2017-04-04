@@ -252,7 +252,7 @@ class InterpreterTests {
 
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
-        return validateContext(functionsMap2).assume()
+        return validateContext(functionsMap2)
     }
 }
 

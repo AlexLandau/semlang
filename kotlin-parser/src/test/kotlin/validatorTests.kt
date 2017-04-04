@@ -4,7 +4,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import semlang.api.ValidatedContext
-import semlang.parser.Try
 import semlang.parser.parseFile
 import semlang.parser.validateContext
 import java.io.File
@@ -25,7 +24,7 @@ class ValidatorPositiveTests(private val file: File) {
     @Test
     fun test() {
         val result = parseAndValidateFile(file)
-        result.assume()
+        result
     }
 }
 
@@ -44,14 +43,16 @@ class ValidatorNegativeTests(private val file: File) {
 
     @Test
     fun test() {
-        val result = parseAndValidateFile(file)
-        result.ifGood<Any> {
+        try {
+            val result = parseAndValidateFile(file)
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
+        } catch(e: Exception) {
+            // Expected
         }
     }
 }
 
-private fun parseAndValidateFile(file: File): Try<ValidatedContext> {
+private fun parseAndValidateFile(file: File): ValidatedContext {
     val functionsMap2 = parseFile(file)
     return validateContext(functionsMap2)
 }

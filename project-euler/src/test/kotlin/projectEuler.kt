@@ -5,7 +5,6 @@ import org.junit.Ignore
 import org.junit.Test
 import semlang.api.FunctionId
 import semlang.api.Package
-import semlang.api.ValidatedContext
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
 import semlang.parser.parseFileNamed
@@ -32,7 +31,7 @@ class ProjectEulerExamples {
 
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
         val functionsMap2 = parseFileNamed(filename)
-        return SemlangForwardInterpreter(validateContext(functionsMap2).assume())
+        return SemlangForwardInterpreter(validateContext(functionsMap2))
     }
 }
 
