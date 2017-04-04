@@ -215,6 +215,15 @@ class InterpreterTests {
     }
 
     @Test
+    fun testFunctionBinding3() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/functionBinding3.sem")
+        val myStuff = Package(listOf("myCode"))
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(2), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(-1))))
+        assertEquals(int(5), interpreter.interpret(FunctionId(myStuff, "addThreeV1"), listOf(int(2))))
+    }
+
+    @Test
     fun testSequences1() {
         val functionsMap = parseAndValidateFile("src/test/semlang/sequences1.sem")
         val myStuff = Package(listOf("myStuff"))
