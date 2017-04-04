@@ -147,6 +147,28 @@ class InterpreterTests {
     }
 
     @Test
+    fun testStructs6() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/structs6.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val mainFunctionId = FunctionId(myStuff, "myFunction")
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(1), interpreter.interpret(mainFunctionId, listOf(int(0))))
+        assertEquals(int(2), interpreter.interpret(mainFunctionId, listOf(int(1))))
+        assertEquals(int(12), interpreter.interpret(mainFunctionId, listOf(int(11))))
+    }
+
+    @Test
+    fun testStructs7() {
+        val functionsMap = parseAndValidateFile("src/test/semlang/structs6.sem")
+        val myStuff = Package(listOf("myStuff"))
+        val mainFunctionId = FunctionId(myStuff, "myFunction")
+        val interpreter = SemlangForwardInterpreter(functionsMap)
+        assertEquals(int(1), interpreter.interpret(mainFunctionId, listOf(int(0))))
+        assertEquals(int(2), interpreter.interpret(mainFunctionId, listOf(int(1))))
+        assertEquals(int(12), interpreter.interpret(mainFunctionId, listOf(int(11))))
+    }
+
+    @Test
     fun testLists1() {
         val functionsMap = parseAndValidateFile("src/test/semlang/lists1.sem")
         val myStuff = Package(listOf("myCode"))

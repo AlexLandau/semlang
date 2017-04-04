@@ -5,7 +5,7 @@ struct TwoNaturals {
 
 function myStuff.gcd(n1: Natural, n2: Natural): Natural {
   let base: TwoNaturals = TwoNaturals(n1, n2)
-  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_);
+  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
   let euclidSeq: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
   return Sequence.first<TwoNaturals>(euclidSeq, TwoNaturals.equal|(_))->left
 }

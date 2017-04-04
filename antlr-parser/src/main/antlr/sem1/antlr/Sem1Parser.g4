@@ -73,9 +73,13 @@ simple_type_id : ID | packag DOT ID ;
 expression : IF LPAREN expression RPAREN block ELSE block
   | simple_type_id DOT LITERAL
   | expression ARROW ID
+  | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
   | function_id PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
+  | expression LESS_THAN cd_types GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference with type parameters
   | function_id LESS_THAN cd_types GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference with type parameters
+  | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | function_id LPAREN cd_expressions RPAREN // Calling function reference OR function variable
+  | expression LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
   | function_id LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
   | ID // Variable
   ;

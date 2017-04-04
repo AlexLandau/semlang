@@ -52,19 +52,22 @@ private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: Am
     return Block(assignments, returnedExpression)
 }
 
+// TODO: Is it inefficient for varIds to be an ArrayList here?
 fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpression): Expression {
     return when (expression) {
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),
                 expression.id,
                 expression.position)
-        is AmbiguousExpression.FunctionBinding -> {
+        is AmbiguousExpression.VarOrNamedFunctionBinding -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
                 if (expression.chosenParameters.size > 0) {
                     error("Had explicit parameters in a variable-based function binding")
                 }
-                return Expression.VariableFunctionBinding(expression.functionIdOrVariable.functionName,
+                // TODO: The position of the variable is incorrect here
+                return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.functionName, expression.position),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                        chosenParameters = expression.chosenParameters,
                         position = expression.position)
             } else {
 
@@ -74,20 +77,34 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
                         position = expression.position)
             }
         }
+        is AmbiguousExpression.ExpressionOrNamedFunctionBinding -> {
+            val innerExpression = expression.expression
+            if (innerExpression is AmbiguousExpression.Variable) {
+                // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
+                error("The parser is not supposed to create this situation")
+            }
+            return Expression.ExpressionFunctionBinding(
+                    functionExpression = scopeExpression(varIds, innerExpression),
+                    chosenParameters = expression.chosenParameters,
+                    bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                    position = expression.position)
+        }
         is AmbiguousExpression.IfThen -> Expression.IfThen(
                 scopeExpression(varIds, expression.condition),
                 thenBlock = scopeBlock(varIds, expression.thenBlock),
                 elseBlock = scopeBlock(varIds, expression.elseBlock),
                 position = expression.position
         )
-        is AmbiguousExpression.FunctionCall -> {
+        is AmbiguousExpression.VarOrNamedFunctionCall -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
                 if (expression.chosenParameters.size > 0) {
                     error("Had explicit parameters in a variable-based function call")
                 }
-                return Expression.VariableFunctionCall(
-                        variableName = expression.functionIdOrVariable.functionName,
+                return Expression.ExpressionFunctionCall(
+                        // TODO: The position of the variable is incorrect here
+                        functionExpression = Expression.Variable(expression.functionIdOrVariable.functionName, expression.position),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                        chosenParameters = expression.chosenParameters,
                         position = expression.position)
             } else {
                 return Expression.NamedFunctionCall(
@@ -96,6 +113,18 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
                         chosenParameters = expression.chosenParameters,
                         position = expression.position)
             }
+        }
+        is AmbiguousExpression.ExpressionOrNamedFunctionCall -> {
+            val innerExpression = expression.expression
+            if (innerExpression is AmbiguousExpression.Variable) {
+                // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
+                error("The parser is not supposed to create this situation")
+            }
+            return Expression.ExpressionFunctionCall(
+                    functionExpression = scopeExpression(varIds, innerExpression),
+                    arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                    chosenParameters = expression.chosenParameters,
+                    position = expression.position)
         }
         is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.position)
         is AmbiguousExpression.Variable -> Expression.Variable(expression.name, expression.position)
@@ -200,27 +229,39 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
         return AmbiguousExpression.Follow(inner, name, positionOf(expression))
     }
 
-    if (expression.PIPE() != null) {
-        val functionIdOrVar = parseFunctionId(expression.function_id())
+    if (expression.LPAREN() != null) {
+        val innerExpression = if (expression.expression() != null) {
+            parseExpression(expression.expression())
+        } else {
+            null
+        }
+        val functionIdOrVar = if (expression.function_id() != null) {
+            parseFunctionId(expression.function_id())
+        } else {
+            null
+        }
+
         val chosenParameters = if (expression.LESS_THAN() != null) {
             parseCommaDelimitedTypes(expression.cd_types())
         } else {
             listOf()
         }
-        val bindings = parseBindings(expression.cd_expressions_or_underscores())
+        if (expression.PIPE() != null) {
+            val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-        return AmbiguousExpression.FunctionBinding(functionIdOrVar, chosenParameters, bindings, positionOf(expression))
-    }
-
-    if (expression.LPAREN() != null) {
-        val functionId = parseFunctionId(expression.function_id())
-        val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-        val groundParameters = if (expression.LESS_THAN() != null) {
-            parseCommaDelimitedTypes(expression.cd_types())
-        } else {
-            listOf()
+            if (functionIdOrVar != null) {
+                return AmbiguousExpression.VarOrNamedFunctionBinding(functionIdOrVar, chosenParameters, bindings, positionOf(expression))
+            } else {
+                return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, chosenParameters, bindings, positionOf(expression))
+            }
         }
-        return AmbiguousExpression.FunctionCall(functionId, arguments, groundParameters, positionOf(expression))
+
+        val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+        if (functionIdOrVar != null) {
+            return AmbiguousExpression.VarOrNamedFunctionCall(functionIdOrVar, arguments, chosenParameters, positionOf(expression))
+        } else {
+            return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, positionOf(expression))
+        }
     }
 
     if (expression.ID() != null) {

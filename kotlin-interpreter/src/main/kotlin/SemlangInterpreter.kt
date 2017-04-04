@@ -89,11 +89,12 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                     throw IllegalStateException("Trying to use -> on a non-struct object")
                 }
             }
-            is TypedExpression.VariableFunctionCall -> {
+            is TypedExpression.ExpressionFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
-                val function: SemObject = assignments[expression.variableName] ?: throw IllegalArgumentException("No variable defined with name ${expression.variableName}")
+                val function = evaluateExpression(expression.functionExpression, assignments)
+
                 if (function !is SemObject.FunctionBinding) {
-                    throw IllegalArgumentException("Trying to call ${expression.variableName} as a function, but it is not a function")
+                    throw IllegalArgumentException("Trying to call the result of ${expression.functionExpression} as a function, but it is not a function")
                 }
                 val argumentsItr = arguments.iterator()
                 val inputs = function.bindings.map { it ?: argumentsItr.next() }
@@ -124,10 +125,11 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
                 return SemObject.FunctionBinding(functionId, bindings)
             }
-            is TypedExpression.VariableFunctionBinding -> {
-                val function: SemObject = assignments[expression.variableName] ?: throw IllegalArgumentException("No variable defined with name ${expression.variableName}")
+            is TypedExpression.ExpressionFunctionBinding -> {
+                val function = evaluateExpression(expression.functionExpression, assignments)
+
                 if (function !is SemObject.FunctionBinding) {
-                    throw IllegalArgumentException("Trying to reference ${expression.variableName} as a function for binding, but it is not a function")
+                    throw IllegalArgumentException("Trying to reference ${expression.functionExpression} as a function for binding, but it is not a function")
                 }
                 val earlierBindings = function.bindings
                 val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }

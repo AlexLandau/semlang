@@ -77,7 +77,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
 
             ExpressionMultisplitResult(replacementExpression, conditionResult.newAssignments)
         }
-        is TypedExpression.VariableFunctionCall -> {
+        is TypedExpression.ExpressionFunctionCall -> {
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val newArguments = expression.arguments.map { argument ->
@@ -86,7 +86,10 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
                 result.variable
             }
 
-            val replacementExpression = TypedExpression.VariableFunctionCall(expression.type, expression.variableName, newArguments)
+            val result = tryMakingIntoVar(expression.functionExpression, varNamesToPreserve, varNamesInScope)
+            newAssignments.addAll(result.newAssignments)
+
+            val replacementExpression = TypedExpression.ExpressionFunctionCall(expression.type, result.variable, newArguments)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
         is TypedExpression.NamedFunctionCall -> {
@@ -101,7 +104,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
             val replacementExpression = TypedExpression.NamedFunctionCall(expression.type, expression.functionId, newArguments)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
-        is TypedExpression.VariableFunctionBinding -> {
+        is TypedExpression.ExpressionFunctionBinding -> {
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val newBindings = expression.bindings.map { binding ->
@@ -114,7 +117,10 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
                 }
             }
 
-            val replacementExpression = TypedExpression.VariableFunctionBinding(expression.type, expression.variableName, newBindings)
+            val result = tryMakingIntoVar(expression.functionExpression, varNamesToPreserve, varNamesInScope)
+            newAssignments.addAll(result.newAssignments)
+
+            val replacementExpression = TypedExpression.ExpressionFunctionBinding(expression.type, result.variable, newBindings)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
         is TypedExpression.NamedFunctionBinding -> {
@@ -130,7 +136,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
                 }
             }
 
-            val replacementExpression = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, expression.chosenParameters, newBindings)
+            val replacementExpression = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, newBindings)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
     }
@@ -186,7 +192,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
 
             MakeIntoVarResult(typedVariable, assignments)
         }
-        is TypedExpression.VariableFunctionCall -> {
+        is TypedExpression.ExpressionFunctionCall -> {
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val newArguments = expression.arguments.map { argument ->
@@ -195,7 +201,10 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
                 subresult.variable
             }
 
-            val newFunctionCall = TypedExpression.VariableFunctionCall(expression.type, expression.variableName, newArguments)
+            val subresult = tryMakingIntoVar(expression.functionExpression, varNamesToPreserve, varNamesInScope)
+            newAssignments.addAll(subresult.newAssignments)
+
+            val newFunctionCall = TypedExpression.ExpressionFunctionCall(expression.type, subresult.variable, newArguments)
 
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
@@ -220,7 +229,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
 
             MakeIntoVarResult(typedVariable, newAssignments)
         }
-        is TypedExpression.VariableFunctionBinding -> {
+        is TypedExpression.ExpressionFunctionBinding -> {
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val newBindings = expression.bindings.map { binding ->
@@ -233,7 +242,10 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
                 }
             }
 
-            val newFunctionCall = TypedExpression.VariableFunctionBinding(expression.type, expression.variableName, newBindings)
+            val subresult = tryMakingIntoVar(expression.functionExpression, varNamesToPreserve, varNamesInScope)
+            newAssignments.addAll(subresult.newAssignments)
+
+            val newFunctionCall = TypedExpression.ExpressionFunctionBinding(expression.type, subresult.variable, newBindings)
 
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
@@ -254,7 +266,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
                 }
             }
 
-            val newFunctionCall = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, expression.chosenParameters, newBindings)
+            val newFunctionCall = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, newBindings)
 
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))

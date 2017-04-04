@@ -123,27 +123,30 @@ private fun validateExpression(expression: Expression, variableTypes: Map<String
         is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
         is Expression.Follow -> validateFollowExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
         is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
-        is Expression.VariableFunctionCall -> validateVariableFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+        is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+
         is Expression.Literal -> validateLiteralExpression(expression)
         is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
-        is Expression.VariableFunctionBinding -> validateVariableFunctionBinding(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+        is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(expression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
     }
 }
 
-fun validateVariableFunctionBinding(expression: Expression.VariableFunctionBinding, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
-    val variableName = expression.variableName
-    val functionType = variableTypes[variableName]
-    if (functionType == null) {
-        return Try.Error("The function $containingFunctionId references a function or variable $variableName that was not found")
+fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+    val functionExpressionMaybe = validateExpression(expression.functionExpression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+    val functionExpression = when (functionExpressionMaybe) {
+        is Try.Error -> return functionExpressionMaybe.cast()
+        is Try.Success -> functionExpressionMaybe.result
     }
+
+    val functionType = functionExpression.type
     if (functionType !is Type.FunctionType) {
-        return Try.Error("The function $containingFunctionId tries to call $variableName like a function, but it has a non-function type $functionType")
+        return Try.Error("The function $containingFunctionId tries to call $functionExpression like a function, but it has a non-function type $functionType")
     }
 
     val preBindingArgumentTypes = functionType.argTypes
 
     if (preBindingArgumentTypes.size != expression.bindings.size) {
-        return Try.Error("In function $containingFunctionId, tried to bind function variable $variableName with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments")
+        return Try.Error("In function $containingFunctionId, tried to bind $functionExpression with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments")
     }
 
     val bindings = expression.bindings.map { binding ->
@@ -175,7 +178,7 @@ fun validateVariableFunctionBinding(expression: Expression.VariableFunctionBindi
             postBindingArgumentTypes,
             functionType.outputType)
 
-    return Try.Success(TypedExpression.VariableFunctionBinding(postBindingType, variableName, bindings))
+    return Try.Success(TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings))
 }
 
 fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
@@ -230,7 +233,7 @@ fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, va
             postBindingArgumentTypes,
             signature.outputType.replacingParameters(parameterMap))
 
-    return Try.Success(TypedExpression.NamedFunctionBinding(postBindingType, functionId, chosenParameters, bindings))
+    return Try.Success(TypedExpression.NamedFunctionBinding(postBindingType, functionId, bindings))
 }
 
 private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
@@ -267,14 +270,16 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     return Try.Success(TypedExpression.Follow(type, innerExpression, expression.id))
 }
 
-private fun validateVariableFunctionCallExpression(expression: Expression.VariableFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
-    val variableName = expression.variableName
-    val functionType = variableTypes[variableName]
-    if (functionType == null) {
-        return Try.Error("The function $containingFunctionId references a function or variable $variableName that was not found")
+private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {
+    val functionExpressionMaybe = validateExpression(expression.functionExpression, variableTypes, functionTypeSignatures, structs, containingFunctionId)
+    val functionExpression = when (functionExpressionMaybe) {
+        is Try.Error -> return functionExpressionMaybe.cast()
+        is Try.Success -> functionExpressionMaybe.result
     }
+
+    val functionType = functionExpression.type
     if (functionType !is Type.FunctionType) {
-        return Try.Error("The function $containingFunctionId tries to call $variableName like a function, but it has a non-function type $functionType")
+        return Try.Error("The function $containingFunctionId tries to call $functionExpression like a function, but it has a non-function type $functionType")
     }
 
     val arguments = ArrayList<TypedExpression>()
@@ -289,10 +294,10 @@ private fun validateVariableFunctionCallExpression(expression: Expression.Variab
     val argumentTypes = arguments.map(TypedExpression::type)
 
     if (argumentTypes != functionType.argTypes) {
-        return Try.Error("The function $containingFunctionId tries to call function variable $variableName with argument types $argumentTypes, but the function expects argument types ${functionType.argTypes}")
+        return Try.Error("The function $containingFunctionId tries to call the result of $functionExpression with argument types $argumentTypes, but the function expects argument types ${functionType.argTypes}")
     }
 
-    return Try.Success(TypedExpression.VariableFunctionCall(functionType.outputType, variableName, arguments))
+    return Try.Success(TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments))
 }
 
 private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, containingFunctionId: FunctionId): Try<TypedExpression> {

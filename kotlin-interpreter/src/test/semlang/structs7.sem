@@ -1,0 +1,14 @@
+
+struct myStuff.Operator {
+  identity: Integer
+  apply: (Integer, Integer) -> Integer
+}
+
+function myStuff.myFunction(input: Integer): Integer {
+  let 1: Integer = Integer."1"
+  let plusOperator: myStuff.Operator = myStuff.Operator(Integer."0", Integer.plus|(_,_))
+  // Use a function binding just to test that
+  let incrementer: (Integer) -> Integer = plusOperator->apply|(_, 1)
+  let output: Integer = incrementer(input)
+  return output
+}

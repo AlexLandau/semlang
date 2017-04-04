@@ -5,7 +5,7 @@ struct TwoNaturals {
 
 function myStuff.fibonacci(n: Natural): Natural {
   let base: TwoNaturals = TwoNaturals(Natural."1", Natural."0")
-  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_);
+  let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
   let fibonaccis: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
   return Sequence.get<TwoNaturals>(fibonaccis, n)->right
 }

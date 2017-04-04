@@ -25,7 +25,10 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
 fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
     val map = HashMap<FunctionId, NativeFunction>()
     list.forEach { nativeFunction ->
-        map.put(nativeFunction.id, nativeFunction)
+        val previouslyThere = map.put(nativeFunction.id, nativeFunction)
+        if (previouslyThere != null) {
+            error("Defined two native functions with the ID " + nativeFunction.id)
+        }
     }
     return map
 }
@@ -141,7 +144,7 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
     }))
 
     // Natural.max
-    list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(naturalDot("max"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0]
         if (list is SemObject.SemList) {
             val max = list.contents.maxBy { semObj ->
