@@ -16,6 +16,8 @@ sealed class SemObject {
     }
     data class Boolean(val value: kotlin.Boolean) : SemObject()
     data class Struct(val struct: semlang.api.Struct, val objects: List<SemObject>): SemObject()
+    // An instance of an interface.
+    data class Instance(val interfaceDef: semlang.api.Interface, val dataObject: SemObject, val methods: List<SemObject.FunctionBinding>): SemObject()
     sealed class Try: SemObject() {
         data class Success(val contents: SemObject): Try()
         object Failure: Try()

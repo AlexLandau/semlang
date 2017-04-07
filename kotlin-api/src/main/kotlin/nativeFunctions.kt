@@ -209,3 +209,13 @@ fun getNativeStructs(): Map<FunctionId, Struct> {
 
     return toMap(structs)
 }
+
+fun getNativeInterfaces(): Map<FunctionId, Interface> {
+    val interfaces = ArrayList<Interface>()
+
+    val typeT = Type.NamedType.forParameter("T")
+
+    // TODO: Make Sequence an interface, with some sort of BasicSequence struct
+
+    return toMap(interfaces)
+}

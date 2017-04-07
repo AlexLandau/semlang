@@ -3,8 +3,7 @@ package semlang.interpreter.test
 import org.junit.Assert.assertEquals
 import org.junit.Ignore
 import org.junit.Test
-import semlang.api.FunctionId
-import semlang.api.Package
+import semlang.api.*
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
 import semlang.parser.parseFileNamed

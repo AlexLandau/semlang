@@ -499,14 +499,9 @@ fun parseFileNamed(filename: String): InterpreterContext {
     val extractor = MyListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
-    return InterpreterContext(indexById(extractor.functions), indexStructsById(extractor.structs))
+    return InterpreterContext(indexById(extractor.functions), indexById(extractor.structs), indexById(extractor.interfaces))
 }
 
-private fun indexStructsById(structs: MutableList<Struct>): Map<FunctionId, Struct> {
-    return structs.associateBy(Struct::id)
+private fun <T: HasFunctionId> indexById(indexables: List<T>): Map<FunctionId, T> {
+    return indexables.associateBy(HasFunctionId::id)
 }
-
-private fun indexById(functions: MutableList<Function>): Map<FunctionId, Function> {
-    return functions.associateBy(Function::id)
-}
-

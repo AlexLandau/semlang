@@ -159,11 +159,15 @@ interface HasFunctionId {
 data class Member(val name: String, val type: Type)
 
 data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>) : HasFunctionId {
-
+    fun getIndexForName(name: String): Int {
+        return methods.indexOfFirst { method -> method.name == name }
+    }
 }
-data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type)
+data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
+    val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
+}
 
 //TODO: Put somewhere different?
 //TODO: Validate inputs (non-overlapping keys)
-data class InterpreterContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>)
-data class ValidatedContext(val functions: Map<FunctionId, ValidatedFunction>, val structs: Map<FunctionId, Struct>)
+data class InterpreterContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
+data class ValidatedContext(val functions: Map<FunctionId, ValidatedFunction>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)

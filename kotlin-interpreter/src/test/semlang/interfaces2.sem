@@ -1,0 +1,44 @@
+
+// Strictly speaking, this could be a struct, but it's a good first test
+// (Situtations where it's really necessary can get kind of hairy)
+
+interface myCode.NaturalOperator {
+    getIdentity(): Natural
+    apply(left: Natural, right: Natural): Natural
+}
+
+function myCode.squareDistance(a: Natural, b: Natural): Natural {
+    let plusOperator: myCode.NaturalOperator = getPlusOperator()
+    let timesOperator: myCode.NaturalOperator = getTimesOperator()
+    let aSquared: Natural = timesOperator->apply(a, a)
+    let bSquared: Natural = selfApply(timesOperator, b)
+    return plusOperator->apply(aSquared, bSquared)
+}
+
+function selfApply(operator: myCode.NaturalOperator, value: Natural): Natural {
+    // Throw in a function binding, just because we can
+    let applyOnce: (Natural) -> Natural = operator->apply|(value, _)
+    return applyOnce(value)
+}
+
+function getPlusOperator(): myCode.NaturalOperator {
+    return myCode.NaturalOperator<Natural>(Natural."0", implGetIdentity|(_), implPlus|(_, _, _))
+}
+
+// TODO: Someday add a library function for this?
+function implGetIdentity(identity: Natural): Natural {
+    return identity
+}
+
+// TODO: Do something with lambda expressions that prevents us from needing this
+function implPlus(identity: Natural, left: Natural, right: Natural): Natural {
+    return Natural.plus(left, right)
+}
+
+function getTimesOperator(): myCode.NaturalOperator {
+    return myCode.NaturalOperator<Natural>(Natural."1", implGetIdentity|(_), implTimes|(_, _, _))
+}
+
+function implTimes(identity: Natural, left: Natural, right: Natural): Natural {
+    return Natural.times(left, right)
+}

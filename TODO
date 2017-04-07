@@ -15,7 +15,8 @@
   - Make code style more consistent
 - Function definitions as tests
 - Can we remove TypedExpression.NamedFunctionBinding#chosenParameters?
-- Support function references to struct constructors
+- Support function bindings of struct constructors
+- Support function bindings of interface constructors
 - Support e.g. foo->bar() calls and foo->bar|() bindings directly, if the parser doesn't hate it
 - List type (firstIndex, map)
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter

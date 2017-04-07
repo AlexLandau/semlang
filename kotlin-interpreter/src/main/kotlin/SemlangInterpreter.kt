@@ -3,6 +3,7 @@ package semlang.interpreter
 import semlang.api.*
 import java.math.BigInteger
 import java.util.*
+import java.util.stream.Collectors
 
 interface SemlangInterpreter {
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject
@@ -22,6 +23,12 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         val structFunction: Struct? = context.structs[functionId]
         if (structFunction != null) {
             return evaluateStructConstructor(structFunction, arguments)
+        }
+
+        // Handle interface constructors
+        val interfaceFunction: Interface? = context.interfaces[functionId]
+        if (interfaceFunction != null) {
+            return evaluateInterfaceConstructor(interfaceFunction, arguments)
         }
 
         // Handle non-native functions
@@ -50,6 +57,28 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + structFunction)
         }
         return SemObject.Struct(structFunction, arguments)
+    }
+
+    private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {
+        if (arguments.size != interfaceDef.methods.size + 1) {
+            throw IllegalArgumentException("Wrong number of arguments for interface constructor " + interfaceDef.id)
+        }
+        val dataObject = arguments[0];
+        // Bind the first object to each of the
+        val fixedBindings = arguments.stream()
+                .skip(1)
+                .map { obj -> obj as? SemObject.FunctionBinding ?: error("Non-function binding argument for a method on an instance") }
+                .map { binding -> if (binding.bindings[0] != null) {
+                        error("Was expecting a null binding for the first element")
+                    } else {
+                        //return binding.copy(bindings = binding.bindings.)
+                        val newBindings = ArrayList(binding.bindings)
+                        newBindings.set(0, dataObject)
+                        binding.copy(bindings = newBindings)
+                    }
+                }
+                .collect(Collectors.toList())
+        return SemObject.Instance(interfaceDef, arguments[0], fixedBindings)
     }
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>): SemObject {
@@ -85,8 +114,12 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 if (innerResult is SemObject.Struct) {
                     val index = innerResult.struct.getIndexForName(name)
                     return innerResult.objects[index]
+                } else if (innerResult is SemObject.Instance) {
+                    val index = innerResult.interfaceDef.getIndexForName(name)
+                    val functionBinding = innerResult.methods[index]
+                    return functionBinding
                 } else {
-                    throw IllegalStateException("Trying to use -> on a non-struct object")
+                    throw IllegalStateException("Trying to use -> on a non-struct, non-interface object")
                 }
             }
             is TypedExpression.ExpressionFunctionCall -> {
