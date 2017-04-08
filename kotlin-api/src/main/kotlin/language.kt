@@ -13,6 +13,9 @@ data class FunctionId(val thePackage: Package, val functionName: String) {
             return FunctionId(Package.EMPTY, name)
         }
     }
+    fun toPackage(): Package {
+        return Package(thePackage.strings + functionName)
+    }
 }
 interface ParameterizableType {
     fun getParameterizedTypes(): List<Type>
@@ -162,6 +165,8 @@ data class Interface(override val id: FunctionId, val typeParameters: List<Strin
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
+    val adapterId: FunctionId = FunctionId(id.toPackage(), "Adapter")
+    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) })
 }
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
@@ -170,4 +175,4 @@ data class Method(val name: String, val typeParameters: List<String>, val argume
 //TODO: Put somewhere different?
 //TODO: Validate inputs (non-overlapping keys)
 data class InterpreterContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
-data class ValidatedContext(val functions: Map<FunctionId, ValidatedFunction>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
+data class ValidatedContext(val functions: Map<FunctionId, ValidatedFunction>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>, val interfacesByAdapterId: Map<FunctionId, Interface>)

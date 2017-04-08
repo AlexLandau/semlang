@@ -25,7 +25,13 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             return evaluateStructConstructor(structFunction, arguments)
         }
 
-        // Handle interface constructors
+        // Handle adapter constructors
+        val adapterFunction: Interface? = context.interfacesByAdapterId[functionId]
+        if (adapterFunction != null) {
+            return evaluateAdapterConstructor(adapterFunction, arguments)
+        }
+
+        // Handle instance constructors
         val interfaceFunction: Interface? = context.interfaces[functionId]
         if (interfaceFunction != null) {
             return evaluateInterfaceConstructor(interfaceFunction, arguments)
@@ -59,21 +65,26 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         return SemObject.Struct(structFunction, arguments)
     }
 
+    private fun evaluateAdapterConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {
+        if (arguments.size != interfaceDef.methods.size) {
+            throw IllegalArgumentException("Wrong number of arguments for adapter constructor " + interfaceDef.adapterId)
+        }
+        return SemObject.Struct(interfaceDef.adapterStruct, arguments)
+    }
+
     private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {
-        if (arguments.size != interfaceDef.methods.size + 1) {
+        if (arguments.size != 2) {
             throw IllegalArgumentException("Wrong number of arguments for interface constructor " + interfaceDef.id)
         }
-        val dataObject = arguments[0];
-        // Bind the first object to each of the
-        val fixedBindings = arguments.stream()
-                .skip(1)
-                .map { obj -> obj as? SemObject.FunctionBinding ?: error("Non-function binding argument for a method on an instance") }
+        val dataObject = arguments[0]
+        val adapter = arguments[1] as? SemObject.Struct ?: error("Passed a non-adapter object to an instance constructor")
+        val fixedBindings = adapter.objects.stream()
+                .map { obj -> obj as? SemObject.FunctionBinding ?: error("Non-function binding argument for a method in an adapter") }
                 .map { binding -> if (binding.bindings[0] != null) {
                         error("Was expecting a null binding for the first element")
                     } else {
-                        //return binding.copy(bindings = binding.bindings.)
                         val newBindings = ArrayList(binding.bindings)
-                        newBindings.set(0, dataObject)
+                        newBindings[0] = dataObject
                         binding.copy(bindings = newBindings)
                     }
                 }

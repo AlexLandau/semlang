@@ -20,7 +20,7 @@ function selfApply(operator: myCode.NaturalOperator, value: Natural): Natural {
 }
 
 function getPlusOperator(): myCode.NaturalOperator {
-    return myCode.NaturalOperator<Natural>(Natural."0", implGetIdentity|(_), implPlus|(_, _, _))
+    return myCode.NaturalOperator<Natural>(Natural."0", getNaturalOperatorAdapter(implPlus|(_, _, _)))
 }
 
 // TODO: Someday add a library function for this?
@@ -34,7 +34,11 @@ function implPlus(identity: Natural, left: Natural, right: Natural): Natural {
 }
 
 function getTimesOperator(): myCode.NaturalOperator {
-    return myCode.NaturalOperator<Natural>(Natural."1", implGetIdentity|(_), implTimes|(_, _, _))
+    return myCode.NaturalOperator<Natural>(Natural."1", getNaturalOperatorAdapter(implTimes|(_, _, _)))
+}
+
+function getNaturalOperatorAdapter(applyMethod: (Natural, Natural, Natural) -> Natural): myCode.NaturalOperator.Adapter<Natural> {
+    return myCode.NaturalOperator.Adapter<Natural>(implGetIdentity|(_), applyMethod)
 }
 
 function implTimes(identity: Natural, left: Natural, right: Natural): Natural {

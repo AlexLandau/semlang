@@ -2,6 +2,7 @@ package semlang.parser
 
 import semlang.api.*
 import semlang.api.Function
+import semlang.api.Type.NamedType.Companion.forParameter
 import semlang.interpreter.getTypeValidatorFor
 import java.util.*
 
@@ -30,8 +31,9 @@ fun validateContext(context: InterpreterContext): ValidatedContext {
     val functionTypeSignatures = getFunctionTypeSignatures(context)
     val structs = getStructs(context)
     val interfaces = getInterfaces(context)
+    val interfacesByAdapterId = interfaces.values.associateBy(Interface::adapterId)
     val validatedFunctions = validateFunctions(context.functions, functionTypeSignatures, structs, interfaces)
-    return ValidatedContext(validatedFunctions, structs, interfaces)
+    return ValidatedContext(validatedFunctions, structs, interfaces, interfacesByAdapterId)
 }
 
 private fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, interfaces: Map<FunctionId, Interface>): Map<FunctionId, ValidatedFunction> {
@@ -367,7 +369,8 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Map<Function
         if (signatures.containsKey(id)) {
             fail("Interface name $id has an overlap with a native function or struct")
         }
-        signatures.put(id, getInterfaceConstructorSignature(interfac))
+        signatures.put(interfac.adapterId, getAdapterConstructorSignature(interfac))
+        signatures.put(id, getInstanceConstructorSignature(interfac))
     }
     context.functions.entries.forEach { entry ->
         val (id, function) = entry
@@ -384,7 +387,25 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Map<Function
 }
 
 // TODO: Make this reusable in sem1 -> sem0 transformation
-fun getInterfaceConstructorSignature(interfac: Interface): TypeSignature {
+fun getAdapterConstructorSignature(interfac: Interface): TypeSignature {
+    val explicitTypeParameters = interfac.typeParameters
+    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
+    val allTypeParameters = ArrayList(explicitTypeParameters)
+    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
+
+    val argumentTypes = ArrayList<Type>()
+    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+    interfac.methods.forEach { method ->
+        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
+    }
+
+    val outputType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+    return TypeSignature(interfac.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+}
+
+// TODO: Make this reusable in sem1 -> sem0 transformation
+fun getInstanceConstructorSignature(interfac: Interface): TypeSignature {
     val explicitTypeParameters = interfac.typeParameters
     val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
     val allTypeParameters = ArrayList(explicitTypeParameters)
@@ -393,9 +414,9 @@ fun getInterfaceConstructorSignature(interfac: Interface): TypeSignature {
     val argumentTypes = ArrayList<Type>()
     val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
     argumentTypes.add(dataStructType)
-    interfac.methods.forEach { method ->
-        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-    }
+
+    val adapterType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    argumentTypes.add(adapterType)
 
     val outputType = Type.NamedType(interfac.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
 
