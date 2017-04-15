@@ -1,6 +1,5 @@
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
-  - Rewrite NativeFunctions implementations with as?/?: for casting
   - Turn NativeFunctions into library code written in semlang where possible
     - It would also be nice to have this in some .class form in a produced .jar, maybe?
   - Use a code coverage tool for the Kotlin tests

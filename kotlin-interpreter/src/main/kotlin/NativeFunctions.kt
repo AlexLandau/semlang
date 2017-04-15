@@ -66,56 +66,36 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 
     // Integer.times
     list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Integer && right is SemObject.Integer) {
-            SemObject.Integer(left.value * right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Integer(left.value * right.value)
     }))
 
     // Integer.plus
     list.add(NativeFunction(integerDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Integer && right is SemObject.Integer) {
-            SemObject.Integer(left.value + right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Integer(left.value + right.value)
     }))
 
     // Integer.minus
     list.add(NativeFunction(integerDot("minus"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Integer && right is SemObject.Integer) {
-            SemObject.Integer(left.value - right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Integer(left.value - right.value)
     }))
 
     // Integer.equals
     list.add(NativeFunction(integerDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Integer && right is SemObject.Integer) {
-            SemObject.Boolean(left.value == right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Boolean(left.value == right.value)
     }))
 
     // Integer.fromNatural
     list.add(NativeFunction(integerDot("fromNatural"), { args: List<SemObject>, _: InterpreterCallback ->
-        val natural = args[0]
-        if (natural is SemObject.Natural) {
-            SemObject.Integer(natural.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val natural = args[0] as? SemObject.Natural ?: typeError()
+        SemObject.Integer(natural.value)
     }))
 }
 
@@ -156,18 +136,14 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
 
     // Natural.max
     list.add(NativeFunction(naturalDot("max"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0]
-        if (list is SemObject.SemList) {
-            val max = list.contents.maxBy { semObj ->
-                (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
-            }
-            if (max == null) {
-                SemObject.Try.Failure;
-            } else {
-                SemObject.Try.Success(max);
-            }
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val max = list.contents.maxBy { semObj ->
+            (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
+        }
+        if (max == null) {
+            SemObject.Try.Failure;
         } else {
-            throw IllegalArgumentException()
+            SemObject.Try.Success(max);
         }
     }))
 
@@ -194,24 +170,19 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
 
     // Natural.rangeInclusive
     list.add(NativeFunction(naturalDot("rangeInclusive"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            if (left.value > right.value) {
-                SemObject.SemList(listOf())
-            } else {
-                // This approach reduces issues around large numbers that are still close to each other
-                val difference = right.value.minus(left.value).longValueExact()
-                val range = (0..difference)
-                        .asSequence()
-                        .map { left.value.plus(BigInteger.valueOf(it)) }
-                        .map { SemObject.Natural(it) }
-                        .toList()
-                SemObject.SemList(range)
-            }
-//            SemObject.Natural((left.value - right.value).abs())
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        if (left.value > right.value) {
+            SemObject.SemList(listOf())
         } else {
-            throw IllegalArgumentException()
+            // This approach reduces issues around large numbers that are still close to each other
+            val difference = right.value.minus(left.value).longValueExact()
+            val range = (0..difference)
+                    .asSequence()
+                    .map { left.value.plus(BigInteger.valueOf(it)) }
+                    .map { SemObject.Natural(it) }
+                    .toList()
+            SemObject.SemList(range)
         }
     }))
 }
@@ -239,73 +210,50 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 
     // List.filter
     list.add(NativeFunction(listDot("filter"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val list = args[0]
-        val filter = args[1]
-        if (list is SemObject.SemList
-                && filter is SemObject.FunctionBinding) {
-            val filtered = list.contents.filter { semObject ->
-                val callbackResult = apply(filter, listOf(semObject))
-                (callbackResult as? SemObject.Boolean)?.value ?: error("")
-            }
-            SemObject.SemList(filtered)
-        } else {
-            throw IllegalArgumentException()
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val filter = args[1] as? SemObject.FunctionBinding ?: typeError()
+        val filtered = list.contents.filter { semObject ->
+            val callbackResult = apply(filter, listOf(semObject))
+            (callbackResult as? SemObject.Boolean)?.value ?: error("")
         }
+        SemObject.SemList(filtered)
     }))
 
     // List.map
     list.add(NativeFunction(listDot("map"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val list = args[0]
-        val mapping = args[1]
-        if (list is SemObject.SemList
-                && mapping is SemObject.FunctionBinding) {
-            val mapped = list.contents.map { semObject ->
-                apply(mapping, listOf(semObject))
-            }
-            SemObject.SemList(mapped)
-        } else {
-            throw IllegalArgumentException()
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val mapping = args[1] as? SemObject.FunctionBinding ?: typeError()
+        val mapped = list.contents.map { semObject ->
+            apply(mapping, listOf(semObject))
         }
+        SemObject.SemList(mapped)
     }))
 
     // List.reduce
     list.add(NativeFunction(listDot("reduce"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val list = args[0]
+        val list = args[0] as? SemObject.SemList ?: typeError()
         var result = args[1]
-        val reducer = args[2]
-        if (list is SemObject.SemList
-                && reducer is SemObject.FunctionBinding) {
-            list.contents.forEach { item ->
-                result = apply(reducer, listOf(result, item))
-            }
-            result
-        } else {
-            throw IllegalArgumentException()
+        val reducer = args[2] as? SemObject.FunctionBinding ?: typeError()
+        list.contents.forEach { item ->
+            result = apply(reducer, listOf(result, item))
         }
+        result
     }))
 
     // List.size
     list.add(NativeFunction(listDot("size"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0]
-        if (list is SemObject.SemList) {
-            SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
-        } else {
-            throw IllegalArgumentException()
-        }
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        SemObject.Natural(BigInteger.valueOf(list.contents.size.toLong()))
     }))
 
     // List.get
     list.add(NativeFunction(listDot("get"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0]
-        val index = args[1]
-        if (list is SemObject.SemList && index is SemObject.Natural) {
-            try {
-                SemObject.Try.Success(list.contents[index.value.toInt()])
-            } catch (e: IndexOutOfBoundsException) {
-                SemObject.Try.Failure
-            }
-        } else {
-            throw IllegalArgumentException()
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val index = args[1] as? SemObject.Natural ?: typeError()
+        try {
+            SemObject.Try.Success(list.contents[index.value.toInt()])
+        } catch (e: IndexOutOfBoundsException) {
+            SemObject.Try.Failure
         }
     }))
 
@@ -327,16 +275,9 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
 
     // Try.assume
     list.add(NativeFunction(tryDot("assume"), { args: List<SemObject>, _: InterpreterCallback ->
-        val theTry = args[0]
-        if (theTry is SemObject.Try) {
-            if (theTry is SemObject.Try.Success) {
-                theTry.contents
-            } else {
-                throw IllegalStateException("Try.assume assumed incorrectly")
-            }
-        } else {
-            throw IllegalArgumentException()
-        }
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        val success = theTry as? SemObject.Try.Success ?: throw IllegalStateException("Try.assume assumed incorrectly")
+        success.contents
     }))
 }
 
