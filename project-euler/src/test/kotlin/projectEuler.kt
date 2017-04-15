@@ -6,6 +6,7 @@ import org.junit.Test
 import semlang.api.*
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
+import semlang.parser.parseFileAgainstStandardLibrary
 import semlang.parser.parseFileNamed
 import semlang.parser.validateContext
 import java.math.BigInteger
@@ -36,7 +37,7 @@ class ProjectEulerExamples {
     }
 
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
-        val functionsMap2 = parseFileNamed(filename)
+        val functionsMap2 = parseFileAgainstStandardLibrary(filename)
         return SemlangForwardInterpreter(validateContext(functionsMap2))
     }
 }

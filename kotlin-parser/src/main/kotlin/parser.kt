@@ -489,7 +489,14 @@ fun parseFile(file: File): InterpreterContext {
     return parseFileNamed(file.absolutePath)
 }
 
+private data class RawContents(val functions: List<Function>, val structs: List<Struct>, val interfaces: List<Interface>)
+
 fun parseFileNamed(filename: String): InterpreterContext {
+    val rawContents = parseFileNamedInner(filename)
+
+    return InterpreterContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
+}
+private fun parseFileNamedInner(filename: String): RawContents {
     val input = ANTLRFileStream(filename)
     val lexer = Sem1Lexer(input)
     val tokens = CommonTokenStream(lexer)
@@ -499,7 +506,31 @@ fun parseFileNamed(filename: String): InterpreterContext {
     val extractor = MyListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
-    return InterpreterContext(indexById(extractor.functions), indexById(extractor.structs), indexById(extractor.interfaces))
+    return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
+//    return InterpreterContext(indexById(extractor.functions), indexById(extractor.structs), indexById(extractor.interfaces))
+}
+
+fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
+    // TODO: This is not going to work consistently
+    val directory = File("../semlang-library/src/main/semlang")
+    // TODO: Will probably want to accept non-flat directory structures at some point
+    val sourceFiles = directory.listFiles() ?: error("It didn't like that directory... " + directory.absolutePath)
+    val functions = ArrayList<Function>()
+    val structs = ArrayList<Struct>()
+    val interfaces = ArrayList<Interface>()
+    sourceFiles.forEach { sourceFile ->
+        val rawContents = parseFileNamedInner(sourceFile.absolutePath)
+        functions.addAll(rawContents.functions)
+        structs.addAll(rawContents.structs)
+        interfaces.addAll(rawContents.interfaces)
+    }
+
+    val ourContents = parseFileNamedInner(filename)
+    functions.addAll(ourContents.functions)
+    structs.addAll(ourContents.structs)
+    interfaces.addAll(ourContents.interfaces)
+
+    return InterpreterContext(indexById(functions), indexById(structs), indexById(interfaces))
 }
 
 private fun <T: HasFunctionId> indexById(indexables: List<T>): Map<FunctionId, T> {
