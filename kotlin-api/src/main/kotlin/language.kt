@@ -4,6 +4,10 @@ data class Package(val strings: List<String>) {
     companion object {
         val EMPTY = Package(listOf())
     }
+
+    override fun toString(): String {
+        return strings.joinToString(".")
+    }
 }
 //TODO: Currently this plays double duty as the ID for functions and structs. We may want to make this a more general
 // "EntityId" type, or some such. (Other concepts like interfaces and annotations will probably use the same type.)
@@ -15,6 +19,14 @@ data class FunctionId(val thePackage: Package, val functionName: String) {
     }
     fun toPackage(): Package {
         return Package(thePackage.strings + functionName)
+    }
+
+    override fun toString(): String {
+        if (thePackage.strings.isEmpty()) {
+            return functionName;
+        } else {
+            return thePackage.toString() + "." + functionName
+        }
     }
 }
 interface ParameterizableType {
@@ -96,6 +108,15 @@ sealed class Type {
 
         override fun getParameterizedTypes(): kotlin.collections.List<Type> {
             return parameters
+        }
+
+        override fun toString(): String {
+            return id.toString() +
+                if (parameters.isEmpty()) {
+                    ""
+                } else {
+                    "<" + parameters.joinToString(", ") + ">"
+                }
         }
     }
 

@@ -1,6 +1,7 @@
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Rewrite NativeFunctions implementations with as?/?: for casting
+  - Turn NativeFunctions into library code written in semlang where possible
   - Use a code coverage tool for the Kotlin tests
 - Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish

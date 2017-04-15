@@ -18,15 +18,79 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
         definitions.add(toTypeSignature(struct))
     }
 
+    getNativeInterfaces().values.forEach { interfac ->
+        definitions.add(toInstanceConstructorSignature(interfac))
+        definitions.add(toAdapterConstructorSignature(interfac))
+    }
+
     return toMap(definitions)
 }
 
-fun toTypeSignature(struct: Struct): TypeSignature {
+private fun toTypeSignature(struct: Struct): TypeSignature {
     val argumentTypes = struct.members.map(Member::type)
     val typeParameters = struct.typeParameters.map { name -> Type.NamedType.forParameter(name) }
     val outputType = Type.NamedType(struct.id, typeParameters)
 
     return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
+}
+
+fun toInstanceConstructorSignature(interfac: Interface): TypeSignature {
+    val explicitTypeParameters = interfac.typeParameters
+    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
+    val allTypeParameters = ArrayList(explicitTypeParameters)
+    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
+
+    val argumentTypes = ArrayList<Type>()
+    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+    argumentTypes.add(dataStructType)
+
+    val adapterType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    argumentTypes.add(adapterType)
+
+    val outputType = Type.NamedType(interfac.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+    return TypeSignature(interfac.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+}
+
+private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
+    if (!explicitTypeParameters.contains("A")) {
+        return "A"
+    }
+    var index = 2
+    while (true) {
+        val name = "A" + index
+        if (!explicitTypeParameters.contains(name)) {
+            return name
+        }
+        index++
+    }
+}
+
+fun toAdapterConstructorSignature(interfac: Interface): TypeSignature {
+    val explicitTypeParameters = interfac.typeParameters
+    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
+    val allTypeParameters = ArrayList(explicitTypeParameters)
+    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
+
+    val argumentTypes = ArrayList<Type>()
+    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+    interfac.methods.forEach { method ->
+        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
+    }
+
+    val outputType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+    return TypeSignature(interfac.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+}
+
+private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
+    val argTypes = ArrayList<Type>()
+    argTypes.add(intrinsicStructType)
+    method.arguments.forEach { argument ->
+        argTypes.add(argument.type)
+    }
+
+    return Type.FunctionType(argTypes, method.returnType)
 }
 
 private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId, T> {
@@ -101,10 +165,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.rangeInclusive
     definitions.add(TypeSignature(FunctionId(naturalPackage, "rangeInclusive"), listOf(Type.NATURAL, Type.NATURAL), Type.List(Type.NATURAL)))
-
-    // Natural.sequence
-    val sequenceNatural = Type.NamedType(FunctionId.of("Sequence"), listOf(Type.NATURAL))
-    definitions.add(TypeSignature(FunctionId(naturalPackage, "sequence"), listOf(), sequenceNatural))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
@@ -182,40 +242,51 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 
     val sequenceT = Type.NamedType(FunctionId.of("Sequence"), listOf(paramT))
 
-    // Sequence.get
-    definitions.add(TypeSignature(FunctionId(sequencePackage, "get"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(sequenceT, Type.NATURAL),
-            outputType = paramT))
+    // Sequence.create
+    // TODO: This should be library code in semlang in most cases, not native
+    definitions.add(TypeSignature(FunctionId(sequencePackage, "create"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(paramT, Type.FunctionType(listOf(paramT), paramT)),
+            outputType = sequenceT))
 
-    // Sequence.first
-    definitions.add(TypeSignature(FunctionId(sequencePackage, "first"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(sequenceT, Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
-            outputType = paramT))
+    // TODO: Consider adding BasicSequence functions here? Or unnecessary?
+}
 
+object NativeStruct {
+    private val typeT = Type.NamedType.forParameter("T")
+    private val typeU = Type.NamedType.forParameter("U")
+    val BASIC_SEQUENCE = Struct(
+            FunctionId.of("BasicSequence"),
+            listOf("T"),
+            listOf(
+                    Member("base", typeT),
+                    Member("successor", Type.FunctionType(listOf(typeT), typeT))
+            ))
 }
 
 fun getNativeStructs(): Map<FunctionId, Struct> {
     val structs = ArrayList<Struct>()
 
-    val typeT = Type.NamedType.forParameter("T")
+    structs.add(NativeStruct.BASIC_SEQUENCE)
 
-    structs.add(Struct(
+    return toMap(structs)
+}
+
+object NativeInterface {
+    private val typeT = Type.NamedType.forParameter("T")
+    val SEQUENCE = Interface(
             FunctionId.of("Sequence"),
             listOf("T"),
             listOf(
-                    Member("base", typeT),
-                    Member("successor", Type.FunctionType(listOf(typeT), typeT))
-            )))
-
-    return toMap(structs)
+                    Method("get", listOf(), listOf(Argument("index", Type.NATURAL)), typeT),
+                    Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
+            )
+    )
 }
 
 fun getNativeInterfaces(): Map<FunctionId, Interface> {
     val interfaces = ArrayList<Interface>()
 
-    val typeT = Type.NamedType.forParameter("T")
-
-    // TODO: Make Sequence an interface, with some sort of BasicSequence struct
+    interfaces.add(NativeInterface.SEQUENCE)
 
     return toMap(interfaces)
 }

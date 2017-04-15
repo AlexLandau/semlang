@@ -1,7 +1,6 @@
 package semlang.interpreter
 
-import semlang.api.FunctionId
-import semlang.api.Package
+import semlang.api.*
 import java.math.BigInteger
 import java.util.*
 
@@ -37,16 +36,29 @@ fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
 private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
     val booleanDot = fun(name: String) = FunctionId(Package(listOf("Boolean")), name)
 
+    // Boolean.not
+    list.add(NativeFunction(booleanDot("not"), { args: List<SemObject>, _: InterpreterCallback ->
+        val bool = args[0] as? SemObject.Boolean ?: typeError()
+        SemObject.Boolean(!bool.value)
+    }))
+
     // Boolean.or
     list.add(NativeFunction(booleanDot("or"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Boolean && right is SemObject.Boolean) {
-            SemObject.Boolean(left.value || right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Boolean ?: typeError()
+        val right = args[1] as? SemObject.Boolean ?: typeError()
+        SemObject.Boolean(left.value || right.value)
     }))
+
+    // Boolean.any
+    list.add(NativeFunction(booleanDot("any"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val anyTrue = list.contents.any { obj ->
+            val boolean = obj as? SemObject.Boolean ?: typeError()
+            boolean.value
+        }
+        SemObject.Boolean(anyTrue)
+    }))
+
 }
 
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
@@ -112,35 +124,34 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
 
     // Natural.times
     list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Natural(left.value * right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural(left.value * right.value)
     }))
 
     // Natural.plus
     list.add(NativeFunction(naturalDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Natural(left.value + right.value)
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural(left.value + right.value)
+    }))
+
+    // Natural.divide
+    list.add(NativeFunction(naturalDot("divide"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        if (right.value.toInt() == 0) {
+            SemObject.Try.Failure
         } else {
-            throw IllegalArgumentException()
+            SemObject.Try.Success(SemObject.Natural(left.value / right.value))
         }
     }))
 
     // Natural.equals
     list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Boolean(left.value == right.value)
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Boolean(left.value == right.value)
     }))
 
     // Natural.max
@@ -162,35 +173,23 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
 
     // Natural.min
     list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Natural(left.value.min(right.value))
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural(left.value.min(right.value))
     }))
 
     // Natural.remainder
     list.add(NativeFunction(naturalDot("remainder"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Natural(left.value.remainder(right.value))
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural(left.value.remainder(right.value))
     }))
 
     // Natural.absoluteDifference
     list.add(NativeFunction(naturalDot("absoluteDifference"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0]
-        val right = args[1]
-        if (left is SemObject.Natural && right is SemObject.Natural) {
-            SemObject.Natural((left.value - right.value).abs())
-        } else {
-            throw IllegalArgumentException()
-        }
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural((left.value - right.value).abs())
     }))
 
     // Natural.rangeInclusive
@@ -254,6 +253,21 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
+    // List.map
+    list.add(NativeFunction(listDot("map"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val list = args[0]
+        val mapping = args[1]
+        if (list is SemObject.SemList
+                && mapping is SemObject.FunctionBinding) {
+            val mapped = list.contents.map { semObject ->
+                apply(mapping, listOf(semObject))
+            }
+            SemObject.SemList(mapped)
+        } else {
+            throw IllegalArgumentException()
+        }
+    }))
+
     // List.reduce
     list.add(NativeFunction(listDot("reduce"), { args: List<SemObject>, apply: InterpreterCallback ->
         val list = args[0]
@@ -294,6 +308,18 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
             throw IllegalArgumentException()
         }
     }))
+
+
+    // List.last
+    list.add(NativeFunction(listDot("last"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        if (list.contents.isEmpty()) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(list.contents.last())
+        }
+    }))
+
 }
 
 private fun addTryFunctions(list: MutableList<NativeFunction>) {
@@ -315,72 +341,60 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
-    val sequenceStructId = FunctionId.of("Sequence")
     val sequenceDot = fun(name: String) = FunctionId(Package(listOf("Sequence")), name)
 
-    // Sequence.get
-    list.add(NativeFunction(sequenceDot("get"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val sequence = args[0]
-        val index = args[1]
-        if (sequence is SemObject.Struct
-                && index is SemObject.Natural
-                && sequence.struct.id == sequenceStructId) {
-            val successor = sequence.objects[1]
-            if (successor is SemObject.FunctionBinding) {
-                var value = sequence.objects[0]
-                // TODO: Obscure error case: Value of index is greater than Long.MAX_VALUE
-                for (i in 1..index.value.longValueExact()) {
-                    value = apply(successor, listOf(value))
-                }
-                value
-            } else {
-                error("")
-            }
-        } else {
-            throw IllegalArgumentException()
-        }
+    val basicSequenceDot = fun(name: String) = FunctionId(Package(listOf("BasicSequence")), name)
+
+    // Sequence.create
+    list.add(NativeFunction(sequenceDot("create"), { args: List<SemObject>, _: InterpreterCallback ->
+        val base = args[0]
+        val successor = args[1] as? SemObject.FunctionBinding ?: typeError()
+
+        val struct = SemObject.Struct(NativeStruct.BASIC_SEQUENCE, listOf(base, successor))
+
+        // But now we need to turn that into an interface...
+        SemObject.Instance(NativeInterface.SEQUENCE, struct, listOf(
+                SemObject.FunctionBinding(basicSequenceDot("get"), listOf(struct, null)),
+                SemObject.FunctionBinding(basicSequenceDot("first"), listOf(struct, null))
+        ))
     }))
 
-    // Sequence.first
-    list.add(NativeFunction(sequenceDot("first"), SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
-        val sequence = args[0]
-        val predicate = args[1]
-        if (sequence is SemObject.Struct
-                && predicate is SemObject.FunctionBinding
-                && sequence.struct.id == sequenceStructId) {
-            val successor = sequence.objects[1]
-            if (successor is SemObject.FunctionBinding) {
-                var value = sequence.objects[0]
-                while (true) {
-                    val passes = apply(predicate, listOf(value))
-                    if (passes !is SemObject.Boolean) {
-                        error("")
-                    }
-                    if (passes.value) {
-                        return@SequenceFirst value
-                    }
-                    value = apply(successor, listOf(value))
-                }
-                error("Unreachable") // TODO: Better way to make Kotlin compile here?
-            } else {
-                error("")
-            }
-        } else {
-            throw IllegalArgumentException()
+    // BasicSequence.get(BasicSequence, index)
+    list.add(NativeFunction(basicSequenceDot("get"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val sequence = args[0] as? SemObject.Struct ?: typeError()
+        val index = args[1] as? SemObject.Natural ?: typeError()
+        if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
+            typeError()
         }
+        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
+        var value = sequence.objects[0]
+        // TODO: Obscure error case: Value of index is greater than Long.MAX_VALUE
+        for (i in 1..index.value.longValueExact()) {
+            value = apply(successor, listOf(value))
+        }
+        value
+
     }))
 
-    // Sequence.map
-    // TODO: This might actually be easier as a Semlang function?
-//    list.add(NativeFunction(sequenceDot("map"), SequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
-//        val sequence = args[0] as? SemObject.Struct ?: typeError()
-//        if (sequence.struct.id != sequenceStructId) typeError()
-//        val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
-//
-//
-//
-//        SemObject.Struct(sequenceStructId, initialValue, function)
-//    }))
+    // BasicSequence.first
+    list.add(NativeFunction(basicSequenceDot("first"), BasicSequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
+        val sequence = args[0] as? SemObject.Struct ?: typeError()
+        val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
+        if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
+            typeError()
+        }
+        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
+        var value = sequence.objects[0]
+        while (true) {
+            val passes = apply(predicate, listOf(value)) as? SemObject.Boolean ?: typeError()
+            if (passes.value) {
+                return@BasicSequenceFirst value
+            }
+            value = apply(successor, listOf(value))
+        }
+        error("Unreachable") // TODO: Better way to make Kotlin compile here?
+    }))
+
 }
 
 private fun typeError(): Nothing {

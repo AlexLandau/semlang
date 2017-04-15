@@ -8,10 +8,10 @@ function euler.getLargestPrimeFactor(n: Natural): Natural {
 }
 
 function getPrimeFactors(n: Natural): List<Natural> {
-    let primes: Sequence<Natural> = getPrimes();
-    let firstPrimeDivisor: Natural = Sequence.first<Natural>(primes, dividesEvenly|(_, n));
+    let primes: Sequence<Natural> = getPrimes()
+    let firstPrimeDivisor: Natural = primes->first(dividesEvenly|(_, n))
     return if (Natural.equals(n, firstPrimeDivisor)) {
-        return List.singleton<Natural>(n);
+        return List.singleton<Natural>(n)
     } else {
         let dividend: Natural = Try.assume<Natural>(Natural.divide(n, firstPrimeDivisor))
         let recursiveFactors: List<Natural> = getPrimeFactors(dividend)
@@ -32,7 +32,7 @@ struct AccumulatingSequenceElement<T> {
     accumulatedValues: List<T>
 }
 function <T> Sequence.createAccumulating(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
-    let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence<AccumulatingSequenceElement<T>>(
+    let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
         AccumulatingSequenceElement<T>(initialValue, List.singleton<T>(initialValue)),
         accumulatingSequenceNext<T>|(_, nextValueFunction)
     )
@@ -54,14 +54,54 @@ function <T, U> Sequence.map(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())
     // so that the return type of e.g. get() differs from the stored type
-    return Sequence<U>(firstVal, successor)
+    // return Sequence<U>(firstVal, successor)
+
+    let mappedSequence: MappedSequence<T, U> = MappedSequence<T, U>(sequence, fn)
+
+    return Sequence<MappedSequence<T, U>, U>(mappedSequence, getMappedSequenceAdapter<T, U>())
+}
+
+// TODO: Singleton candidate
+function <T, U> getMappedSequenceAdapter(): Sequence.Adapter<MappedSequence<T, U>, U> {
+    let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
+    let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
+    return Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
+}
+
+function <T, U> MappedSequence.get(sequence: MappedSequence<T, U>, index: Natural): U {
+    let preTransformed: T = sequence->sequence->get(index)
+    return sequence->mapping(preTransformed)
+}
+
+function <T, U> MappedSequence.first(sequence: MappedSequence<T, U>, predicate: (U) -> Boolean): U {
+    // let preTransformed: T = sequence->sequence->get(predicate)
+    // return sequence->mapping(preTransformed)
+    let postMappedPredicate: (T) -> Boolean = Function.doInOrder<T, U, Boolean>(sequence->mapping|(_), predicate|(_))
+
+    let preMappedResult: T = sequence->sequence->first(postMappedPredicate)
+    return sequence->mapping(preMappedResult)
+}
+
+struct MappedSequence<T, U> {
+    sequence: Sequence<T>
+    mapping: (T) -> U
+}
+
+// TODO: More to put in a library
+// This is like "compose", but with the typical order of application reversed
+function <A, B, C> Function.doInOrder(applyFirst: (A) -> B, applyLast: (B) -> C): (A) -> C {
+    return Function.doInOrderImpl<A, B, C>|(_, applyFirst, applyLast)
+}
+
+function <A, B, C> Function.doInOrderImpl(input: A, applyFirst: (A) -> B, applyLast: (B) -> C): C {
+    return applyLast(applyFirst(input))
 }
 
 function getNextPrime(allPreviousPrimes: List<Natural>): Natural {
     let lastPrime: Natural = Try.assume<Natural>(List.last<Natural>(allPreviousPrimes))
     let firstCandidate: Natural = Natural.plus(lastPrime, Natural."1")
     let candidates: Sequence<Natural> = Natural.arithmeticProgression(firstCandidate, Natural."1")
-    return Sequence.first<Natural>(candidates, isNotDivisibleByAny|(_, allPreviousPrimes))
+    return candidates->first(isNotDivisibleByAny|(_, allPreviousPrimes))
 }
 
 // TODO: Should go in a standard library
@@ -72,6 +112,10 @@ function Natural.arithmeticProgression(initialValue: Natural, increment: Natural
 }
 function plusProduct(a: Natural, b: Natural, c: Natural): Natural {
     return Natural.plus(a, Natural.times(b, c))
+}
+//TODO: Standard library, etc.
+function Natural.sequence(): Sequence<Natural> {
+    return Sequence.create<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
 }
 
 function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Boolean {

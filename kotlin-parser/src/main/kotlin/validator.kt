@@ -286,7 +286,7 @@ private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId
 // TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
 private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: FunctionId): Map<Type, Type> {
     if (parameters.size != chosenTypes.size) {
-        fail("Disagreement in type parameter list lengths for function $functionId")
+        fail("Disagreement in type parameter list lengths for function $functionId; ${parameters.size} required, but ${chosenTypes.size} provided")
     }
     val map: MutableMap<Type, Type> = HashMap()
 
@@ -357,6 +357,7 @@ private fun validateVariableExpression(expression: Expression.Variable, variable
 private fun getFunctionTypeSignatures(context: InterpreterContext): Map<FunctionId, TypeSignature> {
     val signatures = HashMap<FunctionId, TypeSignature>()
     addNativeFunctions(signatures)
+    // Note: Native structs are (currently) included with native functions above, not here.
     context.structs.entries.forEach { entry ->
         val (id, struct) = entry
         if (signatures.containsKey(id)) {
@@ -364,13 +365,14 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Map<Function
         }
         signatures.put(id, getStructConstructorSignature(struct))
     }
+    // Note: Native interfaces are (currently) included with native functions above, not here.
     context.interfaces.entries.forEach { entry ->
         val (id, interfac) = entry
         if (signatures.containsKey(id)) {
             fail("Interface name $id has an overlap with a native function or struct")
         }
-        signatures.put(interfac.adapterId, getAdapterConstructorSignature(interfac))
-        signatures.put(id, getInstanceConstructorSignature(interfac))
+        signatures.put(interfac.adapterId, toAdapterConstructorSignature(interfac))
+        signatures.put(id, toInstanceConstructorSignature(interfac))
     }
     context.functions.entries.forEach { entry ->
         val (id, function) = entry
@@ -384,67 +386,6 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Map<Function
         signatures.put(id, getFunctionSignature(function))
     }
     return signatures
-}
-
-// TODO: Make this reusable in sem1 -> sem0 transformation
-fun getAdapterConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    interfac.methods.forEach { method ->
-        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-    }
-
-    val outputType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-// TODO: Make this reusable in sem1 -> sem0 transformation
-fun getInstanceConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    argumentTypes.add(dataStructType)
-
-    val adapterType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-    argumentTypes.add(adapterType)
-
-    val outputType = Type.NamedType(interfac.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
-    if (!explicitTypeParameters.contains("A")) {
-        return "A"
-    }
-    var index = 2
-    while (true) {
-        val name = "A" + index
-        if (!explicitTypeParameters.contains(name)) {
-            return name
-        }
-        index++
-    }
-}
-
-fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
-    val argTypes = ArrayList<Type>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return Type.FunctionType(argTypes, method.returnType)
 }
 
 private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
