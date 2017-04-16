@@ -46,7 +46,7 @@ function_id : ID | packag DOT ID ;
 
 functions_or_structs : | function functions_or_structs | struct functions_or_structs ;
 function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
-         | FUNCTION LESS_THAN cd_ids GREATER_THAN function_id LPAREN function_arguments RPAREN COLON type block ;
+         | FUNCTION function_id LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
 block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;

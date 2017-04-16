@@ -1,5 +1,5 @@
 
-function <T> myCode.applyThreeTimes(input: T, f: (T) -> T): T {
+function myCode.applyThreeTimes<T>(input: T, f: (T) -> T): T {
   return f(f(f(input)))
 }
 

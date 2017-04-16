@@ -48,7 +48,6 @@ Design choices to reconsider:
 - Integer.fromNatural or Natural.toInteger?
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
-- Consider moving <T> in function definition to after name
 - Questionable or inconsistent native functions
 
 Probable dependencies of the type work:

@@ -48,7 +48,7 @@ function_id : ID | packag DOT ID ;
 top_level_entities : | function top_level_entities | struct top_level_entities | interfac top_level_entities ;
 
 function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
-         | FUNCTION LESS_THAN cd_ids GREATER_THAN function_id LPAREN function_arguments RPAREN COLON type block ;
+         | FUNCTION function_id LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
 block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;

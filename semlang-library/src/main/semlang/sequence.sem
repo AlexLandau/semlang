@@ -6,27 +6,27 @@ struct AccumulatingSequenceElement<T> {
     curValue: T
     accumulatedValues: List<T>
 }
-function <T> Sequence.createAccumulating(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
+function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
     let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
         AccumulatingSequenceElement<T>(initialValue, List.singleton<T>(initialValue)),
         Sequence.internal.accumulatingSequenceNext<T>|(_, nextValueFunction)
     )
     return Sequence.map<AccumulatingSequenceElement<T>, T>(accumulatingSequence, Sequence.internal.fromAccumulatingSequenceElement<T>|(_))
 }
-function <T> Sequence.internal.accumulatingSequenceNext(previous: AccumulatingSequenceElement<T>, nextValueFunction: (List<T>) -> T): AccumulatingSequenceElement<T> {
+function Sequence.internal.accumulatingSequenceNext<T>(previous: AccumulatingSequenceElement<T>, nextValueFunction: (List<T>) -> T): AccumulatingSequenceElement<T> {
     let newValue: T = nextValueFunction(previous->accumulatedValues)
     return AccumulatingSequenceElement<T>(
         newValue,
         List.append<T>(previous->accumulatedValues, newValue)
     )
 }
-function <T> Sequence.internal.fromAccumulatingSequenceElement(element: AccumulatingSequenceElement<T>): T {
+function Sequence.internal.fromAccumulatingSequenceElement<T>(element: AccumulatingSequenceElement<T>): T {
     return element->curValue
 }
 
 
 // TODO: Definitely belongs in a standard library
-function <T, U> Sequence.map(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
+function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())
     // so that the return type of e.g. get() differs from the stored type
@@ -38,18 +38,18 @@ function <T, U> Sequence.map(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
 }
 
 // TODO: Singleton candidate
-function <T, U> MappedSequence.getMappedSequenceAdapter(): Sequence.Adapter<MappedSequence<T, U>, U> {
+function MappedSequence.getMappedSequenceAdapter<T, U>(): Sequence.Adapter<MappedSequence<T, U>, U> {
     let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
     return Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
 }
 
-function <T, U> MappedSequence.get(sequence: MappedSequence<T, U>, index: Natural): U {
+function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {
     let preTransformed: T = sequence->sequence->get(index)
     return sequence->mapping(preTransformed)
 }
 
-function <T, U> MappedSequence.first(sequence: MappedSequence<T, U>, predicate: (U) -> Boolean): U {
+function MappedSequence.first<T, U>(sequence: MappedSequence<T, U>, predicate: (U) -> Boolean): U {
     // let preTransformed: T = sequence->sequence->get(predicate)
     // return sequence->mapping(preTransformed)
     let postMappedPredicate: (T) -> Boolean = Function.doInOrder<T, U, Boolean>(sequence->mapping|(_), predicate|(_))

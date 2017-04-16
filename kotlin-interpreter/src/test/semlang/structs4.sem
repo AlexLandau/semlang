@@ -4,7 +4,7 @@ struct myStuff.Point<T> {
   y: T
 }
 
-function <T> myStuff.genericFunction(input: myStuff.Point<T>): Integer {
+function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
   return Integer."1"
 }
 
