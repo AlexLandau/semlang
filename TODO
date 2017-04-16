@@ -15,18 +15,15 @@
   - Validate function argument names
   - Make code style more consistent
 - Function definitions as tests
-- Can we remove TypedExpression.NamedFunctionBinding#chosenParameters?
 - Support function bindings of struct constructors
 - Support function bindings of interface constructors
-- Support e.g. foo->bar() calls and foo->bar|() bindings directly, if the parser doesn't hate it
-- List type (firstIndex, map)
+- List#firstIndex
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
 - Code writing into Java
 - Annotations and multiple function definitions
-- Interfaces/instances
 - Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment
@@ -52,6 +49,7 @@ Design choices to reconsider:
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Consider moving <T> in function definition to after name
+- Questionable or inconsistent native functions
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples

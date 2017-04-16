@@ -1,9 +1,9 @@
 package semlang.parser
 
-import org.antlr.v4.runtime.ANTLRFileStream
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.ParserRuleContext
-import org.antlr.v4.runtime.Token
+import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.atn.ATNConfigSet
+import org.antlr.v4.runtime.dfa.DFA
+import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import sem1.antlr.Sem1Lexer
 import sem1.antlr.Sem1Parser
@@ -482,7 +482,6 @@ private class MyListener : Sem1ParserBaseListener() {
             interfaces.add(parseInterface(ctx))
         }
     }
-
 }
 
 fun parseFile(file: File): InterpreterContext {
@@ -497,17 +496,46 @@ fun parseFileNamed(filename: String): InterpreterContext {
     return InterpreterContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
 }
 private fun parseFileNamedInner(filename: String): RawContents {
+    val errors = ArrayList<String>()
+
     val input = ANTLRFileStream(filename)
     val lexer = Sem1Lexer(input)
+    val errorListener = object : ANTLRErrorListener {
+        override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
+            if (msg != null) {
+                errors.add(msg)
+            } else {
+                errors.add("Error with no message at line $line and column $charPositionInLine")
+            }
+        }
+
+        override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
+            // Do nothing
+        }
+
+        override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
+        override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
+            // Do nothing
+        }
+
+    }
+    lexer.addErrorListener(errorListener)
     val tokens = CommonTokenStream(lexer)
     val parser = Sem1Parser(tokens)
+    parser.addErrorListener(errorListener)
     val tree: Sem1Parser.FileContext = parser.file()
 
     val extractor = MyListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
+    if (!errors.isEmpty()) {
+        error("Found errors: " + errors)
+    }
+
     return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
-//    return InterpreterContext(indexById(extractor.functions), indexById(extractor.structs), indexById(extractor.interfaces))
 }
 
 fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
