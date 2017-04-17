@@ -41,9 +41,13 @@ private fun replaceParameters(parameters: List<Type>, parameterMap: Map<Type, Ty
 
 sealed class Type {
     abstract fun replacingParameters(parameterMap: Map<Type, Type>): Type
+    abstract protected fun getTypeString(): String
+    override fun toString(): String {
+        return getTypeString()
+    }
 
     object INTEGER : Type() {
-        override fun toString(): String {
+        override fun getTypeString(): String {
             return "Integer"
         }
 
@@ -52,7 +56,7 @@ sealed class Type {
         }
     }
     object NATURAL : Type() {
-        override fun toString(): String {
+        override fun getTypeString(): String {
             return "Natural"
         }
 
@@ -61,7 +65,7 @@ sealed class Type {
         }
     }
     object BOOLEAN : Type() {
-        override fun toString(): String {
+        override fun getTypeString(): String {
             return "Boolean"
         }
 
@@ -74,11 +78,23 @@ sealed class Type {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return List(parameter.replacingParameters(parameterMap))
         }
+
+        override fun getTypeString(): String {
+            return "List<$parameter>"
+        }
+
+        override fun toString(): String {
+            return super.toString()
+        }
     }
 
     data class Try(val parameter: Type): Type() {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return Try(parameter.replacingParameters(parameterMap))
+        }
+
+        override fun getTypeString(): String {
+            return "Try<$parameter>"
         }
     }
 
@@ -86,6 +102,17 @@ sealed class Type {
         override fun replacingParameters(parameterMap: Map<Type, Type>): Type {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
                     outputType.replacingParameters(parameterMap))
+        }
+
+        override fun getTypeString(): String {
+            return "(" +
+                    argTypes.joinToString(", ") +
+                    ") -> " +
+                    outputType.toString()
+        }
+
+        override fun toString(): String {
+            return super.toString()
         }
     }
 
@@ -110,13 +137,17 @@ sealed class Type {
             return parameters
         }
 
-        override fun toString(): String {
+        override fun getTypeString(): String {
             return id.toString() +
                 if (parameters.isEmpty()) {
                     ""
                 } else {
                     "<" + parameters.joinToString(", ") + ">"
                 }
+        }
+
+        override fun toString(): String {
+            return super.toString()
         }
     }
 
@@ -170,7 +201,14 @@ data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val return
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
 data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block) : HasFunctionId
-data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock)
+data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock) {
+    fun toTypeSignature(): TypeSignature {
+        return TypeSignature(id,
+                arguments.map(Argument::type),
+                returnType,
+                typeParameters.map { str -> Type.NamedType.forParameter(str) })
+    }
+}
 
 data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
@@ -192,8 +230,3 @@ data class Interface(override val id: FunctionId, val typeParameters: List<Strin
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
-
-//TODO: Put somewhere different?
-//TODO: Validate inputs (non-overlapping keys)
-data class InterpreterContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
-data class ValidatedContext(val functions: Map<FunctionId, ValidatedFunction>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>, val interfacesByAdapterId: Map<FunctionId, Interface>)

@@ -38,7 +38,7 @@ class ProjectEulerExamples {
 
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
         val functionsMap2 = parseFileAgainstStandardLibrary(filename)
-        return SemlangForwardInterpreter(validateContext(functionsMap2))
+        return SemlangForwardInterpreter(validateContext(functionsMap2, listOf(getNativeContext())))
     }
 }
 

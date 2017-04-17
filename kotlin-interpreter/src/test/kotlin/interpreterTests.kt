@@ -5,6 +5,7 @@ import org.junit.Test
 import semlang.api.FunctionId
 import semlang.api.Package
 import semlang.api.ValidatedContext
+import semlang.api.getNativeContext
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
 import semlang.parser.parseFileNamed
@@ -68,7 +69,7 @@ class InterpreterTests {
     @Test
     fun testLiterals1() {
         val functions = parseAndValidateFile("src/test/semlang/literals1.sem")
-        val fnId = functions.functions.keys.single()
+        val fnId = functions.functionImplementations.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(int(2), interpreter.interpret(fnId, listOf(int(1))))
         assertEquals(int(5), interpreter.interpret(fnId, listOf(int(2))))
@@ -79,7 +80,7 @@ class InterpreterTests {
     @Test
     fun testLiterals2() {
         val functions = parseAndValidateFile("src/test/semlang/literals2.sem")
-        val fnId = functions.functions.keys.single()
+        val fnId = functions.functionImplementations.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(natural(2), interpreter.interpret(fnId, listOf(natural(1))))
         assertEquals(natural(5), interpreter.interpret(fnId, listOf(natural(2))))
@@ -288,7 +289,7 @@ class InterpreterTests {
 
     private fun parseAndValidateFile(filename: String): ValidatedContext {
         val functionsMap2 = parseFileNamed(filename)
-        return validateContext(functionsMap2)
+        return validateContext(functionsMap2, listOf(getNativeContext()))
     }
 }
 

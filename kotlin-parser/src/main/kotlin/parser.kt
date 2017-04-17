@@ -491,15 +491,26 @@ fun parseFile(file: File): InterpreterContext {
 private data class RawContents(val functions: List<Function>, val structs: List<Struct>, val interfaces: List<Interface>)
 
 fun parseFileNamed(filename: String): InterpreterContext {
-    val rawContents = parseFileNamedInner(filename)
+    val stream = ANTLRFileStream(filename)
+    val rawContents = parseANTLRStreamInner(stream)
 
+    return toInterpreterContext(rawContents)
+}
+
+private fun toInterpreterContext(rawContents: RawContents): InterpreterContext {
     return InterpreterContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
 }
-private fun parseFileNamedInner(filename: String): RawContents {
+
+fun parseString(string: String): InterpreterContext {
+    val stream = ANTLRInputStream(string)
+    val rawContents = parseANTLRStreamInner(stream)
+    return toInterpreterContext(rawContents)
+}
+
+private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
     val errors = ArrayList<String>()
 
-    val input = ANTLRFileStream(filename)
-    val lexer = Sem1Lexer(input)
+    val lexer = Sem1Lexer(stream)
     val errorListener = object : ANTLRErrorListener {
         override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
             if (msg != null) {
@@ -547,13 +558,13 @@ fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     val structs = ArrayList<Struct>()
     val interfaces = ArrayList<Interface>()
     sourceFiles.forEach { sourceFile ->
-        val rawContents = parseFileNamedInner(sourceFile.absolutePath)
+        val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath))
         functions.addAll(rawContents.functions)
         structs.addAll(rawContents.structs)
         interfaces.addAll(rawContents.interfaces)
     }
 
-    val ourContents = parseFileNamedInner(filename)
+    val ourContents = parseANTLRStreamInner(ANTLRFileStream(filename))
     functions.addAll(ourContents.functions)
     structs.addAll(ourContents.structs)
     interfaces.addAll(ourContents.interfaces)

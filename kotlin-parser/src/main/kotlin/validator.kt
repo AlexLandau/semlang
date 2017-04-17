@@ -26,14 +26,12 @@ private fun fail(text: String): Nothing {
 
 data class GroundedTypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type)
 
-fun validateContext(context: InterpreterContext): ValidatedContext {
-    // TODO: Validate the structs
-    val functionTypeSignatures = getFunctionTypeSignatures(context)
-    val structs = getStructs(context)
-    val interfaces = getInterfaces(context)
-    val interfacesByAdapterId = interfaces.values.associateBy(Interface::adapterId)
+fun validateContext(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): ValidatedContext {
+    val functionTypeSignatures = getFunctionTypeSignatures(context, upstreamContexts)
+    val structs = getStructs(context, upstreamContexts)
+    val interfaces = getInterfaces(context, upstreamContexts)
     val validatedFunctions = validateFunctions(context.functions, functionTypeSignatures, structs, interfaces)
-    return ValidatedContext(validatedFunctions, structs, interfaces, interfacesByAdapterId)
+    return ValidatedContext.create(validatedFunctions, structs, interfaces)
 }
 
 private fun validateFunctions(functions: Map<FunctionId, Function>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, interfaces: Map<FunctionId, Interface>): Map<FunctionId, ValidatedFunction> {
@@ -354,10 +352,13 @@ private fun validateVariableExpression(expression: Expression.Variable, variable
     }
 }
 
-private fun getFunctionTypeSignatures(context: InterpreterContext): Map<FunctionId, TypeSignature> {
+private fun getFunctionTypeSignatures(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
     val signatures = HashMap<FunctionId, TypeSignature>()
-    addNativeFunctions(signatures)
-    // Note: Native structs are (currently) included with native functions above, not here.
+
+    upstreamContexts.forEach { upstreamContext ->
+        signatures.putAll(upstreamContext.functionSignatures)
+    }
+
     context.structs.entries.forEach { entry ->
         val (id, struct) = entry
         if (signatures.containsKey(id)) {
@@ -365,7 +366,7 @@ private fun getFunctionTypeSignatures(context: InterpreterContext): Map<Function
         }
         signatures.put(id, getStructConstructorSignature(struct))
     }
-    // Note: Native interfaces are (currently) included with native functions above, not here.
+
     context.interfaces.entries.forEach { entry ->
         val (id, interfac) = entry
         if (signatures.containsKey(id)) {
@@ -392,17 +393,23 @@ private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
     signatures.putAll(getNativeFunctionDefinitions())
 }
 
-fun getStructs(context: InterpreterContext): Map<FunctionId, Struct> {
+fun getStructs(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Struct> {
     val structs = HashMap<FunctionId, Struct>()
+    // TODO: Validate structs here
     structs.putAll(context.structs)
-    structs.putAll(getNativeStructs())
+    upstreamContexts.forEach { upstreamContext ->
+        structs.putAll(upstreamContext.structs)
+    }
     return structs
 }
 
-fun getInterfaces(context: InterpreterContext): Map<FunctionId, Interface> {
+fun getInterfaces(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Interface> {
     val interfaces = HashMap<FunctionId, Interface>()
+    // TODO: Validate interfaces here
     interfaces.putAll(context.interfaces)
-    interfaces.putAll(getNativeInterfaces())
+    upstreamContexts.forEach { upstreamContext ->
+        interfaces.putAll(upstreamContext.interfaces)
+    }
     return interfaces
 }
 

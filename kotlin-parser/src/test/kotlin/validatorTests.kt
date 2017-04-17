@@ -1,11 +1,15 @@
 package semlang.parser.test
 
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import semlang.api.ValidatedContext
+import semlang.api.getNativeContext
 import semlang.parser.parseFile
+import semlang.parser.parseString
 import semlang.parser.validateContext
+import writeToString
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -23,8 +27,19 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun test() {
-        val result = parseAndValidateFile(file)
-        result
+        parseAndValidateFile(file)
+    }
+
+    @Test
+    @Ignore("Still working on this one... Native struct/interface troubles")
+    fun testParseWriteParseEquality() {
+        val initiallyParsed = parseAndValidateFile(file)
+        val writtenToString = writeToString(initiallyParsed)
+        System.out.println("Rewritten contents for file $file:")
+        System.out.println(writtenToString)
+        System.out.println("(End contents)")
+        val reparsed = parseAndValidateString(writtenToString)
+        // TODO: Check the actual equality of the contexts
     }
 }
 
@@ -53,6 +68,11 @@ class ValidatorNegativeTests(private val file: File) {
 }
 
 private fun parseAndValidateFile(file: File): ValidatedContext {
-    val functionsMap2 = parseFile(file)
-    return validateContext(functionsMap2)
+    val context = parseFile(file)
+    return validateContext(context, listOf(getNativeContext()))
+}
+
+private fun parseAndValidateString(string: String): ValidatedContext {
+    val context = parseString(string)
+    return validateContext(context, listOf(getNativeContext()))
 }

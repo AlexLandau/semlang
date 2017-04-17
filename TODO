@@ -5,7 +5,6 @@
   - Use a code coverage tool for the Kotlin tests
 - Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
-- Test block comment parsing, line comments at end of files
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
@@ -45,6 +44,7 @@ Design choices to reconsider:
 - Alternative keyword to "return" that better reflects how it's used in blocks in general?
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
+- Consider allowing trailing commas in e.g. argument lists
 - Integer.fromNatural or Natural.toInteger?
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.

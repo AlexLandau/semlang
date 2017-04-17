@@ -38,7 +38,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         }
 
         // Handle non-native functions
-        val function: ValidatedFunction = context.functions.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
+        val function: ValidatedFunction = context.functionImplementations.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
@@ -163,7 +163,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
-                if (!context.functions.containsKey(functionId) && !nativeFunctions.containsKey(functionId)) {
+                if (!context.functionImplementations.containsKey(functionId) && !nativeFunctions.containsKey(functionId)) {
                     error("Function ID not recognized: $functionId")
                 }
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }

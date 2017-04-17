@@ -4,6 +4,10 @@ import java.util.*
 
 data class TypeSignature(override val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasFunctionId
 
+fun getNativeContext(): ValidatedContext {
+    return ValidatedContext.getNativeContext()
+}
+
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     val definitions = ArrayList<TypeSignature>()
 
