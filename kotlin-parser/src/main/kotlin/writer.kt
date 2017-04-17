@@ -9,13 +9,13 @@ fun writeToString(context: ValidatedContext): String {
 }
 
 fun write(context: ValidatedContext, writer: Writer) {
-    context.structs.values.forEach { struct ->
+    context.ownStructs.values.forEach { struct ->
         writeStruct(struct, writer)
     }
-    context.interfaces.values.forEach { interfac ->
+    context.ownInterfaces.values.forEach { interfac ->
         writeInterface(interfac, writer)
     }
-    context.functionImplementations.values.forEach { function ->
+    context.ownFunctionImplementations.values.forEach { function ->
         writeFunction(function, writer)
     }
 }

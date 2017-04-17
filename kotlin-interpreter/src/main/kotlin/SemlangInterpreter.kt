@@ -20,25 +20,25 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         }
 
         // Handle struct constructors
-        val structFunction: Struct? = context.structs[functionId]
+        val structFunction: Struct? = context.getStruct(functionId)
         if (structFunction != null) {
             return evaluateStructConstructor(structFunction, arguments)
         }
 
         // Handle adapter constructors
-        val adapterFunction: Interface? = context.interfacesByAdapterId[functionId]
+        val adapterFunction: Interface? = context.getInterfaceByAdapterId(functionId)
         if (adapterFunction != null) {
             return evaluateAdapterConstructor(adapterFunction, arguments)
         }
 
         // Handle instance constructors
-        val interfaceFunction: Interface? = context.interfaces[functionId]
+        val interfaceFunction: Interface? = context.getInterface(functionId)
         if (interfaceFunction != null) {
             return evaluateInterfaceConstructor(interfaceFunction, arguments)
         }
 
         // Handle non-native functions
-        val function: ValidatedFunction = context.functionImplementations.getOrElse(functionId, fun (): ValidatedFunction {throw IllegalArgumentException("Unrecognized function ID $functionId")})
+        val function: ValidatedFunction = context.getFunctionImplementation(functionId) ?: throw IllegalArgumentException("Unrecognized function ID $functionId")
         if (arguments.size != function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
@@ -163,7 +163,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
-                if (!context.functionImplementations.containsKey(functionId) && !nativeFunctions.containsKey(functionId)) {
+                if (context.getFunctionImplementation(functionId) == null && !nativeFunctions.containsKey(functionId)) {
                     error("Function ID not recognized: $functionId")
                 }
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }

@@ -7,7 +7,7 @@ import semlang.api.*
 // TODO: We aren't taking full advantage of this unless/until we switch to a different set of
 // data structures that acknowledge the more limited set of possible expressions/assignments
 fun simplifyExpressions(context: ValidatedContext): ValidatedContext {
-    return ValidatedContext.create(simplifyFunctionExpressions(context.functionImplementations), context.structs, context.interfaces)
+    return ValidatedContext.create(simplifyFunctionExpressions(context.ownFunctionImplementations), context.ownStructs, context.ownInterfaces, context.upstreamContexts)
 }
 
 private fun simplifyFunctionExpressions(functions: Map<FunctionId, ValidatedFunction>): Map<FunctionId, ValidatedFunction> {

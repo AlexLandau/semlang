@@ -69,7 +69,7 @@ class InterpreterTests {
     @Test
     fun testLiterals1() {
         val functions = parseAndValidateFile("src/test/semlang/literals1.sem")
-        val fnId = functions.functionImplementations.keys.single()
+        val fnId = functions.ownFunctionImplementations.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(int(2), interpreter.interpret(fnId, listOf(int(1))))
         assertEquals(int(5), interpreter.interpret(fnId, listOf(int(2))))
@@ -80,7 +80,7 @@ class InterpreterTests {
     @Test
     fun testLiterals2() {
         val functions = parseAndValidateFile("src/test/semlang/literals2.sem")
-        val fnId = functions.functionImplementations.keys.single()
+        val fnId = functions.ownFunctionImplementations.keys.single()
         val interpreter = SemlangForwardInterpreter(functions)
         assertEquals(natural(2), interpreter.interpret(fnId, listOf(natural(1))))
         assertEquals(natural(5), interpreter.interpret(fnId, listOf(natural(2))))
