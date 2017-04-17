@@ -1,5 +1,6 @@
 package semlang.parser.test
 
+import org.junit.Assert
 import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,7 +32,6 @@ class ValidatorPositiveTests(private val file: File) {
     }
 
     @Test
-    @Ignore("Still working on this one... Native struct/interface troubles")
     fun testParseWriteParseEquality() {
         val initiallyParsed = parseAndValidateFile(file)
         val writtenToString = writeToString(initiallyParsed)
@@ -40,7 +40,17 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println("(End contents)")
         val reparsed = parseAndValidateString(writtenToString)
         // TODO: Check the actual equality of the contexts
+        assertContextsEqual(initiallyParsed, reparsed)
     }
+}
+
+fun assertContextsEqual(expected: ValidatedContext, actual: ValidatedContext) {
+    // TODO: Check the upstream contexts
+
+    Assert.assertEquals(expected.ownFunctionImplementations, actual.ownFunctionImplementations)
+    Assert.assertEquals(expected.ownFunctionSignatures, actual.ownFunctionSignatures)
+    Assert.assertEquals(expected.ownStructs, actual.ownStructs)
+    Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
 }
 
 @RunWith(Parameterized::class)

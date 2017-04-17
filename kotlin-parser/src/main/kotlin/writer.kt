@@ -75,7 +75,7 @@ private fun writeFunction(function: ValidatedFunction, writer: Writer) {
               argument.name + ": " + argument.type.toString()
           })
           .append("): ")
-          .appendln(function.returnType.toString())
+          .append(function.returnType.toString())
 
     writer.appendln(" {")
     writeBlock(function.block, 1, writer)
@@ -121,7 +121,11 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
         }
         is TypedExpression.NamedFunctionCall -> {
             writer.append(expression.functionId.toString())
-            // TODO: Will need to include type parameters here
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(">")
+            }
             writer.append("(")
             var first = true
             for (argument in expression.arguments) {
@@ -135,7 +139,11 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
         }
         is TypedExpression.NamedFunctionBinding -> {
             writer.append(expression.functionId.toString())
-            // TODO: Will need to include type parameters here
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(">")
+            }
             writer.append("|(")
             var first = true
             for (binding in expression.bindings) {
@@ -153,7 +161,11 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
         }
         is TypedExpression.ExpressionFunctionCall -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
-            // TODO: Will need to include type parameters here
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(">")
+            }
             writer.append("(")
             var first = true
             for (argument in expression.arguments) {
@@ -167,8 +179,12 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
-            // TODO: Will need to include type parameters here
-            writer.append("(")
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(">")
+            }
+            writer.append("|(")
             var first = true
             for (binding in expression.bindings) {
                 if (!first) {

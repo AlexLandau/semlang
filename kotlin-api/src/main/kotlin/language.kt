@@ -185,12 +185,12 @@ sealed class TypedExpression {
     abstract val type: Type
     data class Variable(override val type: Type, val name: String): TypedExpression()
     data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    data class NamedFunctionCall(override val type: Type, val functionId: FunctionId, val arguments: List<TypedExpression>): TypedExpression()
-    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, val functionId: FunctionId, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
+    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class Literal(override val type: Type, val literal: String): TypedExpression()
     data class Follow(override val type: Type, val expression: TypedExpression, val id: String): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionId: FunctionId,val bindings: List<TypedExpression?>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>) : TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, val functionId: FunctionId, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
 }
 
 data class AmbiguousAssignment(val name: String, val type: Type, val expression: AmbiguousExpression)

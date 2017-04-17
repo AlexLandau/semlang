@@ -147,7 +147,7 @@ private fun validateExpressionFunctionBinding(expression: Expression.ExpressionF
             postBindingArgumentTypes,
             functionType.outputType)
 
-    return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings)
+    return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, expression.chosenParameters)
 }
 
 private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, allFunctionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, interfaces: Map<FunctionId, Interface>, containingFunctionId: FunctionId): TypedExpression {
@@ -193,7 +193,7 @@ private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBin
             postBindingArgumentTypes,
             signature.outputType.replacingParameters(parameterMap))
 
-    return TypedExpression.NamedFunctionBinding(postBindingType, functionId, bindings)
+    return TypedExpression.NamedFunctionBinding(postBindingType, functionId, bindings, chosenParameters)
 }
 
 private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, interfaces: Map<FunctionId, Interface>, containingFunctionId: FunctionId): TypedExpression {
@@ -252,7 +252,7 @@ private fun validateExpressionFunctionCallExpression(expression: Expression.Expr
         fail("The function $containingFunctionId tries to call the result of $functionExpression with argument types $argumentTypes, but the function expects argument types ${functionType.argTypes}")
     }
 
-    return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments)
+    return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, expression.chosenParameters)
 }
 
 private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, functionTypeSignatures: Map<FunctionId, TypeSignature>, structs: Map<FunctionId, Struct>, interfaces: Map<FunctionId, Interface>, containingFunctionId: FunctionId): TypedExpression {
@@ -277,7 +277,7 @@ private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunc
         fail("The function $containingFunctionId tries to call $functionId with argument types $argumentTypes, but the function expects argument types ${groundSignature.argumentTypes}")
     }
 
-    return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionId, arguments)
+    return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionId, arguments, expression.chosenParameters)
 }
 
 private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: FunctionId): GroundedTypeSignature {

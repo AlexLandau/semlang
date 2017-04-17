@@ -26,6 +26,7 @@
 - Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment
+- Offer alternative syntax with even easier parsing (e.g. commas prepended to lists, dots prepended to IDs)
 - Start to create dialects with simpler syntax, type inference, etc.
   - "sem1" vs. "sem0" for starters
   - Also type inference for parameters when calling functions, for types that can be inferred (can these be separated somehow?)
@@ -49,6 +50,11 @@ Design choices to reconsider:
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions
+- Slightly alternative semantics: A function ID is an expression representing a function binding for that function with
+  empty bindings; this would simplify "named" vs. "expression" calls, but there would (still) be ambiguities between
+  function IDs with no package and variables, and this would have to be sussed out in most transpilations.
+- Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
+
 
 Probable dependencies of the type work:
 - Function types/references depending on tuples

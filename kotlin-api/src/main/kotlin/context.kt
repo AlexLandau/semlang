@@ -22,9 +22,7 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
             return ValidatedContext(ownFunctions, functionSignatures, ownStructs, ownInterfaces, upstreamContexts)
         }
 
-        fun getNativeContext(): ValidatedContext {
-            return ValidatedContext(mapOf(), getNativeFunctionDefinitions(), getNativeStructs(), getNativeInterfaces(), listOf())
-        }
+        val NATIVE_CONTEXT = ValidatedContext(mapOf(), getNativeFunctionDefinitions(), getNativeStructs(), getNativeInterfaces(), listOf())
     }
 
     fun getFunctionImplementation(id: FunctionId): ValidatedFunction? {
