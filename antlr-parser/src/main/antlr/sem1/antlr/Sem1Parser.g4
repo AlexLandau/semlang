@@ -36,6 +36,7 @@ tokens {
   LESS_THAN,
   GREATER_THAN,
   PIPE,
+  AT,
   ID,
   UNDERSCORE
 }
@@ -47,28 +48,33 @@ function_id : ID | packag DOT ID ;
 
 top_level_entities : | function top_level_entities | struct top_level_entities | interfac top_level_entities ;
 
-function : FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
-         | FUNCTION function_id LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
+function : annotations FUNCTION function_id LPAREN function_arguments RPAREN COLON type block
+         | annotations FUNCTION function_id LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
 block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
-struct : STRUCT function_id LBRACE struct_components RBRACE
-  | STRUCT function_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_components RBRACE ;
+struct : annotations STRUCT function_id LBRACE struct_components RBRACE
+  | annotations STRUCT function_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_components RBRACE ;
 struct_components : | struct_component struct_components ;
 struct_component : ID COLON type ;
 
 // TODO: Is there a better solution for this than mangling the name?
-interfac : INTERFACE function_id LBRACE interface_components RBRACE
-  | INTERFACE function_id LESS_THAN cd_ids GREATER_THAN LBRACE interface_components RBRACE ;
+interfac : annotations INTERFACE function_id LBRACE interface_components RBRACE
+  | annotations INTERFACE function_id LESS_THAN cd_ids GREATER_THAN LBRACE interface_components RBRACE ;
 interface_components : | interface_component interface_components ;
 interface_component : ID LPAREN function_arguments RPAREN COLON type
   | ID LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
 
+annotations : | annotation annotations ;
+annotation : annotation_name
+  | annotation_name LPAREN LITERAL RPAREN ;
+annotation_name : AT ID ;
+
 // cd_ids is nonempty
 cd_ids : ID | ID COMMA cd_ids ;
 
-assignments : | assignment | assignment assignments ;
+assignments : | assignment assignments ;
 assignment : LET ID COLON type ASSIGN expression ;
 return_statement: RETURN expression ;
 

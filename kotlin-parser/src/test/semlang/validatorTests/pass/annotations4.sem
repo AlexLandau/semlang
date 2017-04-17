@@ -1,0 +1,5 @@
+
+@Data struct myStuff.Point {
+  x: Integer
+  y: Integer
+}

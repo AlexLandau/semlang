@@ -155,6 +155,8 @@ sealed class Type {
 
 data class Position(val lineNumber: Int, val column: Int, val rawStart: Int, val rawEnd: Int)
 
+data class Annotation(val name: String, val value: String?)
+
 // Pre-scoping
 sealed class AmbiguousExpression {
     abstract val position: Position
@@ -200,8 +202,8 @@ data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block) : HasFunctionId
-data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock) {
+data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, val annotations: List<Annotation>) : HasFunctionId
+data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, val annotations: List<Annotation>) {
     fun toTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
@@ -210,7 +212,7 @@ data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String
     }
 }
 
-data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>) : HasFunctionId {
+data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val annotations: List<Annotation>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
     }
@@ -220,12 +222,12 @@ interface HasFunctionId {
 }
 data class Member(val name: String, val type: Type)
 
-data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>) : HasFunctionId {
+data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>, val annotations: List<Annotation>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
     val adapterId: FunctionId = FunctionId(id.toPackage(), "Adapter")
-    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) })
+    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, listOf())
 }
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)

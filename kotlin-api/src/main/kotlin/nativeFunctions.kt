@@ -264,7 +264,9 @@ object NativeStruct {
             listOf(
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
-            ))
+            ),
+            listOf()
+    )
 }
 
 fun getNativeStructs(): Map<FunctionId, Struct> {
@@ -283,7 +285,8 @@ object NativeInterface {
             listOf(
                     Method("get", listOf(), listOf(Argument("index", Type.NATURAL)), typeT),
                     Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
-            )
+            ),
+            listOf()
     )
 }
 

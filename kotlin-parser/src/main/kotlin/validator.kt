@@ -58,7 +58,7 @@ private fun validateFunction(function: Function, allFunctionTypeSignatures: Map<
         fail("Function ${function.id}'s stated return type ${function.returnType} does " +
                 "not match the block's actual return type ${block.type}")
     } else {
-        return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block)
+        return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
     }
 }
 

@@ -3,13 +3,14 @@ package semlang.parser
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
-import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.ParseTreeWalker
+import org.antlr.v4.runtime.tree.TerminalNode
 import sem1.antlr.Sem1Lexer
 import sem1.antlr.Sem1Parser
 import sem1.antlr.Sem1ParserBaseListener
 import semlang.api.*
 import semlang.api.Function
+import semlang.api.Annotation
 import java.io.File
 import java.util.*
 
@@ -37,7 +38,35 @@ private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
     val argumentVariableIds = arguments.map { arg -> FunctionId.of(arg.name) }
     val block = scopeBlock(argumentVariableIds, ambiguousBlock)
 
-    return Function(id, typeParameters, arguments, returnType, block)
+    val annotations = parseAnnotations(function.annotations())
+
+    return Function(id, typeParameters, arguments, returnType, block, annotations)
+}
+
+private fun parseAnnotations(annotations: Sem1Parser.AnnotationsContext?): List<Annotation> {
+    if (annotations == null) {
+        return listOf()
+    }
+
+    val results = ArrayList<Annotation>()
+    var inputs: Sem1Parser.AnnotationsContext = annotations
+    while (true) {
+        if (inputs.annotation() != null) {
+            results.add(parseAnnotation(inputs.annotation()))
+        }
+        if (inputs.annotations() == null) {
+            break
+        }
+        inputs = inputs.annotations()
+    }
+    return results
+}
+
+fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
+    val name = annotation.annotation_name().ID().text
+    val value = annotation.LITERAL()?.let(::parseLiteral)
+
+    return Annotation(name, value)
 }
 
 private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: AmbiguousBlock): Block {
@@ -142,7 +171,10 @@ private fun parseStruct(ctx: Sem1Parser.StructContext): Struct {
     }
 
     val members: List<Member> = parseMembers(ctx.struct_components())
-    return Struct(id, typeParameters, members)
+
+    val annotations = parseAnnotations(ctx.annotations())
+
+    return Struct(id, typeParameters, members, annotations)
 }
 
 private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
@@ -219,7 +251,7 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
 
     if (expression.LITERAL() != null) {
         val type = parseTypeGivenParameters(expression.simple_type_id(), listOf())
-        val literal = expression.LITERAL().text.drop(1).dropLast(1)
+        val literal = parseLiteral(expression.LITERAL())
         return AmbiguousExpression.Literal(type, literal, positionOf(expression))
     }
 
@@ -269,6 +301,8 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
     }
     throw IllegalArgumentException("Couldn't parseFunction $expression")
 }
+
+private fun parseLiteral(literalFromParser: TerminalNode) = literalFromParser.text.drop(1).dropLast(1)
 
 fun positionOf(expression: ParserRuleContext): Position {
     return Position(
@@ -426,7 +460,9 @@ private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
     }
     val methods = parseMethods(interfac.interface_components())
 
-    return Interface(id, typeParameters, methods)
+    val annotations = parseAnnotations(interfac.annotations())
+
+    return Interface(id, typeParameters, methods, annotations)
 }
 
 private fun parseMethods(methods: Sem1Parser.Interface_componentsContext): List<Method> {

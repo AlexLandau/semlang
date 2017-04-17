@@ -1,0 +1,7 @@
+
+@Data
+@Size("variable")
+struct myStuff.Point {
+  x: Integer
+  y: Integer
+}

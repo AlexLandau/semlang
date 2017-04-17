@@ -44,6 +44,7 @@ ARROW              : '->' ;
 LESS_THAN          : '<' ;
 GREATER_THAN       : '>' ;
 PIPE               : '|' ;
+AT                 : '@' ;
 
 // Identifiers
 ID                 : [_]*[a-zA-Z0-9][A-Za-z0-9_]* ;

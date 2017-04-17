@@ -1,0 +1,9 @@
+@JavaFunctionalInterface
+interface myStuff.Operator<T> {
+    apply(left: T, right: T): T
+}
+
+// interface myCode.Operator<T> {
+//     getIdentity(): T
+//     apply(left: T, right: T): T
+// }

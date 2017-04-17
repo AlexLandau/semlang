@@ -23,7 +23,7 @@ private fun simplifyFunctionExpressions(functions: Map<FunctionId, ValidatedFunc
 private fun simplifyFunctionExpressions(function: ValidatedFunction): ValidatedFunction {
     val varsInScope = function.arguments.map(Argument::name)
     val newBlock = simplifyBlockExpressions(function.block, varsInScope)
-    return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, newBlock)
+    return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, newBlock, function.annotations)
 }
 
 private fun simplifyBlockExpressions(block: TypedBlock, varsAlreadyInScope: Collection<String>): TypedBlock {

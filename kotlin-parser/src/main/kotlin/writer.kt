@@ -1,4 +1,5 @@
 import semlang.api.*
+import semlang.api.Annotation
 import java.io.StringWriter
 import java.io.Writer
 
@@ -21,6 +22,7 @@ fun write(context: ValidatedContext, writer: Writer) {
 }
 
 private fun writeStruct(struct: Struct, writer: Writer) {
+    writeAnnotations(struct.annotations, writer)
     writer.append("struct ")
           .append(struct.id.toString())
     if (struct.typeParameters.isNotEmpty()) {
@@ -40,6 +42,7 @@ private fun writeStruct(struct: Struct, writer: Writer) {
 }
 
 private fun writeInterface(interfac: Interface, writer: Writer) {
+    writeAnnotations(interfac.annotations, writer)
     writer.append("interface ")
           .append(interfac.id.toString())
     if (interfac.typeParameters.isNotEmpty()) {
@@ -63,6 +66,7 @@ private fun writeInterface(interfac: Interface, writer: Writer) {
 }
 
 private fun writeFunction(function: ValidatedFunction, writer: Writer) {
+    writeAnnotations(function.annotations, writer)
     writer.append("function ")
           .append(function.id.toString())
     if (function.typeParameters.isNotEmpty()) {
@@ -81,6 +85,19 @@ private fun writeFunction(function: ValidatedFunction, writer: Writer) {
     writeBlock(function.block, 1, writer)
     writer.appendln("}")
           .appendln()
+}
+
+private fun writeAnnotations(annotations: List<Annotation>, writer: Writer) {
+    for (annotation in annotations) {
+        writer.append("@")
+                .append(annotation.name)
+        if (annotation.value != null) {
+            writer.append("(\"")
+                    .append(annotation.value) // TODO: Will want to escape this
+                    .append("\")")
+        }
+        writer.appendln()
+    }
 }
 
 private val SINGLE_INDENTATION = "    "
