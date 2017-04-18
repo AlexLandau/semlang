@@ -2,10 +2,10 @@ package semlang.interpreter
 
 import semlang.api.Type
 
-sealed class TypeValidator {
+sealed class LiteralValidator {
     abstract fun validate(literal: String): Boolean
 
-    object INTEGER : TypeValidator() {
+    object INTEGER : LiteralValidator() {
         override fun validate(literal: String): Boolean {
             if (literal.startsWith("-")) {
                 return literal != "-0" && NATURAL.validate(literal.substring(1))
@@ -14,7 +14,7 @@ sealed class TypeValidator {
         }
     }
 
-    object NATURAL : TypeValidator() {
+    object NATURAL : LiteralValidator() {
         override fun validate(literal: String): Boolean {
             if (literal.isEmpty()) {
                 return false
@@ -26,22 +26,21 @@ sealed class TypeValidator {
         }
     }
 
-    object BOOLEAN : TypeValidator() {
+    object BOOLEAN : LiteralValidator() {
         override fun validate(literal: String): Boolean {
             return literal == "true" || literal == "false"
         }
     }
 }
 
-// TODO: Return Try<TypeValidator>?
-fun getTypeValidatorFor(type: Type): TypeValidator {
+fun getTypeValidatorFor(type: Type): LiteralValidator {
     return when (type) {
-        Type.INTEGER -> TypeValidator.INTEGER
-        Type.NATURAL -> TypeValidator.NATURAL
-        Type.BOOLEAN -> TypeValidator.BOOLEAN
-        is Type.List -> throw IllegalArgumentException("No type validator for List: $type")
-        is Type.NamedType -> throw IllegalArgumentException("No type validator for NamedTypes: $type")
-        is Type.FunctionType -> throw IllegalArgumentException("No type validator for FunctionTypes: $type")
-        is Type.Try -> throw IllegalArgumentException("No type validator for Trys: $type")
+        Type.INTEGER -> LiteralValidator.INTEGER
+        Type.NATURAL -> LiteralValidator.NATURAL
+        Type.BOOLEAN -> LiteralValidator.BOOLEAN
+        is Type.List -> throw IllegalArgumentException("No literal validator for List: $type")
+        is Type.NamedType -> throw IllegalArgumentException("No literal validator for NamedTypes: $type")
+        is Type.FunctionType -> throw IllegalArgumentException("No literal validator for FunctionTypes: $type")
+        is Type.Try -> throw IllegalArgumentException("No literal validator for Trys: $type")
     }
 }
