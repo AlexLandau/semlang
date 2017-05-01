@@ -150,16 +150,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 return interpret(expression.functionId, arguments)
             }
             is TypedExpression.Literal -> {
-                val type = expression.type
-                if (type == Type.BOOLEAN) {
-                    return evaluateBooleanLiteral(expression.literal)
-                } else if (type == Type.INTEGER) {
-                    return evaluateIntegerLiteral(expression.literal)
-                } else if (type == Type.NATURAL) {
-                    return evaluateNaturalLiteral(expression.literal)
-                } else {
-                    throw IllegalArgumentException("Unhandled literal \"${expression.literal}\" of type $type")
-                }
+                return evaluateLiteral(expression.type, expression.literal)
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
@@ -185,6 +176,23 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 return SemObject.FunctionBinding(function.functionId, newBindings)
             }
         }
+    }
+
+    fun evaluateLiteral(type: Type, literal: String): SemObject {
+        return when (type) {
+            Type.NATURAL -> evaluateNaturalLiteral(literal)
+            Type.INTEGER -> evaluateIntegerLiteral(literal)
+            Type.BOOLEAN -> evaluateBooleanLiteral(literal)
+            is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            is Type.Try -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            is Type.NamedType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        }
+    }
+
+    fun areEqual(actualOutput: SemObject, desiredOutput: SemObject): Boolean {
+        // This works for now
+        return actualOutput.equals(desiredOutput)
     }
 }
 

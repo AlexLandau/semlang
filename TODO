@@ -3,6 +3,17 @@
   - Turn NativeFunctions into library code written in semlang where possible
     - It would also be nice to have this in some .class form in a produced .jar, maybe?
   - Use a code coverage tool for the Kotlin tests
+- Thoughts on code corpus:
+  - These are groups of code that include annotations or comments with their intended output for given inputs
+  - Thus, any implementation can use them as a test of that implementation
+  - One corpus for the language basics and required native methods
+  - Another corpus for the "standard library"
+  - These can get their own semantic versioning; essentially, adding tests is a patch version change,
+    adding a new feature to be implemented is a minor version change, and breaking the API is a major
+    version change (so basically, give it the same version as the API itself)
+  - In turn, we probably want to have a standard artifact format (even if it's just a .tgz or .zip
+    of the source files) for ease of distribution via a Maven-like system
+  - Should probably find a more pleasant-sounding word than "corpus"
 - Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
@@ -20,6 +31,9 @@
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
 - Enum types
+- DSL for "selecting" expressions from anywhere in a function
+  - Point is to establish this before considering add'l characters in variable names
+  - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
 - Code writing into Java
 - Annotations and multiple function definitions
