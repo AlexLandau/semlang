@@ -1,5 +1,6 @@
 
-
+@Test("['1', '2', '3']: 'false'")
+@Test("['3', '4', '5']: 'true'")
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
   let aSquared: Integer = Integer.times(a, a)
   let bSquared: Integer = Integer.times(b, b)

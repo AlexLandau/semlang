@@ -38,13 +38,13 @@ class CorpusInterpreterTests(private val file: File) {
             }
         }
         if (!foundAnyTests) {
-            fail()
+            fail("Expected at least one @Test in file $file, but there were none")
         }
     }
 
     private object Patterns {
         // TODO: Allow the ' character in strings via escaping
-        val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[('([^']*)')((, *'[^']*')*)\\]: '([^']*)'$")
+        val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[('([^']*)')?((, *'[^']*')*)\\]: '([^']*)'$")
         val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *'([^']*)'")
     }
 

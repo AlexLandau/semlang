@@ -1,4 +1,5 @@
 
+@Test("[]: '2'")
 function myCode.listSize2(): Natural {
   let emptyList: List<Integer> = List.empty<Integer>()
   let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")
@@ -7,6 +8,7 @@ function myCode.listSize2(): Natural {
   return List.size<Integer>(listTwo)
 }
 
+@Test("[]: '3'")
 function myCode.listSize3(): Natural {
   let emptyList: List<Integer> = List.empty<Integer>()
   let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")

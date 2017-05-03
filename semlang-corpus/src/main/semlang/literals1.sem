@@ -1,4 +1,8 @@
 
+@Test("['1']: '2'")
+@Test("['2']: '5'")
+@Test("['0']: '1'")
+@Test("['-1']: '2'")
 function myFunction(n: Integer): Integer {
     let a: Integer = Integer.times(n, n)
     let 1: Integer = Integer."1"

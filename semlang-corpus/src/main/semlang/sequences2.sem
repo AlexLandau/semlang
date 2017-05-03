@@ -3,6 +3,12 @@ struct TwoNaturals {
   right: Natural
 }
 
+@Test("['3', '6']: '3'")
+@Test("['3', '7']: '1'")
+@Test("['8', '12']: '4'")
+@Test("['49', '21']: '7'")
+@Test("['111', '54']: '3'")
+@Test("['1', '1']: '1'")
 function myStuff.gcd(n1: Natural, n2: Natural): Natural {
   let base: TwoNaturals = TwoNaturals(n1, n2)
   let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)

@@ -1,4 +1,7 @@
 
+@Test("['1']: '2'")
+@Test("['2']: '5'")
+@Test("['0']: '1'")
 function myFunction(n: Natural): Natural {
     let a: Natural = Natural.times(n, n)
     let 1: Natural = Natural."1"

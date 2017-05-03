@@ -179,20 +179,24 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
     }
 
     fun evaluateLiteral(type: Type, literal: String): SemObject {
-        return when (type) {
-            Type.NATURAL -> evaluateNaturalLiteral(literal)
-            Type.INTEGER -> evaluateIntegerLiteral(literal)
-            Type.BOOLEAN -> evaluateBooleanLiteral(literal)
-            is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-            is Type.Try -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-            is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-            is Type.NamedType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-        }
+        return evaluateLiteralImpl(type, literal)
     }
 
     fun areEqual(actualOutput: SemObject, desiredOutput: SemObject): Boolean {
         // This works for now
         return actualOutput.equals(desiredOutput)
+    }
+}
+
+private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
+    return when (type) {
+        Type.NATURAL -> evaluateNaturalLiteral(literal)
+        Type.INTEGER -> evaluateIntegerLiteral(literal)
+        Type.BOOLEAN -> evaluateBooleanLiteral(literal)
+        is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        is Type.Try -> evaluateTryLiteral(type, literal)
+        is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        is Type.NamedType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
     }
 }
 
@@ -216,4 +220,20 @@ private fun evaluateBooleanLiteral(literal: String): SemObject {
     } else {
         throw IllegalArgumentException("Unhandled literal \"$literal\" of type Boolean")
     }
+}
+
+/**
+ * Note: Currently this can be used by things like @Test, but trying to invoke this directly in a
+ * Semlang function will fail.
+ */
+private fun evaluateTryLiteral(type: Type.Try, literal: String): SemObject {
+    if (literal == "failure") {
+        return SemObject.Try.Failure
+    }
+    if (literal.startsWith("success(") && literal.endsWith(")")) {
+        val innerType = type.parameter
+        val innerLiteral = literal.substring("success(".length, literal.length - ")".length)
+        return SemObject.Try.Success(evaluateLiteralImpl(innerType, innerLiteral))
+    }
+    throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
 }

@@ -3,15 +3,13 @@ function myCode.square(n: Integer): Integer {
   return Integer.times(n, n)
 }
 
+@Test("['1', '2', '3']: 'false'")
+@Test("['3', '4', '5']: 'true'")
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
   let aSquared: Integer = myCode.square(a)
   let bSquared: Integer = myCode.square(b)
   let cSquared: Integer = myCode.square(c)
   let sumOfSquares: Integer = Integer.plus(aSquared, bSquared)
-  let result: Boolean = if (Integer.equals(sumOfSquares, cSquared)) {
-    return Integer.equals(sumOfSquares, cSquared)
-  } else {
-    return Integer.equals(sumOfSquares, cSquared)
-  }
+  let result: Boolean = Integer.equals(sumOfSquares, cSquared)
   return result
 }

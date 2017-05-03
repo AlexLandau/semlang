@@ -1,4 +1,5 @@
 
+@Test("[]: 'success(23)'")
 function myCode.listGet1(): Try<Natural> {
   let emptyList: List<Natural> = List.empty<Natural>()
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
@@ -7,6 +8,7 @@ function myCode.listGet1(): Try<Natural> {
   return List.get<Natural>(listThree, Natural."0")
 }
 
+@Test("[]: 'success(42)'")
 function myCode.listGet2(): Try<Natural> {
   let emptyList: List<Natural> = List.empty<Natural>()
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
@@ -15,6 +17,7 @@ function myCode.listGet2(): Try<Natural> {
   return List.get<Natural>(listThree, Natural."2")
 }
 
+@Test("[]: '42'")
 function myCode.listGetAssume(): Natural {
   let emptyList: List<Natural> = List.empty<Natural>()
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
@@ -23,6 +26,7 @@ function myCode.listGetAssume(): Natural {
   return Try.assume<Natural>(List.get<Natural>(listThree, Natural."2"))
 }
 
+@Test("[]: 'failure'")
 function myCode.listGetOutOfBounds(): Try<Natural> {
   let emptyList: List<Natural> = List.empty<Natural>()
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
