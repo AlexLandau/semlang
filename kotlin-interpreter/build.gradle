@@ -22,6 +22,7 @@ repositories {
 dependencies {
   compile project(':kotlin-api')
   testCompile project(':kotlin-parser')
+  testCompile project(':kotlin-test-utils')
 
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 

@@ -1,7 +1,10 @@
+import org.junit.Assert
+import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import semlang.api.getNativeContext
+import semlang.internal.test.runAnnotationTests
 import semlang.parser.parseFile
 import semlang.parser.validateContext
 import semlang.transforms.simplifyExpressions
@@ -30,6 +33,20 @@ class SimplifyExpressionsTest(private val file: File) {
         // (This requires storing inputs to try with each given code sample; ideally we'd combine this
         // with storing the expected outputs, so interpreter tests can use the same framework)
         val simplified = simplifyExpressions(context)
+
+        try {
+            try {
+                val testsRun = runAnnotationTests(simplified)
+                if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
+                    fail("Found no @Test annotations in corpus file $file")
+                }
+            } catch (e: AssertionError) {
+                throw AssertionError("Simplified context was:\n" + writeToString(simplified), e)
+            }
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Simplified context was:\n" + writeToString(simplified), e)
+        }
+
         // TODO: Test sem0 output and parsing round-trip
     }
 

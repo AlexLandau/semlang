@@ -190,6 +190,8 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             val assignments = subresult.newAssignments + ValidatedAssignment(replacementName, newIfThen.type, newIfThen)
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, assignments)
         }
         is TypedExpression.ExpressionFunctionCall -> {
@@ -210,6 +212,8 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, newAssignments)
         }
         is TypedExpression.NamedFunctionCall -> {
@@ -227,6 +231,8 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, newAssignments)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
@@ -251,6 +257,8 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, newAssignments)
         }
         is TypedExpression.NamedFunctionBinding -> {
@@ -272,6 +280,8 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, newAssignments)
         }
     }
