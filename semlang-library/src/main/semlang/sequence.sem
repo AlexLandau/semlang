@@ -1,6 +1,5 @@
 
-
-// TODO: Figure out a better name, and put in a standard library for the language
+// TODO: Figure out a better name
 // TODO: Should also have a version with no initial value specified
 struct AccumulatingSequenceElement<T> {
     curValue: T
@@ -25,7 +24,6 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
 }
 
 
-// TODO: Definitely belongs in a standard library
 function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())
