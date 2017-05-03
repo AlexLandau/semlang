@@ -84,7 +84,7 @@ sealed class Type {
         }
 
         override fun toString(): String {
-            return super.toString()
+            return getTypeString()
         }
     }
 
@@ -95,6 +95,10 @@ sealed class Type {
 
         override fun getTypeString(): String {
             return "Try<$parameter>"
+        }
+
+        override fun toString(): String {
+            return getTypeString()
         }
     }
 
@@ -112,7 +116,7 @@ sealed class Type {
         }
 
         override fun toString(): String {
-            return super.toString()
+            return getTypeString()
         }
     }
 

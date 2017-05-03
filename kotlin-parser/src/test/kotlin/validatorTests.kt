@@ -19,8 +19,10 @@ class ValidatorPositiveTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("src/test/semlang/validatorTests/pass")
-            return folder.listFiles().map { file ->
+            val compilerTestFolder = File("src/test/semlang/validatorTests/pass")
+            val corpusFolder = File("../semlang-corpus/src/main/semlang")
+            val allFiles = compilerTestFolder.listFiles() + corpusFolder.listFiles()
+            return allFiles.map { file ->
                 arrayOf(file as Any?)
             }
         }
