@@ -1,5 +1,7 @@
 package semlang.parser.test
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import fromJson
 import org.junit.Assert
 import org.junit.Ignore
 import org.junit.Test
@@ -10,6 +12,7 @@ import semlang.api.getNativeContext
 import semlang.parser.parseFile
 import semlang.parser.parseString
 import semlang.parser.validateContext
+import toJson
 import writeToString
 import java.io.File
 
@@ -41,8 +44,19 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(writtenToString)
         System.out.println("(End contents)")
         val reparsed = parseAndValidateString(writtenToString)
-        // TODO: Check the actual equality of the contexts
         assertContextsEqual(initiallyParsed, reparsed)
+    }
+
+    @Test
+    fun testJsonWriteParseEquality() {
+        val initiallyParsed = parseAndValidateFile(file)
+        val asJson = toJson(initiallyParsed)
+        System.out.println("Contents for file $file as JSON:")
+        System.out.println(ObjectMapper().writeValueAsString(asJson))
+        System.out.println("(End contents)")
+        val fromJson = fromJson(asJson)
+        val fromJsonValidated = validateContext(fromJson, listOf(getNativeContext()))
+        assertContextsEqual(initiallyParsed, fromJsonValidated)
     }
 }
 

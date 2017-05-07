@@ -9,7 +9,11 @@ import java.util.*
 // TODO: Probably need several overloads of this, and Positions stored in more places
 private fun fail(expression: Expression, text: String): Nothing {
     val position = expression.position
-    val fullMessage = "Validation error, ${position.lineNumber}:${position.column}: " + text
+    val fullMessage = if (position != null) {
+        "Validation error, ${position.lineNumber}:${position.column}: " + text
+    } else {
+        "Validation error: " + text
+    }
     error(fullMessage)
 }
 
@@ -78,13 +82,13 @@ private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>
         }
 
         val validatedExpression = validateExpression(assignment.expression, variableTypes, allFunctionTypeSignatures, structs, interfaces, containingFunctionId)
-        if (validatedExpression.type != assignment.type) {
+        if (assignment.type != null && (validatedExpression.type != assignment.type)) {
             fail("In function $containingFunctionId, the variable ${assignment.name} is supposed to be of type ${assignment.type}, " +
                     "but the expression given has actual type ${validatedExpression.type}")
         }
 
-        validatedAssignments.add(ValidatedAssignment(assignment.name, assignment.type, validatedExpression))
-        variableTypes.put(assignment.name, assignment.type)
+        validatedAssignments.add(ValidatedAssignment(assignment.name, validatedExpression.type, validatedExpression))
+        variableTypes.put(assignment.name, validatedExpression.type)
     }
     val returnedExpression = validateExpression(block.returnedExpression, variableTypes, allFunctionTypeSignatures, structs, interfaces, containingFunctionId)
     return TypedBlock(returnedExpression.type, validatedAssignments, returnedExpression)
@@ -203,9 +207,9 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
 
     val struct = structs[structType.id]
     if (struct != null) {
-        val index = struct.getIndexForName(expression.id)
+        val index = struct.getIndexForName(expression.name)
         if (index < 0) {
-            fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.id}' of the struct type $structType")
+            fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $structType")
         }
         // Type parameters come from the struct definition itself
         // Chosen types come from the struct type known for the variable
@@ -214,15 +218,15 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
         val type = parameterizeType(struct.members[index].type, typeParameters, chosenTypes, struct.id)
         //TODO: Ground this if needed
 
-        return TypedExpression.Follow(type, innerExpression, expression.id)
+        return TypedExpression.Follow(type, innerExpression, expression.name)
     }
 
     val interfac = interfaces[structType.id]
     if (interfac != null) {
         val interfaceType = structType
-        val index = interfac.getIndexForName(expression.id)
+        val index = interfac.getIndexForName(expression.name)
         if (index < 0) {
-            fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.id}' of the interface type $interfaceType")
+            fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
         }
 
         val method = interfac.methods[index]
@@ -230,7 +234,7 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
         val chosenTypes = interfaceType.getParameterizedTypes()
         val type = parameterizeType(method.functionType, typeParameters, chosenTypes, interfac.id)
 
-        return TypedExpression.Follow(type, innerExpression, expression.id)
+        return TypedExpression.Follow(type, innerExpression, expression.name)
     }
 
     fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of a type $structType that is not recognized as a struct or interface")

@@ -1,0 +1,25 @@
+
+struct myStuff.Point<T> {
+  x: T
+  y: T
+}
+
+function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
+  return Integer."1"
+}
+
+@Test("['0']: '2'")
+@Test("['1']: '6'")
+@Test("['2']: '12'")
+@Test("['3']: '20'")
+function myStuff.myFunction(input: Natural): Integer {
+  let 1 = Natural."1"
+  let newX = Natural.plus(input, 1)
+  let newY = Natural.plus(newX, 1)
+  let object = myStuff.Point<Natural>(newX, newY)
+  let partialOutput = Natural.times(object->x, object->y)
+  let specificFunction = myStuff.genericFunction<Natural>|(_)
+  let constantFactor = specificFunction(object)
+  let output = Integer.times(Integer.fromNatural(partialOutput), constantFactor)
+  return output
+}

@@ -75,7 +75,8 @@ annotation_name : AT ID ;
 cd_ids : ID | ID COMMA cd_ids ;
 
 assignments : | assignment assignments ;
-assignment : LET ID COLON type ASSIGN expression ;
+assignment : LET ID ASSIGN expression
+  | LET ID COLON type ASSIGN expression;
 return_statement: RETURN expression ;
 
 type : simple_type_id

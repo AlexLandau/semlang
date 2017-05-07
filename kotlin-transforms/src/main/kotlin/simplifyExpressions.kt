@@ -62,7 +62,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
         }
         is TypedExpression.Follow -> {
             val result = tryMakingIntoVar(expression.expression, varNamesToPreserve, varNamesInScope)
-            val replacementExpression = TypedExpression.Follow(expression.type, result.variable, expression.id)
+            val replacementExpression = TypedExpression.Follow(expression.type, result.variable, expression.name)
             ExpressionMultisplitResult(replacementExpression, result.newAssignments)
         }
         is TypedExpression.IfThen -> {
@@ -155,12 +155,13 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
         is TypedExpression.Follow -> {
             val subresult = tryMakingIntoVar(expression.expression, varNamesToPreserve, varNamesInScope)
 
-            val newFollow = TypedExpression.Follow(expression.type, subresult.variable, expression.id)
+            val newFollow = TypedExpression.Follow(expression.type, subresult.variable, expression.name)
             val replacementName = getNewVarName(varNamesToPreserve)
 
             val assignments = subresult.newAssignments + ValidatedAssignment(replacementName, newFollow.type, newFollow)
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)
 
+            //TODO: Handle these in a way that reduces possible inconsistencies
             varNamesToPreserve.add(replacementName)
             varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, assignments)
@@ -287,14 +288,14 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
     }
 }
 
-private fun getNewVarNameForLiteral(literalValue: String, varNamesToPreserve: MutableSet<String>): String {
+private fun getNewVarNameForLiteral(literalValue: String, varNamesToPreserve: Set<String>): String {
     // TODO: Implement. This is a little tricky in that we have to remove certain characters and avoid
     // empty and _-only strings
     return getNewVarName(varNamesToPreserve)
 }
 
 // TODO: Use better approaches than this to come up with names
-private fun getNewVarName(varNamesToPreserve: MutableSet<String>): String {
+private fun getNewVarName(varNamesToPreserve: Set<String>): String {
     var i = 1
     while (true) {
         val name = "temp_" + i

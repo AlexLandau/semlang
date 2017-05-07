@@ -3,6 +3,7 @@ package semlang.api
 import java.util.HashMap
 
 //TODO: Validate inputs (non-overlapping keys)
+//TODO: Rename to UnvalidatedContext?
 data class InterpreterContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
 
 // TODO: We'll want this to be able to reference upstream contexts without repeating their contents

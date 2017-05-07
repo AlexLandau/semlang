@@ -40,6 +40,10 @@
 - Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment
+- Interactive debugger of functions: drill down into results of subcalls
+  - Mark results of specific functions as correct or incorrect for recording tests
+  - Set up "normal" interpreter to record the results of specific functions; bridge into this after-the-fact analysis
+    - (Record any non-determinism from monads while inside such a call)
 - Offer alternative syntax with even easier parsing (e.g. commas prepended to lists, dots prepended to IDs)
 - Start to create dialects with simpler syntax, type inference, etc.
   - "sem1" vs. "sem0" for starters

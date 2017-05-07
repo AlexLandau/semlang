@@ -1,5 +1,6 @@
 package semlang.parser
 
+import indexById
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -62,7 +63,7 @@ private fun parseAnnotations(annotations: Sem1Parser.AnnotationsContext?): List<
     return results
 }
 
-fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
+private fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
     val name = annotation.annotation_name().ID().text
     val value = annotation.LITERAL()?.let(::parseLiteral)
 
@@ -86,7 +87,7 @@ fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpressi
     return when (expression) {
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),
-                expression.id,
+                expression.name,
                 expression.position)
         is AmbiguousExpression.VarOrNamedFunctionBinding -> {
             if (varIds.contains(expression.functionIdOrVariable)) {
@@ -236,7 +237,7 @@ private fun parseAssignments(assignments: Sem1Parser.AssignmentsContext): List<A
 
 private fun parseAssignment(assignment: Sem1Parser.AssignmentContext): AmbiguousAssignment {
     val name = assignment.ID().text
-    val type = parseType(assignment.type())
+    val type = if (assignment.type() != null) parseType(assignment.type()) else null
     val expression = parseExpression(assignment.expression())
     return AmbiguousAssignment(name, type, expression)
 }
@@ -304,7 +305,7 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
 
 private fun parseLiteral(literalFromParser: TerminalNode) = literalFromParser.text.drop(1).dropLast(1)
 
-fun positionOf(expression: ParserRuleContext): Position {
+private fun positionOf(expression: ParserRuleContext): Position {
     return Position(
             expression.start.line,
             expression.start.charPositionInLine,
@@ -313,7 +314,7 @@ fun positionOf(expression: ParserRuleContext): Position {
     )
 }
 
-fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
     val bindings = ArrayList<AmbiguousExpression?>()
     var inputs = cd_expressions_or_underscores
     while (true) {
@@ -493,30 +494,21 @@ private fun parseMethod(method: Sem1Parser.Interface_componentContext): Method {
     return Method(name, typeParameters, arguments, returnType)
 }
 
-private class MyListener : Sem1ParserBaseListener() {
+private class ContextListener : Sem1ParserBaseListener() {
     val structs: MutableList<Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
     val interfaces: MutableList<Interface> = ArrayList()
 
-    override fun enterFunction(ctx: Sem1Parser.FunctionContext?) {
-        super.enterFunction(ctx)
-        if (ctx != null) {
-            functions.add(parseFunction(ctx))
-        }
+    override fun exitFunction(ctx: Sem1Parser.FunctionContext) {
+        functions.add(parseFunction(ctx))
     }
 
-    override fun enterStruct(ctx: Sem1Parser.StructContext?) {
-        super.enterStruct(ctx)
-        if (ctx != null) {
-            structs.add(parseStruct(ctx))
-        }
+    override fun exitStruct(ctx: Sem1Parser.StructContext) {
+        structs.add(parseStruct(ctx))
     }
 
-    override fun enterInterfac(ctx: Sem1Parser.InterfacContext?) {
-        super.enterInterfac(ctx)
-        if (ctx != null) {
-            interfaces.add(parseInterface(ctx))
-        }
+    override fun exitInterfac(ctx: Sem1Parser.InterfacContext) {
+        interfaces.add(parseInterface(ctx))
     }
 }
 
@@ -543,46 +535,76 @@ fun parseString(string: String): InterpreterContext {
     return toInterpreterContext(rawContents)
 }
 
-private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
-    val errors = ArrayList<String>()
-
-    val lexer = Sem1Lexer(stream)
-    val errorListener = object : ANTLRErrorListener {
-        override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-            if (msg != null) {
-                errors.add(msg)
-            } else {
-                errors.add("Error with no message at line $line and column $charPositionInLine")
-            }
+private class ErrorListener(val errorsFound: ArrayList<String> = ArrayList<String>()): ANTLRErrorListener {
+    override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
+        if (msg != null) {
+            errorsFound.add(msg)
+        } else {
+            errorsFound.add("Error with no message at line $line and column $charPositionInLine")
         }
-
-        override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
-            // Do nothing
-        }
-
-        override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
-
-        override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
-            // Do nothing
-        }
-
     }
+
+    override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
+        // Do nothing
+    }
+
+    override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
+        // Do nothing
+    }
+}
+
+private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
+    val lexer = Sem1Lexer(stream)
+    val errorListener = ErrorListener()
     lexer.addErrorListener(errorListener)
     val tokens = CommonTokenStream(lexer)
     val parser = Sem1Parser(tokens)
     parser.addErrorListener(errorListener)
     val tree: Sem1Parser.FileContext = parser.file()
 
-    val extractor = MyListener()
+    val extractor = ContextListener()
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
-    if (!errors.isEmpty()) {
-        error("Found errors: " + errors)
+    if (!errorListener.errorsFound.isEmpty()) {
+        error("Found errors: " + errorListener.errorsFound)
     }
 
     return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
+}
+
+private class TypeListener : Sem1ParserBaseListener() {
+    var type: Type? = null
+
+    // Note: We could encounter multiple types in the case of e.g. a function type.
+    // This approach gives us the outermost type.
+    override fun exitType(ctx: Sem1Parser.TypeContext) {
+        type = parseType(ctx)
+    }
+}
+
+fun parseTypeFromString(string: String): Type {
+    val stream = ANTLRInputStream(string)
+    val lexer = Sem1Lexer(stream)
+    val errorListener = ErrorListener()
+    lexer.addErrorListener(errorListener)
+    val tokens = CommonTokenStream(lexer)
+    val parser = Sem1Parser(tokens)
+    parser.addErrorListener(errorListener)
+    val tree: Sem1Parser.TypeContext = parser.type()
+
+    val extractor = TypeListener()
+    ParseTreeWalker.DEFAULT.walk(extractor, tree)
+
+    if (!errorListener.errorsFound.isEmpty()) {
+        error("Found errors: " + errorListener.errorsFound)
+    }
+
+    val type = extractor.type ?: error("Expected to find a type in $string, but found none")
+    return type
 }
 
 fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
@@ -606,8 +628,4 @@ fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     interfaces.addAll(ourContents.interfaces)
 
     return InterpreterContext(indexById(functions), indexById(structs), indexById(interfaces))
-}
-
-private fun <T: HasFunctionId> indexById(indexables: List<T>): Map<FunctionId, T> {
-    return indexables.associateBy(HasFunctionId::id)
 }

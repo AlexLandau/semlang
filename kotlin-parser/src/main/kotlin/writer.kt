@@ -134,7 +134,7 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
         is TypedExpression.Follow -> {
             writeExpression(expression.expression, indentationLevel, writer)
             writer.append("->")
-                    .append(expression.id)
+                    .append(expression.name)
         }
         is TypedExpression.NamedFunctionCall -> {
             writer.append(expression.functionId.toString())
