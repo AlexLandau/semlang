@@ -586,27 +586,6 @@ private class TypeListener : Sem1ParserBaseListener() {
     }
 }
 
-fun parseTypeFromString(string: String): Type {
-    val stream = ANTLRInputStream(string)
-    val lexer = Sem1Lexer(stream)
-    val errorListener = ErrorListener()
-    lexer.addErrorListener(errorListener)
-    val tokens = CommonTokenStream(lexer)
-    val parser = Sem1Parser(tokens)
-    parser.addErrorListener(errorListener)
-    val tree: Sem1Parser.TypeContext = parser.type()
-
-    val extractor = TypeListener()
-    ParseTreeWalker.DEFAULT.walk(extractor, tree)
-
-    if (!errorListener.errorsFound.isEmpty()) {
-        error("Found errors: " + errorListener.errorsFound)
-    }
-
-    val type = extractor.type ?: error("Expected to find a type in $string, but found none")
-    return type
-}
-
 fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     // TODO: This is not going to work consistently
     val directory = File("../semlang-library/src/main/semlang")

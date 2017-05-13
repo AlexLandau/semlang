@@ -1,11 +1,12 @@
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
 import semlang.api.*
 import semlang.api.Annotation
 import semlang.api.Function
-import semlang.parser.parseTypeFromString
 
 //TODO: Before trying to write an interpreter in another language, I think we
 //actually want to have the sem0 version of this, for which the validation and
@@ -92,26 +93,90 @@ fun parseFunctionId(node: JsonNode): FunctionId {
     return FunctionId(Package(packageParts), name)
 }
 
-fun parseMembers(node: JsonNode): List<Member> {
+private fun parseMembers(node: JsonNode): List<Member> {
     if (!node.isArray()) error("Members should be in an array")
     return node.map { memberNode -> parseMember(memberNode) }
 }
 
 private fun addMember(node: ObjectNode, member: Member) {
     node.put("name", member.name)
-    node.put("type", member.type.toString())
+    node.set("type", toTypeNode(member.type))
 }
 
-fun parseMember(node: JsonNode): Member {
+private fun toTypeNode(type: Type): JsonNode {
+    val factory = JsonNodeFactory.instance
+    return when (type) {
+        Type.INTEGER -> TextNode(type.toString())
+        Type.NATURAL -> TextNode(type.toString())
+        Type.BOOLEAN -> TextNode(type.toString())
+        is Type.List -> {
+            ObjectNode(factory).set("List", toTypeNode(type.parameter))
+        }
+        is Type.Try -> {
+            ObjectNode(factory).set("Try", toTypeNode(type.parameter))
+        }
+        is Type.FunctionType -> {
+            val node = ObjectNode(factory)
+            val argsArray = node.putArray("from")
+            type.argTypes.forEach { argType ->
+                argsArray.add(toTypeNode(argType))
+            }
+            node.set("to", toTypeNode(type.outputType))
+            node
+        }
+        is Type.NamedType -> {
+            val node = ObjectNode(factory)
+            node.put("name", type.id.toString())
+            if (type.parameters.isNotEmpty()) {
+                val paramsArray = node.putArray("params")
+                type.parameters.forEach { parameter ->
+                    paramsArray.add(toTypeNode(parameter))
+                }
+            }
+            node
+        }
+    }
+}
+
+private fun parseMember(node: JsonNode): Member {
     val name = node["name"].textValue() ?: error("Member names should be strings")
     val type = parseType(node["type"] ?: error("Members must have types"))
     return Member(name, type)
 }
 
-fun parseType(node: JsonNode): Type {
-    val string = node.textValue() ?: error("Types should be strings")
+private fun parseType(node: JsonNode): Type {
+    if (node.isTextual()) {
+        return when (node.textValue()) {
+            "Integer" -> Type.INTEGER
+            "Boolean" -> Type.BOOLEAN
+            "Natural" -> Type.NATURAL
+            else -> error("Unrecognized type string: ${node.textValue()}")
+        }
+    }
 
-    return parseTypeFromString(string)
+    if (!node.isObject()) {
+        error("Was expecting a string or object node for a type; was $node")
+    }
+
+    if (node.has("name")) {
+        val id = parseFunctionId(node["name"])
+        val parameters = if (node.has("params")) {
+            val paramsArray = node["params"]
+            paramsArray.map(::parseType)
+        } else {
+            listOf()
+        }
+        return Type.NamedType(id, parameters)
+    } else if (node.has("from")) {
+        val argTypes = node["from"].map(::parseType)
+        val outputType = parseType(node["to"])
+        return Type.FunctionType(argTypes, outputType)
+    } else if (node.has("Try")) {
+        return Type.Try(parseType(node["Try"]))
+    } else if (node.has("List")) {
+        return Type.List(parseType(node["List"]))
+    }
+    error("Unrecognized type: $node")
 }
 
 private fun addAnnotation(node: ObjectNode, annotation: Annotation) {
@@ -163,7 +228,7 @@ private fun addMethod(node: ObjectNode, method: Method) {
         addTypeParameters(node.putArray("typeParameters"), method.typeParameters)
     }
     addArray(node, "arguments", method.arguments, ::addFunctionArgument)
-    node.put("returnType", method.returnType.toString())
+    node.set("returnType", toTypeNode(method.returnType))
 }
 
 private fun parseMethod(node: JsonNode): Method {
@@ -191,7 +256,7 @@ private fun addFunction(node: ObjectNode, function: ValidatedFunction) {
         addTypeParameters(node.putArray("typeParameters"), function.typeParameters)
     }
     addArray(node, "arguments", function.arguments, ::addFunctionArgument)
-    node.put("returnType", function.returnType.toString())
+    node.set("returnType", toTypeNode(function.returnType))
 
     addBlock(node.putArray("block"), function.block)
 }
@@ -278,7 +343,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         }
         is TypedExpression.Literal -> {
             node.put("type", "literal")
-            node.put("literalType", expression.type.toString())
+            node.set("literalType", toTypeNode(expression.type))
             node.put("value", expression.literal)
             return
         }
@@ -391,13 +456,13 @@ private fun addBinding(node: ObjectNode, binding: TypedExpression?) {
 
 private fun addChosenParameters(node: ArrayNode, chosenParameters: List<Type>) {
     chosenParameters.forEach { parameter ->
-        node.add(parameter.toString())
+        node.add(toTypeNode(parameter))
     }
 }
 
 private fun addFunctionArgument(node: ObjectNode, argument: Argument) {
     node.put("name", argument.name)
-    node.put("type", argument.type.toString())
+    node.set("type", toTypeNode(argument.type))
 }
 
 private fun parseArgument(node: JsonNode): Argument {
