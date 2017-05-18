@@ -49,18 +49,10 @@ private fun parseAnnotations(annotations: Sem1Parser.AnnotationsContext?): List<
         return listOf()
     }
 
-    val results = ArrayList<Annotation>()
-    var inputs: Sem1Parser.AnnotationsContext = annotations
-    while (true) {
-        if (inputs.annotation() != null) {
-            results.add(parseAnnotation(inputs.annotation()))
-        }
-        if (inputs.annotations() == null) {
-            break
-        }
-        inputs = inputs.annotations()
-    }
-    return results
+    return parseLinkedList(annotations,
+            Sem1Parser.AnnotationsContext::annotation,
+            Sem1Parser.AnnotationsContext::annotations,
+            ::parseAnnotation)
 }
 
 private fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
@@ -179,33 +171,17 @@ private fun parseStruct(ctx: Sem1Parser.StructContext): Struct {
 }
 
 private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
-    val results = ArrayList<String>()
-    var inputs = cd_ids
-    while (true) {
-        if (inputs.ID() != null) {
-            results.add(inputs.ID().text)
-        }
-        if (inputs.cd_ids() == null) {
-            break
-        }
-        inputs = inputs.cd_ids()
-    }
-    return results
+    return parseLinkedList(cd_ids,
+            Sem1Parser.Cd_idsContext::ID,
+            Sem1Parser.Cd_idsContext::cd_ids,
+            TerminalNode::getText)
 }
 
 private fun parseMembers(members: Sem1Parser.Struct_componentsContext): List<Member> {
-    val results = ArrayList<Member>()
-    var inputs = members
-    while (true) {
-        if (inputs.struct_component() != null) {
-            results.add(parseMember(inputs.struct_component()))
-        }
-        if (inputs.struct_components() == null) {
-            break
-        }
-        inputs = inputs.struct_components()
-    }
-    return results
+    return parseLinkedList(members,
+            Sem1Parser.Struct_componentsContext::struct_component,
+            Sem1Parser.Struct_componentsContext::struct_components,
+            ::parseMember)
 }
 
 private fun parseMember(member: Sem1Parser.Struct_componentContext): Member {
@@ -221,18 +197,10 @@ private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
 }
 
 private fun parseAssignments(assignments: Sem1Parser.AssignmentsContext): List<AmbiguousAssignment> {
-    val results = ArrayList<AmbiguousAssignment>()
-    var inputs = assignments
-    while (true) {
-        if (inputs.assignment() != null) {
-            results.add(parseAssignment(inputs.assignment()))
-        }
-        if (inputs.assignments() == null) {
-            break
-        }
-        inputs = inputs.assignments()
-    }
-    return results
+    return parseLinkedList(assignments,
+            Sem1Parser.AssignmentsContext::assignment,
+            Sem1Parser.AssignmentsContext::assignments,
+            ::parseAssignment)
 }
 
 private fun parseAssignment(assignment: Sem1Parser.AssignmentContext): AmbiguousAssignment {
@@ -315,6 +283,7 @@ private fun positionOf(expression: ParserRuleContext): Position {
 }
 
 private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+    // TODO: Changes in the parser could make this amenable to parseLinkedList()
     val bindings = ArrayList<AmbiguousExpression?>()
     var inputs = cd_expressions_or_underscores
     while (true) {
@@ -332,33 +301,17 @@ private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressio
 }
 
 private fun parseCommaDelimitedExpressions(cd_expressions: Sem1Parser.Cd_expressionsContext): List<AmbiguousExpression> {
-    val expressions = ArrayList<AmbiguousExpression>()
-    var inputs = cd_expressions
-    while (true) {
-        if (inputs.expression() != null) {
-            expressions.add(parseExpression(inputs.expression()))
-        }
-        if (inputs.cd_expressions() == null) {
-            break
-        }
-        inputs = inputs.cd_expressions()
-    }
-    return expressions
+    return parseLinkedList(cd_expressions,
+            Sem1Parser.Cd_expressionsContext::expression,
+            Sem1Parser.Cd_expressionsContext::cd_expressions,
+            ::parseExpression)
 }
 
 private fun parseFunctionArguments(function_arguments: Sem1Parser.Function_argumentsContext): List<Argument> {
-    val arguments = ArrayList<Argument>()
-    var inputs = function_arguments
-    while (true) {
-        if (inputs.function_argument() != null) {
-            arguments.add(parseFunctionArgument(inputs.function_argument()))
-        }
-        if (inputs.function_arguments() == null) {
-            break
-        }
-        inputs = inputs.function_arguments()
-    }
-    return arguments
+    return parseLinkedList(function_arguments,
+            Sem1Parser.Function_argumentsContext::function_argument,
+            Sem1Parser.Function_argumentsContext::function_arguments,
+            ::parseFunctionArgument)
 }
 
 private fun parseFunctionArgument(function_argument: Sem1Parser.Function_argumentContext): Argument {
@@ -377,17 +330,10 @@ private fun parseFunctionId(function_id: Sem1Parser.Function_idContext): Functio
 }
 
 private fun parsePackage(packag: Sem1Parser.PackagContext): Package {
-    val parts = ArrayList<String>()
-    var inputs = packag
-    while (true) {
-        if (inputs.ID() != null) {
-            parts.add(inputs.ID().text)
-        }
-        if (inputs.packag() == null) {
-            break
-        }
-        inputs = inputs.packag()
-    }
+    val parts = parseLinkedList(packag,
+            Sem1Parser.PackagContext::ID,
+            Sem1Parser.PackagContext::packag,
+            TerminalNode::getText)
     return Package(parts)
 }
 
@@ -411,18 +357,10 @@ private fun parseType(type: Sem1Parser.TypeContext): Type {
 }
 
 private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<Type> {
-    val results = ArrayList<Type>()
-    var inputs = cd_types
-    while (true) {
-        if (inputs.type() != null) {
-            results.add(parseType(inputs.type()))
-        }
-        if (inputs.cd_types() == null) {
-            break
-        }
-        inputs = inputs.cd_types()
-    }
-    return results
+    return parseLinkedList(cd_types,
+            Sem1Parser.Cd_typesContext::type,
+            Sem1Parser.Cd_typesContext::cd_types,
+            ::parseType)
 }
 
 private fun parseTypeGivenParameters(simple_type_id: Sem1Parser.Simple_type_idContext, parameters: List<Type>): Type {
@@ -467,18 +405,10 @@ private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
 }
 
 private fun parseMethods(methods: Sem1Parser.Interface_componentsContext): List<Method> {
-    val results = ArrayList<Method>()
-    var inputs = methods
-    while (true) {
-        if (inputs.interface_component() != null) {
-            results.add(parseMethod(inputs.interface_component()))
-        }
-        if (inputs.interface_components() == null) {
-            break
-        }
-        inputs = inputs.interface_components()
-    }
-    return results
+    return parseLinkedList(methods,
+            Sem1Parser.Interface_componentsContext::interface_component,
+            Sem1Parser.Interface_componentsContext::interface_components,
+            ::parseMethod)
 }
 
 private fun parseMethod(method: Sem1Parser.Interface_componentContext): Method {
@@ -492,6 +422,34 @@ private fun parseMethod(method: Sem1Parser.Interface_componentContext): Method {
     val returnType = parseType(method.type())
 
     return Method(name, typeParameters, arguments, returnType)
+}
+
+/**
+ * A common pattern in our parsing is defining a list of things as something like:
+ *
+ * annotations : | annotation annotations ;
+ *
+ * This is a utility method for converting such a "linked list" pattern to an ArrayList
+ * of the parsed equivalent.
+ */
+private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot: ThingsContext,
+                                                                 getHead: (ThingsContext) -> ThingContext?,
+                                                                 getRestOf: (ThingsContext) -> ThingsContext?,
+                                                                 parseUnit: (ThingContext) -> Thing): ArrayList<Thing> {
+    val results = ArrayList<Thing>()
+    var inputs = linkedListRoot
+    while (true) {
+        val head = getHead(inputs)
+        if (head != null) {
+            results.add(parseUnit(head))
+        }
+        val rest = getRestOf(inputs)
+        if (rest == null) {
+            break
+        }
+        inputs = rest
+    }
+    return results
 }
 
 private class ContextListener : Sem1ParserBaseListener() {
@@ -574,16 +532,6 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
     }
 
     return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
-}
-
-private class TypeListener : Sem1ParserBaseListener() {
-    var type: Type? = null
-
-    // Note: We could encounter multiple types in the case of e.g. a function type.
-    // This approach gives us the outermost type.
-    override fun exitType(ctx: Sem1Parser.TypeContext) {
-        type = parseType(ctx)
-    }
 }
 
 fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
