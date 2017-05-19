@@ -60,10 +60,10 @@ struct_components : | struct_component struct_components ;
 struct_component : ID COLON type ;
 
 // TODO: Is there a better solution for this than mangling the name?
-interfac : annotations INTERFACE function_id LBRACE interface_components RBRACE
-  | annotations INTERFACE function_id LESS_THAN cd_ids GREATER_THAN LBRACE interface_components RBRACE ;
-interface_components : | interface_component interface_components ;
-interface_component : ID LPAREN function_arguments RPAREN COLON type
+interfac : annotations INTERFACE function_id LBRACE methods RBRACE
+  | annotations INTERFACE function_id LESS_THAN cd_ids GREATER_THAN LBRACE methods RBRACE ;
+methods : | method methods ;
+method : ID LPAREN function_arguments RPAREN COLON type
   | ID LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
 
 annotations : | annotation annotations ;

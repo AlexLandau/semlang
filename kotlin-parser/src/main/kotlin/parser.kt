@@ -397,21 +397,21 @@ private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
     } else {
         listOf()
     }
-    val methods = parseMethods(interfac.interface_components())
+    val methods = parseMethods(interfac.methods())
 
     val annotations = parseAnnotations(interfac.annotations())
 
     return Interface(id, typeParameters, methods, annotations)
 }
 
-private fun parseMethods(methods: Sem1Parser.Interface_componentsContext): List<Method> {
+private fun parseMethods(methods: Sem1Parser.MethodsContext): List<Method> {
     return parseLinkedList(methods,
-            Sem1Parser.Interface_componentsContext::interface_component,
-            Sem1Parser.Interface_componentsContext::interface_components,
+            Sem1Parser.MethodsContext::method,
+            Sem1Parser.MethodsContext::methods,
             ::parseMethod)
 }
 
-private fun parseMethod(method: Sem1Parser.Interface_componentContext): Method {
+private fun parseMethod(method: Sem1Parser.MethodContext): Method {
     val name = method.ID().text
     val typeParameters = if (method.GREATER_THAN() != null) {
         parseCommaDelimitedIds(method.cd_ids())
