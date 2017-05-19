@@ -1,4 +1,4 @@
 @Singleton
 function myStuff.myFunction(): Boolean {
-  return Boolean."true"
+  Boolean."true"
 }

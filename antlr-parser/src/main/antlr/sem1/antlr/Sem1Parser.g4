@@ -77,7 +77,7 @@ cd_ids : ID | ID COMMA cd_ids ;
 assignments : | assignment assignments ;
 assignment : LET ID ASSIGN expression
   | LET ID COLON type ASSIGN expression;
-return_statement: RETURN expression ;
+return_statement: expression ;
 
 type : simple_type_id
   | simple_type_id LESS_THAN cd_types GREATER_THAN

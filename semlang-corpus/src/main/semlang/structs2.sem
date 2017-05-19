@@ -5,7 +5,7 @@ struct myStuff.Point {
 }
 
 function myStuff.Point.product(point: myStuff.Point): Integer {
-  return Integer.times(point->x, point->y)
+  Integer.times(point->x, point->y)
 }
 
 @Test("['0']: '-1'")
@@ -18,5 +18,5 @@ function myStuff.myFunction(input: Integer): Integer {
   let newY: Integer = Integer.minus(input, 1)
   let object: myStuff.Point = myStuff.Point(newX, newY)
   let output: Integer = myStuff.Point.product(object)
-  return output
+  output
 }

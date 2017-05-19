@@ -5,5 +5,5 @@
 function myFunction(n: Natural): Natural {
     let a = Natural.times(n, n)
     let 1 = Natural."1"
-    return Natural.plus(a, 1)
+    Natural.plus(a, 1)
 }

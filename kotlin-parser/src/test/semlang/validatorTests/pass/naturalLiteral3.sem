@@ -1,3 +1,3 @@
 function myStuff.myFunction(): Natural {
-  return Natural."1234567890"
+  Natural."1234567890"
 }

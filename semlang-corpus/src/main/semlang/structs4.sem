@@ -5,7 +5,7 @@ struct myStuff.Point<T> {
 }
 
 function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
-  return Integer."1"
+  Integer."1"
 }
 
 @Test("['0']: '-1'")
@@ -20,5 +20,5 @@ function myStuff.myFunction(input: Integer): Integer {
   let partialOutput: Integer = Integer.times(object->x, object->y)
   let constantFactor: Integer = myStuff.genericFunction<Integer>(object)
   let output: Integer = Integer.times(partialOutput, constantFactor)
-  return output
+  output
 }

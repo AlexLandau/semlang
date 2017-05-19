@@ -1,6 +1,6 @@
 
 function myCode.square(n: Natural): Natural {
-  return Natural.times(n, n)
+  Natural.times(n, n)
 }
 
 @Test("['1', '2', '3']: 'false'")
@@ -11,5 +11,5 @@ function pythagoreanTripleCheck(a: Natural, b: Natural, c: Natural): Boolean {
   let cSquared: Natural = myCode.square(c)
   let sumOfSquares: Natural = Natural.plus(aSquared, bSquared)
   let result: Boolean = Natural.equals(sumOfSquares, cSquared)
-  return result
+  result
 }

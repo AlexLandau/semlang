@@ -1,6 +1,6 @@
 
 function myCode.square(n: Integer): Integer {
-  return Integer.times(n, n)
+  Integer.times(n, n)
 }
 
 @Test("['1', '2', '3']: 'false'")
@@ -11,9 +11,9 @@ function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
   let cSquared: Integer = myCode.square(c)
   let sumOfSquares: Integer = Integer.plus(aSquared, bSquared)
   let result: Boolean = if (Integer.equals(sumOfSquares, cSquared)) {
-    return Integer.equals(sumOfSquares, cSquared)
+    Integer.equals(sumOfSquares, cSquared)
   } else {
-    return Integer.equals(sumOfSquares, cSquared)
+    Integer.equals(sumOfSquares, cSquared)
   }
-  return result
+  result
 }

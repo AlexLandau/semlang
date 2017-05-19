@@ -13,5 +13,5 @@ function myStuff.myFunction(input: Integer): Integer {
   // Use a function binding just to test that
   let incrementer: (Integer) -> Integer = plusOperator->apply|(_, 1)
   let output: Integer = incrementer(input)
-  return output
+  output
 }

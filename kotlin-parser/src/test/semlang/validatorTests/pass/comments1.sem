@@ -1,6 +1,6 @@
 function myStuff.myFunction(): Integer {
   let myVar: Integer = Integer."2"
-  return myVar
+  myVar
 }
 // Test a comment at the end with no newline
 // function function function function

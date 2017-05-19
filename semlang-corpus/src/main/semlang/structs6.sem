@@ -11,5 +11,5 @@ function myStuff.myFunction(input: Integer): Integer {
   let 1: Integer = Integer."1"
   let plusOperator: myStuff.Operator = myStuff.Operator(Integer."0", Integer.plus|(_,_))
   let output: Integer = plusOperator->apply(input, 1)
-  return output
+  output
 }

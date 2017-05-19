@@ -114,7 +114,6 @@ private fun writeBlock(block: TypedBlock, indentationLevel: Int, writer: Writer)
         writer.appendln()
     }
     writer.append(indent)
-            .append("return ")
     writeExpression(block.returnedExpression, indentationLevel, writer)
     writer.appendln()
 }

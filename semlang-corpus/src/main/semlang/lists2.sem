@@ -5,7 +5,7 @@ function myCode.listGet1(): Try<Natural> {
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
   let listTwo: List<Natural> = List.append<Natural>(listOne, Natural."17")
   let listThree: List<Natural> = List.append<Natural>(listTwo, Natural."42")
-  return List.get<Natural>(listThree, Natural."0")
+  List.get<Natural>(listThree, Natural."0")
 }
 
 @Test("[]: 'success(42)'")
@@ -14,7 +14,7 @@ function myCode.listGet2(): Try<Natural> {
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
   let listTwo: List<Natural> = List.append<Natural>(listOne, Natural."17")
   let listThree: List<Natural> = List.append<Natural>(listTwo, Natural."42")
-  return List.get<Natural>(listThree, Natural."2")
+  List.get<Natural>(listThree, Natural."2")
 }
 
 @Test("[]: '42'")
@@ -23,7 +23,7 @@ function myCode.listGetAssume(): Natural {
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
   let listTwo: List<Natural> = List.append<Natural>(listOne, Natural."17")
   let listThree: List<Natural> = List.append<Natural>(listTwo, Natural."42")
-  return Try.assume<Natural>(List.get<Natural>(listThree, Natural."2"))
+  Try.assume<Natural>(List.get<Natural>(listThree, Natural."2"))
 }
 
 @Test("[]: 'failure'")
@@ -32,5 +32,5 @@ function myCode.listGetOutOfBounds(): Try<Natural> {
   let listOne: List<Natural> = List.append<Natural>(emptyList, Natural."23")
   let listTwo: List<Natural> = List.append<Natural>(listOne, Natural."17")
   let listThree: List<Natural> = List.append<Natural>(listTwo, Natural."42")
-  return List.get<Natural>(listThree, Natural."3")
+  List.get<Natural>(listThree, Natural."3")
 }

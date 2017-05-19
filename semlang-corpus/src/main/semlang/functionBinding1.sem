@@ -1,17 +1,17 @@
 function myCode.applyThreeTimes(n: Integer, f: (Integer) -> Integer): Integer {
-  return f(f(f(n)))
+  f(f(f(n)))
 }
 
 @Test("['-1']: '2'")
 @Test("['2']: '5'")
 function myCode.addThreeV1(n: Integer): Integer {
   let increment: (Integer) -> Integer = Integer.plus|(_, Integer."1")
-  return myCode.applyThreeTimes(n, increment)
+  myCode.applyThreeTimes(n, increment)
 }
 
 @Test("['-1']: '2'")
 @Test("['2']: '5'")
 function myCode.addThreeV2(n: Integer): Integer {
   let increment: (Integer) -> Integer = Integer.plus|(Integer."1", _)
-  return myCode.applyThreeTimes(n, increment)
+  myCode.applyThreeTimes(n, increment)
 }

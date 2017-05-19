@@ -2,16 +2,16 @@
 function euler.problem1(): Natural {
   let range: List<Natural> = Natural.rangeInclusive(Natural."1", Natural."999")
   let multiples: List<Natural> = List.filter<Natural>(range, euler.multiplesFilter|(_))
-  return Natural.sum(multiples)
+  Natural.sum(multiples)
 }
 
 // TODO: Move this somewhere appropriate?
 function Natural.sum(numbers: List<Natural>): Natural {
-  return List.reduce<Natural, Natural>(numbers, Natural."0", Natural.plus|(_, _))
+  List.reduce<Natural, Natural>(numbers, Natural."0", Natural.plus|(_, _))
 }
 
 function euler.multiplesFilter(n: Natural): Boolean {
   let multipleOfThree: Boolean = Natural.equals(Natural."0", Natural.remainder(n, Natural."3"))
   let multipleOfFive: Boolean = Natural.equals(Natural."0", Natural.remainder(n, Natural."5"))
-  return Boolean.or(multipleOfThree, multipleOfFive)
+  Boolean.or(multipleOfThree, multipleOfFive)
 }

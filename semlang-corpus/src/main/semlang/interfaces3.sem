@@ -17,37 +17,37 @@ function myCode.squareDistance(a: Natural, b: Natural): Natural {
     let timesOperator: myCode.Operator<Natural> = getTimesOperator()
     let aSquared: Natural = timesOperator->apply(a, a)
     let bSquared: Natural = selfApply(timesOperator, b)
-    return plusOperator->apply(aSquared, bSquared)
+    plusOperator->apply(aSquared, bSquared)
 }
 
 function selfApply(operator: myCode.Operator<Natural>, value: Natural): Natural {
     // Throw in a function binding, just because we can
     let applyOnce: (Natural) -> Natural = operator->apply|(value, _)
-    return applyOnce(value)
+    applyOnce(value)
 }
 
 function getPlusOperator(): myCode.Operator<Natural> {
-    return myCode.Operator<Natural, Natural>(Natural."0", getOperatorAdapter(implPlus|(_, _, _)))
+    myCode.Operator<Natural, Natural>(Natural."0", getOperatorAdapter(implPlus|(_, _, _)))
 }
 
 // TODO: Someday add a library function for this?
 function implGetIdentity(identity: Natural): Natural {
-    return identity
+    identity
 }
 
 // TODO: Do something with lambda expressions that prevents us from needing this
 function implPlus(identity: Natural, left: Natural, right: Natural): Natural {
-    return Natural.plus(left, right)
+    Natural.plus(left, right)
 }
 
 function getTimesOperator(): myCode.Operator<Natural> {
-    return myCode.Operator<Natural, Natural>(Natural."1", getOperatorAdapter(implTimes|(_, _, _)))
+    myCode.Operator<Natural, Natural>(Natural."1", getOperatorAdapter(implTimes|(_, _, _)))
 }
 
 function getOperatorAdapter(applyMethod: (Natural, Natural, Natural) -> Natural): myCode.Operator.Adapter<Natural, Natural> {
-    return myCode.Operator.Adapter<Natural, Natural>(implGetIdentity|(_), applyMethod)
+    myCode.Operator.Adapter<Natural, Natural>(implGetIdentity|(_), applyMethod)
 }
 
 function implTimes(identity: Natural, left: Natural, right: Natural): Natural {
-    return Natural.times(left, right)
+    Natural.times(left, right)
 }

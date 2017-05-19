@@ -1,5 +1,5 @@
 function myCode.applyThreeTimes<T>(input: T, f: (T) -> T): T {
-  return f(f(f(input)))
+  f(f(f(input)))
 }
 
 @Test("['-1']: '2'")
@@ -7,10 +7,10 @@ function myCode.applyThreeTimes<T>(input: T, f: (T) -> T): T {
 function myCode.addThreeV1(n: Integer): Integer {
   let increment: (Integer) -> Integer = plusMyStuff|(_, Integer."1")
   let incrementRenamed: (Integer) -> Integer = increment|(_)
-  return myCode.applyThreeTimes<Integer>(n, increment)
+  myCode.applyThreeTimes<Integer>(n, increment)
 }
 
 // Non-packaged to test parsing of single-name functions vs. variable names
 function plusMyStuff(left: Integer, right: Integer): Integer {
-  return Integer.plus(left, right)
+  Integer.plus(left, right)
 }

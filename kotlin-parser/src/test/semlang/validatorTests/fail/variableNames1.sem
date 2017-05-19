@@ -1,5 +1,5 @@
 function myStuff.myFunction(): Integer {
   let myVar: Integer = Integer."1"
   let myVar: Integer = Integer."2"
-  return myVar
+  myVar
 }

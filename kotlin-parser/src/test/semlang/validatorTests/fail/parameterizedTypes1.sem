@@ -10,5 +10,5 @@ function myStuff.myFunction(input: Integer): Integer {
   let newY: Integer = Integer.minus(input, 1)
   let object: myStuff.Point<Integer> = myStuff.Point<Integer>(newX, newY)
   let output: Natural = Natural.times(object->x, object->y)
-  return output
+  output
 }

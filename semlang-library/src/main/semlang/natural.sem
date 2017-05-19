@@ -1,11 +1,11 @@
 
 function Natural.sequence(): Sequence<Natural> {
-    return Sequence.create<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
+    Sequence.create<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
 }
 
 function Natural.arithmeticProgression(initialValue: Natural, increment: Natural): Sequence<Natural> {
-    return Sequence.map<Natural, Natural>(Natural.sequence(), Natural.internal.plusProduct|(initialValue, increment, _))
+    Sequence.map<Natural, Natural>(Natural.sequence(), Natural.internal.plusProduct|(initialValue, increment, _))
 }
 function Natural.internal.plusProduct(a: Natural, b: Natural, c: Natural): Natural {
-    return Natural.plus(a, Natural.times(b, c))
+    Natural.plus(a, Natural.times(b, c))
 }

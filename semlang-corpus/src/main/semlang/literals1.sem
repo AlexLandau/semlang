@@ -6,5 +6,5 @@
 function myFunction(n: Integer): Integer {
     let a: Integer = Integer.times(n, n)
     let 1: Integer = Integer."1"
-    return Integer.plus(a, 1)
+    Integer.plus(a, 1)
 }

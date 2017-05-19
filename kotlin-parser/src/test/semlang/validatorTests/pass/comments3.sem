@@ -2,5 +2,5 @@
 
 function myStuff.myFunction(/* )))) */): Integer /* function */ {
   let myVar: Integer = /* myVar */ Integer."2"
-  return myVar
+  myVar
 }

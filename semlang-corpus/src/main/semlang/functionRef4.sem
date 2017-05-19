@@ -1,17 +1,17 @@
 
 function myCode.square(n: Integer): Integer {
-  return Integer.times(n, n)
+  Integer.times(n, n)
 }
 
 function myCode.cube(n: Integer): Integer {
-  return Integer.times(n, Integer.times(n, n))
+  Integer.times(n, Integer.times(n, n))
 }
 
 @Test("['1', '2', '3']: 'false'")
 @Test("['3', '4', '5']: 'true'")
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
   let squareIt: (Integer) -> Integer = myCode.square|(_)
-  return myCode.overlyGeneralFermatCheck<Integer>(a, b, c, myCode.square|(_), Integer.plus|(_, _), Integer.equals|(_, _))
+  myCode.overlyGeneralFermatCheck<Integer>(a, b, c, myCode.square|(_), Integer.plus|(_, _), Integer.equals|(_, _))
 }
 
 function myCode.overlyGeneralFermatCheck<T>(a: T, b: T, c: T, operation: (T) -> T, plus: (T, T) -> T, equals: (T, T) -> Boolean): Boolean {
@@ -20,5 +20,5 @@ function myCode.overlyGeneralFermatCheck<T>(a: T, b: T, c: T, operation: (T) -> 
   let cSquared: T = operation(c)
   let sumOfSquares: T = plus(aSquared, bSquared)
   let result: Boolean = equals(sumOfSquares, cSquared)
-  return result
+  result
 }
