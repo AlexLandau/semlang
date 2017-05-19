@@ -75,7 +75,7 @@ private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: Am
 }
 
 // TODO: Is it inefficient for varIds to be an ArrayList here?
-fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpression): Expression {
+private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpression): Expression {
     return when (expression) {
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),

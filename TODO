@@ -60,14 +60,14 @@
 - Port "code writing into Java" to Semlang
 
 Design choices to reconsider:
-- Alternative keyword to "return" that better reflects how it's used in blocks in general?
+- We might want a replacement for the "return" keyword
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
 - Consider allowing trailing commas in e.g. argument lists
-- Integer.fromNatural or Natural.toInteger?
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions
+  - Integer.fromNatural or Natural.toInteger?
 - Slightly alternative semantics: A function ID is an expression representing a function binding for that function with
   empty bindings; this would simplify "named" vs. "expression" calls, but there would (still) be ambiguities between
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.

@@ -50,7 +50,7 @@ private fun addStruct(node: ObjectNode, struct: Struct) {
     addArray(node, "members", struct.members, ::addMember)
 }
 
-fun parseStruct(node: JsonNode): Struct {
+private fun parseStruct(node: JsonNode): Struct {
     if (!node.isObject()) error("Expected a struct to be an object")
 
     val id = parseFunctionId(node["id"] ?: error("Structs must have an 'id' field"))
@@ -79,7 +79,7 @@ private fun parseAnnotations(node: JsonNode?): List<Annotation> {
     return node.map { annotationNode -> parseAnnotation(annotationNode) }
 }
 
-fun parseFunctionId(node: JsonNode): FunctionId {
+private fun parseFunctionId(node: JsonNode): FunctionId {
     val text = node.textValue() ?: error("IDs should be strings")
     val parts = text.split(".")
     if (parts.isEmpty()) {
@@ -440,7 +440,7 @@ private fun parseBindingsArray(node: JsonNode): List<Expression?> {
     return node.map { expressionNode -> parseBinding(expressionNode) }
 }
 
-fun parseBinding(node: JsonNode): Expression? {
+private fun parseBinding(node: JsonNode): Expression? {
     if (node["type"] != null) {
         return parseExpression(node)
     }
