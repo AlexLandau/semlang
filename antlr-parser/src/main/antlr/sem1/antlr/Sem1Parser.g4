@@ -102,7 +102,5 @@ expression : IF LPAREN expression RPAREN block ELSE block
 
 // cd_expressions may be empty
 cd_expressions : | expression | expression COMMA cd_expressions ;
-cd_expressions_or_underscores : | expression
-  | UNDERSCORE
-  | expression COMMA cd_expressions_or_underscores
-  | UNDERSCORE COMMA cd_expressions_or_underscores ;
+cd_expressions_or_underscores : | expression_or_underscore | expression_or_underscore COMMA cd_expressions_or_underscores ;
+expression_or_underscore : UNDERSCORE | expression ;

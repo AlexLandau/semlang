@@ -283,21 +283,18 @@ private fun positionOf(expression: ParserRuleContext): Position {
 }
 
 private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
-    // TODO: Changes in the parser could make this amenable to parseLinkedList()
-    val bindings = ArrayList<AmbiguousExpression?>()
-    var inputs = cd_expressions_or_underscores
-    while (true) {
-        if (inputs.expression() != null) {
-            bindings.add(parseExpression(inputs.expression()))
-        } else if (inputs.UNDERSCORE() != null) {
-            bindings.add(null)
-        }
-        if (inputs.cd_expressions_or_underscores() == null) {
-            break
-        }
-        inputs = inputs.cd_expressions_or_underscores()
+    return parseLinkedList(cd_expressions_or_underscores,
+            Sem1Parser.Cd_expressions_or_underscoresContext::expression_or_underscore,
+            Sem1Parser.Cd_expressions_or_underscoresContext::cd_expressions_or_underscores,
+            ::parseBinding)
+}
+
+private fun parseBinding(expression_or_underscore: Sem1Parser.Expression_or_underscoreContext): AmbiguousExpression? {
+    if (expression_or_underscore.UNDERSCORE() != null) {
+        return null
+    } else {
+        return parseExpression(expression_or_underscore.expression())
     }
-    return bindings
 }
 
 private fun parseCommaDelimitedExpressions(cd_expressions: Sem1Parser.Cd_expressionsContext): List<AmbiguousExpression> {
