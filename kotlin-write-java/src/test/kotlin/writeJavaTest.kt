@@ -50,10 +50,8 @@ class WriteJavaTest(private val file: File) {
 
         // Now run the compiler...
         val compiler = ToolProvider.getSystemJavaCompiler()
-
+        // TODO: Get from writtenJavaSourceInfo
         val sourceFiles = collectNonDirFiles(listOf(newSrcDir, newTestSrcDir))
-
-
         val fileManager = compiler.getStandardFileManager(null, null, null)
         System.out.println("Source files: ${sourceFiles}")
         val compilationUnits = fileManager.getJavaFileObjectsFromFiles(sourceFiles)
@@ -66,19 +64,7 @@ class WriteJavaTest(private val file: File) {
         }
         System.out.println("Files in bin: ${collectNonDirFiles(listOf(destFolder))}")
 
-        // TODO: So what do we do to check the correctness?
-        // We'll need to either run a separate Java process, or load the created classes in a URLClassLoader
-        // The end goal is to run any created functions and test that their outputs are correct...
-
-        // Approach 1:
-        // Turn each @Test into a JUnit test
-        // Then do we run a JUnit process, or something else?
-        // If we run JUnit in a separate process, how do we collect results?
-        // We'll also need to know where those tests live, probably
-        // (This might require the code-writing code above to tell us "here are the test names")
-        // Can we have JUnit "add" tests to our current test?
-//        val testClassName = "com.example.test.TestClass"
-
+        // Load the class files we just compiled
         val classDirUrl = destFolder.toURI().toURL()
         val ucl = URLClassLoader(arrayOf<URL>(classDirUrl))
         val testClasses = writtenJavaSourceInfo.testClassNames.map { testClassName ->
