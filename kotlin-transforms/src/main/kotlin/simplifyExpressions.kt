@@ -4,6 +4,7 @@ import semlang.api.*
 
 // TODO: Test
 // TODO: Better document
+// TODO: Refactor into a version where we can pull out only those expressions matching certain criteria (e.g. all IfThens)
 // TODO: We aren't taking full advantage of this unless/until we switch to a different set of
 // data structures that acknowledge the more limited set of possible expressions/assignments
 fun simplifyExpressions(context: ValidatedContext): ValidatedContext {

@@ -22,7 +22,8 @@ repositories {
 dependencies {
   compile project(':kotlin-parser')
 
-  testCompile project(':kotlin-test-utils')
+  compile project(':kotlin-test-utils')
+  testCompile project(':java-compiled-runtime')
 
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"

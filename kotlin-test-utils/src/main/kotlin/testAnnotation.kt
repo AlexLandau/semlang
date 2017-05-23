@@ -32,7 +32,15 @@ private object Patterns {
     val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *'([^']*)'")
 }
 
+data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
+
 private fun doTest(function: ValidatedFunction, context: ValidatedContext, value: String) {
+    val contents = parseTestAnnotationContents(value, function)
+
+    runTest(function, contents, context)
+}
+
+fun parseTestAnnotationContents(value: String, function: ValidatedFunction): TestAnnotationContents {
     val matcher = Patterns.TEST_ANNOTATION_VALUE_PATTERN.matcher(value)
     if (!matcher.matches()) {
         fail("Value \"$value\" didn't match pattern")
@@ -50,17 +58,16 @@ private fun doTest(function: ValidatedFunction, context: ValidatedContext, value
         fail("Expected ${allArguments.size} arguments for ${function.id}, but received ${allArguments.size}: $allArguments")
     }
 
-    runTest(function, allArguments, output, context)
+    return TestAnnotationContents(allArguments, output)
 }
 
-private fun runTest(function: ValidatedFunction, argumentLiterals: List<String>,
-                    outputLiteral: String, context: ValidatedContext) {
+private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, context: ValidatedContext) {
     val interpreter = SemlangForwardInterpreter(context)
-    val arguments = instantiateArguments(function.arguments, argumentLiterals, interpreter)
+    val arguments = instantiateArguments(function.arguments, contents.argLiterals, interpreter)
     val actualOutput = interpreter.interpret(function.id, arguments)
-    val desiredOutput = interpreter.evaluateLiteral(function.returnType, outputLiteral)
+    val desiredOutput = interpreter.evaluateLiteral(function.returnType, contents.outputLiteral)
     if (!interpreter.areEqual(actualOutput, desiredOutput)) {
-        fail("For function ${function.id}, expected output with arguments $argumentLiterals to be $desiredOutput, but was $actualOutput")
+        fail("For function ${function.id}, expected output with arguments ${contents.argLiterals} to be $desiredOutput, but was $actualOutput")
     }
 }
 

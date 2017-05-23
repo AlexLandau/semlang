@@ -1,26 +1,16 @@
-import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import semlang.api.getNativeContext
-import semlang.internal.test.runAnnotationTests
 import semlang.parser.parseFile
 import semlang.parser.validateContext
 import java.io.File
 import java.nio.file.Files
-import jdk.nashorn.internal.objects.NativeFunction.call
 import org.junit.Assert.fail
-import semlang.api.ValidatedContext
 import java.net.URLClassLoader
 import java.util.*
-import javax.tools.JavaCompiler.CompilationTask
 import javax.tools.StandardLocation
-import javax.tools.JavaFileObject
-import javax.tools.StandardJavaFileManager
 import javax.tools.ToolProvider
-import javax.tools.JavaCompiler
-import jdk.nashorn.internal.codegen.CompilerConstants.className
-import sun.net.www.ParseUtil.toURI
 import java.net.URL
 
 
@@ -63,6 +53,11 @@ class WriteJavaTest(private val file: File) {
             fail("Couldn't compile the source")
         }
         System.out.println("Files in bin: ${collectNonDirFiles(listOf(destFolder))}")
+        System.out.println("Here are the source files:")
+        for (sourceFile in sourceFiles) {
+            System.out.println("Generated code for test " + file + ":")
+            System.out.println(Files.readAllLines(sourceFile.toPath()).joinToString("\n"));
+        }
 
         // Load the class files we just compiled
         val classDirUrl = destFolder.toURI().toURL()
