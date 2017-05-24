@@ -6,6 +6,10 @@ import java.util.Collections;
 import java.util.List;
 
 public class Lists {
+    private Lists() {
+        // Not instantiable
+    }
+
     public static <T> List<T> empty() {
         return Collections.emptyList();
     }

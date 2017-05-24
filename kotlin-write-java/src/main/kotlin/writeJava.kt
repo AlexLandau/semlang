@@ -38,7 +38,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 if (annotation.name == "Test") {
                     val testContents = parseTestAnnotationContents(annotation.value ?: error("@Test annotations must have values!"), function)
 
-                    writeJUnitTest(newTestSrcDir, function, testContents)
+                    prepareJUnitTest(newTestSrcDir, function, testContents)
                 }
             }
         }
@@ -49,10 +49,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             javaFile.writeTo(newSrcDir)
         }
 
+//        testClassBuilders.forEach()
+        writePreparedJUnitTests(newTestSrcDir)
         // Write a JUnit test file
 //        writeJUnitTest(newTestSrcDir)
 
-        return WrittenJavaInfo(testClassNames)
+        return WrittenJavaInfo(ArrayList(testClassCounts.keys))
     }
 
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
@@ -216,10 +218,17 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         return ClassName.get(packageParts.joinToString("."), className)
     }
 
-    val testClassNames = ArrayList<String>()
-    private fun writeJUnitTest(newTestSrcDir: File, function: ValidatedFunction, testContents: TestAnnotationContents) {
+//    val testClassNames = ArrayList<String>()
+    val testClassCounts = LinkedHashMap<String, Int>()
+    val testClassBuilders = LinkedHashMap<ClassName, TypeSpec.Builder>()
+    private fun prepareJUnitTest(newTestSrcDir: File, function: ValidatedFunction, testContents: TestAnnotationContents) {
         val className = getContainingClassName(function.id)
         val testClassName = ClassName.bestGuess(className.toString() + "Test")
+
+        val curCount: Int? = testClassCounts[testClassName.toString()]
+        val newCount: Int = if (curCount == null) 1 else (curCount + 1)
+        testClassCounts[testClassName.toString()] = newCount
+//        testClassNames.add(testClassName.toString())
 
         val outputExpression = TypedExpression.Literal(function.returnType, testContents.outputLiteral)
         val outputCode = writeLiteralExpression(outputExpression)
@@ -228,7 +237,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 .map { (type, literal) -> TypedExpression.Literal(type, literal) }
         val argsCode = getArgumentsBlock(argExpressions)
 
-        val runFakeTest = MethodSpec.methodBuilder("runUnitTest")
+        val runFakeTest = MethodSpec.methodBuilder("runUnitTest" + newCount)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(Void.TYPE)
                 .addAnnotation(ClassName.bestGuess("org.junit.Test"))
@@ -240,15 +249,33 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 )
                 .build()
 
-        val testClass = TypeSpec.classBuilder(testClassName)
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addMethod(runFakeTest)
-                .build()
+        val existingTestClass = testClassBuilders[testClassName]
+        if (existingTestClass == null) {
+            val testClass = TypeSpec.classBuilder(testClassName)
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addMethod(runFakeTest)
+            testClassBuilders[testClassName] = testClass
+        } else {
+            existingTestClass.addMethod(runFakeTest)
+        }
+//
+//        val testClass = TypeSpec.classBuilder(testClassName)
+//                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+//                .addMethod(runFakeTest)
+//                .build()
 
         //TODO: Replace this
-        val javaFile = JavaFile.builder(testClassName.packageName(), testClass).build()
-        javaFile.writeTo(newTestSrcDir)
-        testClassNames.add(testClassName.toString())
+//        val javaFile = JavaFile.builder(testClassName.packageName(), testClass).build()
+//        javaFile.writeTo(newTestSrcDir)
+    }
+
+    private fun writePreparedJUnitTests(newTestSrcDir: File) {
+        testClassBuilders.entries.forEach { (testClassName, builder) ->
+            val testClass = builder.build()
+
+            val javaFile = JavaFile.builder(testClassName.packageName(), testClass).build()
+            javaFile.writeTo(newTestSrcDir)
+        }
     }
 
 }
@@ -265,6 +292,20 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
     map.put(FunctionId(list, "get"), getStaticFunctionCall(javaLists, "get"))
     map.put(FunctionId(list, "size"), getStaticFunctionCall(javaLists, "size"))
+
+    val integer = Package(listOf("Integer"))
+    val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
+    // TODO: Add ability to use non-static function calls
+    map.put(FunctionId(integer, "plus"), getStaticFunctionCall(javaIntegers, "plus"))
+    map.put(FunctionId(integer, "times"), getStaticFunctionCall(javaIntegers, "times"))
+    map.put(FunctionId(integer, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
+
+    val natural = Package(listOf("Natural"))
+//    val javaNaturals = ClassName.bestGuess("net.semlang.java.Natural")
+    // Share implementations with Integer in some cases
+    map.put(FunctionId(natural, "plus"), getStaticFunctionCall(javaIntegers, "plus"))
+    map.put(FunctionId(natural, "times"), getStaticFunctionCall(javaIntegers, "times"))
+    map.put(FunctionId(natural, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
 
     return map
 }
