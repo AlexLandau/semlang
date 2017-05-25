@@ -21,7 +21,7 @@ repositories {
 
 dependencies {
   compile project(':kotlin-parser')
-
+  compile project(':kotlin-transforms')
   compile project(':kotlin-test-utils')
   testCompile project(':java-compiled-runtime')
 

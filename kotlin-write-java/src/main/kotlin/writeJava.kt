@@ -9,13 +9,16 @@ import javax.lang.model.element.Modifier
 /**
  * TODO:
  * - Needed preprocessing step: Fix numeric variable names that are illegal for Java
- * - Fix references to native functions: List.empty(), List.append, etc.
- *   - Will involve a mix of delegating to real functions and adding a runtime library to reference
+ * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
+ *   - If no existing tests run into this problem, create a test that does so
  */
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
-fun writeJavaSourceIntoFolders(context: ValidatedContext, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+fun writeJavaSourceIntoFolders(unprocessedContext: ValidatedContext, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+    // Pre-processing steps
+    val context = constrainVariableNames(unprocessedContext, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+
     return JavaCodeWriter(context, newSrcDir, newTestSrcDir).write()
 }
 
@@ -38,7 +41,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 if (annotation.name == "Test") {
                     val testContents = parseTestAnnotationContents(annotation.value ?: error("@Test annotations must have values!"), function)
 
-                    prepareJUnitTest(newTestSrcDir, function, testContents)
+                    prepareJUnitTest(function, testContents)
                 }
             }
         }
@@ -54,7 +57,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         // Write a JUnit test file
 //        writeJUnitTest(newTestSrcDir)
 
-        return WrittenJavaInfo(ArrayList(testClassCounts.keys))
+        return WrittenJavaInfo(testClassCounts.keys.toList())
     }
 
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
@@ -221,7 +224,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
 //    val testClassNames = ArrayList<String>()
     val testClassCounts = LinkedHashMap<String, Int>()
     val testClassBuilders = LinkedHashMap<ClassName, TypeSpec.Builder>()
-    private fun prepareJUnitTest(newTestSrcDir: File, function: ValidatedFunction, testContents: TestAnnotationContents) {
+    private fun prepareJUnitTest(function: ValidatedFunction, testContents: TestAnnotationContents) {
         val className = getContainingClassName(function.id)
         val testClassName = ClassName.bestGuess(className.toString() + "Test")
 
