@@ -8,7 +8,8 @@ import javax.lang.model.element.Modifier
 
 /**
  * TODO:
- * - Needed preprocessing step: Fix numeric variable names that are illegal for Java
+ * - Struct support
+ * - Interface support
  * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
  *   - If no existing tests run into this problem, create a test that does so
  */
@@ -26,6 +27,18 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
     val classMap = HashMap<ClassName, TypeSpec.Builder>()
 
     fun write(): WrittenJavaInfo {
+        context.ownStructs.values.forEach { struct ->
+            val className = getStructClassName(struct.id)
+            val structClassBuilder = writeStructClass(struct, className)
+
+            if (classMap.containsKey(className)) {
+                error("Something's wrong here")
+            }
+            classMap[className] = structClassBuilder
+        }
+        // Enable calls to struct constructors
+        addStructConstructorFunctionCallStrategies(context.getAllStructs().values)
+
         context.ownFunctionImplementations.values.forEach { function ->
 
             val method = writeMethod(function)
@@ -60,10 +73,51 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         return WrittenJavaInfo(testClassCounts.keys.toList())
     }
 
+    private fun addStructConstructorFunctionCallStrategies(structs: Collection<Struct>) {
+        for (struct in structs) {
+            val structClass = getStructClassName(struct.id)
+            namedFunctionCallStrategies[struct.id] = object: FunctionCallStrategy {
+                override fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock {
+                    if (chosenTypes.isEmpty()) {
+                        return CodeBlock.of("new \$T(\$L)", structClass, arguments)
+                    } else {
+                        return CodeBlock.of("new \$T<\$L>(\$L)", structClass, getChosenTypesCode(chosenTypes), arguments)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun writeStructClass(struct: Struct, className: ClassName): TypeSpec.Builder {
+        val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+
+        if (struct.typeParameters.isNotEmpty()) {
+            builder.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
+        }
+
+        val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC)
+
+        struct.members.forEach { member ->
+            val javaType = getType(member.type)
+            builder.addField(javaType, member.name, Modifier.PUBLIC, Modifier.FINAL)
+
+            constructor.addParameter(javaType, member.name)
+            constructor.addStatement("this.\$L = \$L", member.name, member.name)
+        }
+
+        builder.addMethod(constructor.build())
+
+        return builder
+    }
+
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
         // TODO: Eventually, support non-static methods
         val builder = MethodSpec.methodBuilder(function.id.functionName)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+
+        for (typeParameter in function.typeParameters) {
+            builder.addTypeVariable(TypeVariableName.get(typeParameter))
+        }
 
         function.arguments.forEach { argument ->
             builder.addParameter(getType(argument.type), argument.name)
@@ -116,7 +170,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> {
                 val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
-                functionCallStrategy.apply(getArgumentsBlock(expression.arguments))
+                functionCallStrategy.apply(expression.chosenParameters.map(this::getType), getArgumentsBlock(expression.arguments))
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 CodeBlock.of("\$L.apply(\$L)", writeExpression(expression.functionExpression), getArgumentsBlock(expression.arguments))
@@ -157,13 +211,27 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
 
         val classContainingFunction = getContainingClassName(functionId)
         val strategy = object: FunctionCallStrategy {
-            override fun apply(arguments: CodeBlock): CodeBlock {
-                return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.functionName, arguments)
+            override fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock {
+                if (chosenTypes.isEmpty()) {
+                    return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.functionName, arguments)
+                } else {
+                    return CodeBlock.of("\$T.<\$L>\$L(\$L)", classContainingFunction, getChosenTypesCode(chosenTypes), functionId.functionName, arguments)
+                }
             }
         }
         namedFunctionCallStrategies[functionId] = strategy
         return strategy
     }
+
+    private fun getChosenTypesCode(chosenTypes: List<TypeName>): CodeBlock {
+        val typesCodeBuilder = CodeBlock.builder()
+        typesCodeBuilder.add("\$T", chosenTypes[0])
+        for (chosenType in chosenTypes.drop(1)) {
+            typesCodeBuilder.add(", \$T", chosenType)
+        }
+        return typesCodeBuilder.build()
+    }
+
     companion object {
     }
 
@@ -199,7 +267,18 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
         // TODO: Might end up being more complicated? This is probably not quite right
-        return ClassName.bestGuess(semlangType.id.toString())
+        val className = ClassName.bestGuess(semlangType.id.toString())
+
+        if (semlangType.parameters.isEmpty()) {
+            return className
+        } else {
+            val parameterTypeNames: List<TypeName> = semlangType.parameters.map(this::getType)
+            return ParameterizedTypeName.get(className, *parameterTypeNames.toTypedArray())
+        }
+    }
+
+    private fun getStructClassName(functionId: FunctionId): ClassName {
+        return ClassName.get(functionId.thePackage.strings.joinToString("."), functionId.functionName)
     }
 
     private fun getContainingClassName(functionId: FunctionId): ClassName {
@@ -240,6 +319,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 .map { (type, literal) -> TypedExpression.Literal(type, literal) }
         val argsCode = getArgumentsBlock(argExpressions)
 
+        if (function.typeParameters.isNotEmpty()) {
+            TODO()
+        }
+
         val runFakeTest = MethodSpec.methodBuilder("runUnitTest" + newCount)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(Void.TYPE)
@@ -248,7 +331,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
                 .addStatement("\$T.assertEquals(\$L, \$L)",
                         ClassName.bestGuess("org.junit.Assert"),
                         outputCode,
-                        getNamedFunctionCallStrategy(function.id).apply(argsCode)
+                        getNamedFunctionCallStrategy(function.id).apply(listOf(), argsCode)
                 )
                 .build()
 
@@ -300,6 +383,7 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
     // TODO: Add ability to use non-static function calls
     map.put(FunctionId(integer, "plus"), getStaticFunctionCall(javaIntegers, "plus"))
+    map.put(FunctionId(integer, "minus"), getStaticFunctionCall(javaIntegers, "minus"))
     map.put(FunctionId(integer, "times"), getStaticFunctionCall(javaIntegers, "times"))
     map.put(FunctionId(integer, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
 
@@ -321,11 +405,14 @@ private fun getStaticFunctionCall(className: ClassName, methodName: String): Sta
 }
 
 private interface FunctionCallStrategy {
-    fun apply(arguments: CodeBlock): CodeBlock
+    fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock
 }
 
 class StaticFunctionCallStrategy(val functionName: CodeBlock): FunctionCallStrategy {
-    override fun apply(arguments: CodeBlock): CodeBlock {
+    override fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock {
+        if (chosenTypes.isNotEmpty()) {
+            TODO()
+        }
         return CodeBlock.of("\$L(\$L)", functionName, arguments)
     }
 }

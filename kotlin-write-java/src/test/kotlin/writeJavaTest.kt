@@ -47,16 +47,17 @@ class WriteJavaTest(private val file: File) {
         val compilationUnits = fileManager.getJavaFileObjectsFromFiles(sourceFiles)
         fileManager.setLocation(StandardLocation.CLASS_OUTPUT, listOf(destFolder))
 
-        val task = compiler.getTask(null, fileManager, null, null, null, compilationUnits)
-        val success = task.call()!!
-        if (!success) {
-            fail("Couldn't compile the source")
-        }
         System.out.println("Files in bin: ${collectNonDirFiles(listOf(destFolder))}")
         System.out.println("Here are the source files:")
         for (sourceFile in sourceFiles) {
             System.out.println("Generated code for test " + file + ":")
             System.out.println(Files.readAllLines(sourceFile.toPath()).joinToString("\n"));
+        }
+
+        val task = compiler.getTask(null, fileManager, null, null, null, compilationUnits)
+        val success = task.call()!!
+        if (!success) {
+            fail("Couldn't compile the source")
         }
 
         // Load the class files we just compiled

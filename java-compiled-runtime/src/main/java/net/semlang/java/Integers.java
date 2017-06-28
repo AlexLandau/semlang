@@ -11,6 +11,10 @@ public class Integers {
         return left.add(right);
     }
 
+    public static BigInteger minus(BigInteger left, BigInteger right) {
+        return left.subtract(right);
+    }
+
     public static BigInteger times(BigInteger left, BigInteger right) {
         return left.multiply(right);
     }
