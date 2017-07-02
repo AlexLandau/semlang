@@ -141,9 +141,9 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
             (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
         }
         if (max == null) {
-            SemObject.Try.Failure;
+            SemObject.Try.Failure
         } else {
-            SemObject.Try.Success(max);
+            SemObject.Try.Success(max)
         }
     }))
 
