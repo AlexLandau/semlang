@@ -63,7 +63,6 @@ Design choices to reconsider:
 - We might want a replacement for the "return" keyword
   - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
-- Consider allowing trailing commas in e.g. argument lists
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions

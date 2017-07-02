@@ -72,7 +72,7 @@ annotation : annotation_name
 annotation_name : AT ID ;
 
 // cd_ids is nonempty
-cd_ids : ID | ID COMMA cd_ids ;
+cd_ids : ID | ID COMMA | ID COMMA cd_ids ;
 
 assignments : | assignment assignments ;
 assignment : LET ID ASSIGN expression
@@ -83,7 +83,7 @@ type : simple_type_id
   | simple_type_id LESS_THAN cd_types GREATER_THAN
   | LPAREN cd_types RPAREN ARROW type ;
 // cd_types is nonempty
-cd_types : type | type COMMA cd_types ;
+cd_types : type | type COMMA | type COMMA cd_types ;
 // A "simple type ID" has no type parameters
 simple_type_id : ID | packag DOT ID ;
 expression : IF LPAREN expression RPAREN block ELSE block
