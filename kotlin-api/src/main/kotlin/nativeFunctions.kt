@@ -161,8 +161,8 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // TODO: Resolve these conflicting definitions
     // Natural.max
     definitions.add(TypeSignature(FunctionId(naturalPackage, "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
-    // Natural.min
-    definitions.add(TypeSignature(FunctionId(naturalPackage, "min"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+    // Natural.lesser
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "lesser"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
     // Natural.absoluteDifference
     definitions.add(TypeSignature(FunctionId(naturalPackage, "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))

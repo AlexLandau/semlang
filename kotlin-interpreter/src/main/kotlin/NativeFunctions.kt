@@ -147,8 +147,8 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
-    // Natural.min
-    list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
+    // Natural.lesser
+    list.add(NativeFunction(naturalDot("lesser"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
         val right = args[1] as? SemObject.Natural ?: typeError()
         SemObject.Natural(left.value.min(right.value))

@@ -21,7 +21,7 @@ function TwoNaturals.equal(pair: TwoNaturals): Boolean {
 }
 
 function myStuff.nextPair(pair: TwoNaturals): TwoNaturals {
-  let lesser: Natural = Natural.min(pair->left, pair->right)
+  let lesser: Natural = Natural.lesser(pair->left, pair->right)
   let absDifference: Natural = Natural.absoluteDifference(pair->left, pair->right)
   TwoNaturals(lesser, absDifference)
 }
