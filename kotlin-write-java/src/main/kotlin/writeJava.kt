@@ -142,7 +142,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
             if (expression is TypedExpression.IfThen) {
                 builder.addStatement("final \$T \$L", getType(type), name)
-                builder.beginControlFlow("if (\$L)", writeExpression(expression))
+                builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
                 builder.add(writeBlock(expression.thenBlock, name))
                 builder.nextControlFlow("else")
                 builder.add(writeBlock(expression.elseBlock, name))
@@ -397,9 +397,9 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     return map
 }
 
-private fun getStaticFunctionCall(className: String, methodName: String): StaticFunctionCallStrategy {
-    return getStaticFunctionCall(ClassName.bestGuess(className), methodName)
-}
+//private fun getStaticFunctionCall(className: String, methodName: String): StaticFunctionCallStrategy {
+//    return getStaticFunctionCall(ClassName.bestGuess(className), methodName)
+//}
 private fun getStaticFunctionCall(className: ClassName, methodName: String): StaticFunctionCallStrategy {
     return StaticFunctionCallStrategy(CodeBlock.of("\$T.\$L", className, methodName))
 }
