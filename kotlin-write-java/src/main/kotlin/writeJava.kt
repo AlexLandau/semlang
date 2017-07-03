@@ -389,7 +389,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             packageParts.add(part)
         }
         if (className == null) {
-            return ClassName.get(functionId.thePackage.strings.joinToString("."), "Functions")
+            return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), "Functions")
 //        error("Function ID without capitalized part: $functionId")
         }
         return ClassName.get(packageParts.joinToString("."), className)
