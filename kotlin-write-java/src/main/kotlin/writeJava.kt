@@ -305,15 +305,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         return strategy
     }
 
-    private fun getChosenTypesCode(chosenTypes: List<TypeName>): CodeBlock {
-        val typesCodeBuilder = CodeBlock.builder()
-        typesCodeBuilder.add("\$T", chosenTypes[0])
-        for (chosenType in chosenTypes.drop(1)) {
-            typesCodeBuilder.add(", \$T", chosenType)
-        }
-        return typesCodeBuilder.build()
-    }
-
     companion object {
     }
 
@@ -499,19 +490,19 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
 //    return getStaticFunctionCall(ClassName.bestGuess(className), methodName)
 //}
 private fun getStaticFunctionCall(className: ClassName, methodName: String): StaticFunctionCallStrategy {
-    return StaticFunctionCallStrategy(CodeBlock.of("\$T.\$L", className, methodName))
+    return StaticFunctionCallStrategy(className, methodName)
 }
 
 private interface FunctionCallStrategy {
     fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock
 }
 
-class StaticFunctionCallStrategy(val functionName: CodeBlock): FunctionCallStrategy {
+class StaticFunctionCallStrategy(val className: ClassName, val methodName: String): FunctionCallStrategy {
     override fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock {
         if (chosenTypes.isNotEmpty()) {
-            TODO()
+            return CodeBlock.of("\$T.<\$L>\$L(\$L)", className, getChosenTypesCode(chosenTypes), methodName, arguments)
         }
-        return CodeBlock.of("\$L(\$L)", functionName, arguments)
+        return CodeBlock.of("\$T.\$L(\$L)", className, methodName, arguments)
     }
 }
 
@@ -569,4 +560,13 @@ private fun joinWithCommas(blocks: ArrayList<CodeBlock>): CodeBlock {
         builder.add(", \$L", block)
     }
     return builder.build()
+}
+
+private fun getChosenTypesCode(chosenTypes: List<TypeName>): CodeBlock {
+    val typesCodeBuilder = CodeBlock.builder()
+    typesCodeBuilder.add("\$T", chosenTypes[0])
+    for (chosenType in chosenTypes.drop(1)) {
+        typesCodeBuilder.add(", \$T", chosenType)
+    }
+    return typesCodeBuilder.build()
 }
