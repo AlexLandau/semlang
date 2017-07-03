@@ -16,14 +16,17 @@ import javax.lang.model.element.Modifier
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
-fun writeJavaSourceIntoFolders(unprocessedContext: ValidatedContext, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+fun writeJavaSourceIntoFolders(unprocessedContext: ValidatedContext, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+    if (javaPackage.isEmpty()) {
+        error("The Java package must be non-empty.")
+    }
     // Pre-processing steps
     val context = constrainVariableNames(unprocessedContext, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
 
-    return JavaCodeWriter(context, newSrcDir, newTestSrcDir).write()
+    return JavaCodeWriter(context, javaPackage, newSrcDir, newTestSrcDir).write()
 }
 
-private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File, val newTestSrcDir: File) {
+private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
     val classMap = HashMap<ClassName, TypeSpec.Builder>()
 
     fun write(): WrittenJavaInfo {
@@ -94,6 +97,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         if (struct.typeParameters.isNotEmpty()) {
             builder.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
         }
+        addToTypeVariableScope(struct.typeParameters)
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC)
 
@@ -104,6 +108,8 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             constructor.addParameter(javaType, member.name)
             constructor.addStatement("this.\$L = \$L", member.name, member.name)
         }
+
+        removeFromTypeVariableScope(struct.typeParameters)
 
         builder.addMethod(constructor.build())
 
@@ -118,6 +124,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         for (typeParameter in function.typeParameters) {
             builder.addTypeVariable(TypeVariableName.get(typeParameter))
         }
+        addToTypeVariableScope(function.typeParameters)
 
         function.arguments.forEach { argument ->
             builder.addParameter(getType(argument.type), argument.name)
@@ -128,7 +135,42 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
         // TODO: Add block here
         builder.addCode(writeBlock(function.block, null))
 
+        removeFromTypeVariableScope(function.typeParameters)
+
         return builder.build()
+    }
+
+    // TODO: Multiset
+    val typeVariablesCount = HashMap<String, Int>()
+
+    private fun addToTypeVariableScope(typeParameters: List<String>) {
+        typeParameters.forEach(this::addToTypeVariableScope)
+    }
+
+    private fun addToTypeVariableScope(typeParameter: String) {
+        val existingCount = typeVariablesCount[typeParameter]
+        if (existingCount != null) {
+            typeVariablesCount[typeParameter] = existingCount + 1
+        } else {
+            typeVariablesCount[typeParameter] = 1
+        }
+    }
+
+    private fun removeFromTypeVariableScope(typeParameters: List<String>) {
+        typeParameters.forEach(this::removeFromTypeVariableScope)
+    }
+
+    private fun removeFromTypeVariableScope(typeParameter: String) {
+        val existingCount = typeVariablesCount[typeParameter] ?: error("Error in type parameter count tracking for $typeParameter")
+        typeVariablesCount[typeParameter] = existingCount - 1
+    }
+
+    private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
+        if (semlangType.id.thePackage.strings.isEmpty() && semlangType.parameters.isEmpty()) {
+            val count = typeVariablesCount[semlangType.id.functionName]
+            return count != null && count > 0
+        }
+        return false
     }
 
     /**
@@ -312,8 +354,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
+        if (isInTypeParameterScope(semlangType)) {
+            return TypeVariableName.get(semlangType.id.functionName)
+        }
+
+        // TODO: The right general approach is going to be "find the context containing this type, and use the
+        // associated package name for that"
+
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = ClassName.bestGuess(semlangType.id.toString())
+        val className = ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
@@ -324,12 +373,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
     }
 
     private fun getStructClassName(functionId: FunctionId): ClassName {
-        return ClassName.get(functionId.thePackage.strings.joinToString("."), functionId.functionName)
+        return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), functionId.functionName)
     }
 
     private fun getContainingClassName(functionId: FunctionId): ClassName {
         //Assume the first capitalized string is the className
-        val allParts = functionId.thePackage.strings + functionId.functionName
+        val allParts = (javaPackage + functionId.thePackage.strings) + functionId.functionName
         val packageParts = ArrayList<String>()
         var className: String? = null
         for (part in allParts) {

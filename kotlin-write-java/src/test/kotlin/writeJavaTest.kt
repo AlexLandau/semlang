@@ -36,7 +36,7 @@ class WriteJavaTest(private val file: File) {
         val newTestSrcDir = Files.createTempDirectory("generatedJavaTestSource").toFile()
         val destFolder = Files.createTempDirectory("generatedJavaBin").toFile()
 
-        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(context, newSrcDir, newTestSrcDir)
+        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(context, listOf("net", "semlang", "test"), newSrcDir, newTestSrcDir)
 
         // Now run the compiler...
         val compiler = ToolProvider.getSystemJavaCompiler()
