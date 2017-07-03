@@ -1,0 +1,6 @@
+function myStuff.myFunction(): Integer {
+  Integer.plus(
+    Integer."1",
+    Integer."2",
+  )
+}

@@ -141,14 +141,14 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
             (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
         }
         if (max == null) {
-            SemObject.Try.Failure;
+            SemObject.Try.Failure
         } else {
-            SemObject.Try.Success(max);
+            SemObject.Try.Success(max)
         }
     }))
 
-    // Natural.min
-    list.add(NativeFunction(naturalDot("min"), { args: List<SemObject>, _: InterpreterCallback ->
+    // Natural.lesser
+    list.add(NativeFunction(naturalDot("lesser"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
         val right = args[1] as? SemObject.Natural ?: typeError()
         SemObject.Natural(left.value.min(right.value))

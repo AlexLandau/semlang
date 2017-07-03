@@ -1,0 +1,3 @@
+function myStuff.myFunction(a: Integer, b: Integer): Integer {
+  Integer.plus(a, b)
+}
