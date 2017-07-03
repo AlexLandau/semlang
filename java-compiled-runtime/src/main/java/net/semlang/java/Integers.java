@@ -19,6 +19,8 @@ public class Integers {
         return left.multiply(right);
     }
 
+    public static BigInteger lesser(BigInteger left, BigInteger right) { return left.min(right); }
+
     public static boolean equals(BigInteger left, BigInteger right) {
         return left.equals(right);
     }

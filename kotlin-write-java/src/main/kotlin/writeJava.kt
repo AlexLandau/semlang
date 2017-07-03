@@ -483,11 +483,14 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
     val natural = Package(listOf("Natural"))
-//    val javaNaturals = ClassName.bestGuess("net.semlang.java.Natural")
+    val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
     // Share implementations with Integer in some cases
     map.put(FunctionId(natural, "plus"), getStaticFunctionCall(javaIntegers, "plus"))
     map.put(FunctionId(natural, "times"), getStaticFunctionCall(javaIntegers, "times"))
+    map.put(FunctionId(natural, "lesser"), getStaticFunctionCall(javaIntegers, "lesser"))
     map.put(FunctionId(natural, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
+
+    map.put(FunctionId(natural, "absoluteDifference"), getStaticFunctionCall(javaNaturals, "absoluteDifference"))
 
     return map
 }
