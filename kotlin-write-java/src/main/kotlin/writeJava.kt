@@ -181,9 +181,49 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             is TypedExpression.Follow -> {
                 CodeBlock.of("\$L.\$L", writeExpression(expression.expression), expression.name)
             }
-            is TypedExpression.NamedFunctionBinding -> TODO()
+            is TypedExpression.NamedFunctionBinding -> {
+                writeNamedFunctionBinding(expression)
+            }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
         }
+    }
+
+    private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
+        val functionId = expression.functionId
+        // TODO: Optimize
+        val signature = context.getAllFunctionSignatures()[functionId] ?: error("Signature not found for $functionId")
+        // TODO: Be able to get this for native functions, as well (put in signatures, probably)
+        val referencedFunction = context.getFunctionImplementation(functionId)
+
+        val containingClass = getContainingClassName(functionId)
+
+        // TODO: More compact references when not binding arguments
+        val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
+
+        val unboundArgumentNames = ArrayList<String>()
+        val arguments = ArrayList<CodeBlock>()
+        // Lambda expression
+        expression.bindings.forEachIndexed { index, binding ->
+            if (binding == null) {
+                val argumentName = if (referencedFunction != null) {
+                    referencedFunction.arguments[index].name
+                } else {
+                    "arg" + index
+                }
+                unboundArgumentNames.add(argumentName)
+                arguments.add(CodeBlock.of("\$L", argumentName))
+//                val unparameterizedArgType = signature.argumentTypes[index]
+//                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
+//                arguments.add(TypedExpression.Variable(argType, argumentName))
+            } else {
+                arguments.add(writeExpression(binding))
+            }
+        }
+
+        val chosenTypes = expression.chosenParameters.map(this::getType)
+
+        val functionCall = functionCallStrategy.apply(chosenTypes, joinWithCommas(arguments))
+        return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 
     private fun getArgumentsBlock(arguments: List<TypedExpression>): CodeBlock {
@@ -260,9 +300,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             Type.BOOLEAN -> TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter))
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter))
-            is Type.FunctionType -> TODO()
+            is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
         }
+    }
+
+    private fun getFunctionType(semlangType: Type.FunctionType): TypeName {
+        val strategy = getFunctionTypeStrategy(semlangType)
+
+        return strategy.getTypeName(semlangType, this::getType)
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
@@ -363,7 +409,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val newSrcDir: File,
             javaFile.writeTo(newTestSrcDir)
         }
     }
-
 }
 
 private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrategy> {
@@ -386,6 +431,7 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     map.put(FunctionId(integer, "minus"), getStaticFunctionCall(javaIntegers, "minus"))
     map.put(FunctionId(integer, "times"), getStaticFunctionCall(javaIntegers, "times"))
     map.put(FunctionId(integer, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
+    map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
     val natural = Package(listOf("Natural"))
 //    val javaNaturals = ClassName.bestGuess("net.semlang.java.Natural")
@@ -415,4 +461,60 @@ class StaticFunctionCallStrategy(val functionName: CodeBlock): FunctionCallStrat
         }
         return CodeBlock.of("\$L(\$L)", functionName, arguments)
     }
+}
+
+object PassedThroughVarFunctionCallStrategy: FunctionCallStrategy {
+    override fun apply(chosenTypes: List<TypeName>, arguments: CodeBlock): CodeBlock {
+        return arguments
+    }
+}
+
+private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrategy {
+    if (type.argTypes.size == 0) {
+        return SupplierFunctionTypeStrategy
+    } else if (type.argTypes.size == 1) {
+        return FunctionFunctionTypeStrategy
+    }
+
+    TODO()
+}
+
+object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
+    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+        if (type.argTypes.isNotEmpty()) {
+            error("")
+        }
+        val className = ClassName.get(java.util.function.Supplier::class.java)
+
+        return ParameterizedTypeName.get(className, getType(type.outputType))
+    }
+}
+
+object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
+    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+        if (type.argTypes.size != 1) {
+            error("")
+        }
+        val className = ClassName.get(java.util.function.Function::class.java)
+
+        return ParameterizedTypeName.get(className, getType(type.argTypes[0]),  getType(type.outputType))
+    }
+
+}
+
+private interface FunctionTypeStrategy {
+    fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName
+}
+
+private fun joinWithCommas(blocks: ArrayList<CodeBlock>): CodeBlock {
+    if (blocks.isEmpty()) {
+        return CodeBlock.of("")
+    }
+
+    val builder = CodeBlock.builder()
+    builder.add(blocks[0])
+    blocks.drop(1).forEach { block ->
+        builder.add(", \$L", block)
+    }
+    return builder.build()
 }
