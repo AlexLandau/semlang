@@ -26,7 +26,7 @@
   - Make code style more consistent
 - Function definitions as tests
 - Support function bindings of struct constructors
-- Support function bindings of interface constructors
+- Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
 - Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
@@ -36,6 +36,8 @@
   - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
 - Code writing into Java
+  - We should have some way to specify the exposed API, and check the inputs of these methods for e.g. Natural >= 0
+  - Probably put all our code from one module into the same package
 - Annotations and multiple function definitions
 - Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
@@ -59,9 +61,43 @@
   - Given a T -> T function, turn it into a T -> Boolean that returns whether the input would be turned into itself
 - Port "code writing into Java" to Semlang
 
+Figuring out packages and a module system:
+  - I suspect that the JavaScript/npm module system is closer to what we want than the Java system (in its original
+    form). Certainly we want the nice property of code exposing a fully controlled API and not its dependencies, as
+    well as (related) including multiple
+    - Related nice-to-have: Renaming types as they are imported.
+  - It's worth researching Cargo here as well, as that system is recent and seems highly respected.
+  - It would be nice to allow:
+    - Specification of a target library within a source file (with the caveat that we want this in a centralized list
+      in most places)
+    - Specification of a cryptographic hash whenever we specify a dependency, to require that the version we pull in
+      match the hash (for security's sake)
+  - I think we want to be able to pull in imports from libraries
+  - We'll have to figure out some way to deal with this when exporting to other languages, like Java. That could mean
+    e.g. heavy use of shadowing, and/or the Java 9 build system.
+  - Mandatory namespacing of e.g. "com.google.guava" or "google:guava" seems better than npm's free-for-all of first-tier
+    names
+  - Automatic semantic versioning would be awesome, but I don't know what that would look like yet.
+    - I took a look at Elm and their version treats "function returns a different value" as a patch change, so I don't
+      think that's sufficient (unless programmers are very, very well-behaved).
+So a first pass would look like:
+  - Groups of self-contained code are organized as modules, and have dependencies on other modules that by default are
+    non-transitive (transitivity could be added later, in the form of re-declarations or otherwise).
+  - Distribution/publication of modules online will happen at some point, but currently is TBD. Until then, we should
+    probably allow internal repositories on a device (as some other repositories allow). In fact, it may be preferable
+    to require use of such an internal repository as an intermediary in both directions (like a git repo). Caching on
+    the way in, atomicity of publication (?) on the way out. Regardless of if we take that approach, this increases the
+    similarity of formats between the systems.
+    - So, we'll want a file format/directory structure for the published modules.
+      - Probably at ~/.semlang/repo-1/ or the equivalent thereof, "-1" allowing for a future "-2" format, etc.
+  - Code should probably be stored in whatever format is densest and/or most valuable for automated use. Of course, we
+    will end up retaining comments (once they become annotations) and the like anyway...
+  - We're already using namespacing for *.Adapter and it would make sense for closely related types (as seen in TS), so
+    it shouldn't go away entirely, but "package" might be the wrong term now. It should probably be "namespace" and
+    reserved for special cases within code, vs. including the org name, module name, etc. as seen in Java.
+  - What does testing for this look like?
+
 Design choices to reconsider:
-- We might want a replacement for the "return" keyword
-  - "use", "choose", "be", "select"
 - Figure out what to do about recursive function calls
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
@@ -71,12 +107,7 @@ Design choices to reconsider:
   empty bindings; this would simplify "named" vs. "expression" calls, but there would (still) be ambiguities between
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
-
-
-Probable dependencies of the type work:
-- Function types/references depending on tuples
-- Sequences depending on function references
-- Interfaces depending on function references
+  - There might be a better version of this with the scope of namespaces more limited
 
 As things are completed:
 - Project Euler
