@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class Lists {
     private Lists() {
@@ -21,8 +22,13 @@ public class Lists {
         return newList;
     }
 
-    public static <T> T get(List<T> list, BigInteger index) {
-        return list.get(index.intValueExact());
+    public static <T> Optional<T> get(List<T> list, BigInteger index) {
+        final int intIndex = index.intValueExact();
+        try {
+            return Optional.of(list.get(intIndex));
+        } catch (IndexOutOfBoundsException e) {
+            return Optional.empty();
+        }
     }
 
     public static <T> BigInteger size(List<T> list) {

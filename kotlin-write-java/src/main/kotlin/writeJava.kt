@@ -309,18 +309,32 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     private fun writeLiteralExpression(expression: TypedExpression.Literal): CodeBlock {
-        return when (expression.type) {
+        return writeLiteralExpression(expression.type, expression.literal)
+    }
+    private fun writeLiteralExpression(type: Type, literal: String): CodeBlock {
+        return when (type) {
             Type.INTEGER -> {
-                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, expression.literal)
+                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
             }
             Type.NATURAL -> {
-                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, expression.literal)
+                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
             }
             Type.BOOLEAN -> {
-                CodeBlock.of("\$L", expression.literal)
+                CodeBlock.of("\$L", literal)
             }
             is Type.List -> error("List literals not supported")
-            is Type.Try -> error("Try literals not supported")
+            is Type.Try -> {
+                // We need to support this for unit tests, specifically
+                if (literal == "failure") {
+                    return CodeBlock.of("\$T.empty()", java.util.Optional::class.java)
+                }
+                if (literal.startsWith("success(") && literal.endsWith(")")) {
+                    val innerType = type.parameter
+                    val innerLiteral = literal.substring("success(".length, literal.length - ")".length)
+                    return CodeBlock.of("\$T.of(\$L)", java.util.Optional::class.java, writeLiteralExpression(innerType, innerLiteral))
+                }
+                throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> error("Named type literals not supported")
         }
@@ -480,8 +494,11 @@ private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrat
     map.put(FunctionId(natural, "times"), getStaticFunctionCall(javaIntegers, "times"))
     map.put(FunctionId(natural, "lesser"), getStaticFunctionCall(javaIntegers, "lesser"))
     map.put(FunctionId(natural, "equals"), getStaticFunctionCall(javaIntegers, "equals"))
-
     map.put(FunctionId(natural, "absoluteDifference"), getStaticFunctionCall(javaNaturals, "absoluteDifference"))
+
+    val tries = Package(listOf("Try"))
+    val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
+    map.put(FunctionId(tries, "assume"), getStaticFunctionCall(javaTries, "assume"))
 
     return map
 }
