@@ -536,6 +536,14 @@ private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrate
         return FunctionFunctionTypeStrategy
     }
 
+    if (type.argTypes.size < 4) {
+        return RuntimeLibraryFunctionTypeStrategy(type.argTypes.size)
+    }
+    /*
+     * Quick/easy workaround: Add a few types for 2, 3, etc.
+     * In the general case, at what point do we shift to programmatic generation, and how
+     * will that work?
+     */
     TODO()
 }
 
@@ -546,7 +554,7 @@ object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
         }
         val className = ClassName.get(java.util.function.Supplier::class.java)
 
-        return ParameterizedTypeName.get(className, getType(type.outputType))
+        return ParameterizedTypeName.get(className, getType(type.outputType).box())
     }
 }
 
@@ -557,9 +565,23 @@ object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
         }
         val className = ClassName.get(java.util.function.Function::class.java)
 
-        return ParameterizedTypeName.get(className, getType(type.argTypes[0]),  getType(type.outputType))
+        return ParameterizedTypeName.get(className, getType(type.argTypes[0]).box(),  getType(type.outputType).box())
     }
 
+}
+
+class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy {
+    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+        val className = ClassName.bestGuess("net.semlang.java.function.Function" + numArgs)
+
+        val parameterTypes = ArrayList<TypeName>()
+        for (semlangType in type.argTypes) {
+            parameterTypes.add(getType(semlangType).box())
+        }
+        parameterTypes.add(getType(type.outputType).box())
+
+        return ParameterizedTypeName.get(className, *parameterTypes.toTypedArray())
+    }
 }
 
 private interface FunctionTypeStrategy {
