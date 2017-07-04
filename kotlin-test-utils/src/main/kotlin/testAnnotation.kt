@@ -55,7 +55,7 @@ fun parseTestAnnotationContents(value: String, function: ValidatedFunction): Tes
         listOf(firstArgument) + additionalArguments
     }
     if (allArguments.size != function.arguments.size) {
-        fail("Expected ${allArguments.size} arguments for ${function.id}, but received ${allArguments.size}: $allArguments")
+        fail("Expected ${function.arguments.size} arguments for ${function.id}, but received ${allArguments.size}: $allArguments")
     }
 
     return TestAnnotationContents(allArguments, output)

@@ -1,0 +1,22 @@
+interface Supplier {
+    getValue(): Natural
+}
+
+interface SupplierFactory {
+    getFactory(): Supplier
+}
+
+@Test("[]: '1'")
+function myCode.getNumberOne(): Natural {
+    let supplierFactory: SupplierFactory = SupplierFactory<Natural>(Natural."1", SupplierFactory.Adapter<Natural>(getSupplier|(_)))
+    supplierFactory->getFactory()->getValue()
+}
+
+function getSupplier(n: Natural): Supplier {
+    let adapter = Supplier.Adapter<Natural>(identity|(_))
+    Supplier<Natural>(n, adapter)
+}
+
+function identity(n: Natural): Natural {
+    n
+}
