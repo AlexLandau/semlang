@@ -129,8 +129,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
         interfaces.forEach { interfac ->
             val instanceClassName = getStructClassName(interfac.id)
-            val adapterInterface = getStructClassName(interfac.adapterId)
+            val adapterClassName = getStructClassName(interfac.adapterId)
+//            val adapterInterface = getStructClassName(interfac.adapterId)
 //            val interfaceInfo = context.getInterface(interfac.id)
+
+            val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
+
             namedFunctionCallStrategies[interfac.adapterId] = object: FunctionCallStrategy {
                 override fun apply(chosenTypes: List<TypeName>, constructorArgs: List<TypedExpression>): CodeBlock {
                     if (chosenTypes.isEmpty()) { error("") }
@@ -138,82 +142,98 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     val interfaceParameters = chosenTypes.drop(1)
 
                     if (interfaceParameters.isEmpty()) {
-//                        return CodeBlock.of("\$L.from(\$L)", arguments[1], arguments[0])
-//                        val typeArguments = listOf() // TODO: Fix
+                        val instanceInnerClass = getInstanceInnerClassForAdapter(instanceClassName, interfac, constructorArgs)
 
-                        val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
+                        val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceClassName, dataType)
 
-                        interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
-//                            val methodBuilder = MethodSpec.methodBuilder(method.name).addAnnotation(Override::class.java)
+                        val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
 
-                            val methodBuilder = writeInterfaceMethod(method, false)
-                            methodBuilder.addAnnotation(Override::class.java)
+                        val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
+                                .addAnnotation(Override::class.java)
+                                .addParameter(dataType, "data")
+                                .returns(instanceClassName)
+                                .addStatement("return \$L", instanceInnerClass)
 
-                            // The argument is a function... we want to
-//                            val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
-//                            functionCallStrategy.apply(expression.chosenParameters.map(this::getType), getArgumentsBlock(expression.arguments))
-                            // So, this is painfully tricky to do the "obvious" way... Instead hack around by
-                            // declaring a function binding variable, then calling it?
-                            // That would be pretty sucky, though... I'd prefer to refactor until we can turn it into an immediate call
-                            // A named binding argument -> a named binding call, an expression binding argument -> an expression binding call
-                            // But this could also be a variable, a follow, etc., in which case this should be an expression function call
-                            val functionType = constructorArg.type as? Type.FunctionType ?: error("Type of an adapter constructor argument should be a function type")
-                            when (constructorArg) {
-                                is TypedExpression.NamedFunctionBinding -> {
+                        adapterInnerClass.addMethod(fromMethodBuilder.build())
 
-
-                                    val callArgs = ArrayList<TypedExpression>()
-                                    // TODO: I think we want an extra at the beginning here for "data"
-                                    // TODO: Pass through the data type to here?
-                                    callArgs.add(TypedExpression.Variable(Type.NATURAL /* TODO: Hack to get interfaces1 to pass temporarily */, "data"))
-
-                                    method.arguments.zip(constructorArg.bindings).forEach { (methodArg, binding) ->
-                                        if (binding == null) {
-                                            callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
-                                        } else {
-                                            callArgs.add(binding)
-                                        }
-                                    }
-
-//                                    TypedExpression.NamedFunctionCall(functionType.outputType, constructorArg.functionId, callArgs, constructorArg.chosenParameters)
-                                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionId)
-                                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters.map{it -> getType(it)}, callArgs)
-                                    methodBuilder.addStatement("return \$L", functionCall)
-                                }
-                                is TypedExpression.ExpressionFunctionBinding -> {
-                                    TODO()
-                                }
-                                else -> {
-                                    //error("Arguments of adapter constructors should be function bindings; instead, we got $constructorArg")
-                                    // So how do we do expression function calls?
-                                    val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
-                                    // In this case, we pass through the args as-is
-//                                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters.map{it -> getType(it)}, callArgs)
-                                    val callArgs = ArrayList<TypedExpression>()
-                                    // TODO: I think we want an extra at the beginning here for "data"
-                                    // TODO: Pass through the data type to here?
-                                    callArgs.add(TypedExpression.Variable(Type.NATURAL /* TODO: Hack to get interfaces1 to pass temporarily */, "data"))
-
-                                    method.arguments.forEach { methodArg ->
-                                        callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
-                                    }
-
-                                    val functionCall = functionCallStrategy.apply(listOf(), callArgs)
-
-                                    methodBuilder.addStatement("return \$L", functionCall)
-                                }
-                            }
-
-                            builder.addMethod(methodBuilder.build())
-                        }
-
-                        return CodeBlock.of("(\$T \$L) -> \$L", dataType, "data", builder.build())
+                        return CodeBlock.of("\$L", adapterInnerClass.build())
                     } else {
-                        TODO("The adapter is ${adapterInterface} and the chosen types are $chosenTypes")
+                        TODO("The adapter is ${adapterClassName} and the chosen types are $chosenTypes")
                     }
                 }
             }
         }
+    }
+
+    private fun getInstanceInnerClassForAdapter(instanceClassName: ClassName, interfac: Interface, constructorArgs: List<TypedExpression>): TypeSpec {
+        val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
+
+        interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
+            //                            val methodBuilder = MethodSpec.methodBuilder(method.name).addAnnotation(Override::class.java)
+
+            val methodBuilder = writeInterfaceMethod(method, false)
+            methodBuilder.addAnnotation(Override::class.java)
+
+            // The argument is a function... we want to
+    //                            val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
+    //                            functionCallStrategy.apply(expression.chosenParameters.map(this::getType), getArgumentsBlock(expression.arguments))
+            // So, this is painfully tricky to do the "obvious" way... Instead hack around by
+            // declaring a function binding variable, then calling it?
+            // That would be pretty sucky, though... I'd prefer to refactor until we can turn it into an immediate call
+            // A named binding argument -> a named binding call, an expression binding argument -> an expression binding call
+            // But this could also be a variable, a follow, etc., in which case this should be an expression function call
+            val functionType = constructorArg.type as? Type.FunctionType ?: error("Type of an adapter constructor argument should be a function type")
+            when (constructorArg) {
+                is TypedExpression.NamedFunctionBinding -> {
+
+
+                    val callArgs = ArrayList<TypedExpression>()
+                    // TODO: I think we want an extra at the beginning here for "data"
+                    // TODO: Pass through the data type to here?
+                    callArgs.add(TypedExpression.Variable(Type.NATURAL /* TODO: Hack to get interfaces1 to pass temporarily */, "data"))
+
+                    method.arguments.zip(constructorArg.bindings).forEach { (methodArg, binding) ->
+                        if (binding == null) {
+                            callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
+                        } else {
+                            callArgs.add(binding)
+                        }
+                    }
+
+    //                                    TypedExpression.NamedFunctionCall(functionType.outputType, constructorArg.functionId, callArgs, constructorArg.chosenParameters)
+                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionId)
+                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters.map { it -> getType(it) }, callArgs)
+                    methodBuilder.addStatement("return \$L", functionCall)
+                }
+                is TypedExpression.ExpressionFunctionBinding -> {
+                    TODO()
+                }
+                else -> {
+                    //error("Arguments of adapter constructors should be function bindings; instead, we got $constructorArg")
+                    // So how do we do expression function calls?
+                    val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
+                    // In this case, we pass through the args as-is
+    //                                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters.map{it -> getType(it)}, callArgs)
+                    val callArgs = ArrayList<TypedExpression>()
+                    // TODO: I think we want an extra at the beginning here for "data"
+                    // TODO: Pass through the data type to here?
+                    callArgs.add(TypedExpression.Variable(Type.NATURAL /* TODO: Hack to get interfaces1 to pass temporarily */, "data"))
+
+                    method.arguments.forEach { methodArg ->
+                        callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
+                    }
+
+                    val functionCall = functionCallStrategy.apply(listOf(), callArgs)
+
+                    methodBuilder.addStatement("return \$L", functionCall)
+                }
+            }
+
+            builder.addMethod(methodBuilder.build())
+        }
+
+        val instanceConstructor = builder.build()
+        return instanceConstructor
     }
 
     private fun writeStructClass(struct: Struct, className: ClassName): TypeSpec.Builder {
