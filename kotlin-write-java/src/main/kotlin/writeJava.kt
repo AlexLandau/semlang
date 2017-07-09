@@ -424,8 +424,54 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             is TypedExpression.NamedFunctionBinding -> {
                 writeNamedFunctionBinding(expression)
             }
-            is TypedExpression.ExpressionFunctionBinding -> TODO()
+            is TypedExpression.ExpressionFunctionBinding -> {
+                writeExpressionFunctionBinding(expression)
+            }
         }
+    }
+
+    private fun writeExpressionFunctionBinding(expression: TypedExpression.ExpressionFunctionBinding): CodeBlock {
+        // TODO: Deduplicate
+
+        // What differs, other than the function call strategy?
+        // We do want the signature to specify argument names...
+        // But by definition we won't know the signature, so we should probably make something up based
+        // on the types instead
+
+//        val functionId = expression.functionId
+        // TODO: Optimize
+//        val signature = context.getAllFunctionSignatures()[functionId] ?: error("Signature not found for $functionId")
+        // TODO: Be able to get this for native functions, as well (put in signatures, probably)
+//        val referencedFunction = context.getFunctionImplementation(functionId)
+
+        // TODO: More compact references when not binding arguments
+//        val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
+        val functionCallStrategy = getExpressionFunctionCallStrategy(expression.functionExpression)
+
+        val unboundArgumentNames = ArrayList<String>()
+        val arguments = ArrayList<TypedExpression>()
+        // Lambda expression
+        val outputType = expression.type as? Type.FunctionType ?: error("")
+        var unboundArgumentIndex = 0
+        expression.bindings.forEachIndexed { index, binding ->
+            if (binding == null) {
+                // TODO: Pick better names based on types
+                val argumentName = "arg" + index
+                unboundArgumentNames.add(argumentName)
+
+                val argType = outputType.argTypes[unboundArgumentIndex]
+
+//                val unparameterizedArgType = signature.argumentTypes[index]
+//                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
+                arguments.add(TypedExpression.Variable(argType, argumentName))
+                unboundArgumentIndex++
+            } else {
+                arguments.add(binding)
+            }
+        }
+
+        val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
+        return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
@@ -434,8 +480,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val signature = context.getAllFunctionSignatures()[functionId] ?: error("Signature not found for $functionId")
         // TODO: Be able to get this for native functions, as well (put in signatures, probably)
         val referencedFunction = context.getFunctionImplementation(functionId)
-
-        val containingClass = getContainingClassName(functionId)
 
         // TODO: More compact references when not binding arguments
         val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
@@ -448,10 +492,11 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 val argumentName = if (referencedFunction != null) {
                     referencedFunction.arguments[index].name
                 } else {
+                    // TODO: Pick better names based on types
                     "arg" + index
                 }
                 unboundArgumentNames.add(argumentName)
-//                arguments.add(CodeBlock.of("\$L", argumentName))
+
                 val unparameterizedArgType = signature.argumentTypes[index]
                 val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
@@ -459,8 +504,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 arguments.add(binding)
             }
         }
-
-        val chosenTypes = expression.chosenParameters.map(this::getType)
 
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
