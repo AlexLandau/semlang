@@ -26,6 +26,9 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
         val NATIVE_CONTEXT = ValidatedContext(mapOf(), getNativeFunctionDefinitions(), getNativeStructs(), getNativeInterfaces(), listOf())
     }
 
+    fun getFunctionSignature(id: FunctionId): TypeSignature? {
+        return getEntity(id, ownFunctionSignatures, ValidatedContext::getFunctionSignature)
+    }
     fun getFunctionImplementation(id: FunctionId): ValidatedFunction? {
         return getEntity(id, ownFunctionImplementations, ValidatedContext::getFunctionImplementation)
     }

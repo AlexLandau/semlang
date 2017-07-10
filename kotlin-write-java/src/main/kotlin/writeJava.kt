@@ -8,13 +8,12 @@ import javax.lang.model.element.Modifier
 
 /**
  * TODO:
- * - Lots of TODOs to address before merging
  * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
  *   - If no existing tests run into this problem, create a test that does so
  * - Use a preprocessing step to change the Adapter types
  * - Preprocess to identify places where Sequence.first() calls should be turned into while loops
  * - Add variables to the scope in more places (and remove when finished)
- * - This definitely has bugs
+ * - This definitely has remaining bugs
  */
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
@@ -113,26 +112,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     if (arguments.size != 2) {
                         error("Interface constructors should have exactly 2 arguments")
                     }
-                    // Note: There's an extra "chosen type" for the internal data type that gets dropped from the instance's type parameters.
-                    if (chosenTypes.size == 1) {
-                        return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
-                    } else {
-                        val instanceChosenTypes = chosenTypes.drop(1) // TODO: Do we actually need these?
-
-                        return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
-//                        TODO("The interface is ${interfac.id} and the chosen types are ${chosenTypes}")
-                    }
+                    return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
                 }
             }
         }
     }
 
-    // TODO: No doubt there will be cases where using the name "data" is a problem... We'll need some way to track the
-    // scope of what we're currently writing so we know what the exposed variables are and work around them
     private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
         interfaces.forEach { interfac ->
             val instanceClassName = getStructClassName(interfac.id)
-            val adapterClassName = getStructClassName(interfac.adapterId)
 
             val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
 
@@ -141,6 +129,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     if (chosenTypes.isEmpty()) { error("") }
                     val dataType = chosenTypes[0]
                     val dataTypeName = getType(dataType)
+                    val dataVarName = ensureUnusedVariable("data")
                     val interfaceParameters = chosenTypes.drop(1)
                     val interfaceParameterNames = interfaceParameters.map(this@JavaCodeWriter::getType)
 
@@ -150,7 +139,8 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                         ParameterizedTypeName.get(instanceClassName, *interfaceParameterNames.toTypedArray())
                     }
 
-                    val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs, dataType, interfaceParameters)
+                    val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs,
+                            dataType, interfaceParameters, dataVarName)
 
                     val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
 
@@ -158,7 +148,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
                     val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
                             .addAnnotation(Override::class.java)
-                            .addParameter(dataTypeName, "data")
+                            .addParameter(dataTypeName, dataVarName)
                             .returns(instanceType)
                             .addStatement("return \$L", instanceInnerClass)
 
@@ -171,7 +161,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     private fun getInstanceInnerClassForAdapter(instanceClassName: TypeName, interfac: Interface, constructorArgs: List<TypedExpression>,
-                                                dataType: Type, interfaceParameters: List<Type>): TypeSpec {
+                                                dataType: Type, interfaceParameters: List<Type>, dataVarName: String): TypeSpec {
         val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
 
         interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
@@ -180,23 +170,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
             methodBuilder.addAnnotation(Override::class.java)
 
-            // The argument is a function... we want to
-    //                            val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
-    //                            functionCallStrategy.apply(expression.chosenParameters.map(this::getType), getArgumentsBlock(expression.arguments))
-            // So, this is painfully tricky to do the "obvious" way... Instead hack around by
-            // declaring a function binding variable, then calling it?
-            // That would be pretty sucky, though... I'd prefer to refactor until we can turn it into an immediate call
-            // A named binding argument -> a named binding call, an expression binding argument -> an expression binding call
-            // But this could also be a variable, a follow, etc., in which case this should be an expression function call
-            val functionType = constructorArg.type as? Type.FunctionType ?: error("Type of an adapter constructor argument should be a function type")
             when (constructorArg) {
                 is TypedExpression.NamedFunctionBinding -> {
-
-
                     val callArgs = ArrayList<TypedExpression>()
-                    // TODO: I think we want an extra at the beginning here for "data"
-                    // TODO: Pass through the data type to here?
-                    callArgs.add(TypedExpression.Variable(dataType, "data"))
+                    callArgs.add(TypedExpression.Variable(dataType, dataVarName))
 
                     method.arguments.zip(constructorArg.bindings).forEach { (methodArg, binding) ->
                         if (binding == null) {
@@ -219,9 +196,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
                     // In this case, we pass through the args as-is
                     val callArgs = ArrayList<TypedExpression>()
-                    // TODO: I think we want an extra at the beginning here for "data"
-                    // TODO: Pass through the data type to here?
-                    callArgs.add(TypedExpression.Variable(dataType, "data"))
+                    callArgs.add(TypedExpression.Variable(dataType, dataVarName))
 
                     method.arguments.forEach { methodArg ->
                         callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
@@ -278,7 +253,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         interfac.methods.forEach { method ->
             builder.addMethod(writeInterfaceMethod(method).build())
         }
-
 
         removeFromTypeVariableScope(interfac.typeParameters)
 
@@ -406,7 +380,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionCallStrategy = getExpressionFunctionCallStrategy(expression.functionExpression)
                 functionCallStrategy.apply(expression.chosenParameters, expression.arguments)
-//                CodeBlock.of("\$L.apply(\$L)", writeExpression(expression.functionExpression), getArgumentsBlock(expression.arguments))
             }
             is TypedExpression.Literal -> {
                 writeLiteralExpression(expression)
@@ -426,19 +399,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     private fun writeExpressionFunctionBinding(expression: TypedExpression.ExpressionFunctionBinding): CodeBlock {
         // TODO: Deduplicate
 
-        // What differs, other than the function call strategy?
-        // We do want the signature to specify argument names...
-        // But by definition we won't know the signature, so we should probably make something up based
-        // on the types instead
-
-//        val functionId = expression.functionId
-        // TODO: Optimize
-//        val signature = context.getAllFunctionSignatures()[functionId] ?: error("Signature not found for $functionId")
-        // TODO: Be able to get this for native functions, as well (put in signatures, probably)
-//        val referencedFunction = context.getFunctionImplementation(functionId)
-
-        // TODO: More compact references when not binding arguments
-//        val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
         val functionCallStrategy = getExpressionFunctionCallStrategy(expression.functionExpression)
 
         val unboundArgumentNames = ArrayList<String>()
@@ -454,8 +414,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
                 val argType = outputType.argTypes[unboundArgumentIndex]
 
-//                val unparameterizedArgType = signature.argumentTypes[index]
-//                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
                 unboundArgumentIndex++
             } else {
@@ -469,8 +427,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
         val functionId = expression.functionId
-        // TODO: Optimize
-        val signature = context.getAllFunctionSignatures()[functionId] ?: error("Signature not found for $functionId")
+        val signature = context.getFunctionSignature(functionId) ?: error("Signature not found for $functionId")
         // TODO: Be able to get this for native functions, as well (put in signatures, probably)
         val referencedFunction = context.getFunctionImplementation(functionId)
 
@@ -554,10 +511,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     private fun getExpressionFunctionCallStrategy(expression: TypedExpression): FunctionCallStrategy {
-        val functionType = expression.type as? Type.FunctionType ?: error("")
-
-        // TODO: We'll need to use this for e.g. the zero-arg case (if we keep Supplier)
-        val functionTypeStrategy = getFunctionTypeStrategy(functionType)
 
         // Is it an interface follow?
         if (expression is TypedExpression.Follow) {
@@ -580,9 +533,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 return CodeBlock.of("\$L.apply(\$L)", writeExpression(expression), getArgumentsBlock(arguments))
             }
         }
-    }
-
-    companion object {
     }
 
     private fun writeLiteralExpression(expression: TypedExpression.Literal): CodeBlock {
@@ -650,7 +600,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 val interfac = context.getInterface(interfaceId)
                 if (interfac != null) {
                     val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
-//                    if (semlangType.parameters.size != 1) error("Unexpected number of parameters; type was $semlangType")
                     val dataTypeParameter = getType(semlangType.parameters[0])
                     val otherParameters = semlangType.parameters.drop(1).map{t -> getType(t)}
                     val bareInterfaceName = getStructClassName(interfaceId)
@@ -706,12 +655,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         }
         if (className == null) {
             return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), "Functions")
-//        error("Function ID without capitalized part: $functionId")
         }
         return ClassName.get(packageParts.joinToString("."), className)
     }
 
-//    val testClassNames = ArrayList<String>()
     val testClassCounts = LinkedHashMap<String, Int>()
     val testClassBuilders = LinkedHashMap<ClassName, TypeSpec.Builder>()
     private fun prepareJUnitTest(function: ValidatedFunction, testContents: TestAnnotationContents) {
@@ -721,14 +668,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val curCount: Int? = testClassCounts[testClassName.toString()]
         val newCount: Int = if (curCount == null) 1 else (curCount + 1)
         testClassCounts[testClassName.toString()] = newCount
-//        testClassNames.add(testClassName.toString())
 
         val outputExpression = TypedExpression.Literal(function.returnType, testContents.outputLiteral)
         val outputCode = writeLiteralExpression(outputExpression)
         val argExpressions = function.arguments.map { arg -> arg.type }
                 .zip(testContents.argLiterals)
                 .map { (type, literal) -> TypedExpression.Literal(type, literal) }
-//        val argsCode = getArgumentsBlock(argExpressions)
 
         if (function.typeParameters.isNotEmpty()) {
             TODO()
@@ -738,7 +683,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 .addModifiers(Modifier.PUBLIC)
                 .returns(Void.TYPE)
                 .addAnnotation(ClassName.bestGuess("org.junit.Test"))
-//                .addStatement("\$T.out.println(\$S)", System::class.java, "I am a fake test!")
                 .addStatement("\$T.assertEquals(\$L, \$L)",
                         ClassName.bestGuess("org.junit.Assert"),
                         outputCode,
@@ -755,15 +699,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         } else {
             existingTestClass.addMethod(runFakeTest)
         }
-//
-//        val testClass = TypeSpec.classBuilder(testClassName)
-//                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-//                .addMethod(runFakeTest)
-//                .build()
-
-        //TODO: Replace this
-//        val javaFile = JavaFile.builder(testClassName.packageName(), testClass).build()
-//        javaFile.writeTo(newTestSrcDir)
     }
 
     private fun writePreparedJUnitTests(newTestSrcDir: File) {
@@ -821,7 +756,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     val PassedThroughVarFunctionCallStrategy = object: FunctionCallStrategy {
         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
             if (arguments.size != 1) error("")
-//        return getArgumentsCodeBlock(arguments)
             return writeExpression(arguments[0])
         }
     }
@@ -847,13 +781,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
 }
-
-//private fun getStaticFunctionCall(className: String, methodName: String): StaticFunctionCallStrategy {
-//    return getStaticFunctionCall(ClassName.bestGuess(className), methodName)
-//}
-//private fun getStaticFunctionCall(className: ClassName, methodName: String): StaticFunctionCallStrategy {
-//    return StaticFunctionCallStrategy(className, methodName)
-//}
 
 private interface FunctionCallStrategy {
     fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock
@@ -916,17 +843,4 @@ class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy
 
 private interface FunctionTypeStrategy {
     fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName
-}
-
-private fun joinWithCommas(blocks: ArrayList<CodeBlock>): CodeBlock {
-    if (blocks.isEmpty()) {
-        return CodeBlock.of("")
-    }
-
-    val builder = CodeBlock.builder()
-    builder.add(blocks[0])
-    blocks.drop(1).forEach { block ->
-        builder.add(", \$L", block)
-    }
-    return builder.build()
 }
