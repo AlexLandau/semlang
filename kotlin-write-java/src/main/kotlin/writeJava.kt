@@ -8,10 +8,12 @@ import javax.lang.model.element.Modifier
 
 /**
  * TODO:
- * - Struct support
- * - Interface support
+ * - Lots of TODOs to address before merging
  * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
  *   - If no existing tests run into this problem, create a test that does so
+ * - Use a preprocessing step to change the Adapter types
+ * - Add variables to the scope in more places (and remove when finished)
+ * - This definitely has bugs
  */
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
@@ -324,6 +326,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
         function.arguments.forEach { argument ->
             builder.addParameter(getType(argument.type), argument.name)
+            addToVariableScope(argument.name)
         }
 
         builder.returns(getType(function.returnType))
@@ -332,6 +335,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         builder.addCode(writeBlock(function.block, null))
 
         removeFromTypeVariableScope(function.typeParameters)
+        removeFromVariableScope(function.arguments.map(Argument::name))
 
         return builder.build()
     }
@@ -456,7 +460,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
                 // TODO: Pick better names based on types
-                val argumentName = "arg" + index
+                val argumentName = ensureUnusedVariable("arg" + index)
                 unboundArgumentNames.add(argumentName)
 
                 val argType = outputType.argTypes[unboundArgumentIndex]
@@ -489,12 +493,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // Lambda expression
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
-                val argumentName = if (referencedFunction != null) {
+                val argumentName = ensureUnusedVariable(if (referencedFunction != null) {
                     referencedFunction.arguments[index].name
                 } else {
                     // TODO: Pick better names based on types
                     "arg" + index
-                }
+                })
                 unboundArgumentNames.add(argumentName)
 
                 val unparameterizedArgType = signature.argumentTypes[index]
@@ -507,6 +511,22 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
+    }
+
+    val varsInScope = HashSet<String>()
+    private fun removeFromVariableScope(varNames: List<String>) {
+        varsInScope.removeAll(varNames)
+    }
+    private fun addToVariableScope(varName: String) {
+        varsInScope.add(varName)
+    }
+    private fun ensureUnusedVariable(initialVarName: String): String {
+        //TODO: Fix up to work better, and/or factor out into a utility method in a neutral-ish project
+        var varName = initialVarName
+        while (varsInScope.contains(varName)) {
+            varName = "_" + varName
+        }
+        return varName
     }
 
     private fun getArgumentsBlock(arguments: List<TypedExpression>): CodeBlock {
