@@ -725,21 +725,20 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         map.put(FunctionId(list, "size"), StaticFunctionCallStrategy(javaLists, "size"))
 
         val integer = Package(listOf("Integer"))
-        val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
-        map.put(FunctionId(integer, "plus"), StaticFunctionCallStrategy(javaIntegers, "plus"))
-        map.put(FunctionId(integer, "minus"), StaticFunctionCallStrategy(javaIntegers, "minus"))
-        map.put(FunctionId(integer, "times"), StaticFunctionCallStrategy(javaIntegers, "times"))
-        map.put(FunctionId(integer, "equals"), StaticFunctionCallStrategy(javaIntegers, "equals"))
+        map.put(FunctionId(integer, "plus"), MethodFunctionCallStrategy("add"))
+        map.put(FunctionId(integer, "minus"), MethodFunctionCallStrategy("subtract"))
+        map.put(FunctionId(integer, "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(FunctionId(integer, "equals"), MethodFunctionCallStrategy("equals"))
         map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
         val natural = Package(listOf("Natural"))
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         // Share implementations with Integer in some cases
-        map.put(FunctionId(natural, "plus"), StaticFunctionCallStrategy(javaIntegers, "plus"))
-        map.put(FunctionId(natural, "times"), StaticFunctionCallStrategy(javaIntegers, "times"))
-        map.put(FunctionId(natural, "lesser"), StaticFunctionCallStrategy(javaIntegers, "lesser"))
-        map.put(FunctionId(natural, "equals"), StaticFunctionCallStrategy(javaIntegers, "equals"))
+        map.put(FunctionId(natural, "plus"), MethodFunctionCallStrategy("add"))
+        map.put(FunctionId(natural, "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(FunctionId(natural, "lesser"), MethodFunctionCallStrategy("min"))
+        map.put(FunctionId(natural, "equals"), MethodFunctionCallStrategy("equals"))
         map.put(FunctionId(natural, "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
 
         val tries = Package(listOf("Try"))
@@ -769,6 +768,11 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         }
     }
 
+    inner class MethodFunctionCallStrategy(val methodName: String): FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            return CodeBlock.of("\$L.\$L(\$L)", writeExpression(arguments[0]), methodName, getArgumentsBlock(arguments.drop(1)))
+        }
+    }
 
     private fun getChosenTypesCode(chosenSemlangTypes: List<Type>): CodeBlock {
         val chosenTypes = chosenSemlangTypes.map(this::getType)
