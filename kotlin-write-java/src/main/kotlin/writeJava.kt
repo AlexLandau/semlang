@@ -12,6 +12,7 @@ import javax.lang.model.element.Modifier
  * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
  *   - If no existing tests run into this problem, create a test that does so
  * - Use a preprocessing step to change the Adapter types
+ * - Preprocess to identify places where Sequence.first() calls should be turned into while loops
  * - Add variables to the scope in more places (and remove when finished)
  * - This definitely has bugs
  */
@@ -85,10 +86,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             javaFile.writeTo(newSrcDir)
         }
 
-//        testClassBuilders.forEach()
         writePreparedJUnitTests(newTestSrcDir)
-        // Write a JUnit test file
-//        writeJUnitTest(newTestSrcDir)
 
         return WrittenJavaInfo(testClassCounts.keys.toList())
     }
@@ -135,8 +133,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         interfaces.forEach { interfac ->
             val instanceClassName = getStructClassName(interfac.id)
             val adapterClassName = getStructClassName(interfac.adapterId)
-//            val adapterInterface = getStructClassName(interfac.adapterId)
-//            val interfaceInfo = context.getInterface(interfac.id)
 
             val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
 
@@ -154,25 +150,21 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                         ParameterizedTypeName.get(instanceClassName, *interfaceParameterNames.toTypedArray())
                     }
 
-//                    if (interfaceParameters.isEmpty()) {
-                        val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs, dataType, interfaceParameters)
+                    val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs, dataType, interfaceParameters)
 
-                        val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
+                    val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
 
-                        val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
+                    val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
 
-                        val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
-                                .addAnnotation(Override::class.java)
-                                .addParameter(dataTypeName, "data")
-                                .returns(instanceType)
-                                .addStatement("return \$L", instanceInnerClass)
+                    val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
+                            .addAnnotation(Override::class.java)
+                            .addParameter(dataTypeName, "data")
+                            .returns(instanceType)
+                            .addStatement("return \$L", instanceInnerClass)
 
-                        adapterInnerClass.addMethod(fromMethodBuilder.build())
+                    adapterInnerClass.addMethod(fromMethodBuilder.build())
 
-                        return CodeBlock.of("\$L", adapterInnerClass.build())
-//                    } else {
-//                        TODO("The adapter is ${adapterClassName} and the chosen types are $chosenTypes")
-//                    }
+                    return CodeBlock.of("\$L", adapterInnerClass.build())
                 }
             }
         }
@@ -183,7 +175,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
 
         interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
-            //                            val methodBuilder = MethodSpec.methodBuilder(method.name).addAnnotation(Override::class.java)
 
             val typeReplacements = interfac.typeParameters.map{s -> Type.NamedType.forParameter(s) as Type}.zip(interfaceParameters).toMap()
             val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
@@ -215,7 +206,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                         }
                     }
 
-    //                                    TypedExpression.NamedFunctionCall(functionType.outputType, constructorArg.functionId, callArgs, constructorArg.chosenParameters)
                     val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionId)
                     val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters, callArgs)
                     methodBuilder.addStatement("return \$L", functionCall)
@@ -228,7 +218,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     // So how do we do expression function calls?
                     val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
                     // In this case, we pass through the args as-is
-    //                                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters.map{it -> getType(it)}, callArgs)
                     val callArgs = ArrayList<TypedExpression>()
                     // TODO: I think we want an extra at the beginning here for "data"
                     // TODO: Pass through the data type to here?
@@ -675,11 +664,21 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             }
         }
 
+        val predefinedClassName: ClassName? = if (semlangType.id.thePackage.strings.isEmpty()) {
+            if (semlangType.id.functionName == "Sequence") {
+                ClassName.bestGuess("net.semlang.java.Sequence")
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+
         // TODO: The right general approach is going to be "find the context containing this type, and use the
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
@@ -811,6 +810,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val tries = Package(listOf("Try"))
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(FunctionId(tries, "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
+
+        val sequence = Package(listOf("Sequence"))
+        val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
+        map.put(FunctionId(sequence, "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
         return map
     }
