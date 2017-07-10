@@ -1,0 +1,33 @@
+interface Supplier {
+    getValue(): Natural
+}
+
+interface SupplierFactory {
+    getFactory(): Supplier
+}
+
+@Test("[]: '1'")
+function myCode.getNumberOne(): Natural {
+    let supplierFactory: SupplierFactory = getSupplierFactory(Natural."1")
+    supplierFactory->getFactory()->getValue()
+}
+
+@Test("[]: '2'")
+function myCode.getNumberTwo(): Natural {
+    let supplierFactory: SupplierFactory = getSupplierFactory(Natural."2")
+    supplierFactory->getFactory()->getValue()
+}
+
+function getSupplierFactory(n: Natural): SupplierFactory {
+    let adapter = SupplierFactory.Adapter<Natural>(getSupplier|(_))
+    SupplierFactory<Natural>(n, adapter)
+}
+
+function getSupplier(n: Natural): Supplier {
+    let adapter = Supplier.Adapter<Natural>(identity|(_))
+    Supplier<Natural>(n, adapter)
+}
+
+function identity(n: Natural): Natural {
+    n
+}
