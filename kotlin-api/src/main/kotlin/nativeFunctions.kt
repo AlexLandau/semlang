@@ -114,6 +114,9 @@ private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
     // Boolean.not
     definitions.add(TypeSignature(FunctionId(booleanPackage, "not"), listOf(Type.BOOLEAN), Type.BOOLEAN))
 
+    // Boolean.and
+    definitions.add(TypeSignature(FunctionId(booleanPackage, "and"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+
     // Boolean.or
     definitions.add(TypeSignature(FunctionId(booleanPackage, "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 

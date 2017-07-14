@@ -1,0 +1,7 @@
+@Test("['true', 'true']: 'true'")
+@Test("['true', 'false']: 'true'")
+@Test("['false', 'true']: 'true'")
+@Test("['false', 'false']: 'false'")
+function testOr(a: Boolean, b: Boolean): Boolean {
+    Boolean.or(a, b)
+}

@@ -1,0 +1,7 @@
+@Test("['true', 'true']: 'true'")
+@Test("['true', 'false']: 'false'")
+@Test("['false', 'true']: 'false'")
+@Test("['false', 'false']: 'false'")
+function testAnd(a: Boolean, b: Boolean): Boolean {
+    Boolean.and(a, b)
+}

@@ -714,6 +714,13 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrategy> {
         val map = HashMap<FunctionId, FunctionCallStrategy>()
 
+        val boolean = Package(listOf("Boolean"))
+        val javaBooleans = ClassName.bestGuess("net.semlang.java.Booleans")
+        // TODO: Replace these with the appropriate operators (in parentheses)
+        map.put(FunctionId(boolean, "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
+        map.put(FunctionId(boolean, "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
+        map.put(FunctionId(boolean, "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
+
         val list = Package(listOf("List"))
         val javaLists = ClassName.bestGuess("net.semlang.java.Lists")
         map.put(FunctionId(list, "empty"), StaticFunctionCallStrategy(javaLists, "empty"))

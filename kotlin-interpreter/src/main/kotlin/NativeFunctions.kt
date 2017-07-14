@@ -42,6 +42,13 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(!bool.value)
     }))
 
+    // Boolean.and
+    list.add(NativeFunction(booleanDot("and"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Boolean ?: typeError()
+        val right = args[1] as? SemObject.Boolean ?: typeError()
+        SemObject.Boolean(left.value && right.value)
+    }))
+
     // Boolean.or
     list.add(NativeFunction(booleanDot("or"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Boolean ?: typeError()
