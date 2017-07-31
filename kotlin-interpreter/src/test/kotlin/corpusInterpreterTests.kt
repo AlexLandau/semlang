@@ -31,9 +31,9 @@ class CorpusInterpreterTests(private val file: File) {
             fail("Expected at least one @Test in file $file, but there were none")
         }
     }
+}
 
-    private fun parseAndValidateFile(file: File): ValidatedContext {
-        val functionsMap2 = parseFile(file)
-        return validateContext(functionsMap2, listOf(getNativeContext()))
-    }
+private fun parseAndValidateFile(file: File): ValidatedContext {
+    val functionsMap2 = parseFile(file)
+    return validateContext(functionsMap2, listOf(getNativeContext()))
 }

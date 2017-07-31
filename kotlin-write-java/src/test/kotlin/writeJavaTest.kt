@@ -42,7 +42,7 @@ class WriteJavaTest(private val file: File) {
         val compiler = ToolProvider.getSystemJavaCompiler()
         // TODO: Get from writtenJavaSourceInfo
         val sourceFiles = collectNonDirFiles(listOf(newSrcDir, newTestSrcDir))
-        val fileManager = compiler.getStandardFileManager(null, null, null)
+        val fileManager = compiler.getStandardFileManager(null, null, Charsets.UTF_8)
         System.out.println("Source files: ${sourceFiles}")
         val compilationUnits = fileManager.getJavaFileObjectsFromFiles(sourceFiles)
         fileManager.setLocation(StandardLocation.CLASS_OUTPUT, listOf(destFolder))

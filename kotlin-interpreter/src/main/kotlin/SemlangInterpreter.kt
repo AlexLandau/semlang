@@ -129,6 +129,15 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                     val index = innerResult.interfaceDef.getIndexForName(name)
                     val functionBinding = innerResult.methods[index]
                     return functionBinding
+                } else if (innerResult is SemObject.UnicodeString) {
+                    if (name != "value") {
+                        error("The only valid member in a Unicode.String is 'value'")
+                    }
+                    // TODO: Cache this, or otherwise make it more efficient
+                    val codePointsList = innerResult.contents.codePoints().mapToObj { value -> SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(
+                            SemObject.Natural(BigInteger.valueOf(value.toLong()))))}
+                            .collect(Collectors.toList())
+                    return SemObject.SemList(codePointsList)
                 } else {
                     throw IllegalStateException("Trying to use -> on a non-struct, non-interface object")
                 }
@@ -196,8 +205,36 @@ private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
         is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
         is Type.Try -> evaluateTryLiteral(type, literal)
         is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-        is Type.NamedType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        is Type.NamedType -> evaluateNamedLiteral(type, literal)
     }
+}
+
+private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
+    if (type.id == NativeStruct.UNICODE_STRING.id) {
+        // TODO: Check for errors related to string encodings
+        return evaluateStringLiteral(literal)
+    }
+
+    throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+}
+
+fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {
+    val sb = StringBuilder()
+    var i = 0
+    while (i < literal.length) {
+        val c = literal[i]
+        if (c == '\\') {
+            if (i + 1 >= literal.length) {
+                error("Something went wrong with string literal evaluation")
+            }
+            sb.append(literal[i + 1])
+            i += 2
+        } else {
+            sb.append(c)
+            i++
+        }
+    }
+    return SemObject.UnicodeString(sb.toString())
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {
