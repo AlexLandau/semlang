@@ -14,7 +14,6 @@
   - In turn, we probably want to have a standard artifact format (even if it's just a .tgz or .zip
     of the source files) for ease of distribution via a Maven-like system
   - Should probably find a more pleasant-sounding word than "corpus"
-- Inform Gradle that the kotlin-parser tests depend on the src/test/semlang folder
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
@@ -29,8 +28,10 @@
 - Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter
-- Additional primitive types (N-bit integers, strings, characters, floating-point numbers, rationals?)
+- Additional primitive types (N-bit integers, floating-point numbers, rationals?)
+- String library methods
 - Enum types
+  - Might be a concept combinable with union types (like ADTs)?
 - DSL for "selecting" expressions from anywhere in a function
   - Point is to establish this before considering add'l characters in variable names
   - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
@@ -108,6 +109,7 @@ Design choices to reconsider:
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
+- Probably rename the existing "Package" concept to "Namespace"
 
 As things are completed:
 - Project Euler

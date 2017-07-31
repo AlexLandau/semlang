@@ -31,3 +31,5 @@ dependencies {
 
   testCompile 'junit:junit:4.12'
 }
+
+tasks.test.inputs.files(fileTree("../semlang-corpus/src/main/semlang"))
