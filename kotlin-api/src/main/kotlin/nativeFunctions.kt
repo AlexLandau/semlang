@@ -236,11 +236,17 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     val tryPackage = Package(listOf("Try"))
 
     val paramT = Type.NamedType.forParameter("T")
+    val paramU = Type.NamedType.forParameter("U")
 
     // Try.assume
     definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
             outputType = paramT))
+
+    // Try.map
+    definitions.add(TypeSignature(FunctionId(tryPackage, "map"), typeParameters = listOf(paramT, paramU),
+            argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), paramU)),
+            outputType = Type.Try(paramU)))
 }
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
@@ -307,6 +313,8 @@ fun getNativeStructs(): Map<FunctionId, Struct> {
     val structs = ArrayList<Struct>()
 
     structs.add(NativeStruct.BASIC_SEQUENCE)
+    structs.add(NativeStruct.UNICODE_CODE_POINT)
+    structs.add(NativeStruct.UNICODE_STRING)
 
     return toMap(structs)
 }

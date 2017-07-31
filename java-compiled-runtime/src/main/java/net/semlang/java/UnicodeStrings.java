@@ -1,6 +1,8 @@
 package net.semlang.java;
 
 import java.math.BigInteger;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class UnicodeStrings {
     /**
@@ -10,5 +12,9 @@ public class UnicodeStrings {
      */
     public static BigInteger length(String string) {
         return BigInteger.valueOf(string.codePointCount(0, string.length()));
+    }
+
+    public static List<Integer> toCodePoints(String string) {
+        return string.codePoints().boxed().collect(Collectors.toList());
     }
 }

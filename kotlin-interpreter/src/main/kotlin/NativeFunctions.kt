@@ -287,6 +287,18 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
         val success = theTry as? SemObject.Try.Success ?: throw IllegalStateException("Try.assume assumed incorrectly")
         success.contents
     }))
+
+    // Try.map
+    list.add(NativeFunction(tryDot("map"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        val theFunction = args[1] as? SemObject.FunctionBinding ?: typeError()
+        when (theTry) {
+            is SemObject.Try.Success -> {
+                SemObject.Try.Success(apply(theFunction, listOf(theTry.contents)))
+            }
+            is SemObject.Try.Failure -> theTry
+        }
+    }))
 }
 
 private fun addSequenceFunctions(list: MutableList<NativeFunction>) {

@@ -383,7 +383,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 writeLiteralExpression(expression)
             }
             is TypedExpression.Follow -> {
-                CodeBlock.of("\$L.\$L", writeExpression(expression.expression), expression.name)
+                writeFollowExpression(expression)
             }
             is TypedExpression.NamedFunctionBinding -> {
                 writeNamedFunctionBinding(expression)
@@ -392,6 +392,29 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 writeExpressionFunctionBinding(expression)
             }
         }
+    }
+
+    private fun writeFollowExpression(expression: TypedExpression.Follow): CodeBlock {
+        // Special sauce...
+        val type = expression.expression.type
+        if (type is Type.NamedType) {
+            if (type.id == NativeStruct.UNICODE_STRING.id) {
+                if (expression.name != "value") {
+                    error("...")
+                }
+                // Special handling
+                val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
+                return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.expression))
+            } else if (type.id == NativeStruct.UNICODE_CODE_POINT.id) {
+                if (expression.name != "value") {
+                    error("...")
+                }
+                // Convert to a BigInteger for now...
+                return CodeBlock.of("BigInteger.valueOf(\$L)", writeExpression(expression.expression))
+            }
+        }
+
+        return CodeBlock.of("\$L.\$L", writeExpression(expression.expression), expression.name)
     }
 
     private fun writeExpressionFunctionBinding(expression: TypedExpression.ExpressionFunctionBinding): CodeBlock {
@@ -616,7 +639,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             }
         }
 
-        val predefinedTypeName: TypeName? = if (semlangType.id.thePackage.strings.isEmpty()) {
+        val predefinedClassName: ClassName? = if (semlangType.id.thePackage.strings.isEmpty()) {
             if (semlangType.id.functionName == "Sequence") {
                 ClassName.bestGuess("net.semlang.java.Sequence")
             } else {
@@ -626,7 +649,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             if (semlangType.id.functionName == "String") {
                 ClassName.get(String::class.java)
             } else if (semlangType.id.functionName == "CodePoint") {
-                TypeName.CHAR
+                ClassName.get(Integer::class.java)
             } else {
                 null
             }
@@ -638,15 +661,13 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val typeName = predefinedTypeName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val typeName = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return typeName
-        } else if (typeName is ClassName) {
+        } else {
             val parameterTypeNames: List<TypeName> = semlangType.parameters.map(this::getType)
             return ParameterizedTypeName.get(typeName, *parameterTypeNames.toTypedArray())
-        } else {
-            error("...")
         }
     }
 
@@ -764,6 +785,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val tries = Package(listOf("Try"))
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(FunctionId(tries, "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
+        map.put(FunctionId(tries, "map"), StaticFunctionCallStrategy(javaTries, "map"))
 
         val sequence = Package(listOf("Sequence"))
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")

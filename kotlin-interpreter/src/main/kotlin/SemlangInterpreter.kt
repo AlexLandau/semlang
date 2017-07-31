@@ -129,6 +129,15 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                     val index = innerResult.interfaceDef.getIndexForName(name)
                     val functionBinding = innerResult.methods[index]
                     return functionBinding
+                } else if (innerResult is SemObject.UnicodeString) {
+                    if (name != "value") {
+                        error("The only valid member in a Unicode.String is 'value'")
+                    }
+                    // TODO: Cache this, or otherwise make it more efficient
+                    val codePointsList = innerResult.contents.codePoints().mapToObj { value -> SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(
+                            SemObject.Natural(BigInteger.valueOf(value.toLong()))))}
+                            .collect(Collectors.toList())
+                    return SemObject.SemList(codePointsList)
                 } else {
                     throw IllegalStateException("Trying to use -> on a non-struct, non-interface object")
                 }
