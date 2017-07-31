@@ -1,0 +1,20 @@
+
+@Test("[]: '1'")
+function stringLiteral1(): Unicode.String {
+    Unicode.String."1"
+}
+
+@Test("[]: 'Hello, world!'")
+function stringLiteral2(): Unicode.String {
+    Unicode.String."Hello, world!"
+}
+
+@Test("[]: ''")
+function stringLiteral3(): Unicode.String {
+    Unicode.String.""
+}
+
+@Test("[]: '🙂'")
+function stringLiteral4(): Unicode.String {
+    Unicode.String."🙂"
+}

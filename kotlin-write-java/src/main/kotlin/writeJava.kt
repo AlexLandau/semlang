@@ -661,13 +661,13 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val typeName = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
 
         if (semlangType.parameters.isEmpty()) {
-            return typeName
+            return className
         } else {
             val parameterTypeNames: List<TypeName> = semlangType.parameters.map(this::getType)
-            return ParameterizedTypeName.get(typeName, *parameterTypeNames.toTypedArray())
+            return ParameterizedTypeName.get(className, *parameterTypeNames.toTypedArray())
         }
     }
 

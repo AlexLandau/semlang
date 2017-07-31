@@ -1,5 +1,6 @@
 package semlang.interpreter
 
+import semlang.api.NativeStruct
 import semlang.api.Type
 
 sealed class LiteralValidator {
@@ -31,6 +32,13 @@ sealed class LiteralValidator {
             return literal == "true" || literal == "false"
         }
     }
+
+    object UNICODE_STRING : LiteralValidator() {
+        override fun validate(literal: String): Boolean {
+            // TODO: Allow escaping (which needs parser support first)
+            return !literal.contains("\\")
+        }
+    }
 }
 
 fun getTypeValidatorFor(type: Type): LiteralValidator {
@@ -39,7 +47,12 @@ fun getTypeValidatorFor(type: Type): LiteralValidator {
         Type.NATURAL -> LiteralValidator.NATURAL
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> throw IllegalArgumentException("No literal validator for List: $type")
-        is Type.NamedType -> throw IllegalArgumentException("No literal validator for NamedTypes: $type")
+        is Type.NamedType -> {
+            if (type.id == NativeStruct.UNICODE_STRING.id) {
+                return LiteralValidator.UNICODE_STRING
+            }
+            throw IllegalArgumentException("No literal validator for NamedTypes: $type")
+        }
         is Type.FunctionType -> throw IllegalArgumentException("No literal validator for FunctionTypes: $type")
         is Type.Try -> throw IllegalArgumentException("No literal validator for Trys: $type")
     }
