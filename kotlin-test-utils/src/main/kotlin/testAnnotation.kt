@@ -28,8 +28,9 @@ fun runAnnotationTests(context: ValidatedContext): Int {
 
 private object Patterns {
     // TODO: Allow the ' character in strings via escaping
-    val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[('([^']*)')?((, *'[^']*')*)\\]: '([^']*)'$")
-    val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *'([^']*)'")
+    val QP /* "quoted pattern" */: String = "'(([^'\\\\]|\\\\.)*)'" // A literal string in single quotes, with \ for escaping
+    val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[($QP)?((, *$QP)*)\\]: *$QP$")
+    val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *$QP")
 }
 
 data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
@@ -47,8 +48,8 @@ fun parseTestAnnotationContents(value: String, function: ValidatedFunction): Tes
     }
 
     val firstArgument: String? = matcher.group(2)
-    val additionalArguments = parseAdditionalArguments(matcher.group(3))
-    val output = matcher.group(5)
+    val additionalArguments = parseAdditionalArguments(matcher.group(4))
+    val output = matcher.group(8)
     val allArguments = if (firstArgument == null) {
         listOf()
     } else {

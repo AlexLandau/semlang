@@ -209,13 +209,32 @@ private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
     }
 }
 
-fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
+private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
     if (type.id == NativeStruct.UNICODE_STRING.id) {
         // TODO: Check for errors related to string encodings
-        return SemObject.UnicodeString(literal)
+        return evaluateStringLiteral(literal)
     }
 
     throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+}
+
+fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {
+    val sb = StringBuilder()
+    var i = 0
+    while (i < literal.length) {
+        val c = literal[i]
+        if (c == '\\') {
+            if (i + 1 >= literal.length) {
+                error("Something went wrong with string literal evaluation")
+            }
+            sb.append(literal[i + 1])
+            i += 2
+        } else {
+            sb.append(c)
+            i++
+        }
+    }
+    return SemObject.UnicodeString(sb.toString())
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {

@@ -18,3 +18,23 @@ function stringLiteral3(): Unicode.String {
 function stringLiteral4(): Unicode.String {
     Unicode.String."🙂"
 }
+
+@Test("[]: ' '")
+function stringLiteral5(): Unicode.String {
+    Unicode.String." "
+}
+
+@Test("[]: '\"'")
+function stringLiteral6(): Unicode.String {
+    Unicode.String."\""
+}
+
+@Test("[]: '\''")
+function stringLiteral7(): Unicode.String {
+    Unicode.String."'"
+}
+
+@Test("[]: '\\'")
+function stringLiteral8(): Unicode.String {
+    Unicode.String."\\"
+}

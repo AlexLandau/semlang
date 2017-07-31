@@ -2,6 +2,7 @@ import com.squareup.javapoet.*
 import semlang.api.*
 import semlang.internal.test.TestAnnotationContents
 import semlang.internal.test.parseTestAnnotationContents
+import semlang.interpreter.evaluateStringLiteral
 import java.io.File
 import java.math.BigInteger
 import javax.lang.model.element.Modifier
@@ -586,11 +587,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
                 if (type.id == NativeStruct.UNICODE_STRING.id) {
-                   return CodeBlock.of("\$S", literal)
+                   return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
                 }
                 error("Named type literals not supported")
             }
         }
+    }
+
+    private fun stripUnescapedBackslashes(literal: String): String {
+        return evaluateStringLiteral(literal).contents
     }
 
     private fun getType(semlangType: Type): TypeName {

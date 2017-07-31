@@ -35,8 +35,7 @@ sealed class LiteralValidator {
 
     object UNICODE_STRING : LiteralValidator() {
         override fun validate(literal: String): Boolean {
-            // TODO: Allow escaping (which needs parser support first)
-            return !literal.contains("\\")
+            return true
         }
     }
 }
