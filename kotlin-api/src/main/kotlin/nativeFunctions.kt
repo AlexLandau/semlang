@@ -17,6 +17,7 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
+    addStringFunctions(definitions)
 
     getNativeStructs().values.forEach { struct ->
         definitions.add(toTypeSignature(struct))
@@ -258,6 +259,18 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
 }
 
+private fun addStringFunctions(definitions: ArrayList<TypeSignature>) {
+    val stringPackage = Package(listOf("Unicode", "String"))
+
+    val stringType = Type.NamedType(FunctionId(Package(listOf("Unicode")), "String"))
+
+    // Unicode.String.length
+    // TODO: Limit output to 32-bit type
+    definitions.add(TypeSignature(FunctionId(stringPackage, "length"),
+            argumentTypes = listOf(stringType),
+            outputType = Type.NATURAL))
+}
+
 object NativeStruct {
     private val typeT = Type.NamedType.forParameter("T")
     private val typeU = Type.NamedType.forParameter("U")
@@ -267,6 +280,24 @@ object NativeStruct {
             listOf(
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
+            ),
+            listOf()
+    )
+    private val UNICODE_PACKAGE = Package(listOf("Unicode"))
+    val UNICODE_CODE_POINT = Struct(
+            FunctionId(UNICODE_PACKAGE, "CodePoint"),
+            listOf(),
+            listOf(
+                    // TODO: Restrict to the maximum possible code point value
+                    Member("value", Type.NATURAL)
+            ),
+            listOf()
+    )
+    val UNICODE_STRING = Struct(
+            FunctionId(UNICODE_PACKAGE, "String"),
+            listOf(),
+            listOf(
+                    Member("value", Type.List(Type.NamedType(UNICODE_CODE_POINT.id)))
             ),
             listOf()
     )

@@ -23,5 +23,7 @@ sealed class SemObject {
         object Failure: Try()
     }
     data class SemList(val contents: List<SemObject>): SemObject()
+    // Special case for the Unicode.String type
+    data class UnicodeString(val contents: String): SemObject()
     data class FunctionBinding(val functionId: FunctionId, val bindings: List<SemObject?>): SemObject()
 }

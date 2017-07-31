@@ -1,0 +1,6 @@
+@Test("['hello']: '5'")
+@Test("['']: '0'")
+@Test("['🙂']: '1'") // We count code points, not code units
+function stringLength(str: Unicode.String): Natural {
+    Unicode.String.length(str)
+}

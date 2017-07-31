@@ -121,7 +121,7 @@ sealed class Type {
     }
 
     //TODO: In the validator, validate that it does not share a name with a default type
-    data class NamedType(val id: FunctionId, val parameters: kotlin.collections.List<Type>): Type(), ParameterizableType {
+    data class NamedType(val id: FunctionId, val parameters: kotlin.collections.List<Type> = listOf()): Type(), ParameterizableType {
         companion object {
             fun forParameter(name: String): NamedType {
                 return NamedType(FunctionId.of(name), listOf())

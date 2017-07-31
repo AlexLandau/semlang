@@ -17,6 +17,7 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     addListFunctions(list)
     addTryFunctions(list)
     addSequenceFunctions(list)
+    addStringFunctions(list)
 
     return toMap(list)
 }
@@ -343,6 +344,18 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         error("Unreachable") // TODO: Better way to make Kotlin compile here?
     }))
 
+}
+
+private fun addStringFunctions(list: MutableList<NativeFunction>) {
+    val unicodeStringDot = fun(name: String) = FunctionId(Package(listOf("Unicode", "String")), name)
+
+    // Unicode.String.length
+    list.add(NativeFunction(unicodeStringDot("length"), { args: List<SemObject>, _: InterpreterCallback ->
+        val theString = args[0] as? SemObject.UnicodeString ?: typeError()
+        // TODO: At some point, we can have better internal string representations that aren't O(n) here
+        val codePointCount = theString.contents.codePointCount(0, theString.contents.length)
+        SemObject.Natural(BigInteger.valueOf(codePointCount.toLong()))
+    }))
 }
 
 private fun typeError(): Nothing {

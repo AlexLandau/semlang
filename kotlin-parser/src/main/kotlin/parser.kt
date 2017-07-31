@@ -474,7 +474,7 @@ fun parseFile(file: File): InterpreterContext {
 private data class RawContents(val functions: List<Function>, val structs: List<Struct>, val interfaces: List<Interface>)
 
 fun parseFileNamed(filename: String): InterpreterContext {
-    val stream = ANTLRFileStream(filename)
+    val stream = ANTLRFileStream(filename, "UTF-8")
     val rawContents = parseANTLRStreamInner(stream)
 
     return toInterpreterContext(rawContents)
@@ -540,13 +540,13 @@ fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     val structs = ArrayList<Struct>()
     val interfaces = ArrayList<Interface>()
     sourceFiles.forEach { sourceFile ->
-        val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath))
+        val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath, "UTF-8"))
         functions.addAll(rawContents.functions)
         structs.addAll(rawContents.structs)
         interfaces.addAll(rawContents.interfaces)
     }
 
-    val ourContents = parseANTLRStreamInner(ANTLRFileStream(filename))
+    val ourContents = parseANTLRStreamInner(ANTLRFileStream(filename, "UTF-8"))
     functions.addAll(ourContents.functions)
     structs.addAll(ourContents.structs)
     interfaces.addAll(ourContents.interfaces)

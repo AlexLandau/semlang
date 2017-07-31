@@ -191,8 +191,6 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                     TODO()
                 }
                 else -> {
-                    //error("Arguments of adapter constructors should be function bindings; instead, we got $constructorArg")
-                    // So how do we do expression function calls?
                     val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
                     // In this case, we pass through the args as-is
                     val callArgs = ArrayList<TypedExpression>()
@@ -563,7 +561,12 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             }
             is Type.FunctionType -> error("Function type literals not supported")
-            is Type.NamedType -> error("Named type literals not supported")
+            is Type.NamedType -> {
+                if (type.id == NativeStruct.UNICODE_STRING.id) {
+                   return CodeBlock.of("\$S", literal)
+                }
+                error("Named type literals not supported")
+            }
         }
     }
 
@@ -613,9 +616,17 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             }
         }
 
-        val predefinedClassName: ClassName? = if (semlangType.id.thePackage.strings.isEmpty()) {
+        val predefinedTypeName: TypeName? = if (semlangType.id.thePackage.strings.isEmpty()) {
             if (semlangType.id.functionName == "Sequence") {
                 ClassName.bestGuess("net.semlang.java.Sequence")
+            } else {
+                null
+            }
+        } else if (semlangType.id.thePackage.strings == listOf("Unicode")) {
+            if (semlangType.id.functionName == "String") {
+                ClassName.get(String::class.java)
+            } else if (semlangType.id.functionName == "CodePoint") {
+                TypeName.CHAR
             } else {
                 null
             }
@@ -627,13 +638,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val typeName = predefinedTypeName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
 
         if (semlangType.parameters.isEmpty()) {
-            return className
-        } else {
+            return typeName
+        } else if (typeName is ClassName) {
             val parameterTypeNames: List<TypeName> = semlangType.parameters.map(this::getType)
-            return ParameterizedTypeName.get(className, *parameterTypeNames.toTypedArray())
+            return ParameterizedTypeName.get(typeName, *parameterTypeNames.toTypedArray())
+        } else {
+            error("...")
         }
     }
 
@@ -729,7 +742,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // TODO: Find an approach where we can replace this with a simple .get() call...
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
         map.put(FunctionId(list, "get"), StaticFunctionCallStrategy(javaLists, "get"))
-        map.put(FunctionId(list, "size"), StaticFunctionCallStrategy(javaLists, "size"))
+        map.put(FunctionId(list, "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
 
         val integer = Package(listOf("Integer"))
         // TODO: Add ability to use non-static function calls
@@ -756,7 +769,18 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(FunctionId(sequence, "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
+        val unicodeString = Package(listOf("Unicode", "String"))
+        val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
+        map.put(FunctionId(unicodeString, "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
         return map
+    }
+
+    private fun wrapInBigint(delegate: FunctionCallStrategy): FunctionCallStrategy {
+        return object: FunctionCallStrategy {
+            override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+                return CodeBlock.of("BigInteger.valueOf(\$L)", delegate.apply(chosenTypes, arguments))
+            }
+        }
     }
 
     val PassedThroughVarFunctionCallStrategy = object: FunctionCallStrategy {
@@ -833,7 +857,7 @@ object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
         }
         val className = ClassName.get(java.util.function.Function::class.java)
 
-        return ParameterizedTypeName.get(className, getType(type.argTypes[0]).box(),  getType(type.outputType).box())
+        return ParameterizedTypeName.get(className, getType(type.argTypes[0]).box(), getType(type.outputType).box())
     }
 
 }

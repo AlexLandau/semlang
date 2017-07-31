@@ -196,8 +196,17 @@ private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
         is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
         is Type.Try -> evaluateTryLiteral(type, literal)
         is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-        is Type.NamedType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        is Type.NamedType -> evaluateNamedLiteral(type, literal)
     }
+}
+
+fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
+    if (type.id == NativeStruct.UNICODE_STRING.id) {
+        // TODO: Check for errors related to string encodings
+        return SemObject.UnicodeString(literal)
+    }
+
+    throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {
