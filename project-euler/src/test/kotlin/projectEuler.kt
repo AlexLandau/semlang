@@ -1,13 +1,13 @@
-package semlang.interpreter.test
+package net.semlang.interpreter.test
 
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import semlang.api.*
-import semlang.interpreter.SemObject
-import semlang.interpreter.SemlangForwardInterpreter
-import semlang.parser.parseFileNamed
-import semlang.parser.validateContext
+import net.semlang.api.*
+import net.semlang.interpreter.SemObject
+import net.semlang.interpreter.SemlangForwardInterpreter
+import net.semlang.parser.parseFileNamed
+import net.semlang.parser.validateContext
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.util.*

@@ -1,6 +1,6 @@
-package semlang.interpreter
+package net.semlang.interpreter
 
-import semlang.api.FunctionId
+import net.semlang.api.FunctionId
 import java.math.BigInteger
 
 // These are Semlang objects that are stored and handled by the interpreter.
@@ -15,9 +15,9 @@ sealed class SemObject {
         }
     }
     data class Boolean(val value: kotlin.Boolean) : SemObject()
-    data class Struct(val struct: semlang.api.Struct, val objects: List<SemObject>): SemObject()
+    data class Struct(val struct: net.semlang.api.Struct, val objects: List<SemObject>): SemObject()
     // An instance of an interface.
-    data class Instance(val interfaceDef: semlang.api.Interface, val dataObject: SemObject, val methods: List<SemObject.FunctionBinding>): SemObject()
+    data class Instance(val interfaceDef: net.semlang.api.Interface, val dataObject: SemObject, val methods: List<SemObject.FunctionBinding>): SemObject()
     sealed class Try: SemObject() {
         data class Success(val contents: SemObject): Try()
         object Failure: Try()

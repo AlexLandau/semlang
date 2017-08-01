@@ -1,5 +1,6 @@
-import semlang.api.*
-import semlang.transforms.getAllDeclaredVarNames
+package net.semlang.transforms
+
+import net.semlang.api.*
 
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.

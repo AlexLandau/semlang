@@ -1,12 +1,14 @@
+package net.semlang.parser
+
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.node.TextNode
-import semlang.api.*
-import semlang.api.Annotation
-import semlang.api.Function
+import net.semlang.api.*
+import net.semlang.api.Annotation
+import net.semlang.api.Function
 
 //TODO: Before trying to write an interpreter in another language, I think we
 //actually want to have the sem0 version of this, for which the validation and

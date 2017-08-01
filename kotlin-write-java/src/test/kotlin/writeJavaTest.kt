@@ -1,9 +1,11 @@
+package net.semlang.writejava
+
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.getNativeContext
-import semlang.parser.parseFile
-import semlang.parser.validateContext
+import net.semlang.api.getNativeContext
+import net.semlang.parser.parseFile
+import net.semlang.parser.validateContext
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.fail

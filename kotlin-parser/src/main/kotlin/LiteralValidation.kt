@@ -1,7 +1,7 @@
-package semlang.interpreter
+package net.semlang.parser
 
-import semlang.api.NativeStruct
-import semlang.api.Type
+import net.semlang.api.NativeStruct
+import net.semlang.api.Type
 
 sealed class LiteralValidator {
     abstract fun validate(literal: String): Boolean

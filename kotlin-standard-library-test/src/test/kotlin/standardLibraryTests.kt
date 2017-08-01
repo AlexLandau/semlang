@@ -6,13 +6,13 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.ModuleId
-import semlang.api.ValidatedContext
-import semlang.api.getNativeContext
-import semlang.internal.test.runAnnotationTests
-import semlang.parser.parseFile
-import semlang.parser.parseFiles
-import semlang.parser.validateContext
+import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedContext
+import net.semlang.api.getNativeContext
+import net.semlang.internal.test.runAnnotationTests
+import net.semlang.parser.parseFile
+import net.semlang.parser.parseFiles
+import net.semlang.parser.validateContext
 import java.io.File
 
 private val LIBRARY_MODULE_ID = ModuleId("semlang", "standard-library", "develop-test")

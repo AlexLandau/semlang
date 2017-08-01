@@ -1,6 +1,5 @@
-package semlang.parser
+package net.semlang.parser
 
-import indexById
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -9,9 +8,9 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import sem1.antlr.Sem1Lexer
 import sem1.antlr.Sem1Parser
 import sem1.antlr.Sem1ParserBaseListener
-import semlang.api.*
-import semlang.api.Function
-import semlang.api.Annotation
+import net.semlang.api.*
+import net.semlang.api.Function
+import net.semlang.api.Annotation
 import java.io.File
 import java.util.*
 

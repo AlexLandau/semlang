@@ -1,6 +1,6 @@
-package semlang.interpreter
+package net.semlang.interpreter
 
-import semlang.api.*
+import net.semlang.api.*
 import java.math.BigInteger
 import java.util.*
 import java.util.stream.Collectors

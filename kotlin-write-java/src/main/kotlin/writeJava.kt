@@ -1,8 +1,12 @@
+package net.semlang.writejava
+
 import com.squareup.javapoet.*
-import semlang.api.*
-import semlang.internal.test.TestAnnotationContents
-import semlang.internal.test.parseTestAnnotationContents
-import semlang.interpreter.evaluateStringLiteral
+import net.semlang.api.*
+import net.semlang.internal.test.TestAnnotationContents
+import net.semlang.internal.test.parseTestAnnotationContents
+import net.semlang.interpreter.evaluateStringLiteral
+import net.semlang.transforms.RenamingStrategies
+import net.semlang.transforms.constrainVariableNames
 import java.io.File
 import java.math.BigInteger
 import javax.lang.model.element.Modifier

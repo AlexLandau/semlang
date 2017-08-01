@@ -1,12 +1,12 @@
 package net.semlang.modules
 
-import semlang.api.ModuleId
-import semlang.api.UnvalidatedContext
-import semlang.api.ValidatedContext
-import semlang.api.getNativeContext
-import semlang.parser.parseFile
-import semlang.parser.validateContext
-import write
+import net.semlang.api.ModuleId
+import net.semlang.api.UnvalidatedContext
+import net.semlang.api.ValidatedContext
+import net.semlang.api.getNativeContext
+import net.semlang.parser.parseFile
+import net.semlang.parser.validateContext
+import net.semlang.parser.write
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -92,6 +92,6 @@ class LocalRepository(val rootDirectory: File) {
 
 fun getDefaultLocalRepository(): LocalRepository {
     val semlangFolder = File(System.getProperty("user.home"), ".semlang")
-    val repoFolder = File(semlangFolder, "repo0")
+    val repoFolder = File(semlangFolder, "repo-0")
     return LocalRepository(repoFolder)
 }

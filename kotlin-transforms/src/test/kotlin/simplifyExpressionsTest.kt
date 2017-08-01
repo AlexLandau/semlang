@@ -1,13 +1,14 @@
-import org.junit.Assert
+package net.semlang.transforms
+
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.getNativeContext
-import semlang.internal.test.runAnnotationTests
-import semlang.parser.parseFile
-import semlang.parser.validateContext
-import semlang.transforms.simplifyExpressions
+import net.semlang.api.getNativeContext
+import net.semlang.internal.test.runAnnotationTests
+import net.semlang.parser.parseFile
+import net.semlang.parser.validateContext
+import net.semlang.parser.writeToString
 import java.io.File
 
 @RunWith(Parameterized::class)

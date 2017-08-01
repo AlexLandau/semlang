@@ -81,6 +81,10 @@ Figuring out packages and a module system:
   - Automatic semantic versioning would be awesome, but I don't know what that would look like yet.
     - I took a look at Elm and their version treats "function returns a different value" as a patch change, so I don't
       think that's sufficient (unless programmers are very, very well-behaved).
+    - We may want to support multiple different notions of versioning, as well; for example, in some cases, clients will
+      depend on the exact behavior of a function remaining fixed over time (eg. I/O formats) while in others, changes in
+      behavior may be wanted immediately (e.g. an AI recommender system or time-zone information) even when used as a
+      transitive dependency.
 So a first pass would look like:
   - Groups of self-contained code are organized as modules, and have dependencies on other modules that by default are
     non-transitive (transitivity could be added later, in the form of re-declarations or otherwise).
@@ -97,6 +101,15 @@ So a first pass would look like:
     it shouldn't go away entirely, but "package" might be the wrong term now. It should probably be "namespace" and
     reserved for special cases within code, vs. including the org name, module name, etc. as seen in Java.
   - What does testing for this look like?
+What a Gradle plugin for this would do:
+  - Publish to the internal repository where approriate
+  - Possibly allow "linking" of dependencies from peer projects as opposed to the repository
+    - Do we want to specify all our dependencies in Gradle, or have a different mechanism to specify them? If the latter,
+      is there a problem with Gradle here?
+  - Once we know what our dependencies look like, run validation on the project's src/main/semlang and src/test/semlang,
+    probably as an "assemble" task
+  - As a "test" task, use the interpreter to run and check test annotations in the project
+  - The plugin will probably depend on published jars containing the Kotlin parser, validator, and interpreter
 
 Design choices to reconsider:
 - Figure out what to do about recursive function calls

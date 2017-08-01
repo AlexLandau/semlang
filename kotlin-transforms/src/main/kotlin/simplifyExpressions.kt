@@ -1,6 +1,6 @@
-package semlang.transforms;
+package net.semlang.transforms
 
-import semlang.api.*
+import net.semlang.api.*
 
 // TODO: Test
 // TODO: Better document

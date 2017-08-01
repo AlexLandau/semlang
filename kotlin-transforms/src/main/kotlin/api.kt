@@ -1,6 +1,6 @@
-package semlang.transforms;
+package net.semlang.transforms
 
-import semlang.api.ValidatedContext
+import net.semlang.api.ValidatedContext
 
 /*
  * TODO: We may want actual classes here, to support answering questions about what properties

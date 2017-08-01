@@ -1,10 +1,10 @@
-package semlang.internal.test
+package net.semlang.internal.test
 
-import semlang.api.Argument
-import semlang.api.ValidatedContext
-import semlang.api.ValidatedFunction
-import semlang.interpreter.SemObject
-import semlang.interpreter.SemlangForwardInterpreter
+import net.semlang.api.Argument
+import net.semlang.api.ValidatedContext
+import net.semlang.api.ValidatedFunction
+import net.semlang.interpreter.SemObject
+import net.semlang.interpreter.SemlangForwardInterpreter
 import java.util.regex.Pattern
 
 /**

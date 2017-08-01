@@ -1,19 +1,13 @@
-package semlang.parser.test
+package net.semlang.parser.test
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import fromJson
+import net.semlang.api.ValidatedContext
+import net.semlang.api.getNativeContext
+import net.semlang.parser.*
 import org.junit.Assert
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.ValidatedContext
-import semlang.api.getNativeContext
-import semlang.parser.parseFile
-import semlang.parser.parseString
-import semlang.parser.validateContext
-import toJson
-import writeToString
 import java.io.File
 
 @RunWith(Parameterized::class)

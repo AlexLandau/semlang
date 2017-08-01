@@ -1,4 +1,4 @@
-package semlang.api
+package net.semlang.api
 
 data class Package(val strings: List<String>) {
     companion object {

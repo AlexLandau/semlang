@@ -1,4 +1,4 @@
-package semlang.api
+package net.semlang.api
 
 import java.util.*
 

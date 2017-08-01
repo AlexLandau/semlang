@@ -1,9 +1,9 @@
-package semlang.transforms;
+package net.semlang.transforms
 
-import semlang.api.TypedBlock
-import semlang.api.TypedExpression
-import semlang.api.ValidatedAssignment
-import semlang.api.ValidatedFunction
+import net.semlang.api.TypedBlock
+import net.semlang.api.TypedExpression
+import net.semlang.api.ValidatedAssignment
+import net.semlang.api.ValidatedFunction
 
 fun getAllDeclaredVarNames(function: ValidatedFunction): Set<String> {
     val varNames = LinkedHashSet<String>()

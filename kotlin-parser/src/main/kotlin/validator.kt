@@ -1,9 +1,7 @@
-package semlang.parser
+package net.semlang.parser
 
-import semlang.api.*
-import semlang.api.Function
-import semlang.api.Type.NamedType.Companion.forParameter
-import semlang.interpreter.getTypeValidatorFor
+import net.semlang.api.*
+import net.semlang.api.Function
 import java.util.*
 
 // TODO: Probably need several overloads of this, and Positions stored in more places

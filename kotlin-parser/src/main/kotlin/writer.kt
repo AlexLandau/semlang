@@ -1,5 +1,7 @@
-import semlang.api.*
-import semlang.api.Annotation
+package net.semlang.parser
+
+import net.semlang.api.*
+import net.semlang.api.Annotation
 import java.io.StringWriter
 import java.io.Writer
 
