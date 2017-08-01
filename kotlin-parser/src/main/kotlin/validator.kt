@@ -30,7 +30,7 @@ private fun fail(text: String): Nothing {
 
 data class GroundedTypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type)
 
-fun validateContext(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): ValidatedContext {
+fun validateContext(context: UnvalidatedContext, upstreamContexts: List<ValidatedContext>): ValidatedContext {
     val ownStructs = getStructs(context, upstreamContexts)
     val ownInterfaces = getInterfaces(context, upstreamContexts)
 
@@ -361,7 +361,7 @@ private fun validateVariableExpression(expression: Expression.Variable, variable
     }
 }
 
-private fun getFunctionTypeSignatures(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
+private fun getFunctionTypeSignatures(context: UnvalidatedContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
     val signatures = HashMap<FunctionId, TypeSignature>()
 
     context.structs.entries.forEach { entry ->
@@ -398,14 +398,14 @@ private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
     signatures.putAll(getNativeFunctionDefinitions())
 }
 
-private fun getStructs(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Struct> {
+private fun getStructs(context: UnvalidatedContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Struct> {
     val structs = HashMap<FunctionId, Struct>()
     // TODO: Validate structs here
     structs.putAll(context.structs)
     return structs
 }
 
-private fun getInterfaces(context: InterpreterContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Interface> {
+private fun getInterfaces(context: UnvalidatedContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, Interface> {
     val interfaces = HashMap<FunctionId, Interface>()
     // TODO: Validate interfaces here
     interfaces.putAll(context.interfaces)

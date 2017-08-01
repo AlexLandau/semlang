@@ -478,7 +478,7 @@ private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {
     }
 }
 
-fun fromJson(node: JsonNode): InterpreterContext {
+fun fromJson(node: JsonNode): UnvalidatedContext {
     if (!node.isObject()) {
         error("Expected an object node")
     }
@@ -494,7 +494,7 @@ fun fromJson(node: JsonNode): InterpreterContext {
     val structs = indexById(parseStructs(node.get("structs")))
     val interfaces = indexById(parseInterfaces(node.get("interfaces")))
 
-    return InterpreterContext(functions, structs, interfaces)
+    return UnvalidatedContext(functions, structs, interfaces)
 }
 
 private fun parseFunctions(node: JsonNode): List<Function> {

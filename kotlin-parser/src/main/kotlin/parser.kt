@@ -467,24 +467,42 @@ private class ContextListener : Sem1ParserBaseListener() {
     }
 }
 
-fun parseFile(file: File): InterpreterContext {
+fun parseFile(file: File): UnvalidatedContext {
     return parseFileNamed(file.absolutePath)
+}
+
+fun parseFiles(files: Collection<File>): UnvalidatedContext {
+    val allFunctions = ArrayList<Function>()
+    val allStructs = ArrayList<Struct>()
+    val allInterfaces = ArrayList<Interface>()
+    for (file in files) {
+        val rawContents = getRawContentsForFileNamed(file.absolutePath)
+        allFunctions.addAll(rawContents.functions)
+        allStructs.addAll(rawContents.structs)
+        allInterfaces.addAll(rawContents.interfaces)
+    }
+    return toInterpreterContext(RawContents(allFunctions, allStructs, allInterfaces))
 }
 
 private data class RawContents(val functions: List<Function>, val structs: List<Struct>, val interfaces: List<Interface>)
 
-fun parseFileNamed(filename: String): InterpreterContext {
-    val stream = ANTLRFileStream(filename, "UTF-8")
-    val rawContents = parseANTLRStreamInner(stream)
+fun parseFileNamed(filename: String): UnvalidatedContext {
+    val rawContents = getRawContentsForFileNamed(filename)
 
     return toInterpreterContext(rawContents)
 }
 
-private fun toInterpreterContext(rawContents: RawContents): InterpreterContext {
-    return InterpreterContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
+private fun getRawContentsForFileNamed(filename: String): RawContents {
+    val stream = ANTLRFileStream(filename, "UTF-8")
+    val rawContents = parseANTLRStreamInner(stream)
+    return rawContents
 }
 
-fun parseString(string: String): InterpreterContext {
+private fun toInterpreterContext(rawContents: RawContents): UnvalidatedContext {
+    return UnvalidatedContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
+}
+
+fun parseString(string: String): UnvalidatedContext {
     val stream = ANTLRInputStream(string)
     val rawContents = parseANTLRStreamInner(stream)
     return toInterpreterContext(rawContents)
@@ -531,7 +549,8 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
     return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
 }
 
-fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
+// TODO: Replace this with the module/repository approach
+fun parseFileAgainstStandardLibrary(filename: String): UnvalidatedContext {
     // TODO: This is not going to work consistently
     val directory = File("../semlang-library/src/main/semlang")
     // TODO: Will probably want to accept non-flat directory structures at some point
@@ -551,5 +570,5 @@ fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     structs.addAll(ourContents.structs)
     interfaces.addAll(ourContents.interfaces)
 
-    return InterpreterContext(indexById(functions), indexById(structs), indexById(interfaces))
+    return UnvalidatedContext(indexById(functions), indexById(structs), indexById(interfaces))
 }
