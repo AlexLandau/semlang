@@ -1,6 +1,21 @@
 package semlang.api
 
 import java.util.HashMap
+import java.util.regex.Pattern
+
+private val ILLEGAL_CHAR_PATTERN = Pattern.compile("[^0-9a-zA-Z_.-]")
+
+data class ModuleId(val group: String, val module: String, val version: String) {
+    init {
+        // TODO: Consider if these restrictions can/should be relaxed
+        for ((string, stringType) in listOf(group to "group",
+                module to "name",
+                version to "version"))
+            if (ILLEGAL_CHAR_PATTERN.matcher(string).find()) {
+                throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
+            }
+    }
+}
 
 //TODO: Validate inputs (non-overlapping keys)
 data class UnvalidatedContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)

@@ -548,27 +548,3 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
 
     return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
 }
-
-// TODO: Replace this with the module/repository approach
-fun parseFileAgainstStandardLibrary(filename: String): UnvalidatedContext {
-    // TODO: This is not going to work consistently
-    val directory = File("../semlang-library/src/main/semlang")
-    // TODO: Will probably want to accept non-flat directory structures at some point
-    val sourceFiles = directory.listFiles() ?: error("It didn't like that directory... " + directory.absolutePath)
-    val functions = ArrayList<Function>()
-    val structs = ArrayList<Struct>()
-    val interfaces = ArrayList<Interface>()
-    sourceFiles.forEach { sourceFile ->
-        val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath, "UTF-8"))
-        functions.addAll(rawContents.functions)
-        structs.addAll(rawContents.structs)
-        interfaces.addAll(rawContents.interfaces)
-    }
-
-    val ourContents = parseANTLRStreamInner(ANTLRFileStream(filename, "UTF-8"))
-    functions.addAll(ourContents.functions)
-    structs.addAll(ourContents.structs)
-    interfaces.addAll(ourContents.interfaces)
-
-    return UnvalidatedContext(indexById(functions), indexById(structs), indexById(interfaces))
-}

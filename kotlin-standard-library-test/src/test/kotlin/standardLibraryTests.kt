@@ -1,12 +1,12 @@
 package net.semlang.test
 
-import net.semlang.modules.ModuleId
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+import semlang.api.ModuleId
 import semlang.api.ValidatedContext
 import semlang.api.getNativeContext
 import semlang.internal.test.runAnnotationTests

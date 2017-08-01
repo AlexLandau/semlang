@@ -1,16 +1,14 @@
 package semlang.interpreter.test
 
+import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
 import semlang.api.*
 import semlang.interpreter.SemObject
 import semlang.interpreter.SemlangForwardInterpreter
-import semlang.parser.parseFileAgainstStandardLibrary
 import semlang.parser.parseFileNamed
 import semlang.parser.validateContext
 import java.math.BigInteger
-import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.*
 
@@ -37,8 +35,11 @@ class ProjectEulerExamples {
     }
 
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
-        val functionsMap2 = parseFileAgainstStandardLibrary(filename)
-        return SemlangForwardInterpreter(validateContext(functionsMap2, listOf(getNativeContext())))
+        val functionsMap2 = parseFileNamed(filename)
+
+        val standardLibraryContext = getDefaultLocalRepository().loadModule(ModuleId("semlang", "standard-library", "develop-test"))
+
+        return SemlangForwardInterpreter(validateContext(functionsMap2, listOf(getNativeContext(), standardLibraryContext)))
     }
 }
 

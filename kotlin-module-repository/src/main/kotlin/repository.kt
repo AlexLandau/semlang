@@ -1,5 +1,6 @@
 package net.semlang.modules
 
+import semlang.api.ModuleId
 import semlang.api.UnvalidatedContext
 import semlang.api.ValidatedContext
 import semlang.api.getNativeContext
@@ -9,22 +10,6 @@ import write
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
-import java.util.regex.Pattern
-
-private val ILLEGAL_CHAR_PATTERN = Pattern.compile("[^0-9a-zA-Z_.-]")
-
-// TODO: kotlin-api or kotlin-module-api?
-data class ModuleId(val group: String, val module: String, val version: String) {
-    init {
-        // TODO: Consider if these restrictions can/should be relaxed
-        for ((string, stringType) in listOf(group to "group",
-                                            module to "name",
-                                            version to "version"))
-        if (ILLEGAL_CHAR_PATTERN.matcher(string).find()) {
-            throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
-        }
-    }
-}
 
 // This is meant to incorporate all information that would appear in a module specification file
 data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)

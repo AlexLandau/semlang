@@ -22,6 +22,7 @@ repositories {
 dependencies {
   testCompile project(":kotlin-parser")
   testCompile project(":kotlin-interpreter")
+  testCompile project(":kotlin-module-repository")
 
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
@@ -30,3 +31,6 @@ dependencies {
 
 tasks.test.inputs.files(fileTree("../semlang-library/src/main/semlang"))
 tasks.test.inputs.files(fileTree("src/test/semlang"))
+
+// Make sure the standard library has been published before running the test
+tasks.test.dependsOn project(":kotlin-standard-library-test").tasks.test
