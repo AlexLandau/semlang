@@ -154,7 +154,7 @@ private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: Ambiguous
 }
 
 
-private fun parseStruct(ctx: Sem1Parser.StructContext): Struct {
+private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
     val id: FunctionId = parseFunctionId(ctx.function_id())
 
     val typeParameters: List<String> = if (ctx.cd_ids() != null) {
@@ -163,11 +163,15 @@ private fun parseStruct(ctx: Sem1Parser.StructContext): Struct {
         listOf()
     }
 
-    val members: List<Member> = parseMembers(ctx.struct_components())
+    val members: List<Member> = parseMembers(ctx.struct_members())
+    val requires: Block? = ctx.maybe_requires().block()?.let {
+        val externalVarIds = members.map { member -> FunctionId.of(member.name) }
+        scopeBlock(externalVarIds, parseBlock(it))
+    }
 
     val annotations = parseAnnotations(ctx.annotations())
 
-    return Struct(id, typeParameters, members, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
 }
 
 private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
@@ -177,14 +181,14 @@ private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<Strin
             TerminalNode::getText)
 }
 
-private fun parseMembers(members: Sem1Parser.Struct_componentsContext): List<Member> {
+private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<Member> {
     return parseLinkedList(members,
-            Sem1Parser.Struct_componentsContext::struct_component,
-            Sem1Parser.Struct_componentsContext::struct_components,
+            Sem1Parser.Struct_membersContext::struct_member,
+            Sem1Parser.Struct_membersContext::struct_members,
             ::parseMember)
 }
 
-private fun parseMember(member: Sem1Parser.Struct_componentContext): Member {
+private fun parseMember(member: Sem1Parser.Struct_memberContext): Member {
     val name = member.ID().text
     val type = parseType(member.type())
     return Member(name, type)
@@ -450,7 +454,7 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
 }
 
 private class ContextListener : Sem1ParserBaseListener() {
-    val structs: MutableList<Struct> = ArrayList()
+    val structs: MutableList<UnvalidatedStruct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
     val interfaces: MutableList<Interface> = ArrayList()
 
@@ -467,27 +471,23 @@ private class ContextListener : Sem1ParserBaseListener() {
     }
 }
 
-fun parseFile(file: File): InterpreterContext {
+fun parseFile(file: File): RawContext {
     return parseFileNamed(file.absolutePath)
 }
 
-private data class RawContents(val functions: List<Function>, val structs: List<Struct>, val interfaces: List<Interface>)
+//private data class RawContents(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
 
-fun parseFileNamed(filename: String): InterpreterContext {
+fun parseFileNamed(filename: String): RawContext {
     val stream = ANTLRFileStream(filename, "UTF-8")
     val rawContents = parseANTLRStreamInner(stream)
 
-    return toInterpreterContext(rawContents)
+    return rawContents
 }
 
-private fun toInterpreterContext(rawContents: RawContents): InterpreterContext {
-    return InterpreterContext(indexById(rawContents.functions), indexById(rawContents.structs), indexById(rawContents.interfaces))
-}
-
-fun parseString(string: String): InterpreterContext {
+fun parseString(string: String): RawContext {
     val stream = ANTLRInputStream(string)
     val rawContents = parseANTLRStreamInner(stream)
-    return toInterpreterContext(rawContents)
+    return rawContents
 }
 
 private class ErrorListener(val errorsFound: ArrayList<String> = ArrayList<String>()): ANTLRErrorListener {
@@ -512,7 +512,7 @@ private class ErrorListener(val errorsFound: ArrayList<String> = ArrayList<Strin
     }
 }
 
-private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
+private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
     val lexer = Sem1Lexer(stream)
     val errorListener = ErrorListener()
     lexer.addErrorListener(errorListener)
@@ -528,16 +528,16 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContents {
         error("Found errors: " + errorListener.errorsFound)
     }
 
-    return RawContents(extractor.functions, extractor.structs, extractor.interfaces)
+    return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
 }
 
-fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
+fun parseFileAgainstStandardLibrary(filename: String): RawContext {
     // TODO: This is not going to work consistently
     val directory = File("../semlang-library/src/main/semlang")
     // TODO: Will probably want to accept non-flat directory structures at some point
     val sourceFiles = directory.listFiles() ?: error("It didn't like that directory... " + directory.absolutePath)
     val functions = ArrayList<Function>()
-    val structs = ArrayList<Struct>()
+    val structs = ArrayList<UnvalidatedStruct>()
     val interfaces = ArrayList<Interface>()
     sourceFiles.forEach { sourceFile ->
         val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath, "UTF-8"))
@@ -551,5 +551,5 @@ fun parseFileAgainstStandardLibrary(filename: String): InterpreterContext {
     structs.addAll(ourContents.structs)
     interfaces.addAll(ourContents.interfaces)
 
-    return InterpreterContext(indexById(functions), indexById(structs), indexById(interfaces))
+    return RawContext(functions, structs, interfaces)
 }

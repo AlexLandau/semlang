@@ -789,6 +789,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
         val tries = Package(listOf("Try"))
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
+        map.put(FunctionId(tries, "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
         map.put(FunctionId(tries, "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
         map.put(FunctionId(tries, "map"), StaticFunctionCallStrategy(javaTries, "map"))
 

@@ -161,6 +161,8 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.equals
     definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.greaterThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
     // TODO: Resolve these conflicting definitions
     // Natural.max
@@ -238,6 +240,11 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.NamedType.forParameter("T")
     val paramU = Type.NamedType.forParameter("U")
 
+    // Try.failure
+    definitions.add(TypeSignature(FunctionId(tryPackage, "failure"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(),
+            outputType = Type.Try(paramT)))
+
     // Try.assume
     definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
@@ -287,6 +294,7 @@ object NativeStruct {
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
             ),
+            null,
             listOf()
     )
     private val UNICODE_PACKAGE = Package(listOf("Unicode"))
@@ -297,6 +305,7 @@ object NativeStruct {
                     // TODO: Restrict to the maximum possible code point value
                     Member("value", Type.NATURAL)
             ),
+            null, // TODO: Add the actual restriction here, and test
             listOf()
     )
     val UNICODE_STRING = Struct(
@@ -305,6 +314,7 @@ object NativeStruct {
             listOf(
                     Member("value", Type.List(Type.NamedType(UNICODE_CODE_POINT.id)))
             ),
+            null,
             listOf()
     )
 }

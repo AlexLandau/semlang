@@ -217,7 +217,12 @@ data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String
     }
 }
 
-data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val annotations: List<Annotation>) : HasFunctionId {
+data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, val annotations: List<Annotation>) : HasFunctionId {
+    fun getIndexForName(name: String): Int {
+        return members.indexOfFirst { member -> member.name == name }
+    }
+}
+data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, val annotations: List<Annotation>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
     }
@@ -232,7 +237,7 @@ data class Interface(override val id: FunctionId, val typeParameters: List<Strin
         return methods.indexOfFirst { method -> method.name == name }
     }
     val adapterId: FunctionId = FunctionId(id.toPackage(), "Adapter")
-    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, listOf())
+    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, null, listOf())
 }
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)

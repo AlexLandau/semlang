@@ -18,6 +18,7 @@ tokens {
   LET,
   IF,
   ELSE,
+  REQUIRES,
   LITERAL,
   DOT,
   COMMA,
@@ -54,10 +55,11 @@ block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
-struct : annotations STRUCT function_id LBRACE struct_components RBRACE
-  | annotations STRUCT function_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_components RBRACE ;
-struct_components : | struct_component struct_components ;
-struct_component : ID COLON type ;
+struct : annotations STRUCT function_id LBRACE struct_members maybe_requires RBRACE
+  | annotations STRUCT function_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
+struct_members : | struct_member struct_members ;
+struct_member : ID COLON type ;
+maybe_requires : | REQUIRES block ;
 
 // TODO: Is there a better solution for this than mangling the name?
 interfac : annotations INTERFACE function_id LBRACE methods RBRACE
