@@ -58,11 +58,23 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         return interpret(functionId, fullArguments)
     }
 
-    private fun evaluateStructConstructor(structFunction: Struct, arguments: List<SemObject>): SemObject {
-        if (arguments.size != structFunction.members.size) {
-            throw IllegalArgumentException("Wrong number of arguments for struct constructor " + structFunction)
+    private fun evaluateStructConstructor(struct: Struct, arguments: List<SemObject>): SemObject {
+        if (arguments.size != struct.members.size) {
+            throw IllegalArgumentException("Wrong number of arguments for struct constructor " + struct)
         }
-        return SemObject.Struct(structFunction, arguments)
+        val requiresBlock = struct.requires
+        if (requiresBlock == null) {
+            return SemObject.Struct(struct, arguments)
+        } else {
+            // Check if it meets the "requires" condition
+            val variableAssignments = struct.members.map(Member::name).zip(arguments).toMap()
+            val success = evaluateBlock(requiresBlock, variableAssignments) as? SemObject.Boolean ?: error("Non-boolean output of a requires block at runtime")
+            if (success.value) {
+                return SemObject.Try.Success(SemObject.Struct(struct, arguments))
+            } else {
+                return SemObject.Try.Failure
+            }
+        }
     }
 
     private fun evaluateAdapterConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {

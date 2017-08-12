@@ -5,71 +5,14 @@ struct WholeNumber {
   }
 }
 
-//@Test("['1']: 'success(1)'")
-//@Test("['123']: 'success(123)'")
+@Test("['1']: 'success(1)'")
+@Test("['123']: 'success(123)'")
 @Test("['0']: 'failure'")
 function testWholeNumber(input: Natural): Try<Natural> {
-//  let wholeNumber: Try<WholeNumber> = WholeNumber(input)
-//  Try.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))
-  Try.failure<Natural>()
+  let wholeNumber: Try<WholeNumber> = WholeNumber(input)
+  Try.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))
 }
 
 function getWholeNumberValue(wholeNumber: WholeNumber): Natural {
   wholeNumber->value
 }
-
-/*
-Okay, more second-guessing. Do I really want this vs. a validation-based approach?
-And should I consider some other syntax to avoid breaking invariants like "the obvious
-signature of a function is the one you use when calling it"?
-
-More specific thoughts:
-- I want to keep separate types separate and not easily allow e.g. a CodePoint to be
-  passed in where an Integer is expected. This might be a mistake, but it can be
-  handled in dialects and handling it in the opposite direction would be harder.
-  - This makes modelling things as structs more intuitive, arguably.
-- As mentioned before, we probably want to be able to have these restricted types with
-  multi-member structs anyway.
-- I guess we can have a validation function? Arguably when we get error types handled
-  in Try<>, we should make the type of error produced configurable, which could get
-  tricky. (Though that can be wrapped anyway.)
-
-How would something like this look by comparison?:
-
-define type CodePoint as { value: Natural } via function CodePoint(val: Natural): Try<CodePoint> {
-  if (Natural.lessThan(val, Natural."1234567890")) {
-    Try.success(CodePoint(val))
-  } else {
-    Try.failure()
-  }
-}
-
-So I think the argument against these Try-constructors in general is that if we ever have
-some simple serialization scheme, there's no real way to validate that things of these
-types were a valid outcome of these functions. And part of our safety is that we don't want
-things like Natural (if that gets converted) to be a negative number that we pass to
-List.get.
-
-And if the concept of being a "lingua franca of functions" has any appeal, it wouldn't make
-sense to not also be able to pass around arguments for those functions.
-
-By contrast, a validation approach would make it easier to ___.
-
-For example:
-
-struct myCode.OneIndexedNatural {
-  value: Natural
-  requires {
-    Natural.lessThan(value, Natural."1234567890")
-  }
-}
-
-In this case, whatever is after "requires" is parsed as a block, which is required to be of
-Boolean type. The presence of a requires block implies that the automatically generated
-constructor for the struct will return Try<T> instead of T.
-
-We might someday want multiple such blocks, but for now this works.
-
-Possible names: require[s], precondition[s], validate, validation, test, condition(s), check,
-verify, assert...
-*/

@@ -383,7 +383,7 @@ private fun getFunctionTypeSignatures(context: RawContext, upstreamContexts: Lis
         if (signatures.containsKey(id)) {
             fail("Struct name $id has an overlap with a native function")
         }
-        signatures.put(id, getStructConstructorSignature(struct))
+        signatures.put(id, struct.getConstructorSignature())
     }
 
     context.interfaces.forEach { interfac ->
@@ -403,10 +403,6 @@ private fun getFunctionTypeSignatures(context: RawContext, upstreamContexts: Lis
     }
     return signatures
 }
-
-//private fun addNativeFunctions(signatures: HashMap<FunctionId, TypeSignature>) {
-//    signatures.putAll(getNativeFunctionDefinitions())
-//}
 
 private fun validateStructs(structs: List<UnvalidatedStruct>, typeInfo: AllTypeInfo): Map<FunctionId, Struct> {
     val validatedStructs = HashMap<FunctionId, Struct>()
@@ -451,21 +447,11 @@ private fun getFunctionSignature(function: Function): TypeSignature {
     return TypeSignature(function.id, argumentTypes, function.returnType, typeParameters)
 }
 
-private fun getStructConstructorSignature(struct: UnvalidatedStruct): TypeSignature {
-    val argumentTypes = struct.members.map(Member::type)
-    val typeParameters = struct.typeParameters.map { id -> Type.NamedType.forParameter(id) }
-    // TODO: Method for making a type parameter type (String -> Type)
-    val outputType = Type.NamedType(struct.id, typeParameters)
-    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
-}
-
 private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<FunctionId, TypeSignature>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
     return getAllEntities(ownFunctionTypeSignatures, ValidatedContext::getAllFunctionSignatures, upstreamContexts)
 }
 
 private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, StructTypeInfo> {
-//    val allStructs = getAllEntities<UnvalidatedStruct>(ownStructs, ValidatedContext::getAllStructs, upstreamContexts)
-//    allStructs.mapValues { (_, struct) -> StructTypeInfo(struct.typeParameters, struct.members, struct.requiresBlock != null) }
     val allStructsInfo = HashMap<FunctionId, StructTypeInfo>()
     upstreamContexts.forEach { context ->
         context.getAllStructs().forEach { (_, struct) ->
@@ -483,7 +469,6 @@ private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, upstreamConte
 }
 
 private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, InterfaceTypeInfo> {
-//    val allInterfaces = getAllEntities(ownInterfaces, ValidatedContext::getAllInterfaces, upstreamContexts)
     val allInterfaces = HashMap<FunctionId, Interface>()
 
     upstreamContexts.forEach { context ->

@@ -218,8 +218,15 @@ data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String
 }
 
 data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, val annotations: List<Annotation>) : HasFunctionId {
-    fun getIndexForName(name: String): Int {
-        return members.indexOfFirst { member -> member.name == name }
+    fun getConstructorSignature(): TypeSignature {
+        val argumentTypes = members.map(Member::type)
+        val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
+        val outputType = if (requires == null) {
+            Type.NamedType(id, typeParameters)
+        } else {
+            Type.Try(Type.NamedType(id, typeParameters))
+        }
+        return TypeSignature(id, argumentTypes, outputType, typeParameters)
     }
 }
 data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, val annotations: List<Annotation>) : HasFunctionId {

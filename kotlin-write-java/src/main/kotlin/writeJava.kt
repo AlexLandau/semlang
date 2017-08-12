@@ -5,6 +5,7 @@ import semlang.internal.test.parseTestAnnotationContents
 import semlang.interpreter.evaluateStringLiteral
 import java.io.File
 import java.math.BigInteger
+import java.util.*
 import javax.lang.model.element.Modifier
 
 /**
@@ -97,9 +98,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             namedFunctionCallStrategies[struct.id] = object: FunctionCallStrategy {
                 override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                     if (chosenTypes.isEmpty()) {
-                        return CodeBlock.of("new \$T(\$L)", structClass, getArgumentsBlock(arguments))
+                        // TODO: Deconfliction with methods actually named "create"
+                        return CodeBlock.of("\$T.create(\$L)", structClass, getArgumentsBlock(arguments))
                     } else {
-                        return CodeBlock.of("new \$T<\$L>(\$L)", structClass, getChosenTypesCode(chosenTypes), getArgumentsBlock(arguments))
+                        return CodeBlock.of("\$T.<\$L>create(\$L)", structClass, getChosenTypesCode(chosenTypes), getArgumentsBlock(arguments))
                     }
                 }
             }
@@ -222,8 +224,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         }
         addToTypeVariableScope(struct.typeParameters)
 
-        val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC)
-
+        val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
         struct.members.forEach { member ->
             val javaType = getType(member.type)
             builder.addField(javaType, member.name, Modifier.PUBLIC, Modifier.FINAL)
@@ -231,8 +232,32 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             constructor.addParameter(javaType, member.name)
             constructor.addStatement("this.\$L = \$L", member.name, member.name)
         }
-
         builder.addMethod(constructor.build())
+
+        val createMethod = MethodSpec.methodBuilder("create").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        if (struct.typeParameters.isNotEmpty()) {
+            createMethod.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
+        }
+        struct.members.forEach { member ->
+            val javaType = getType(member.type)
+            createMethod.addParameter(javaType, member.name)
+        }
+        val requires = struct.requires
+        val constructorArgs = struct.members.map(Member::name)
+        if (requires != null) {
+            createMethod.returns(ParameterizedTypeName.get(ClassName.get(Optional::class.java), className))
+            createMethod.addStatement("final boolean success")
+            createMethod.addCode(writeBlock(requires, "success"))
+            createMethod.beginControlFlow("if (success)")
+            createMethod.addStatement("return \$T.of(new \$T(\$L))", Optional::class.java, className, constructorArgs.joinToString(", "))
+            createMethod.nextControlFlow("else")
+            createMethod.addStatement("return \$T.empty()", Optional::class.java)
+            createMethod.endControlFlow()
+        } else {
+            createMethod.returns(className)
+            createMethod.addStatement("return new \$T(\$L)", className, constructorArgs.joinToString(", "))
+        }
+        builder.addMethod(createMethod.build())
 
         removeFromTypeVariableScope(struct.typeParameters)
 
@@ -354,6 +379,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             } else {
                 builder.addStatement("final \$T \$L = \$L", getType(type), name, writeExpression(expression))
             }
+            addToVariableScope(name)
         }
 
         // TODO: Handle case where returnedExpression is if/then (?) -- or will that get factored out?
@@ -361,6 +387,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             builder.addStatement("return \$L", writeExpression(block.returnedExpression))
         } else {
             builder.addStatement("\$L = \$L", varToAssign, writeExpression(block.returnedExpression))
+        }
+
+        block.assignments.forEach { (name) ->
+            removeFromVariableScope(name)
         }
 
         return builder.build()
@@ -482,6 +512,9 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     val varsInScope = HashSet<String>()
+    private fun removeFromVariableScope(varName: String) {
+        varsInScope.remove(varName)
+    }
     private fun removeFromVariableScope(varNames: List<String>) {
         varsInScope.removeAll(varNames)
     }
@@ -785,6 +818,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         map.put(FunctionId(natural, "times"), MethodFunctionCallStrategy("multiply"))
         map.put(FunctionId(natural, "lesser"), MethodFunctionCallStrategy("min"))
         map.put(FunctionId(natural, "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(FunctionId(natural, "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
         map.put(FunctionId(natural, "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
 
         val tries = Package(listOf("Try"))
