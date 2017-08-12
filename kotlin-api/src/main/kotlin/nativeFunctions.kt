@@ -20,7 +20,7 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addStringFunctions(definitions)
 
     getNativeStructs().values.forEach { struct ->
-        definitions.add(toTypeSignature(struct))
+        definitions.add(struct.getConstructorSignature())
     }
 
     getNativeInterfaces().values.forEach { interfac ->
@@ -29,14 +29,6 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     }
 
     return toMap(definitions)
-}
-
-private fun toTypeSignature(struct: Struct): TypeSignature {
-    val argumentTypes = struct.members.map(Member::type)
-    val typeParameters = struct.typeParameters.map { name -> Type.NamedType.forParameter(name) }
-    val outputType = Type.NamedType(struct.id, typeParameters)
-
-    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }
 
 fun toInstanceConstructorSignature(interfac: Interface): TypeSignature {
@@ -161,6 +153,8 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.equals
     definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.lessThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.greaterThan
     definitions.add(TypeSignature(FunctionId(naturalPackage, "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
@@ -305,7 +299,14 @@ object NativeStruct {
                     // TODO: Restrict to the maximum possible code point value
                     Member("value", Type.NATURAL)
             ),
-            null, // TODO: Add the actual restriction here, and test
+            // requires: value < 1114112
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    FunctionId(Package(listOf("Natural")), "lessThan"),
+                    listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                            TypedExpression.Literal(Type.NATURAL, "1114112")),
+                    listOf()
+            )),
             listOf()
     )
     val UNICODE_STRING = Struct(

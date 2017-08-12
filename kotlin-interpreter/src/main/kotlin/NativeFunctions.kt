@@ -142,6 +142,13 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value == right.value)
     }))
 
+    // Natural.lessThan
+    list.add(NativeFunction(naturalDot("lessThan"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Boolean(left.value < right.value)
+    }))
+
     // Natural.greaterThan
     list.add(NativeFunction(naturalDot("greaterThan"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()

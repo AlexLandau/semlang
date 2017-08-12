@@ -95,13 +95,16 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     private fun addStructConstructorFunctionCallStrategies(structs: Collection<Struct>) {
         for (struct in structs) {
             val structClass = getStructClassName(struct.id)
-            namedFunctionCallStrategies[struct.id] = object: FunctionCallStrategy {
-                override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-                    if (chosenTypes.isEmpty()) {
-                        // TODO: Deconfliction with methods actually named "create"
-                        return CodeBlock.of("\$T.create(\$L)", structClass, getArgumentsBlock(arguments))
-                    } else {
-                        return CodeBlock.of("\$T.<\$L>create(\$L)", structClass, getChosenTypesCode(chosenTypes), getArgumentsBlock(arguments))
+            // Check to avoid overriding special cases
+            if (!namedFunctionCallStrategies.containsKey(struct.id)) {
+                namedFunctionCallStrategies[struct.id] = object : FunctionCallStrategy {
+                    override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+                        if (chosenTypes.isEmpty()) {
+                            // TODO: Deconfliction with methods actually named "create"
+                            return CodeBlock.of("\$T.create(\$L)", structClass, getArgumentsBlock(arguments))
+                        } else {
+                            return CodeBlock.of("\$T.<\$L>create(\$L)", structClass, getChosenTypesCode(chosenTypes), getArgumentsBlock(arguments))
+                        }
                     }
                 }
             }
@@ -110,12 +113,15 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
         interfaces.forEach { interfac ->
-            namedFunctionCallStrategies[interfac.id] = object: FunctionCallStrategy {
-                override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-                    if (arguments.size != 2) {
-                        error("Interface constructors should have exactly 2 arguments")
+            // Check to avoid overriding special cases
+            if (!namedFunctionCallStrategies.containsKey(interfac.id)) {
+                namedFunctionCallStrategies[interfac.id] = object : FunctionCallStrategy {
+                    override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+                        if (arguments.size != 2) {
+                            error("Interface constructors should have exactly 2 arguments")
+                        }
+                        return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
                     }
-                    return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
                 }
             }
         }
@@ -123,41 +129,45 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
         interfaces.forEach { interfac ->
-            val instanceClassName = getStructClassName(interfac.id)
+            // Check to avoid overriding special cases
+            if (!namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
+                val instanceClassName = getStructClassName(interfac.id)
+                val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
 
-            val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
+                namedFunctionCallStrategies[interfac.adapterId] = object : FunctionCallStrategy {
+                    override fun apply(chosenTypes: List<Type>, constructorArgs: List<TypedExpression>): CodeBlock {
+                        if (chosenTypes.isEmpty()) {
+                            error("")
+                        }
+                        val dataType = chosenTypes[0]
+                        val dataTypeName = getType(dataType)
+                        val dataVarName = ensureUnusedVariable("data")
+                        val interfaceParameters = chosenTypes.drop(1)
+                        val interfaceParameterNames = interfaceParameters.map(this@JavaCodeWriter::getType)
 
-            namedFunctionCallStrategies[interfac.adapterId] = object: FunctionCallStrategy {
-                override fun apply(chosenTypes: List<Type>, constructorArgs: List<TypedExpression>): CodeBlock {
-                    if (chosenTypes.isEmpty()) { error("") }
-                    val dataType = chosenTypes[0]
-                    val dataTypeName = getType(dataType)
-                    val dataVarName = ensureUnusedVariable("data")
-                    val interfaceParameters = chosenTypes.drop(1)
-                    val interfaceParameterNames = interfaceParameters.map(this@JavaCodeWriter::getType)
+                        val instanceType = if (interfaceParameters.isEmpty()) {
+                            instanceClassName
+                        } else {
+                            ParameterizedTypeName.get(instanceClassName, *interfaceParameterNames.toTypedArray())
+                        }
 
-                    val instanceType = if (interfaceParameters.isEmpty()) {
-                        instanceClassName
-                    } else {
-                        ParameterizedTypeName.get(instanceClassName, *interfaceParameterNames.toTypedArray())
+                        val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs,
+                                dataType, interfaceParameters, dataVarName)
+
+                        val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
+
+                        val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
+
+                        val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
+                                .addAnnotation(Override::class.java)
+                                .addParameter(dataTypeName, dataVarName)
+                                .returns(instanceType)
+                                .addStatement("return \$L", instanceInnerClass)
+
+                        adapterInnerClass.addMethod(fromMethodBuilder.build())
+
+                        return CodeBlock.of("\$L", adapterInnerClass.build())
                     }
-
-                    val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs,
-                            dataType, interfaceParameters, dataVarName)
-
-                    val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
-
-                    val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
-
-                    val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
-                            .addAnnotation(Override::class.java)
-                            .addParameter(dataTypeName, dataVarName)
-                            .returns(instanceType)
-                            .addStatement("return \$L", instanceInnerClass)
-
-                    adapterInnerClass.addMethod(fromMethodBuilder.build())
-
-                    return CodeBlock.of("\$L", adapterInnerClass.build())
                 }
             }
         }
@@ -834,6 +844,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val unicodeString = Package(listOf("Unicode", "String"))
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(FunctionId(unicodeString, "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+
+        // Unicode.CodePoint constructor
+        map.put(FunctionId(Package(listOf("Unicode")), "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
+
         return map
     }
 
