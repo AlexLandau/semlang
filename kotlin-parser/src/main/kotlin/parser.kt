@@ -475,8 +475,6 @@ fun parseFile(file: File): RawContext {
     return parseFileNamed(file.absolutePath)
 }
 
-//private data class RawContents(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
-
 fun parseFileNamed(filename: String): RawContext {
     val stream = ANTLRFileStream(filename, "UTF-8")
     val rawContents = parseANTLRStreamInner(stream)

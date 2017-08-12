@@ -219,11 +219,11 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
 
     val structInfo = typeInfo.structs[parentNamedType.id]
     if (structInfo != null) {
-//        val index = structInfo.getIndexForName(expression.name)
         val member = structInfo.members[expression.name]
         if (member == null) {
             fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
         }
+
         // Type parameters come from the struct definition itself
         // Chosen types come from the struct type known for the variable
         val typeParameters = structInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
@@ -237,13 +237,11 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     val interfac = typeInfo.interfaces[parentNamedType.id]
     if (interfac != null) {
         val interfaceType = parentNamedType
-//        val index = interfac.getIndexForName(expression.name)
         val method = interfac.methods[expression.name]
         if (method == null) {
             fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
         }
 
-//        val method = interfac.methods[index]
         val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
         val chosenTypes = interfaceType.getParameterizedTypes()
         val type = parameterizeType(method.functionType, typeParameters, chosenTypes, parentNamedType.id)
@@ -406,7 +404,6 @@ private fun getFunctionTypeSignatures(context: RawContext, upstreamContexts: Lis
 
 private fun validateStructs(structs: List<UnvalidatedStruct>, typeInfo: AllTypeInfo): Map<FunctionId, Struct> {
     val validatedStructs = HashMap<FunctionId, Struct>()
-    // TODO: Validate structs here
     for (struct in structs) {
         validatedStructs.put(struct.id, validateStruct(struct, typeInfo))
     }
