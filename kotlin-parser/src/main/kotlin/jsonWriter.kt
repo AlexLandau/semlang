@@ -48,17 +48,22 @@ private fun addStruct(node: ObjectNode, struct: Struct) {
         addArray(node, "annotations", struct.annotations, ::addAnnotation)
     }
     addArray(node, "members", struct.members, ::addMember)
+    val requires = struct.requires
+    if (requires != null) {
+        addBlock(node.putArray("requires"), requires)
+    }
 }
 
-private fun parseStruct(node: JsonNode): Struct {
+private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     if (!node.isObject()) error("Expected a struct to be an object")
 
     val id = parseFunctionId(node["id"] ?: error("Structs must have an 'id' field"))
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
+    val requires = node["requires"]?.let { parseBlock(it) }
 
-    return Struct(id, typeParameters, members, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {
@@ -478,7 +483,7 @@ private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {
     }
 }
 
-fun fromJson(node: JsonNode): InterpreterContext {
+fun fromJson(node: JsonNode): RawContext {
     if (!node.isObject()) {
         error("Expected an object node")
     }
@@ -490,11 +495,11 @@ fun fromJson(node: JsonNode): InterpreterContext {
         error("Currently no backwards-compatibility support")
     }
 
-    val functions = indexById(parseFunctions(node.get("functions")))
-    val structs = indexById(parseStructs(node.get("structs")))
-    val interfaces = indexById(parseInterfaces(node.get("interfaces")))
+    val functions = parseFunctions(node.get("functions"))
+    val structs = parseStructs(node.get("structs"))
+    val interfaces = parseInterfaces(node.get("interfaces"))
 
-    return InterpreterContext(functions, structs, interfaces)
+    return RawContext(functions, structs, interfaces)
 }
 
 private fun parseFunctions(node: JsonNode): List<Function> {
@@ -502,7 +507,7 @@ private fun parseFunctions(node: JsonNode): List<Function> {
     return node.map { functionNode -> parseFunction(functionNode) }
 }
 
-private fun parseStructs(node: JsonNode): List<Struct> {
+private fun parseStructs(node: JsonNode): List<UnvalidatedStruct> {
     if (!node.isArray()) error("Expected structs to be in an array")
     return node.map { structNode -> parseStruct(structNode) }
 }

@@ -22,6 +22,7 @@ RETURN             : 'return';
 LET                : 'let';
 IF                 : 'if';
 ELSE               : 'else';
+REQUIRES           : 'requires';
 
 // Literals
 LITERAL            : '"' ( ~["\\] | '\\' . )* '"' ;

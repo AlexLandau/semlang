@@ -1,0 +1,6 @@
+// Double definition of same member name, different type
+
+struct Foo {
+  a: Integer
+  a: Boolean
+}

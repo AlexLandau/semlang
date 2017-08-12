@@ -20,7 +20,7 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addStringFunctions(definitions)
 
     getNativeStructs().values.forEach { struct ->
-        definitions.add(toTypeSignature(struct))
+        definitions.add(struct.getConstructorSignature())
     }
 
     getNativeInterfaces().values.forEach { interfac ->
@@ -29,14 +29,6 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     }
 
     return toMap(definitions)
-}
-
-private fun toTypeSignature(struct: Struct): TypeSignature {
-    val argumentTypes = struct.members.map(Member::type)
-    val typeParameters = struct.typeParameters.map { name -> Type.NamedType.forParameter(name) }
-    val outputType = Type.NamedType(struct.id, typeParameters)
-
-    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
 }
 
 fun toInstanceConstructorSignature(interfac: Interface): TypeSignature {
@@ -161,6 +153,10 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.equals
     definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.lessThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.greaterThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
     // TODO: Resolve these conflicting definitions
     // Natural.max
@@ -238,6 +234,11 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.NamedType.forParameter("T")
     val paramU = Type.NamedType.forParameter("U")
 
+    // Try.failure
+    definitions.add(TypeSignature(FunctionId(tryPackage, "failure"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(),
+            outputType = Type.Try(paramT)))
+
     // Try.assume
     definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
@@ -287,6 +288,7 @@ object NativeStruct {
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
             ),
+            null,
             listOf()
     )
     private val UNICODE_PACKAGE = Package(listOf("Unicode"))
@@ -297,6 +299,14 @@ object NativeStruct {
                     // TODO: Restrict to the maximum possible code point value
                     Member("value", Type.NATURAL)
             ),
+            // requires: value < 1114112
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    FunctionId(Package(listOf("Natural")), "lessThan"),
+                    listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                            TypedExpression.Literal(Type.NATURAL, "1114112")),
+                    listOf()
+            )),
             listOf()
     )
     val UNICODE_STRING = Struct(
@@ -305,6 +315,7 @@ object NativeStruct {
             listOf(
                     Member("value", Type.List(Type.NamedType(UNICODE_CODE_POINT.id)))
             ),
+            null,
             listOf()
     )
 }

@@ -1,0 +1,18 @@
+struct WholeNumber {
+  value: Natural
+  requires {
+    Natural.greaterThan(value, Natural."0")
+  }
+}
+
+@Test("['1']: 'success(1)'")
+@Test("['123']: 'success(123)'")
+@Test("['0']: 'failure'")
+function testWholeNumber(input: Natural): Try<Natural> {
+  let wholeNumber: Try<WholeNumber> = WholeNumber(input)
+  Try.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))
+}
+
+function getWholeNumberValue(wholeNumber: WholeNumber): Natural {
+  wholeNumber->value
+}

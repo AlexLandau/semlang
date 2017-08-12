@@ -1,0 +1,4 @@
+@Test("[]: 'failure'")
+function testFailure(): Try<Integer> {
+    Try.failure<Integer>()
+}

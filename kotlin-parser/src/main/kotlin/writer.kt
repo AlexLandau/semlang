@@ -37,6 +37,14 @@ private fun writeStruct(struct: Struct, writer: Writer) {
               .append(": ")
               .appendln(member.type.toString())
     }
+    val requires = struct.requires
+    if (requires != null) {
+        writer.append(SINGLE_INDENTATION)
+              .appendln("requires {")
+        writeBlock(requires, 2, writer)
+        writer.append(SINGLE_INDENTATION)
+              .appendln("}")
+    }
     writer.appendln("}")
           .appendln()
 }
