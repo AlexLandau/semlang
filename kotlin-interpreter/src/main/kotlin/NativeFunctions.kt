@@ -100,6 +100,20 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value == right.value)
     }))
 
+    // Integer.lessThan
+    list.add(NativeFunction(integerDot("lessThan"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Boolean(left.value < right.value)
+    }))
+
+    // Integer.greaterThan
+    list.add(NativeFunction(integerDot("greaterThan"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Boolean(left.value > right.value)
+    }))
+
     // Integer.fromNatural
     list.add(NativeFunction(integerDot("fromNatural"), { args: List<SemObject>, _: InterpreterCallback ->
         val natural = args[0] as? SemObject.Natural ?: typeError()

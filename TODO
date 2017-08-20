@@ -23,8 +23,6 @@
   - Validate struct member names
   - Validate function argument names
   - Make code style more consistent
-- Function definitions as tests
-- Support function bindings of struct constructors
 - Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
 - Interpreter: Test that all native functions defined in the API have implementations in the interpreter

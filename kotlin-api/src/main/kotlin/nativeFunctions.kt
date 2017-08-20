@@ -24,70 +24,11 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     }
 
     getNativeInterfaces().values.forEach { interfac ->
-        definitions.add(toInstanceConstructorSignature(interfac))
-        definitions.add(toAdapterConstructorSignature(interfac))
+        definitions.add(interfac.getInstanceConstructorSignature())
+        definitions.add(interfac.getAdapterConstructorSignature())
     }
 
     return toMap(definitions)
-}
-
-fun toInstanceConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    argumentTypes.add(dataStructType)
-
-    val adapterType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-    argumentTypes.add(adapterType)
-
-    val outputType = Type.NamedType(interfac.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
-    if (!explicitTypeParameters.contains("A")) {
-        return "A"
-    }
-    var index = 2
-    while (true) {
-        val name = "A" + index
-        if (!explicitTypeParameters.contains(name)) {
-            return name
-        }
-        index++
-    }
-}
-
-fun toAdapterConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    interfac.methods.forEach { method ->
-        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-    }
-
-    val outputType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
-    val argTypes = ArrayList<Type>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return Type.FunctionType(argTypes, method.returnType)
 }
 
 private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId, T> {
@@ -131,6 +72,10 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Integer.equals
     definitions.add(TypeSignature(FunctionId(integerPackage, "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    // Integer.lessThan
+    definitions.add(TypeSignature(FunctionId(integerPackage, "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    // Integer.greaterThan
+    definitions.add(TypeSignature(FunctionId(integerPackage, "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
 
     // Integer.fromNatural
     definitions.add(TypeSignature(FunctionId(integerPackage, "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))

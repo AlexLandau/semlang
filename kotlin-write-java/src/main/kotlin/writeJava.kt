@@ -489,7 +489,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
         val functionId = expression.functionId
-        val signature = context.getFunctionSignature(functionId) ?: error("Signature not found for $functionId")
+        val signature = context.getFunctionOrConstructorSignature(functionId) ?: error("Signature not found for $functionId")
         // TODO: Be able to get this for native functions, as well (put in signatures, probably)
         val referencedFunction = context.getFunctionImplementation(functionId)
 
@@ -814,11 +814,14 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         map.put(FunctionId(list, "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
 
         val integer = Package(listOf("Integer"))
+        val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
         map.put(FunctionId(integer, "plus"), MethodFunctionCallStrategy("add"))
         map.put(FunctionId(integer, "minus"), MethodFunctionCallStrategy("subtract"))
         map.put(FunctionId(integer, "times"), MethodFunctionCallStrategy("multiply"))
         map.put(FunctionId(integer, "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(FunctionId(integer, "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
+        map.put(FunctionId(integer, "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
         map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
         val natural = Package(listOf("Natural"))
@@ -828,6 +831,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         map.put(FunctionId(natural, "times"), MethodFunctionCallStrategy("multiply"))
         map.put(FunctionId(natural, "lesser"), MethodFunctionCallStrategy("min"))
         map.put(FunctionId(natural, "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(FunctionId(natural, "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
         map.put(FunctionId(natural, "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
         map.put(FunctionId(natural, "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
 

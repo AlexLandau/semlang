@@ -27,6 +27,30 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
     fun getFunctionSignature(id: FunctionId): TypeSignature? {
         return getEntity(id, ownFunctionSignatures, ValidatedContext::getFunctionSignature)
     }
+    // TODO: Should this replace the above version?
+    fun getFunctionOrConstructorSignature(id: FunctionId): TypeSignature? {
+        val functionOnlySignature = getFunctionSignature(id)
+        if (functionOnlySignature != null) {
+            return functionOnlySignature
+        }
+
+        val structMaybe = getStruct(id)
+        if (structMaybe != null) {
+            return structMaybe.getConstructorSignature()
+        }
+
+        val instanceMaybe = getInterface(id)
+        if (instanceMaybe != null) {
+            return instanceMaybe.getInstanceConstructorSignature()
+        }
+
+        val adapterMaybe = getInterfaceByAdapterId(id)
+        if (adapterMaybe != null) {
+            return adapterMaybe.getAdapterConstructorSignature()
+        }
+
+        return null
+    }
     fun getFunctionImplementation(id: FunctionId): ValidatedFunction? {
         return getEntity(id, ownFunctionImplementations, ValidatedContext::getFunctionImplementation)
     }

@@ -175,7 +175,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
-                if (context.getFunctionImplementation(functionId) == null && !nativeFunctions.containsKey(functionId)) {
+                if (context.getFunctionOrConstructorSignature(functionId) == null) {
                     error("Function ID not recognized: $functionId")
                 }
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }

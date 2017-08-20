@@ -389,8 +389,8 @@ private fun getFunctionTypeSignatures(context: RawContext, upstreamContexts: Lis
         if (signatures.containsKey(id)) {
             fail("Interface name $id has an overlap with a native function or struct")
         }
-        signatures.put(interfac.adapterId, toAdapterConstructorSignature(interfac))
-        signatures.put(id, toInstanceConstructorSignature(interfac))
+        signatures.put(interfac.adapterId, interfac.getAdapterConstructorSignature())
+        signatures.put(id, interfac.getInstanceConstructorSignature())
     }
     context.functions.forEach { function ->
         val id = function.id
