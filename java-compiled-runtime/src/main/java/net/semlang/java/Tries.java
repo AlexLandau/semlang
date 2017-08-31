@@ -8,6 +8,10 @@ public class Tries {
         // Not instantiable
     }
 
+    public static <T> Optional<T> failure() {
+        return Optional.empty();
+    }
+
     public static <T> T assume(Optional<T> argument) {
         return argument.get();
     }

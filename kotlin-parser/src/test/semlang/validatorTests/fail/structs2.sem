@@ -1,0 +1,9 @@
+// Double definition of same struct name, different contents
+
+struct Foo {
+  a: Integer
+}
+
+struct Foo {
+  b: Boolean
+}

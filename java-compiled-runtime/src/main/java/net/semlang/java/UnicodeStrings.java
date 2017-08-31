@@ -2,6 +2,7 @@ package net.semlang.java;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class UnicodeStrings {
@@ -16,5 +17,14 @@ public class UnicodeStrings {
 
     public static List<Integer> toCodePoints(String string) {
         return string.codePoints().boxed().collect(Collectors.toList());
+    }
+
+    private static final BigInteger UPPER_CODE_POINT_BOUND_EXCLUSIVE = BigInteger.valueOf(1_114_112L);
+    public static Optional<Integer> asCodePoint(BigInteger value) {
+        if (UPPER_CODE_POINT_BOUND_EXCLUSIVE.compareTo(value) > 0) {
+            return Optional.of(value.intValueExact());
+        } else {
+            return Optional.empty();
+        }
     }
 }

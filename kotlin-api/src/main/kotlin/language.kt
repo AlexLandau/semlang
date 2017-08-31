@@ -1,5 +1,7 @@
 package net.semlang.api
 
+import java.util.ArrayList
+
 data class Package(val strings: List<String>) {
     companion object {
         val EMPTY = Package(listOf())
@@ -217,9 +219,33 @@ data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String
     }
 }
 
-data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val annotations: List<Annotation>) : HasFunctionId {
+data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, val annotations: List<Annotation>) : HasFunctionId {
+    fun getConstructorSignature(): TypeSignature {
+        val argumentTypes = members.map(Member::type)
+        val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
+        val outputType = if (requires == null) {
+            Type.NamedType(id, typeParameters)
+        } else {
+            Type.Try(Type.NamedType(id, typeParameters))
+        }
+        return TypeSignature(id, argumentTypes, outputType, typeParameters)
+    }
+}
+data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, val annotations: List<Annotation>) : HasFunctionId {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
+    }
+
+    // TODO: Deconflict with UnvalidatedStruct version
+    fun getConstructorSignature(): TypeSignature {
+        val argumentTypes = members.map(Member::type)
+        val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
+        val outputType = if (requires == null) {
+            Type.NamedType(id, typeParameters)
+        } else {
+            Type.Try(Type.NamedType(id, typeParameters))
+        }
+        return TypeSignature(id, argumentTypes, outputType, typeParameters)
     }
 }
 interface HasFunctionId {
@@ -232,8 +258,66 @@ data class Interface(override val id: FunctionId, val typeParameters: List<Strin
         return methods.indexOfFirst { method -> method.name == name }
     }
     val adapterId: FunctionId = FunctionId(id.toPackage(), "Adapter")
-    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, listOf())
+    val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, null, listOf())
+
+    fun getInstanceConstructorSignature(): TypeSignature {
+        val explicitTypeParameters = this.typeParameters
+        val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
+        val allTypeParameters = ArrayList(explicitTypeParameters)
+        allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
+
+        val argumentTypes = ArrayList<Type>()
+        val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+        argumentTypes.add(dataStructType)
+
+        val adapterType = Type.NamedType(this.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+        argumentTypes.add(adapterType)
+
+        val outputType = Type.NamedType(this.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+        return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    }
+    fun getAdapterConstructorSignature(): TypeSignature {
+        val explicitTypeParameters = this.typeParameters
+        val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
+        val allTypeParameters = ArrayList(explicitTypeParameters)
+        allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
+
+        val argumentTypes = ArrayList<Type>()
+        val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+        this.methods.forEach { method ->
+            argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
+        }
+
+        val outputType = Type.NamedType(this.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+        return TypeSignature(this.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    }
 }
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
+}
+
+private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
+    if (!explicitTypeParameters.contains("A")) {
+        return "A"
+    }
+    var index = 2
+    while (true) {
+        val name = "A" + index
+        if (!explicitTypeParameters.contains(name)) {
+            return name
+        }
+        index++
+    }
+}
+
+private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
+    val argTypes = ArrayList<Type>()
+    argTypes.add(intrinsicStructType)
+    method.arguments.forEach { argument ->
+        argTypes.add(argument.type)
+    }
+
+    return Type.FunctionType(argTypes, method.returnType)
 }

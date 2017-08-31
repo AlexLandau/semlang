@@ -17,8 +17,7 @@ data class ModuleId(val group: String, val module: String, val version: String) 
     }
 }
 
-//TODO: Validate inputs (non-overlapping keys)
-data class UnvalidatedContext(val functions: Map<FunctionId, Function>, val structs: Map<FunctionId, Struct>, val interfaces: Map<FunctionId, Interface>)
+data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
 
 // TODO: We'll want this to be able to reference upstream contexts without repeating their contents
 class ValidatedContext private constructor(val ownFunctionImplementations: Map<FunctionId, ValidatedFunction>,
@@ -42,6 +41,30 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
 
     fun getFunctionSignature(id: FunctionId): TypeSignature? {
         return getEntity(id, ownFunctionSignatures, ValidatedContext::getFunctionSignature)
+    }
+    // TODO: Should this replace the above version?
+    fun getFunctionOrConstructorSignature(id: FunctionId): TypeSignature? {
+        val functionOnlySignature = getFunctionSignature(id)
+        if (functionOnlySignature != null) {
+            return functionOnlySignature
+        }
+
+        val structMaybe = getStruct(id)
+        if (structMaybe != null) {
+            return structMaybe.getConstructorSignature()
+        }
+
+        val instanceMaybe = getInterface(id)
+        if (instanceMaybe != null) {
+            return instanceMaybe.getInstanceConstructorSignature()
+        }
+
+        val adapterMaybe = getInterfaceByAdapterId(id)
+        if (adapterMaybe != null) {
+            return adapterMaybe.getAdapterConstructorSignature()
+        }
+
+        return null
     }
     fun getFunctionImplementation(id: FunctionId): ValidatedFunction? {
         return getEntity(id, ownFunctionImplementations, ValidatedContext::getFunctionImplementation)

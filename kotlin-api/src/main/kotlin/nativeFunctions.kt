@@ -20,82 +20,15 @@ fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     addStringFunctions(definitions)
 
     getNativeStructs().values.forEach { struct ->
-        definitions.add(toTypeSignature(struct))
+        definitions.add(struct.getConstructorSignature())
     }
 
     getNativeInterfaces().values.forEach { interfac ->
-        definitions.add(toInstanceConstructorSignature(interfac))
-        definitions.add(toAdapterConstructorSignature(interfac))
+        definitions.add(interfac.getInstanceConstructorSignature())
+        definitions.add(interfac.getAdapterConstructorSignature())
     }
 
     return toMap(definitions)
-}
-
-private fun toTypeSignature(struct: Struct): TypeSignature {
-    val argumentTypes = struct.members.map(Member::type)
-    val typeParameters = struct.typeParameters.map { name -> Type.NamedType.forParameter(name) }
-    val outputType = Type.NamedType(struct.id, typeParameters)
-
-    return TypeSignature(struct.id, argumentTypes, outputType, typeParameters)
-}
-
-fun toInstanceConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    argumentTypes.add(dataStructType)
-
-    val adapterType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-    argumentTypes.add(adapterType)
-
-    val outputType = Type.NamedType(interfac.id, explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
-    if (!explicitTypeParameters.contains("A")) {
-        return "A"
-    }
-    var index = 2
-    while (true) {
-        val name = "A" + index
-        if (!explicitTypeParameters.contains(name)) {
-            return name
-        }
-        index++
-    }
-}
-
-fun toAdapterConstructorSignature(interfac: Interface): TypeSignature {
-    val explicitTypeParameters = interfac.typeParameters
-    val dataTypeParameter = getUnusedTypeParameterName(explicitTypeParameters)
-    val allTypeParameters = ArrayList(explicitTypeParameters)
-    allTypeParameters.add(0, dataTypeParameter) // Data type parameter comes first
-
-    val argumentTypes = ArrayList<Type>()
-    val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
-    interfac.methods.forEach { method ->
-        argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-    }
-
-    val outputType = Type.NamedType(interfac.adapterId, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-
-    return TypeSignature(interfac.adapterId, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
-}
-
-private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
-    val argTypes = ArrayList<Type>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return Type.FunctionType(argTypes, method.returnType)
 }
 
 private fun <T: HasFunctionId> toMap(definitions: ArrayList<T>): Map<FunctionId, T> {
@@ -139,6 +72,10 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Integer.equals
     definitions.add(TypeSignature(FunctionId(integerPackage, "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    // Integer.lessThan
+    definitions.add(TypeSignature(FunctionId(integerPackage, "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    // Integer.greaterThan
+    definitions.add(TypeSignature(FunctionId(integerPackage, "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
 
     // Integer.fromNatural
     definitions.add(TypeSignature(FunctionId(integerPackage, "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
@@ -161,6 +98,10 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.equals
     definitions.add(TypeSignature(FunctionId(naturalPackage, "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.lessThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.greaterThan
+    definitions.add(TypeSignature(FunctionId(naturalPackage, "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
     // TODO: Resolve these conflicting definitions
     // Natural.max
@@ -238,6 +179,11 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.NamedType.forParameter("T")
     val paramU = Type.NamedType.forParameter("U")
 
+    // Try.failure
+    definitions.add(TypeSignature(FunctionId(tryPackage, "failure"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(),
+            outputType = Type.Try(paramT)))
+
     // Try.assume
     definitions.add(TypeSignature(FunctionId(tryPackage, "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
@@ -287,6 +233,7 @@ object NativeStruct {
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
             ),
+            null,
             listOf()
     )
     private val UNICODE_PACKAGE = Package(listOf("Unicode"))
@@ -297,6 +244,14 @@ object NativeStruct {
                     // TODO: Restrict to the maximum possible code point value
                     Member("value", Type.NATURAL)
             ),
+            // requires: value < 1114112
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    FunctionId(Package(listOf("Natural")), "lessThan"),
+                    listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                            TypedExpression.Literal(Type.NATURAL, "1114112")),
+                    listOf()
+            )),
             listOf()
     )
     val UNICODE_STRING = Struct(
@@ -305,6 +260,7 @@ object NativeStruct {
             listOf(
                     Member("value", Type.List(Type.NamedType(UNICODE_CODE_POINT.id)))
             ),
+            null,
             listOf()
     )
 }

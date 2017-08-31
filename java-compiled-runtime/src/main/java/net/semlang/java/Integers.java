@@ -2,8 +2,8 @@ package net.semlang.java;
 
 import java.math.BigInteger;
 
-public class Naturals {
-    private Naturals() {
+public class Integers {
+    private Integers() {
         // Not instantiable
     }
 
@@ -13,10 +13,6 @@ public class Naturals {
 
     public static boolean greaterThan(BigInteger left, BigInteger right) {
         return left.compareTo(right) > 0;
-    }
-
-    public static BigInteger absoluteDifference(BigInteger left, BigInteger right) {
-        return left.subtract(right).abs();
     }
 
 }

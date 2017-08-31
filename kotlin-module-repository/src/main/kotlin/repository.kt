@@ -1,9 +1,6 @@
 package net.semlang.modules
 
-import net.semlang.api.ModuleId
-import net.semlang.api.UnvalidatedContext
-import net.semlang.api.ValidatedContext
-import net.semlang.api.getNativeContext
+import net.semlang.api.*
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateContext
 import net.semlang.parser.write
@@ -14,7 +11,7 @@ import java.io.FileWriter
 // This is meant to incorporate all information that would appear in a module specification file
 data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
 
-data class UnvalidatedModule(val id: ModuleId, val contents: UnvalidatedContext)
+data class UnvalidatedModule(val id: ModuleId, val contents: RawContext)
 
 /*
  * Larger design question: Do we treat the contents of the repository as validated or unvalidated?
