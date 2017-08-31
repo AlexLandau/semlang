@@ -10,6 +10,8 @@ import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedContext
 import net.semlang.api.getNativeContext
 import net.semlang.internal.test.runAnnotationTests
+import net.semlang.modules.ModuleInfo
+import net.semlang.modules.ValidatedModule
 import net.semlang.parser.parseFile
 import net.semlang.parser.parseFiles
 import net.semlang.parser.validateContext
@@ -41,7 +43,8 @@ class CorpusInterpreterTests(private val file: File) {
 
             val localRepository = getDefaultLocalRepository()
             localRepository.unpublishIfPresent(LIBRARY_MODULE_ID)
-            localRepository.publish(LIBRARY_MODULE_ID, standardLibraryContext)
+            val module = ValidatedModule(ModuleInfo(LIBRARY_MODULE_ID, listOf()), standardLibraryContext)
+            localRepository.publish(module)
         }
     }
 
@@ -61,5 +64,5 @@ private fun parseAndValidateFile(file: File): ValidatedContext {
     val libraryModule = localRepository.loadModule(LIBRARY_MODULE_ID)
 
     val unvalidatedContext = parseFile(file)
-    return validateContext(unvalidatedContext, listOf(getNativeContext(), libraryModule))
+    return validateContext(unvalidatedContext, listOf(getNativeContext(), libraryModule.context))
 }

@@ -23,6 +23,8 @@ dependencies {
   compile project(':kotlin-api')
   compile project(':kotlin-parser')
 
+  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
+
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
