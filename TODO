@@ -40,7 +40,7 @@
 - Annotations and multiple function definitions
 - Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
-- Real IDE-like editor environment
+- Real IDE-like editor environment (language server protocol)
 - Interactive debugger of functions: drill down into results of subcalls
   - Mark results of specific functions as correct or incorrect for recording tests
   - Set up "normal" interpreter to record the results of specific functions; bridge into this after-the-fact analysis
@@ -108,6 +108,19 @@ Design choices to reconsider:
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
 - Probably rename the existing "Package" concept to "Namespace"
+
+Distinctions between possible sem0/sem1/sem2:
+- Things that should be applied before whole-program optimization techniques but not when looking at its source code
+  - Language features that could be replaced with other things but would make code clunkier in the process:
+    - Lambda expressions (replace with bindings of generated "normal" functions)
+    - "Shortcut" literals
+    - "Import" vs. module namespacing?
+    - Default arguments? Named arguments?
+  - Language features that dialects might offer that standard semlang wouldn't
+    - Operator overloading
+    - Overloaded function names
+    - Default/named arguments
+    - Imperative style: Reassignable variables, while/for loops
 
 As things are completed:
 - Project Euler
