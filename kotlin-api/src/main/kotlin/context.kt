@@ -115,4 +115,67 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
 
         return results
     }
+
+
+
+}
+
+class ValidatedModule private constructor(val id: ModuleId,
+                                          val ownFunctions: Map<FunctionId, ValidatedFunction>,
+                                          val exportedFunctions: Set<FunctionId>,
+                                          val upstreamModules: List<ValidatedModule>) {
+
+    companion object {
+        fun create(id: ModuleId,
+                   ownFunctions: Map<FunctionId, ValidatedFunction>,
+                   upstreamModules: List<ValidatedModule>): ValidatedModule {
+            val exportedFunctions = findExported(ownFunctions.values)
+            // TODO: We'll also need some notion of re-exporting imported things...
+            return ValidatedModule(id, ownFunctions, exportedFunctions, upstreamModules)
+        }
+
+        private fun findExported(values: Collection<ValidatedFunction>): Set<FunctionId> {
+            val exportedIds = HashSet<FunctionId>()
+            for (value in values) {
+                if (hasExportedAnnotation(value)) {
+                    exportedIds.add(value.id)
+                }
+            }
+            return exportedIds
+        }
+
+        private fun hasExportedAnnotation(value: ValidatedFunction): Boolean {
+            for (annotation in value.annotations) {
+                if (annotation.name == "Exported") {
+                    return true
+                }
+            }
+            return false
+        }
+    }
+
+    fun getInternalFunction(functionId: FunctionId): ValidatedFunction? {
+        val ownFunction = ownFunctions[functionId]
+        if (ownFunction != null) {
+            return ownFunction
+        }
+
+        // TODO: Is there a better approach to dealing with conflicts here?
+        // We'll want some kind of import statements for turning modules into a kind of namespacing...
+        // and that will probably need to be reflected here
+        for (module in upstreamModules) {
+            val function = module.getExportedFunction(functionId)
+            if (function != null) {
+                return function
+            }
+        }
+        return null
+    }
+
+    fun getExportedFunction(functionId: FunctionId): ValidatedFunction? {
+        if (exportedFunctions.contains(functionId)) {
+            return getInternalFunction(functionId)
+        }
+        return null
+    }
 }
