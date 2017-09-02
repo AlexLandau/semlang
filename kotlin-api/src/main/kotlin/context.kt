@@ -123,18 +123,30 @@ class ValidatedContext private constructor(val ownFunctionImplementations: Map<F
 class ValidatedModule private constructor(val id: ModuleId,
                                           val ownFunctions: Map<FunctionId, ValidatedFunction>,
                                           val exportedFunctions: Set<FunctionId>,
+                                          val ownStructs: Map<FunctionId, Struct>,
+                                          val exportedStructs: Set<FunctionId>,
+                                          val ownInterfaces: Map<FunctionId, Interface>,
+                                          val exportedInterfaces: Set<FunctionId>,
                                           val upstreamModules: List<ValidatedModule>) {
 
     companion object {
         fun create(id: ModuleId,
                    ownFunctions: Map<FunctionId, ValidatedFunction>,
+                   ownStructs: Map<FunctionId, Struct>,
+                   ownInterfaces: Map<FunctionId, Interface>,
                    upstreamModules: List<ValidatedModule>): ValidatedModule {
             val exportedFunctions = findExported(ownFunctions.values)
+            val exportedStructs = findExported(ownStructs.values)
+            val exportedInterfaces = findExported(ownInterfaces.values)
             // TODO: We'll also need some notion of re-exporting imported things...
-            return ValidatedModule(id, ownFunctions, exportedFunctions, upstreamModules)
+            return ValidatedModule(id,
+                    ownFunctions, exportedFunctions,
+                    ownStructs, exportedStructs,
+                    ownInterfaces, exportedInterfaces,
+                    upstreamModules)
         }
 
-        private fun findExported(values: Collection<ValidatedFunction>): Set<FunctionId> {
+        private fun findExported(values: Collection<TopLevelEntity>): Set<FunctionId> {
             val exportedIds = HashSet<FunctionId>()
             for (value in values) {
                 if (hasExportedAnnotation(value)) {
@@ -144,7 +156,7 @@ class ValidatedModule private constructor(val id: ModuleId,
             return exportedIds
         }
 
-        private fun hasExportedAnnotation(value: ValidatedFunction): Boolean {
+        private fun hasExportedAnnotation(value: TopLevelEntity): Boolean {
             for (annotation in value.annotations) {
                 if (annotation.name == "Exported") {
                     return true
@@ -175,6 +187,57 @@ class ValidatedModule private constructor(val id: ModuleId,
     fun getExportedFunction(functionId: FunctionId): ValidatedFunction? {
         if (exportedFunctions.contains(functionId)) {
             return getInternalFunction(functionId)
+        }
+        return null
+    }
+
+    // TODO: Refactor common code; possibly have a single map with all IDs
+    fun getInternalStruct(id: FunctionId): Struct? {
+        val ownStruct = ownStructs[id]
+        if (ownStruct != null) {
+            return ownStruct
+        }
+
+        // TODO: Is there a better approach to dealing with conflicts here?
+        // We'll want some kind of import statements for turning modules into a kind of namespacing...
+        // and that will probably need to be reflected here
+        for (module in upstreamModules) {
+            val struct = module.getExportedStruct(id)
+            if (struct != null) {
+                return struct
+            }
+        }
+        return null
+    }
+
+    fun getExportedStruct(id: FunctionId): Struct? {
+        if (exportedStructs.contains(id)) {
+            return getInternalStruct(id)
+        }
+        return null
+    }
+
+    fun getInternalInterface(id: FunctionId): Interface? {
+        val ownInterface = ownInterfaces[id]
+        if (ownInterface != null) {
+            return ownInterface
+        }
+
+        // TODO: Is there a better approach to dealing with conflicts here?
+        // We'll want some kind of import statements for turning modules into a kind of namespacing...
+        // and that will probably need to be reflected here
+        for (module in upstreamModules) {
+            val interfac = module.getExportedInterface(id)
+            if (interfac != null) {
+                return interfac
+            }
+        }
+        return null
+    }
+
+    fun getExportedInterface(id: FunctionId): Interface? {
+        if (exportedInterfaces.contains(id)) {
+            return getInternalInterface(id)
         }
         return null
     }

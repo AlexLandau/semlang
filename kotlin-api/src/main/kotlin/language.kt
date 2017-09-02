@@ -209,8 +209,8 @@ data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, val annotations: List<Annotation>) : HasFunctionId
-data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, val annotations: List<Annotation>) {
+data class Function(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>) : TopLevelEntity
+data class ValidatedFunction(override val id: FunctionId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
     fun toTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
@@ -219,7 +219,7 @@ data class ValidatedFunction(val id: FunctionId, val typeParameters: List<String
     }
 }
 
-data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, val annotations: List<Annotation>) : HasFunctionId {
+data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getConstructorSignature(): TypeSignature {
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
@@ -231,7 +231,7 @@ data class UnvalidatedStruct(override val id: FunctionId, val typeParameters: Li
         return TypeSignature(id, argumentTypes, outputType, typeParameters)
     }
 }
-data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, val annotations: List<Annotation>) : HasFunctionId {
+data class Struct(override val id: FunctionId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
     }
@@ -251,9 +251,12 @@ data class Struct(override val id: FunctionId, val typeParameters: List<String>,
 interface HasFunctionId {
     val id: FunctionId
 }
+interface TopLevelEntity: HasFunctionId {
+    val annotations: List<Annotation>
+}
 data class Member(val name: String, val type: Type)
 
-data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>, val annotations: List<Annotation>) : HasFunctionId {
+data class Interface(override val id: FunctionId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
