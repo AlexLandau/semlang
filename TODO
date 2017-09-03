@@ -30,6 +30,8 @@
 - String library methods
 - Enum types
   - Might be a concept combinable with union types (like ADTs)?
+  - ADTs and when expressions could subsume booleans and if/then
+  - Is a singleton ADT really any different from a struct?
 - DSL for "selecting" expressions from anywhere in a function
   - Point is to establish this before considering add'l characters in variable names
   - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
