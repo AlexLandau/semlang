@@ -19,107 +19,13 @@ data class ModuleId(val group: String, val module: String, val version: String) 
 
 data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
 
-// TODO: We'll want this to be able to reference upstream contexts without repeating their contents
-class ValidatedContext private constructor(val ownFunctionImplementations: Map<FunctionId, ValidatedFunction>,
-                       val ownFunctionSignatures: Map<FunctionId, TypeSignature>,
-                       val ownStructs: Map<FunctionId, Struct>,
-                       val ownInterfaces: Map<FunctionId, Interface>,
-                       val upstreamContexts: List<ValidatedContext>) {
-    val ownInterfacesByAdapterId = ownInterfaces.values.associateBy(Interface::adapterId)
+// Note: Absence of a module indicates a native function, struct, or interface.
+data class FunctionWithModule(val function: ValidatedFunction, val module: ValidatedModule)
+data class FunctionSignatureWithModule(val function: TypeSignature, val module: ValidatedModule?)
+data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
+data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
 
-    companion object {
-        fun create(ownFunctions: Map<FunctionId, ValidatedFunction>,
-                   ownStructs: Map<FunctionId, Struct>,
-                   ownInterfaces: Map<FunctionId, Interface>,
-                   upstreamContexts: List<ValidatedContext>): ValidatedContext {
-            val functionSignatures = ownFunctions.values.map(ValidatedFunction::toTypeSignature).associateBy(TypeSignature::id)
-            return ValidatedContext(ownFunctions, functionSignatures, ownStructs, ownInterfaces, upstreamContexts)
-        }
-
-        val NATIVE_CONTEXT = ValidatedContext(mapOf(), getNativeFunctionDefinitions(), getNativeStructs(), getNativeInterfaces(), listOf())
-    }
-
-    fun getFunctionSignature(id: FunctionId): TypeSignature? {
-        return getEntity(id, ownFunctionSignatures, ValidatedContext::getFunctionSignature)
-    }
-    // TODO: Should this replace the above version?
-    fun getFunctionOrConstructorSignature(id: FunctionId): TypeSignature? {
-        val functionOnlySignature = getFunctionSignature(id)
-        if (functionOnlySignature != null) {
-            return functionOnlySignature
-        }
-
-        val structMaybe = getStruct(id)
-        if (structMaybe != null) {
-            return structMaybe.getConstructorSignature()
-        }
-
-        val instanceMaybe = getInterface(id)
-        if (instanceMaybe != null) {
-            return instanceMaybe.getInstanceConstructorSignature()
-        }
-
-        val adapterMaybe = getInterfaceByAdapterId(id)
-        if (adapterMaybe != null) {
-            return adapterMaybe.getAdapterConstructorSignature()
-        }
-
-        return null
-    }
-    fun getFunctionImplementation(id: FunctionId): ValidatedFunction? {
-        return getEntity(id, ownFunctionImplementations, ValidatedContext::getFunctionImplementation)
-    }
-    fun getStruct(id: FunctionId): Struct? {
-        return getEntity(id, ownStructs, ValidatedContext::getStruct)
-    }
-    fun getInterface(id: FunctionId): Interface? {
-        return getEntity(id, ownInterfaces, ValidatedContext::getInterface)
-    }
-    fun getInterfaceByAdapterId(id: FunctionId): Interface? {
-        return getEntity(id, ownInterfacesByAdapterId, ValidatedContext::getInterfaceByAdapterId)
-    }
-    // TODO: These are currently relatively inefficient at scale; should consider caching, package-awareness, etc.
-    private fun <T> getEntity(id: FunctionId, ours: Map<FunctionId, T>, theirs: (ValidatedContext, FunctionId) -> T?): T? {
-        val ownImpl = ours[id]
-        if (ownImpl != null) {
-            return ownImpl
-        }
-
-        upstreamContexts.forEach { context ->
-            val impl = theirs(context, id)
-            if (impl != null) {
-                return impl
-            }
-        }
-        return null
-    }
-
-    fun getAllFunctionSignatures(): Map<FunctionId, TypeSignature> {
-        return getAllEntities(ownFunctionSignatures, ValidatedContext::getAllFunctionSignatures)
-    }
-    fun getAllStructs(): Map<FunctionId, Struct> {
-        return getAllEntities(ownStructs, ValidatedContext::getAllStructs)
-    }
-    fun getAllInterfaces(): Map<FunctionId, Interface> {
-        return getAllEntities(ownInterfaces, ValidatedContext::getAllInterfaces)
-    }
-    // TODO: Cache these, at least
-    // TODO: Error on any kind of collision
-    private fun <T> getAllEntities(own: Map<FunctionId, T>, theirs: (ValidatedContext) -> Map<FunctionId, T>): Map<FunctionId, T> {
-        val results = HashMap<FunctionId, T>()
-
-        upstreamContexts.forEach { context ->
-            results.putAll(theirs(context))
-        }
-        results.putAll(own)
-
-        return results
-    }
-
-
-
-}
-
+// TODO: Would storing or returning things in a non-map format improve performance?
 class ValidatedModule private constructor(val id: ModuleId,
                                           val ownFunctions: Map<FunctionId, ValidatedFunction>,
                                           val exportedFunctions: Set<FunctionId>,
@@ -166,10 +72,10 @@ class ValidatedModule private constructor(val id: ModuleId,
         }
     }
 
-    fun getInternalFunction(functionId: FunctionId): ValidatedFunction? {
+    fun getInternalFunction(functionId: FunctionId): FunctionWithModule? {
         val ownFunction = ownFunctions[functionId]
         if (ownFunction != null) {
-            return ownFunction
+            return FunctionWithModule(ownFunction, this)
         }
 
         // TODO: Is there a better approach to dealing with conflicts here?
@@ -184,7 +90,7 @@ class ValidatedModule private constructor(val id: ModuleId,
         return null
     }
 
-    fun getExportedFunction(functionId: FunctionId): ValidatedFunction? {
+    fun getExportedFunction(functionId: FunctionId): FunctionWithModule? {
         if (exportedFunctions.contains(functionId)) {
             return getInternalFunction(functionId)
         }
@@ -192,10 +98,10 @@ class ValidatedModule private constructor(val id: ModuleId,
     }
 
     // TODO: Refactor common code; possibly have a single map with all IDs
-    fun getInternalStruct(id: FunctionId): Struct? {
+    fun getInternalStruct(id: FunctionId): StructWithModule? {
         val ownStruct = ownStructs[id]
         if (ownStruct != null) {
-            return ownStruct
+            return StructWithModule(ownStruct, this)
         }
 
         // TODO: Is there a better approach to dealing with conflicts here?
@@ -210,17 +116,17 @@ class ValidatedModule private constructor(val id: ModuleId,
         return null
     }
 
-    fun getExportedStruct(id: FunctionId): Struct? {
+    fun getExportedStruct(id: FunctionId): StructWithModule? {
         if (exportedStructs.contains(id)) {
             return getInternalStruct(id)
         }
         return null
     }
 
-    fun getInternalInterface(id: FunctionId): Interface? {
+    fun getInternalInterface(id: FunctionId): InterfaceWithModule? {
         val ownInterface = ownInterfaces[id]
         if (ownInterface != null) {
-            return ownInterface
+            return InterfaceWithModule(ownInterface, this)
         }
 
         // TODO: Is there a better approach to dealing with conflicts here?
@@ -235,9 +141,117 @@ class ValidatedModule private constructor(val id: ModuleId,
         return null
     }
 
-    fun getExportedInterface(id: FunctionId): Interface? {
+    fun getExportedInterface(id: FunctionId): InterfaceWithModule? {
         if (exportedInterfaces.contains(id)) {
             return getInternalInterface(id)
+        }
+        return null
+    }
+
+    fun getAllInternalInterfaces(): Map<FunctionId, Interface> {
+        // TODO: Consider caching this
+        val allInterfaces = HashMap<FunctionId, Interface>()
+        allInterfaces.putAll(ownInterfaces)
+
+        for (module in upstreamModules) {
+            // TODO: Do we need to filter out conflicts? Pretty sure we do
+            allInterfaces.putAll(module.getAllExportedInterfaces())
+        }
+        return allInterfaces
+    }
+
+    fun getAllExportedInterfaces(): Map<FunctionId, Interface> {
+        return exportedInterfaces.associate { id -> id to getExportedInterface(id)!!.interfac }
+    }
+
+    // TODO: Refactor
+    fun getAllInternalStructs(): Map<FunctionId, Struct> {
+        // TODO: Consider caching this
+        val allStructs = HashMap<FunctionId, Struct>()
+        allStructs.putAll(ownStructs)
+
+        for (module in upstreamModules) {
+            // TODO: Do we need to filter out conflicts? Pretty sure we do
+            allStructs.putAll(module.getAllExportedStructs())
+        }
+        return allStructs
+    }
+
+    fun getAllExportedStructs(): Map<FunctionId, Struct> {
+        return exportedStructs.associate { id -> id to getExportedStruct(id)!!.struct }
+    }
+
+    fun getAllExportedFunctions(): Map<FunctionId, ValidatedFunction> {
+        return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
+    }
+
+    fun getAllInternalFunctionSignatures(): Map<FunctionId, TypeSignature> {
+        val allFunctionSignatures = HashMap<FunctionId, TypeSignature>()
+
+        allFunctionSignatures.putAll(getOwnFunctionSignatures())
+
+        for (module in upstreamModules) {
+            allFunctionSignatures.putAll(module.getAllExportedFunctionSignatures())
+        }
+        return allFunctionSignatures
+    }
+
+    fun getOwnFunctionSignatures(): Map<FunctionId, TypeSignature> {
+        return toFunctionSignatures(ownFunctions, ownStructs, ownInterfaces)
+    }
+
+    fun getAllExportedFunctionSignatures(): Map<FunctionId, TypeSignature> {
+        return toFunctionSignatures(getAllExportedFunctions(), getAllExportedStructs(), getAllExportedInterfaces())
+    }
+
+    private fun toFunctionSignatures(functions: Map<FunctionId, ValidatedFunction>,
+                                     structs: Map<FunctionId, Struct>,
+                                     interfaces: Map<FunctionId, Interface>): Map<FunctionId, TypeSignature> {
+        val allSignatures = HashMap<FunctionId, TypeSignature>()
+
+        for (function in functions.values) {
+            allSignatures.put(function.id, function.toTypeSignature())
+        }
+
+        for (struct in structs.values) {
+            allSignatures.put(struct.id, struct.getConstructorSignature())
+        }
+
+        for (interfac in interfaces.values) {
+            allSignatures.put(interfac.id, interfac.getInstanceConstructorSignature())
+            allSignatures.put(interfac.adapterId, interfac.getAdapterConstructorSignature())
+        }
+
+        return allSignatures
+    }
+
+    fun getInternalInterfaceByAdapterId(functionId: FunctionId): InterfaceWithModule? {
+        val interfaceId = getInterfaceIdForAdapterId(functionId)
+        if (interfaceId == null) {
+            return null
+        }
+        return getInternalInterface(interfaceId)
+    }
+
+    fun getInternalFunctionSignature(functionId: FunctionId): FunctionSignatureWithModule? {
+        val function = getInternalFunction(functionId)
+        if (function != null) {
+            return FunctionSignatureWithModule(function.function.toTypeSignature(), function.module)
+        }
+
+        val struct = getInternalStruct(functionId)
+        if (struct != null) {
+            return FunctionSignatureWithModule(struct.struct.getConstructorSignature(), struct.module)
+        }
+
+        val interfac = getInternalInterface(functionId)
+        if (interfac != null) {
+            return FunctionSignatureWithModule(interfac.interfac.getInstanceConstructorSignature(), interfac.module)
+        }
+
+        val adapter = getInternalInterfaceByAdapterId(functionId)
+        if (adapter != null) {
+            return FunctionSignatureWithModule(adapter.interfac.getAdapterConstructorSignature(), adapter.module)
         }
         return null
     }

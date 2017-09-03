@@ -1,13 +1,13 @@
 package net.semlang.transforms
 
+import net.semlang.api.ModuleId
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import net.semlang.api.getNativeContext
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateContext
+import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
 import java.io.File
 
@@ -28,12 +28,12 @@ class SimplifyExpressionsTest(private val file: File) {
 
     @Test
     fun testSimplification() {
-        val context = validateContext(parseFile(file), listOf(getNativeContext()))
+        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), listOf())
 
         // TODO: Check that the semantics of any examples are actually unchanged, according to our interpreter
         // (This requires storing inputs to try with each given code sample; ideally we'd combine this
         // with storing the expected outputs, so interpreter tests can use the same framework)
-        val simplified = simplifyExpressions(context)
+        val simplified = simplifyExpressions(module)
 
         try {
             try {

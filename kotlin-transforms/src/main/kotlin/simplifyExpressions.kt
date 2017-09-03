@@ -7,8 +7,9 @@ import net.semlang.api.*
 // TODO: Refactor into a version where we can pull out only those expressions matching certain criteria (e.g. all IfThens)
 // TODO: We aren't taking full advantage of this unless/until we switch to a different set of
 // data structures that acknowledge the more limited set of possible expressions/assignments
-fun simplifyExpressions(context: ValidatedContext): ValidatedContext {
-    return ValidatedContext.create(simplifyFunctionExpressions(context.ownFunctionImplementations), context.ownStructs, context.ownInterfaces, context.upstreamContexts)
+// TODO: This currently doesn't affect expressions in structs' requires blocks
+fun simplifyExpressions(module: ValidatedModule): ValidatedModule {
+    return ValidatedModule.create(module.id, simplifyFunctionExpressions(module.ownFunctions), module.ownStructs, module.ownInterfaces, module.upstreamModules)
 }
 
 private fun simplifyFunctionExpressions(functions: Map<FunctionId, ValidatedFunction>): Map<FunctionId, ValidatedFunction> {

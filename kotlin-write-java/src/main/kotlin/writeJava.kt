@@ -24,23 +24,23 @@ import javax.lang.model.element.Modifier
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
-fun writeJavaSourceIntoFolders(unprocessedContext: ValidatedContext, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
     if (javaPackage.isEmpty()) {
         error("The Java package must be non-empty.")
     }
     // Pre-processing steps
-    val context = constrainVariableNames(unprocessedContext, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val module = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
 
-    return JavaCodeWriter(context, javaPackage, newSrcDir, newTestSrcDir).write()
+    return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
 
-private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
+private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
     val classMap = HashMap<ClassName, TypeSpec.Builder>()
 
     fun write(): WrittenJavaInfo {
         namedFunctionCallStrategies.putAll(getNativeFunctionCallStrategies())
 
-        context.ownStructs.values.forEach { struct ->
+        module.ownStructs.values.forEach { struct ->
             val className = getStructClassName(struct.id)
             val structClassBuilder = writeStructClass(struct, className)
 
@@ -50,9 +50,9 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             classMap[className] = structClassBuilder
         }
         // Enable calls to struct constructors
-        addStructConstructorFunctionCallStrategies(context.getAllStructs().values)
+        addStructConstructorFunctionCallStrategies(module.getAllInternalStructs().values)
 
-        context.ownInterfaces.values.forEach { interfac ->
+        module.ownInterfaces.values.forEach { interfac ->
             val className = getStructClassName(interfac.id)
             val interfaceBuilder = writeInterface(interfac, className)
 
@@ -62,10 +62,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             classMap[className] = interfaceBuilder
         }
         // Enable calls to instance and adapter constructors
-        addInstanceConstructorFunctionCallStrategies(context.getAllInterfaces().values)
-        addAdapterConstructorFunctionCallStrategies(context.getAllInterfaces().values)
+        addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
+        addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
 
-        context.ownFunctionImplementations.values.forEach { function ->
+        module.ownFunctions.values.forEach { function ->
 
             val method = writeMethod(function)
 
@@ -493,9 +493,9 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
         val functionId = expression.functionId
-        val signature = context.getFunctionOrConstructorSignature(functionId) ?: error("Signature not found for $functionId")
+        val signature = module.getInternalFunctionSignature(functionId)?.function ?: getNativeFunctionDefinitions()[functionId] ?: error("Signature not found for $functionId")
         // TODO: Be able to get this for native functions, as well (put in signatures, probably)
-        val referencedFunction = context.getFunctionImplementation(functionId)
+        val referencedFunction = module.getInternalFunction(functionId)
 
         // TODO: More compact references when not binding arguments
         val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
@@ -506,7 +506,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
                 val argumentName = ensureUnusedVariable(if (referencedFunction != null) {
-                    referencedFunction.arguments[index].name
+                    referencedFunction.function.arguments[index].name
                 } else {
                     // TODO: Pick better names based on types
                     "arg" + index
@@ -586,7 +586,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             val followedExpression = expression.expression
             val followedExpressionType = followedExpression.type
             if (followedExpressionType is Type.NamedType) {
-                val followedInterface = context.getInterface(followedExpressionType.id)
+                val followedInterface = module.getInternalInterface(followedExpressionType.id) ?: getNativeInterfaces()[followedExpressionType.id]
                 if (followedInterface != null) {
                     return object: FunctionCallStrategy {
                         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
@@ -675,7 +675,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                 // TODO: Namespace terminology elsewhere
                 val newNamespace = parts.dropLast(1)
                 val interfaceId = FunctionId(Package(newNamespace), newName)
-                val interfac = context.getInterface(interfaceId)
+                val interfac = module.getInternalInterface(interfaceId)
                 if (interfac != null) {
                     val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
                     val dataTypeParameter = getType(semlangType.parameters[0])

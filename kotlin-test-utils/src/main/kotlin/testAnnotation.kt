@@ -1,8 +1,8 @@
 package net.semlang.internal.test
 
 import net.semlang.api.Argument
-import net.semlang.api.ValidatedContext
 import net.semlang.api.ValidatedFunction
+import net.semlang.api.ValidatedModule
 import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
 import java.util.regex.Pattern
@@ -12,12 +12,12 @@ import java.util.regex.Pattern
  *
  * @throws AssertionError if a test fails.
  */
-fun runAnnotationTests(context: ValidatedContext): Int {
+fun runAnnotationTests(module: ValidatedModule): Int {
     var testCount = 0
-    context.ownFunctionImplementations.values.forEach { function ->
+    module.ownFunctions.values.forEach { function ->
         function.annotations.forEach { annotation ->
             if (annotation.name == "Test") {
-                doTest(function, context, annotation.value ?: throw AssertionError("Tests can't have null values"))
+                doTest(function, module, annotation.value ?: throw AssertionError("Tests can't have null values"))
                 testCount++
             }
         }
@@ -35,10 +35,10 @@ private object Patterns {
 
 data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
 
-private fun doTest(function: ValidatedFunction, context: ValidatedContext, value: String) {
+private fun doTest(function: ValidatedFunction, module: ValidatedModule, value: String) {
     val contents = parseTestAnnotationContents(value, function)
 
-    runTest(function, contents, context)
+    runTest(function, contents, module)
 }
 
 fun parseTestAnnotationContents(value: String, function: ValidatedFunction): TestAnnotationContents {
@@ -62,8 +62,8 @@ fun parseTestAnnotationContents(value: String, function: ValidatedFunction): Tes
     return TestAnnotationContents(allArguments, output)
 }
 
-private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, context: ValidatedContext) {
-    val interpreter = SemlangForwardInterpreter(context)
+private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, module: ValidatedModule) {
+    val interpreter = SemlangForwardInterpreter(module)
     val arguments = instantiateArguments(function.arguments, contents.argLiterals, interpreter)
     val actualOutput = interpreter.interpret(function.id, arguments)
     val desiredOutput = interpreter.evaluateLiteral(function.returnType, contents.outputLiteral)

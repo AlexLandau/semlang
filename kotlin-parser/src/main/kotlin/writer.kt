@@ -5,20 +5,20 @@ import net.semlang.api.Annotation
 import java.io.StringWriter
 import java.io.Writer
 
-fun writeToString(context: ValidatedContext): String {
+fun writeToString(module: ValidatedModule): String {
     val writer = StringWriter()
-    write(context, writer)
+    write(module, writer)
     return writer.toString()
 }
 
-fun write(context: ValidatedContext, writer: Writer) {
-    context.ownStructs.values.forEach { struct ->
+fun write(module: ValidatedModule, writer: Writer) {
+    module.ownStructs.values.forEach { struct ->
         writeStruct(struct, writer)
     }
-    context.ownInterfaces.values.forEach { interfac ->
+    module.ownInterfaces.values.forEach { interfac ->
         writeInterface(interfac, writer)
     }
-    context.ownFunctionImplementations.values.forEach { function ->
+    module.ownFunctions.values.forEach { function ->
         writeFunction(function, writer)
     }
 }

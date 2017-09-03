@@ -324,3 +324,12 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType,
 
     return Type.FunctionType(argTypes, method.returnType)
 }
+
+// TODO: Use this where appropriate, colocate with reverse function
+fun getInterfaceIdForAdapterId(adapterId: FunctionId): FunctionId? {
+    val packageParts = adapterId.thePackage.strings
+    if (adapterId.functionName == "Adapter" && packageParts.isNotEmpty()) {
+        return FunctionId(Package(packageParts.dropLast(1)), packageParts.last())
+    }
+    return null
+}

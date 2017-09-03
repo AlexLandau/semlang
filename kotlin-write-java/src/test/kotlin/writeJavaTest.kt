@@ -1,11 +1,11 @@
 package net.semlang.writejava
 
+import net.semlang.api.ModuleId
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import net.semlang.api.getNativeContext
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateContext
+import net.semlang.parser.validateModule
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.fail
@@ -32,13 +32,13 @@ class WriteJavaTest(private val file: File) {
 
     @Test
     fun testWritingJava() {
-        val context = validateContext(parseFile(file), listOf(getNativeContext()))
+        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), listOf())
 
         val newSrcDir = Files.createTempDirectory("generatedJavaSource").toFile()
         val newTestSrcDir = Files.createTempDirectory("generatedJavaTestSource").toFile()
         val destFolder = Files.createTempDirectory("generatedJavaBin").toFile()
 
-        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(context, listOf("net", "semlang", "test"), newSrcDir, newTestSrcDir)
+        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(module, listOf("net", "semlang", "test"), newSrcDir, newTestSrcDir)
 
         // Now run the compiler...
         val compiler = ToolProvider.getSystemJavaCompiler()

@@ -7,14 +7,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.api.ModuleId
-import net.semlang.api.ValidatedContext
-import net.semlang.api.getNativeContext
+import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.runAnnotationTests
-import net.semlang.modules.ModuleInfo
-import net.semlang.modules.ValidatedModule
 import net.semlang.parser.parseFile
 import net.semlang.parser.parseFiles
-import net.semlang.parser.validateContext
+import net.semlang.parser.validateModule
 import java.io.File
 
 private val LIBRARY_MODULE_ID = ModuleId("semlang", "standard-library", "develop-test")
@@ -39,12 +36,11 @@ class CorpusInterpreterTests(private val file: File) {
             val semlangLibraryFiles = semlangLibrarySources.listFiles().toList()
             val unvalidatedContext = parseFiles(semlangLibraryFiles)
 
-            val standardLibraryContext = validateContext(unvalidatedContext, listOf(getNativeContext()))
+            val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, listOf())
 
             val localRepository = getDefaultLocalRepository()
             localRepository.unpublishIfPresent(LIBRARY_MODULE_ID)
-            val module = ValidatedModule(ModuleInfo(LIBRARY_MODULE_ID, listOf()), standardLibraryContext)
-            localRepository.publish(module)
+            localRepository.publish(standardLibraryModule)
         }
     }
 
@@ -59,10 +55,10 @@ class CorpusInterpreterTests(private val file: File) {
     }
 }
 
-private fun parseAndValidateFile(file: File): ValidatedContext {
+private fun parseAndValidateFile(file: File): ValidatedModule {
     val localRepository = getDefaultLocalRepository()
     val libraryModule = localRepository.loadModule(LIBRARY_MODULE_ID)
 
     val unvalidatedContext = parseFile(file)
-    return validateContext(unvalidatedContext, listOf(getNativeContext(), libraryModule.context))
+    return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), listOf(libraryModule))
 }

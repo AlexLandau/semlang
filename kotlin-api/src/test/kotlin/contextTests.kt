@@ -11,8 +11,8 @@ class ContextTests {
                 fun (moduleId: ModuleId, entities: Map<FunctionId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, entities, mapOf(), mapOf(), upstreamModules)
                 },
-                ValidatedModule::getInternalFunction,
-                ValidatedModule::getExportedFunction)
+                { module, id -> module.getInternalFunction(id)?.function },
+                { module, id -> module.getExportedFunction(id)?.function })
     }
 
     @Test
@@ -21,8 +21,8 @@ class ContextTests {
                 fun (moduleId: ModuleId, entities: Map<FunctionId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, mapOf(), entities, mapOf(), upstreamModules)
                 },
-                ValidatedModule::getInternalStruct,
-                ValidatedModule::getExportedStruct)
+                { module, id -> module.getInternalStruct(id)?.struct },
+                { module, id -> module.getExportedStruct(id)?.struct })
     }
 
     @Test
@@ -31,8 +31,8 @@ class ContextTests {
                 fun (moduleId: ModuleId, entities: Map<FunctionId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, mapOf(), mapOf(), entities, upstreamModules)
                 },
-                ValidatedModule::getInternalInterface,
-                ValidatedModule::getExportedInterface)
+                { module, id -> module.getInternalInterface(id)?.interfac },
+                { module, id -> module.getExportedInterface(id)?.interfac })
     }
 
     fun <T> testEntityVisibility(createEntity: (id: FunctionId, uniqueAspect: Int, exported: Boolean) -> T,
@@ -112,7 +112,6 @@ private fun createStructWithId(id: FunctionId, uniqueAspect: Int, exported: Bool
     }
     return Struct(id, listOf(), listOf(member), null, annotations)
 }
-
 
 private fun createInterfaceWithId(id: FunctionId, uniqueAspect: Int, exported: Boolean): Interface {
     val method = Method(uniqueAspect.toString(), listOf(), listOf(), Type.INTEGER)

@@ -16,7 +16,7 @@ import net.semlang.api.Function
 val LANGUAGE = "sem1"
 val FORMAT_VERSION = "0.1.0"
 
-fun toJson(context: ValidatedContext): JsonNode {
+fun toJson(context: ValidatedModule): JsonNode {
     val mapper: ObjectMapper = ObjectMapper()
     val node = mapper.createObjectNode()
 
@@ -26,7 +26,7 @@ fun toJson(context: ValidatedContext): JsonNode {
     // TODO: Put information about upstream contexts
     // TODO: Maybe put identity information about this context?
 
-    addArray(node, "functions", context.ownFunctionImplementations.values, ::addFunction)
+    addArray(node, "functions", context.ownFunctions.values, ::addFunction)
     addArray(node, "structs", context.ownStructs.values, ::addStruct)
     addArray(node, "interfaces", context.ownInterfaces.values, ::addInterface)
     return node

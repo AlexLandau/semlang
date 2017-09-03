@@ -1,8 +1,8 @@
 package net.semlang.parser.test
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import net.semlang.api.ValidatedContext
-import net.semlang.api.getNativeContext
+import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedModule
 import net.semlang.parser.*
 import org.junit.Assert
 import org.junit.Test
@@ -38,7 +38,7 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(writtenToString)
         System.out.println("(End contents)")
         val reparsed = parseAndValidateString(writtenToString)
-        assertContextsEqual(initiallyParsed, reparsed)
+        assertModulesEqual(initiallyParsed, reparsed)
     }
 
     @Test
@@ -49,18 +49,18 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(ObjectMapper().writeValueAsString(asJson))
         System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateContext(fromJson, listOf(getNativeContext()))
-        assertContextsEqual(initiallyParsed, fromJsonValidated)
+        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, listOf())
+        assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
 }
 
-fun assertContextsEqual(expected: ValidatedContext, actual: ValidatedContext) {
+fun assertModulesEqual(expected: ValidatedModule, actual: ValidatedModule) {
     // TODO: Check the upstream contexts
 
-    Assert.assertEquals(expected.ownFunctionImplementations, actual.ownFunctionImplementations)
-    Assert.assertEquals(expected.ownFunctionSignatures, actual.ownFunctionSignatures)
+    Assert.assertEquals(expected.ownFunctions, actual.ownFunctions)
     Assert.assertEquals(expected.ownStructs, actual.ownStructs)
     Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
+    // TODO: Maybe check more?
 }
 
 @RunWith(Parameterized::class)
@@ -87,12 +87,14 @@ class ValidatorNegativeTests(private val file: File) {
     }
 }
 
-private fun parseAndValidateFile(file: File): ValidatedContext {
+private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
+
+private fun parseAndValidateFile(file: File): ValidatedModule {
     val context = parseFile(file)
-    return validateContext(context, listOf(getNativeContext()))
+    return validateModule(context, TEST_MODULE_ID, listOf())
 }
 
-private fun parseAndValidateString(string: String): ValidatedContext {
+private fun parseAndValidateString(string: String): ValidatedModule {
     val context = parseString(string)
-    return validateContext(context, listOf(getNativeContext()))
+    return validateModule(context, TEST_MODULE_ID, listOf())
 }

@@ -28,20 +28,20 @@ private fun fail(text: String): Nothing {
 
 data class GroundedTypeSignature(val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type)
 
-fun validateContext(context: RawContext, upstreamContexts: List<ValidatedContext>): ValidatedContext {
-    val typeInfo = collectTypeInfo(context, upstreamContexts)
+fun validateModule(context: RawContext, moduleId: ModuleId, upstreamModules: List<ValidatedModule>): ValidatedModule {
+    val typeInfo = collectTypeInfo(context, upstreamModules)
 
     val ownFunctions = validateFunctions(context.functions, typeInfo)
     val ownStructs = validateStructs(context.structs, typeInfo)
     val ownInterfaces = validateInterfaces(context.interfaces, typeInfo)
-    return ValidatedContext.create(ownFunctions, ownStructs, ownInterfaces, upstreamContexts)
+    return ValidatedModule.create(moduleId, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
 }
 
-private fun collectTypeInfo(context: RawContext, upstreamContexts: List<ValidatedContext>): AllTypeInfo {
-    val functionTypeSignatures = getFunctionTypeSignatures(context, upstreamContexts)
-    val allFunctionTypeSignatures = getAllFunctionTypeSignatures(functionTypeSignatures, upstreamContexts)
-    val allStructs = getAllStructsInfo(context.structs, upstreamContexts)
-    val allInterfaces = getAllInterfacesInfo(context.interfaces, upstreamContexts)
+private fun collectTypeInfo(context: RawContext, upstreamModules: List<ValidatedModule>): AllTypeInfo {
+    val functionTypeSignatures = getFunctionTypeSignatures(context, upstreamModules)
+    val allFunctionTypeSignatures = getAllFunctionTypeSignatures(functionTypeSignatures, upstreamModules)
+    val allStructs = getAllStructsInfo(context.structs, upstreamModules)
+    val allInterfaces = getAllInterfacesInfo(context.interfaces, upstreamModules)
 
     return AllTypeInfo(allFunctionTypeSignatures, allStructs, allInterfaces)
 }
@@ -167,7 +167,7 @@ private fun validateExpressionFunctionBinding(expression: Expression.ExpressionF
 
 private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: FunctionId): TypedExpression {
     val functionId = expression.functionId
-    val signature = typeInfo.allFunctionTypeSignatures.get(functionId)
+    val signature = typeInfo.allFunctionTypeSignatures.get(functionId) ?: getNativeFunctionDefinitions()[functionId]
     if (signature == null) {
         fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionId")
     }
@@ -216,7 +216,7 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
 
     val parentNamedType = innerExpression.type as? Type.NamedType ?: fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}")
 
-    val structInfo = typeInfo.structs[parentNamedType.id]
+    val structInfo = typeInfo.structs[parentNamedType.id] ?: getNativeStructInfo(parentNamedType.id)
     if (structInfo != null) {
         val member = structInfo.members[expression.name]
         if (member == null) {
@@ -233,7 +233,7 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
         return TypedExpression.Follow(type, innerExpression, expression.name)
     }
 
-    val interfac = typeInfo.interfaces[parentNamedType.id]
+    val interfac = typeInfo.interfaces[parentNamedType.id] ?: getNativeInterfaceInfo(parentNamedType.id)
     if (interfac != null) {
         val interfaceType = parentNamedType
         val method = interfac.methods[expression.name]
@@ -249,6 +249,22 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
     }
 
     fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of a type $parentNamedType that is not recognized as a struct or interface")
+}
+
+private fun getNativeStructInfo(id: FunctionId): StructTypeInfo? {
+    val struct = getNativeStructs()[id]
+    if (struct == null) {
+        return null
+    }
+    return StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null)
+}
+
+private fun getNativeInterfaceInfo(id: FunctionId): InterfaceTypeInfo? {
+    val interfac = getNativeInterfaces()[id]
+    if (interfac == null) {
+        return null
+    }
+    return InterfaceTypeInfo(interfac.typeParameters, interfac.methods.associateBy(Method::name))
 }
 
 private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: FunctionId): TypedExpression {
@@ -280,7 +296,7 @@ private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunc
     }
     val argumentTypes = arguments.map(TypedExpression::type)
 
-    val signature = typeInfo.allFunctionTypeSignatures[functionId]
+    val signature = typeInfo.allFunctionTypeSignatures[functionId] ?: getNativeFunctionDefinitions()[functionId]
     if (signature == null) {
         fail("The function $containingFunctionId references a function $functionId that was not found")
     }
@@ -372,7 +388,7 @@ private fun validateVariableExpression(expression: Expression.Variable, variable
     }
 }
 
-private fun getFunctionTypeSignatures(context: RawContext, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
+private fun getFunctionTypeSignatures(context: RawContext, upstreamModules: List<ValidatedModule>): Map<FunctionId, TypeSignature> {
     val signatures = HashMap<FunctionId, TypeSignature>()
 
     context.structs.forEach { struct ->
@@ -443,14 +459,14 @@ private fun getFunctionSignature(function: Function): TypeSignature {
     return TypeSignature(function.id, argumentTypes, function.returnType, typeParameters)
 }
 
-private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<FunctionId, TypeSignature>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, TypeSignature> {
-    return getAllEntities(ownFunctionTypeSignatures, ValidatedContext::getAllFunctionSignatures, upstreamContexts)
+private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<FunctionId, TypeSignature>, upstreamModules: List<ValidatedModule>): Map<FunctionId, TypeSignature> {
+    return getAllEntities(ownFunctionTypeSignatures, ValidatedModule::getAllInternalFunctionSignatures, upstreamModules)
 }
 
-private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, StructTypeInfo> {
+private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, upstreamModules: List<ValidatedModule>): Map<FunctionId, StructTypeInfo> {
     val allStructsInfo = HashMap<FunctionId, StructTypeInfo>()
-    upstreamContexts.forEach { context ->
-        context.getAllStructs().forEach { (_, struct) ->
+    upstreamModules.forEach { module ->
+        module.getAllInternalStructs().forEach { (_, struct) ->
             allStructsInfo.put(struct.id, StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null))
         }
     }
@@ -464,11 +480,11 @@ private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, upstreamConte
     return allStructsInfo
 }
 
-private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, InterfaceTypeInfo> {
+private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, upstreamModules: List<ValidatedModule>): Map<FunctionId, InterfaceTypeInfo> {
     val allInterfaces = HashMap<FunctionId, Interface>()
 
-    upstreamContexts.forEach { context ->
-        allInterfaces.putAll(context.getAllInterfaces())
+    upstreamModules.forEach { module ->
+        allInterfaces.putAll(module.getAllInternalInterfaces())
     }
     allInterfaces.putAll(ownInterfaces.associateBy(Interface::id))
 
@@ -477,12 +493,12 @@ private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, upstreamContext
     }
 }
 
-private fun <T> getAllEntities(own: Map<FunctionId, T>, theirs: (ValidatedContext) -> Map<FunctionId, T>, upstreamContexts: List<ValidatedContext>): Map<FunctionId, T> {
+private fun <T> getAllEntities(own: Map<FunctionId, T>, theirs: (ValidatedModule) -> Map<FunctionId, T>, upstreamModules: List<ValidatedModule>): Map<FunctionId, T> {
     // TODO: Error on duplicate keys
     val results = HashMap<FunctionId, T>()
 
-    upstreamContexts.forEach { context ->
-        results.putAll(theirs(context))
+    upstreamModules.forEach { module ->
+        results.putAll(theirs(module))
     }
     results.putAll(own)
 

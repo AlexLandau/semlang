@@ -9,56 +9,95 @@ interface SemlangInterpreter {
     fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject
 }
 
-class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpreter {
+class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpreter {
     private val nativeFunctions: Map<FunctionId, NativeFunction> = getNativeFunctions()
 
     override fun interpret(functionId: FunctionId, arguments: List<SemObject>): SemObject {
+        return interpret(functionId, arguments, mainModule)
+    }
+
+    /**
+     * Note: the "referring module" is the one that tried calling the function. When the function is
+     * actually evaluated, we'll need to use the "containing module", i.e. the module where that code
+     * was written.
+     */
+    private fun interpret(functionId: FunctionId, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
         // Handle "native" functions
         val nativeFunction = nativeFunctions[functionId]
         if (nativeFunction != null) {
             return nativeFunction.apply(arguments, this::interpretBinding)
         }
 
+        if (referringModule == null) {
+            error("We're in the native module, but $functionId isn't a recognized native function")
+        }
+
         // Handle struct constructors
-        val structFunction: Struct? = context.getStruct(functionId)
-        if (structFunction != null) {
-            return evaluateStructConstructor(structFunction, arguments)
+        val struct: StructWithModule? = referringModule.getInternalStruct(functionId) ?: getNativeStruct(functionId)
+        if (struct != null) {
+            // TODO: These might just be able to accept the StructWithModule
+            return evaluateStructConstructor(struct.struct, arguments, struct.module)
         }
 
         // Handle adapter constructors
-        val adapterFunction: Interface? = context.getInterfaceByAdapterId(functionId)
-        if (adapterFunction != null) {
-            return evaluateAdapterConstructor(adapterFunction, arguments)
+        val adapter: InterfaceWithModule? = referringModule.getInternalInterfaceByAdapterId(functionId) ?: getNativeInterfaceByAdapterId(functionId)
+        if (adapter != null) {
+            return evaluateAdapterConstructor(adapter.interfac, arguments, adapter.module)
         }
 
         // Handle instance constructors
-        val interfaceFunction: Interface? = context.getInterface(functionId)
-        if (interfaceFunction != null) {
-            return evaluateInterfaceConstructor(interfaceFunction, arguments)
+        val interfac: InterfaceWithModule? = referringModule.getInternalInterface(functionId) ?: getNativeInterface(functionId)
+        if (interfac != null) {
+            return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
         }
 
         // Handle non-native functions
-        val function: ValidatedFunction = context.getFunctionImplementation(functionId) ?: throw IllegalArgumentException("Unrecognized function ID $functionId")
-        if (arguments.size != function.arguments.size) {
+        val function: FunctionWithModule = referringModule.getInternalFunction(functionId) ?: throw IllegalArgumentException("Unrecognized function ID $functionId")
+        if (arguments.size != function.function.arguments.size) {
             throw IllegalArgumentException("Wrong number of arguments for function $functionId")
         }
         val variableAssignments: MutableMap<String, SemObject> = HashMap()
-        for ((value, argumentDefinition) in arguments.zip(function.arguments)) {
+        for ((value, argumentDefinition) in arguments.zip(function.function.arguments)) {
             variableAssignments.put(argumentDefinition.name, value)
         }
-        return evaluateBlock(function.block, variableAssignments)
+        return evaluateBlock(function.function.block, variableAssignments, function.module)
+    }
+
+    private fun getNativeStruct(id: FunctionId): StructWithModule? {
+        val struct = getNativeStructs()[id]
+        if (struct == null) {
+            return null
+        }
+        return StructWithModule(struct, null)
+    }
+
+    private fun getNativeInterface(id: FunctionId): InterfaceWithModule? {
+        val interfac = getNativeInterfaces()[id]
+        if (interfac == null) {
+            return null
+        }
+        return InterfaceWithModule(interfac, null)
+    }
+
+    private fun getNativeInterfaceByAdapterId(adapterId: FunctionId): InterfaceWithModule? {
+        val interfaceId = getInterfaceIdForAdapterId(adapterId)
+        if (interfaceId == null) {
+            return null
+        }
+        return getNativeInterface(interfaceId)
     }
 
     private fun interpretBinding(functionBinding: SemObject.FunctionBinding, args: List<SemObject>): SemObject {
         val functionId = functionBinding.functionId
+        val containingModule = functionBinding.containingModule
 
         val argsItr = args.iterator()
         val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
 
-        return interpret(functionId, fullArguments)
+        return interpret(functionId, fullArguments, containingModule)
     }
 
-    private fun evaluateStructConstructor(struct: Struct, arguments: List<SemObject>): SemObject {
+    private fun evaluateStructConstructor(struct: Struct, arguments: List<SemObject>, structModule: ValidatedModule?): SemObject {
         if (arguments.size != struct.members.size) {
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + struct)
         }
@@ -68,7 +107,7 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         } else {
             // Check if it meets the "requires" condition
             val variableAssignments = struct.members.map(Member::name).zip(arguments).toMap()
-            val success = evaluateBlock(requiresBlock, variableAssignments) as? SemObject.Boolean ?: error("Non-boolean output of a requires block at runtime")
+            val success = evaluateBlock(requiresBlock, variableAssignments, structModule) as? SemObject.Boolean ?: error("Non-boolean output of a requires block at runtime")
             if (success.value) {
                 return SemObject.Try.Success(SemObject.Struct(struct, arguments))
             } else {
@@ -77,14 +116,14 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         }
     }
 
-    private fun evaluateAdapterConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {
+    private fun evaluateAdapterConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
         if (arguments.size != interfaceDef.methods.size) {
             throw IllegalArgumentException("Wrong number of arguments for adapter constructor " + interfaceDef.adapterId)
         }
         return SemObject.Struct(interfaceDef.adapterStruct, arguments)
     }
 
-    private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>): SemObject {
+    private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
         if (arguments.size != 2) {
             throw IllegalArgumentException("Wrong number of arguments for interface constructor " + interfaceDef.id)
         }
@@ -104,35 +143,35 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
         return SemObject.Instance(interfaceDef, arguments[0], fixedBindings)
     }
 
-    private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>): SemObject {
+    private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
         for ((name, _, expression) in block.assignments) {
-            val value = evaluateExpression(expression, assignments)
+            val value = evaluateExpression(expression, assignments, containingModule)
             if (assignments.containsKey(name)) {
                 throw IllegalStateException("Tried to double-assign variable $name")
             }
             assignments.put(name, value)
         }
-        return evaluateExpression(block.returnedExpression, assignments)
+        return evaluateExpression(block.returnedExpression, assignments, containingModule)
     }
 
-    private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>): SemObject {
+    private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
         return when (expression) {
             is TypedExpression.Variable -> assignments[expression.name] ?: throw IllegalArgumentException("No variable defined with name ${expression.name}")
             is TypedExpression.IfThen -> {
-                val condition = evaluateExpression(expression.condition, assignments)
+                val condition = evaluateExpression(expression.condition, assignments, containingModule)
                 if (condition is SemObject.Boolean) {
                     return if (condition.value) {
-                        evaluateBlock(expression.thenBlock, assignments)
+                        evaluateBlock(expression.thenBlock, assignments, containingModule)
                     } else {
-                        evaluateBlock(expression.elseBlock, assignments)
+                        evaluateBlock(expression.elseBlock, assignments, containingModule)
                     }
                 } else {
                     throw IllegalStateException("Condition block in if-then is not a boolean value")
                 }
             }
             is TypedExpression.Follow -> {
-                val innerResult = evaluateExpression(expression.expression, assignments)
+                val innerResult = evaluateExpression(expression.expression, assignments, containingModule)
                 val name = expression.name
                 if (innerResult is SemObject.Struct) {
                     val index = innerResult.struct.getIndexForName(name)
@@ -155,8 +194,8 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 }
             }
             is TypedExpression.ExpressionFunctionCall -> {
-                val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
-                val function = evaluateExpression(expression.functionExpression, assignments)
+                val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments, containingModule) }
+                val function = evaluateExpression(expression.functionExpression, assignments, containingModule)
 
                 if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to call the result of ${expression.functionExpression} as a function, but it is not a function")
@@ -164,37 +203,38 @@ class SemlangForwardInterpreter(val context: ValidatedContext): SemlangInterpret
                 val argumentsItr = arguments.iterator()
                 val inputs = function.bindings.map { it ?: argumentsItr.next() }
 
-                return interpret(function.functionId, inputs)
+                return interpret(function.functionId, inputs, function.containingModule)
             }
             is TypedExpression.NamedFunctionCall -> {
-                val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments) }
-                return interpret(expression.functionId, arguments)
+                val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments, containingModule) }
+                return interpret(expression.functionId, arguments, containingModule)
             }
             is TypedExpression.Literal -> {
                 return evaluateLiteral(expression.type, expression.literal)
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionId = expression.functionId
-                if (context.getFunctionOrConstructorSignature(functionId) == null) {
+                val functionSignature = containingModule?.getInternalFunctionSignature(functionId) ?: getNativeFunctionDefinitions()[functionId]?.let { FunctionSignatureWithModule(it, null) }
+                if (functionSignature == null) {
                     error("Function ID not recognized: $functionId")
                 }
-                val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
-                return SemObject.FunctionBinding(functionId, bindings)
+                val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }
+                return SemObject.FunctionBinding(functionId, functionSignature.module, bindings)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
-                val function = evaluateExpression(expression.functionExpression, assignments)
+                val function = evaluateExpression(expression.functionExpression, assignments, containingModule)
 
                 if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to reference ${expression.functionExpression} as a function for binding, but it is not a function")
                 }
                 val earlierBindings = function.bindings
-                val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments) else null }
+                val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }
 
                 // The later bindings replace the underscores (null values) in the earlier bindings.
                 val laterBindingsItr = laterBindings.iterator()
                 val newBindings = earlierBindings.map { it ?: laterBindingsItr.next() }
 
-                return SemObject.FunctionBinding(function.functionId, newBindings)
+                return SemObject.FunctionBinding(function.functionId, function.containingModule, newBindings)
             }
         }
     }

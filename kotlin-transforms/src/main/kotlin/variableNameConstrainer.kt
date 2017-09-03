@@ -5,10 +5,10 @@ import net.semlang.api.*
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
  */
-fun constrainVariableNames(context: ValidatedContext, renamingStrategy: VariableRenamingStrategy): ValidatedContext {
+fun constrainVariableNames(module: ValidatedModule, renamingStrategy: VariableRenamingStrategy): ValidatedModule {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
-    return ValidatedContext.create(renameWithinFunctions(context.ownFunctionImplementations, validatingStrategy), context.ownStructs,
-            renameInterfaceArguments(context.ownInterfaces, validatingStrategy), context.upstreamContexts)
+    return ValidatedModule.create(module.id, renameWithinFunctions(module.ownFunctions, validatingStrategy), module.ownStructs,
+            renameInterfaceArguments(module.ownInterfaces, validatingStrategy), module.upstreamModules)
 }
 
 private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableRenamingStrategy {

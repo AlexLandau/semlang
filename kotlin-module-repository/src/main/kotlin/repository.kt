@@ -2,7 +2,7 @@ package net.semlang.modules
 
 import net.semlang.api.*
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateContext
+import net.semlang.parser.validateModule
 import net.semlang.parser.write
 import java.io.BufferedWriter
 import java.io.File
@@ -11,9 +11,7 @@ import java.io.FileWriter
 // This is meant to incorporate all information that would appear in a module specification file
 data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
 
-// TODO: Consider merging this concept with that of the context
 data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
-data class ValidatedModule(val info: ModuleInfo, val context: ValidatedContext)
 
 /*
  * Larger design question: Do we treat the contents of the repository as validated or unvalidated?
@@ -52,12 +50,10 @@ class LocalRepository(val rootDirectory: File) {
             if (alreadyLoading.contains(dependencyId)) {
                 error("Circular dependency involving $dependencyId")
             }
-            loadModuleInternal(dependencyId, alreadyLoading + dependencyId).context
+            loadModuleInternal(dependencyId, alreadyLoading + dependencyId)
         }
 
-        // TODO: Is there some more elegant option than the "+ native context" here?
-        val validatedContext = validateContext(unvalidatedModule.contents, loadedDependencies + getNativeContext())
-        return ValidatedModule(unvalidatedModule.info, validatedContext)
+        return validateModule(unvalidatedModule.contents, unvalidatedModule.info.id, loadedDependencies)
     }
 
     private fun getDirectoryForId(id: ModuleId): File {
@@ -79,7 +75,7 @@ class LocalRepository(val rootDirectory: File) {
     }
 
     fun publish(module: ValidatedModule) {
-        val directory = getDirectoryForId(module.info.id)
+        val directory = getDirectoryForId(module.id)
         directory.mkdirs()
         if (!directory.isDirectory) {
             error("Couldn't create the directory $directory")
@@ -88,13 +84,13 @@ class LocalRepository(val rootDirectory: File) {
         // Publish the .sem file
         val sourceFile = File(directory, "module.sem")
         BufferedWriter(FileWriter(sourceFile)).use { writer ->
-            write(module.context, writer)
+            write(module, writer)
         }
 
         // Publish the info file
         val infoFile = File(directory, "module")
         BufferedWriter(FileWriter(infoFile)).use { writer ->
-            writeConfigFile(module.info, writer)
+            writeConfigFile(module, writer)
         }
     }
 

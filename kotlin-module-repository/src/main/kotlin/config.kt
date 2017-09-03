@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedModule
 import java.io.File
 import java.io.Writer
 
@@ -12,8 +13,8 @@ fun parseConfigFile(file: File): ModuleInfo {
     return parseConfigFileString(file.readText())
 }
 
-fun writeConfigFile(info: ModuleInfo, writer: Writer) {
-    writer.write(writeConfigFileString(info))
+fun writeConfigFile(module: ValidatedModule, writer: Writer) {
+    writer.write(writeConfigFileString(module))
 }
 
 fun parseConfigFileString(text: String): ModuleInfo {
@@ -30,18 +31,18 @@ fun parseConfigFileString(text: String): ModuleInfo {
     return ModuleInfo(id, dependencies)
 }
 
-fun writeConfigFileString(info: ModuleInfo): String {
+fun writeConfigFileString(module: ValidatedModule): String {
     val mapper = ObjectMapper()
     val factory = mapper.nodeFactory
 
     val rootNode = ObjectNode(factory)
-    rootNode.put("group", info.id.group)
-    rootNode.put("module", info.id.module)
-    rootNode.put("version", info.id.version)
+    rootNode.put("group", module.id.group)
+    rootNode.put("module", module.id.module)
+    rootNode.put("version", module.id.version)
 
     val arrayNode = rootNode.putArray("dependencies")
-    info.dependencies.forEach { dependency ->
-        writeDependencyNode(arrayNode.addObject(), dependency)
+    module.upstreamModules.forEach { dependency ->
+        writeDependencyNode(arrayNode.addObject(), dependency.id)
     }
 
     return mapper.writeValueAsString(rootNode)

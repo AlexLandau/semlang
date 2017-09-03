@@ -2,12 +2,13 @@ package net.semlang.api
 
 import java.util.*
 
+// TODO: Maybe rename FunctionSignature?
 data class TypeSignature(override val id: FunctionId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasFunctionId
 
-fun getNativeContext(): ValidatedContext {
-    return ValidatedContext.NATIVE_CONTEXT
-}
-
+/**
+ * Note: This includes signatures for struct, instance, and adapter constructors.
+ */
+// TODO: Maybe rename?
 fun getNativeFunctionDefinitions(): Map<FunctionId, TypeSignature> {
     val definitions = ArrayList<TypeSignature>()
 
