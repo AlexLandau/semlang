@@ -12,8 +12,8 @@ fun simplifyExpressions(module: ValidatedModule): ValidatedModule {
     return ValidatedModule.create(module.id, simplifyFunctionExpressions(module.ownFunctions), module.ownStructs, module.ownInterfaces, module.upstreamModules)
 }
 
-private fun simplifyFunctionExpressions(functions: Map<FunctionId, ValidatedFunction>): Map<FunctionId, ValidatedFunction> {
-    val map = HashMap<FunctionId, ValidatedFunction>()
+private fun simplifyFunctionExpressions(functions: Map<EntityId, ValidatedFunction>): Map<EntityId, ValidatedFunction> {
+    val map = HashMap<EntityId, ValidatedFunction>()
 
     functions.forEach { id, function ->
         map.put(id, simplifyFunctionExpressions(function))

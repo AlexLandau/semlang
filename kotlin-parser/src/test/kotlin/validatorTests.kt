@@ -79,7 +79,7 @@ class ValidatorNegativeTests(private val file: File) {
     @Test
     fun test() {
         try {
-            val result = parseAndValidateFile(file)
+            parseAndValidateFile(file)
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         } catch(e: Exception) {
             // Expected

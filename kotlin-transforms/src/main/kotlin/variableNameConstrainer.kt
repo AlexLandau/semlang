@@ -28,7 +28,7 @@ private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableR
     }
 }
 
-private fun renameInterfaceArguments(ownInterfaces: Map<FunctionId, Interface>, rename: VariableRenamingStrategy): Map<FunctionId, Interface> {
+private fun renameInterfaceArguments(ownInterfaces: Map<EntityId, Interface>, rename: VariableRenamingStrategy): Map<EntityId, Interface> {
     return ownInterfaces.mapValues { (_, interfac) -> renameInterfaceArguments(interfac, rename) }
 }
 
@@ -48,7 +48,7 @@ private fun renameArgument(argument: Argument, otherVariables: Set<String>, rena
     return argument.copy(name = rename(argument.name, otherVariables))
 }
 
-private fun renameWithinFunctions(ownFunctionImplementations: Map<FunctionId, ValidatedFunction>, rename: VariableRenamingStrategy): Map<FunctionId, ValidatedFunction> {
+private fun renameWithinFunctions(ownFunctionImplementations: Map<EntityId, ValidatedFunction>, rename: VariableRenamingStrategy): Map<EntityId, ValidatedFunction> {
     return ownFunctionImplementations.mapValues { (_, function) -> renameWithinFunction(function, rename) }
 }
 

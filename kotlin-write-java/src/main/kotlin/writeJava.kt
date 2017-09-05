@@ -317,7 +317,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
         // TODO: Eventually, support non-static methods
-        val builder = MethodSpec.methodBuilder(function.id.functionName)
+        val builder = MethodSpec.methodBuilder(function.id.namespacedName.last())
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 
         for (typeParameter in function.typeParameters) {
@@ -367,8 +367,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
-        if (semlangType.id.thePackage.strings.isEmpty() && semlangType.parameters.isEmpty()) {
-            val count = typeVariablesCount[semlangType.id.functionName]
+        if (semlangType.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
+            val count = typeVariablesCount[semlangType.id.namespacedName.last()]
             return count != null && count > 0
         }
         return false
@@ -557,9 +557,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     // This gets populated early on in the write() method.
-    val namedFunctionCallStrategies = HashMap<FunctionId, FunctionCallStrategy>()
+    val namedFunctionCallStrategies = HashMap<EntityId, FunctionCallStrategy>()
 
-    private fun getNamedFunctionCallStrategy(functionId: FunctionId): FunctionCallStrategy {
+    private fun getNamedFunctionCallStrategy(functionId: EntityId): FunctionCallStrategy {
         val cached = namedFunctionCallStrategies[functionId]
         if (cached != null) {
             return cached
@@ -569,9 +569,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val strategy = object: FunctionCallStrategy {
             override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                 if (chosenTypes.isEmpty()) {
-                    return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.functionName, getArgumentsBlock(arguments))
+                    return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.namespacedName.last(), getArgumentsBlock(arguments))
                 } else {
-                    return CodeBlock.of("\$T.<\$L>\$L(\$L)", classContainingFunction, getChosenTypesCode(chosenTypes), functionId.functionName, getArgumentsBlock(arguments))
+                    return CodeBlock.of("\$T.<\$L>\$L(\$L)", classContainingFunction, getChosenTypesCode(chosenTypes), functionId.namespacedName.last(), getArgumentsBlock(arguments))
                 }
             }
         }
@@ -665,16 +665,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
         if (isInTypeParameterScope(semlangType)) {
-            return TypeVariableName.get(semlangType.id.functionName)
+            return TypeVariableName.get(semlangType.id.namespacedName.last())
         }
 
-        if (semlangType.id.functionName == "Adapter") {
-            val parts = semlangType.id.thePackage.strings
+        if (semlangType.id.namespacedName.last() == "Adapter") {
+            val parts = semlangType.id.namespacedName.dropLast(1)
             if (parts.isNotEmpty()) {
-                val newName = parts.last()
-                // TODO: Namespace terminology elsewhere
-                val newNamespace = parts.dropLast(1)
-                val interfaceId = FunctionId(Package(newNamespace), newName)
+                val interfaceId = EntityId(semlangType.id.moduleRef, parts)
                 val interfac = module.getInternalInterface(interfaceId)
                 if (interfac != null) {
                     val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
@@ -691,22 +688,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
-        val predefinedClassName: ClassName? = if (semlangType.id.thePackage.strings.isEmpty()) {
-            if (semlangType.id.functionName == "Sequence") {
-                ClassName.bestGuess("net.semlang.java.Sequence")
-            } else {
-                null
-            }
-        } else if (semlangType.id.thePackage.strings == listOf("Unicode")) {
-            if (semlangType.id.functionName == "String") {
-                ClassName.get(String::class.java)
-            } else if (semlangType.id.functionName == "CodePoint") {
-                ClassName.get(Integer::class.java)
-            } else {
-                null
-            }
-        } else {
-            null
+        val predefinedClassName: ClassName? = when (semlangType.id.namespacedName) {
+            listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
+            listOf("Unicode", "String") -> ClassName.get(String::class.java)
+            listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
+            else -> null
         }
 
         // TODO: The right general approach is going to be "find the context containing this type, and use the
@@ -723,13 +709,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    private fun getStructClassName(functionId: FunctionId): ClassName {
-        return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), functionId.functionName)
+    private fun getStructClassName(functionId: EntityId): ClassName {
+        return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), functionId.namespacedName.last())
     }
 
-    private fun getContainingClassName(functionId: FunctionId): ClassName {
+    private fun getContainingClassName(functionId: EntityId): ClassName {
         //Assume the first capitalized string is the className
-        val allParts = (javaPackage + functionId.thePackage.strings) + functionId.functionName
+        val allParts = javaPackage + functionId.namespacedName
         val packageParts = ArrayList<String>()
         var className: String? = null
         for (part in allParts) {
@@ -740,7 +726,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             packageParts.add(part)
         }
         if (className == null) {
-            return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), "Functions")
+            return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), "Functions")
         }
         return ClassName.get(packageParts.joinToString("."), className)
     }
@@ -797,64 +783,57 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
 
-    private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrategy> {
-        val map = HashMap<FunctionId, FunctionCallStrategy>()
+    private fun getNativeFunctionCallStrategies(): Map<EntityId, FunctionCallStrategy> {
+        val map = HashMap<EntityId, FunctionCallStrategy>()
 
-        val boolean = Package(listOf("Boolean"))
         val javaBooleans = ClassName.bestGuess("net.semlang.java.Booleans")
         // TODO: Replace these with the appropriate operators (in parentheses)
-        map.put(FunctionId(boolean, "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
-        map.put(FunctionId(boolean, "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
-        map.put(FunctionId(boolean, "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
+        map.put(EntityId.of("Boolean", "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
+        map.put(EntityId.of("Boolean", "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
+        map.put(EntityId.of("Boolean", "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
 
-        val list = Package(listOf("List"))
         val javaLists = ClassName.bestGuess("net.semlang.java.Lists")
-        map.put(FunctionId(list, "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
+        map.put(EntityId.of("List", "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
         // TODO: Find an approach to remove most uses of append where we'd be better off with e.g. add
-        map.put(FunctionId(list, "append"), StaticFunctionCallStrategy(javaLists, "append"))
+        map.put(EntityId.of("List", "append"), StaticFunctionCallStrategy(javaLists, "append"))
         // TODO: Find an approach where we can replace this with a simple .get() call...
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
-        map.put(FunctionId(list, "get"), StaticFunctionCallStrategy(javaLists, "get"))
-        map.put(FunctionId(list, "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
+        map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
+        map.put(EntityId.of("List", "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
 
-        val integer = Package(listOf("Integer"))
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
-        map.put(FunctionId(integer, "plus"), MethodFunctionCallStrategy("add"))
-        map.put(FunctionId(integer, "minus"), MethodFunctionCallStrategy("subtract"))
-        map.put(FunctionId(integer, "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(FunctionId(integer, "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(FunctionId(integer, "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
-        map.put(FunctionId(integer, "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
-        map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
+        map.put(EntityId.of("Integer", "plus"), MethodFunctionCallStrategy("add"))
+        map.put(EntityId.of("Integer", "minus"), MethodFunctionCallStrategy("subtract"))
+        map.put(EntityId.of("Integer", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Integer", "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
+        map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
+        map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
-        val natural = Package(listOf("Natural"))
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         // Share implementations with Integer in some cases
-        map.put(FunctionId(natural, "plus"), MethodFunctionCallStrategy("add"))
-        map.put(FunctionId(natural, "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(FunctionId(natural, "lesser"), MethodFunctionCallStrategy("min"))
-        map.put(FunctionId(natural, "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(FunctionId(natural, "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
-        map.put(FunctionId(natural, "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
-        map.put(FunctionId(natural, "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
+        map.put(EntityId.of("Natural", "plus"), MethodFunctionCallStrategy("add"))
+        map.put(EntityId.of("Natural", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Natural", "lesser"), MethodFunctionCallStrategy("min"))
+        map.put(EntityId.of("Natural", "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
+        map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
+        map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
 
-        val tries = Package(listOf("Try"))
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
-        map.put(FunctionId(tries, "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
-        map.put(FunctionId(tries, "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
-        map.put(FunctionId(tries, "map"), StaticFunctionCallStrategy(javaTries, "map"))
+        map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
+        map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
+        map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
 
-        val sequence = Package(listOf("Sequence"))
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
-        map.put(FunctionId(sequence, "create"), StaticFunctionCallStrategy(javaSequences, "create"))
+        map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
-        val unicodeString = Package(listOf("Unicode", "String"))
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
-        map.put(FunctionId(unicodeString, "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+        map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
 
         // Unicode.CodePoint constructor
-        map.put(FunctionId(Package(listOf("Unicode")), "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
+        map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
 
         return map
     }

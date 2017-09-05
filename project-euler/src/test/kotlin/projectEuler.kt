@@ -13,8 +13,8 @@ import java.security.MessageDigest
 import java.util.*
 
 class ProjectEulerExamples {
-    private fun eulerDot(name: String): FunctionId {
-        return FunctionId(Package(listOf("euler")), name)
+    private fun eulerDot(name: String): EntityId {
+        return EntityId.of("euler", name)
     }
 
     @Test

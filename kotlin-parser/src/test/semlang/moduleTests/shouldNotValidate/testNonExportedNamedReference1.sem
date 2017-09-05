@@ -1,0 +1,4 @@
+
+function testExportedByWrongModule(): Integer {
+    testModule2:exportedBy1()
+}

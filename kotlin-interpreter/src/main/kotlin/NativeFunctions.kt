@@ -6,9 +6,9 @@ import java.util.*
 
 typealias InterpreterCallback = (SemObject.FunctionBinding, List<SemObject>) -> SemObject
 
-class NativeFunction(val id: FunctionId, val apply: (List<SemObject>, InterpreterCallback) -> SemObject)
+class NativeFunction(val id: EntityId, val apply: (List<SemObject>, InterpreterCallback) -> SemObject)
 
-fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
+fun getNativeFunctions(): Map<EntityId, NativeFunction> {
     val list = ArrayList<NativeFunction>()
 
     addBooleanFunctions(list)
@@ -22,8 +22,8 @@ fun getNativeFunctions(): Map<FunctionId, NativeFunction> {
     return toMap(list)
 }
 
-fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
-    val map = HashMap<FunctionId, NativeFunction>()
+fun toMap(list: ArrayList<NativeFunction>): Map<EntityId, NativeFunction> {
+    val map = HashMap<EntityId, NativeFunction>()
     list.forEach { nativeFunction ->
         val previouslyThere = map.put(nativeFunction.id, nativeFunction)
         if (previouslyThere != null) {
@@ -35,7 +35,7 @@ fun toMap(list: ArrayList<NativeFunction>): Map<FunctionId, NativeFunction> {
 
 
 private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
-    val booleanDot = fun(name: String) = FunctionId(Package(listOf("Boolean")), name)
+    val booleanDot = fun(name: String) = EntityId.of("Boolean", name)
 
     // Boolean.not
     list.add(NativeFunction(booleanDot("not"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -70,7 +70,7 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
-    val integerDot = fun(name: String) = FunctionId(Package(listOf("Integer")), name)
+    val integerDot = fun(name: String) = EntityId.of("Integer", name)
 
     // Integer.times
     list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -122,7 +122,7 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
-    val naturalDot = fun(name: String) = FunctionId(Package(listOf("Natural")), name)
+    val naturalDot = fun(name: String) = EntityId.of("Natural", name)
 
     // Natural.times
     list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -224,7 +224,7 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addListFunctions(list: MutableList<NativeFunction>) {
-    val listDot = fun(name: String) = FunctionId(Package(listOf("List")), name)
+    val listDot = fun(name: String) = EntityId.of("List", name)
 
     // List.empty
     list.add(NativeFunction(listDot("empty"), { _: List<SemObject>, _: InterpreterCallback ->
@@ -307,7 +307,7 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addTryFunctions(list: MutableList<NativeFunction>) {
-    val tryDot = fun(name: String) = FunctionId(Package(listOf("Try")), name)
+    val tryDot = fun(name: String) = EntityId.of("Try", name)
 
     // Try.failure
     list.add(NativeFunction(tryDot("failure"), { _: List<SemObject>, _: InterpreterCallback ->
@@ -335,9 +335,9 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
-    val sequenceDot = fun(name: String) = FunctionId(Package(listOf("Sequence")), name)
+    val sequenceDot = fun(name: String) = EntityId.of("Sequence", name)
 
-    val basicSequenceDot = fun(name: String) = FunctionId(Package(listOf("BasicSequence")), name)
+    val basicSequenceDot = fun(name: String) = EntityId.of("BasicSequence", name)
 
     // Sequence.create
     list.add(NativeFunction(sequenceDot("create"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -392,7 +392,7 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addStringFunctions(list: MutableList<NativeFunction>) {
-    val unicodeStringDot = fun(name: String) = FunctionId(Package(listOf("Unicode", "String")), name)
+    val unicodeStringDot = fun(name: String) = EntityId.of("Unicode", "String", name)
 
     // Unicode.String.length
     list.add(NativeFunction(unicodeStringDot("length"), { args: List<SemObject>, _: InterpreterCallback ->

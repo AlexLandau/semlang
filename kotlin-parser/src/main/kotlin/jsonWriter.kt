@@ -59,7 +59,7 @@ private fun addStruct(node: ObjectNode, struct: Struct) {
 private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     if (!node.isObject()) error("Expected a struct to be an object")
 
-    val id = parseFunctionId(node["id"] ?: error("Structs must have an 'id' field"))
+    val id = parseEntityId(node["id"] ?: error("Structs must have an 'id' field"))
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
@@ -86,18 +86,39 @@ private fun parseAnnotations(node: JsonNode?): List<Annotation> {
     return node.map { annotationNode -> parseAnnotation(annotationNode) }
 }
 
-private fun parseFunctionId(node: JsonNode): FunctionId {
+private fun parseEntityRef(node: JsonNode): EntityRef {
+    val text = node.textValue() ?: error("IDs and refs should be strings")
+    val parts = text.split(":")
+    if (parts.size == 1) {
+        return EntityRef(null, parseEntityId(parts[0]))
+    } else if (parts.size == 2) {
+        return EntityRef(ModuleRef(null, parts[0], null), parseEntityId(parts[1]))
+    } else if (parts.size == 3) {
+        return EntityRef(ModuleRef(parts[0], parts[1], null), parseEntityId(parts[2]))
+    } else if (parts.size == 4) {
+        return EntityRef(ModuleRef(parts[0], parts[1], parts[2]), parseEntityId(parts[3]))
+    } else {
+        error("Too many colon-separated parts in the EntityRef: '$text'")
+    }
+}
+
+// TODO: Support module refs
+private fun parseEntityId(node: JsonNode): EntityId {
     val text = node.textValue() ?: error("IDs should be strings")
+    return parseEntityId(text)
+}
+private fun parseEntityId(text: String): EntityId {
     val parts = text.split(".")
     if (parts.isEmpty()) {
         error("")
     }
-    if (parts.size == 1) {
-        return FunctionId.of(parts[0])
-    }
-    val packageParts = parts.subList(0, parts.size - 1)
-    val name = parts.last()
-    return FunctionId(Package(packageParts), name)
+    return EntityId(parts)
+//    if (parts.size == 1) {
+//        return EntityId.of(parts[0])
+//    }
+//    val packageParts = parts.subList(0, parts.size - 1)
+//    val name = parts.last()
+//    return EntityId(Package(packageParts), name)
 }
 
 private fun parseMembers(node: JsonNode): List<Member> {
@@ -166,7 +187,7 @@ private fun parseType(node: JsonNode): Type {
     }
 
     if (node.has("name")) {
-        val id = parseFunctionId(node["name"])
+        val id = parseEntityRef(node["name"])
         val parameters = if (node.has("params")) {
             val paramsArray = node["params"]
             paramsArray.map(::parseType)
@@ -216,7 +237,7 @@ private fun addInterface(node: ObjectNode, interfac: Interface) {
 private fun parseInterface(node: JsonNode): Interface {
     if (!node.isObject()) error("Expected an interface to be an object")
 
-    val id = parseFunctionId(node["id"] ?: error("Interfaces must have an 'id' field"))
+    val id = parseEntityId(node["id"] ?: error("Interfaces must have an 'id' field"))
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val methods = parseMethods(node["methods"] ?: error("Interfaces must have a 'methods' array"))
     val annotations = parseAnnotations(node["annotations"])
@@ -271,7 +292,7 @@ private fun addFunction(node: ObjectNode, function: ValidatedFunction) {
 private fun parseFunction(node: JsonNode): Function {
     if (!node.isObject()) error("Expected a function to be an object")
 
-    val id = parseFunctionId(node["id"] ?: error("Functions must have an 'id' field"))
+    val id = parseEntityId(node["id"] ?: error("Functions must have an 'id' field"))
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val arguments = parseArguments(node["arguments"] ?: error("Functions must have an 'arguments' array"))
     val returnType = parseType(node["returnType"] ?: error("Functions must have a 'returnType' string"))
@@ -336,7 +357,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         }
         is TypedExpression.NamedFunctionCall -> {
             node.put("type", "namedCall")
-            node.put("function", expression.functionId.toString())
+            node.put("function", expression.functionRef.toString())
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addArray(node, "arguments", expression.arguments, ::addExpression)
             return
@@ -362,7 +383,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         }
         is TypedExpression.NamedFunctionBinding -> {
             node.put("type", "namedBinding")
-            node.put("function", expression.functionId.toString())
+            node.put("function", expression.functionRef.toString())
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addArray(node, "bindings", expression.bindings, ::addBinding)
             return
@@ -393,10 +414,10 @@ private fun parseExpression(node: JsonNode): Expression {
             return Expression.IfThen(condition, thenBlock, elseBlock, position = null)
         }
         "namedCall" -> {
-            val functionId = parseFunctionId(node["function"])
+            val functionRef = parseEntityRef(node["function"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionCall(functionId, arguments, chosenParameters, position = null)
+            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, position = null)
         }
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
@@ -415,10 +436,10 @@ private fun parseExpression(node: JsonNode): Expression {
             return Expression.Follow(innerExpression, name, position = null)
         }
         "namedBinding" -> {
-            val functionId = parseFunctionId(node["function"])
+            val functionRef = parseEntityRef(node["function"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionBinding(functionId, chosenParameters, bindings, position = null)
+            return Expression.NamedFunctionBinding(functionRef, chosenParameters, bindings, position = null)
         }
         "expressionBinding" -> {
             val functionExpression = parseExpression(node["expression"])

@@ -1,0 +1,5 @@
+
+// Conflict with a native function
+struct Integer.plus {
+    foo: Integer
+}

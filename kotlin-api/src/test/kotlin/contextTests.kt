@@ -4,59 +4,92 @@ import org.junit.Assert
 import org.junit.Test
 
 // TODO: Test case where two upstream contexts export the same ID (of the same or differing entity types)
+/*
+ * So, there are at least a couple of approaches I've considered here.
+ * 1) Disallow having multiple dependencies with overlapping IDs; i.e., validation of the module that depends on both
+ *    would fail. This seems unnecessarily draconian and would cause all kinds of pain and forks of modules.
+ * All other approaches require at least some kind of labelling of "the foo that comes from module X":
+ * 2) Require TypeScript-style import statements for anything from a dependency, allowing renamings.
+ * 3) Require all types to be labelled in-situ with some identifier for their module.
+ *    Proposal: myFunction from example.com:myModule:1.2.3 could be labelled as any of the following, if unique:
+  *    ':myModule:myFunction'
+  *    ':example.com:myModule:myFunction'
+  *    ':example.com:myModule@1.2.3:myFunction'
+  * 4) Allow the identifiers as in 3, but also allow the bare function name if it's unique.
+  *
+  * So what are the pros and cons here?
+  * Let's just rule out (1) immediately -- way too inconvenient, despite being easiest to implement.
+  *
+  * Arguably we can leave programmer convenience to dialects, but... #3 is least convenient; #2 or #4 may be most
+  * convenient, depending on the situation.
+  *
+  * We could also consider a "typealias" approach that could be combined with #3 or #4 to simulate #2 and otherwise
+  * give a high level of programmer flexibility. This could also be applied at one level (sem1) and then automatically
+  * transformed into the #3 or #4 proposal for another (sem0).
+  *
+  * There is the question of whether it helps for people to be able to reference import statements to determine which
+  * module a given entity comes from. My personal suspicion is that people don't look at imports that much; this file
+  * has its imports collapsed in my IDE right now. Tooling should provide this information, not boilerplate. It should
+  * also be able to fill in newly necessary labels when a new dependency is added (or suggest options, at least).
+  *
+  * Instinctually, I'm leaning towards #4 plus typealiases (in some variants). This does require parser changes.
+  * I'd like some tests set up first before implementing...
+ */
+// TODO: We need some kind of verification that e.g. when we export a function, its return type is also something
+// that is exported from the module.
 class ContextTests {
     @Test
     fun testFunctionVisibility() {
         testEntityVisibility(::createFunctionWithId,
-                fun (moduleId: ModuleId, entities: Map<FunctionId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                fun (moduleId: ModuleId, entities: Map<EntityId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, entities, mapOf(), mapOf(), upstreamModules)
                 },
-                { module, id -> module.getInternalFunction(id)?.function },
+                { module, id -> module.getInternalFunction(EntityRef(null, id))?.function },
                 { module, id -> module.getExportedFunction(id)?.function })
     }
 
     @Test
     fun testStructVisibility() {
         testEntityVisibility(::createStructWithId,
-                fun (moduleId: ModuleId, entities: Map<FunctionId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                fun (moduleId: ModuleId, entities: Map<EntityId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, mapOf(), entities, mapOf(), upstreamModules)
                 },
-                { module, id -> module.getInternalStruct(id)?.struct },
+                { module, id -> module.getInternalStruct(EntityRef(null, id))?.struct },
                 { module, id -> module.getExportedStruct(id)?.struct })
     }
 
     @Test
     fun testInterfaceVisibility() {
         testEntityVisibility(::createInterfaceWithId,
-                fun (moduleId: ModuleId, entities: Map<FunctionId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                fun (moduleId: ModuleId, entities: Map<EntityId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
                     return ValidatedModule.create(moduleId, mapOf(), mapOf(), entities, upstreamModules)
                 },
-                { module, id -> module.getInternalInterface(id)?.interfac },
+                { module, id -> module.getInternalInterface(EntityRef(null, id))?.interfac },
                 { module, id -> module.getExportedInterface(id)?.interfac })
     }
 
-    fun <T> testEntityVisibility(createEntity: (id: FunctionId, uniqueAspect: Int, exported: Boolean) -> T,
-                                 createModule: (moduleId: ModuleId, entities: Map<FunctionId, T>, upstreamModules: List<ValidatedModule>) -> ValidatedModule,
-                                 getInternalEntity: (module: ValidatedModule, id: FunctionId) -> T?,
-                                 getExportedEntity: (module: ValidatedModule, id: FunctionId) -> T?) {
-        val coincidentallySharedInternalId = FunctionId.of("coincidentallySharedInternal")
+    fun <T> testEntityVisibility(createEntity: (id: EntityId, uniqueAspect: Int, exported: Boolean) -> T,
+                                 createModule: (moduleId: ModuleId, entities: Map<EntityId, T>, upstreamModules: List<ValidatedModule>) -> ValidatedModule,
+                                 getInternalEntity: (module: ValidatedModule, id: EntityId) -> T?,
+                                 getExportedEntity: (module: ValidatedModule, id: EntityId) -> T?) {
+        val coincidentallySharedInternalId = EntityId.of("coincidentallySharedInternal")
         val upstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, 1, false)
         val downstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, 2, false)
 
-        val upstreamInternalId = FunctionId.of("upstreamInternal")
+        val upstreamInternalId = EntityId.of("upstreamInternal")
         val upstreamInternalEntity = createEntity(upstreamInternalId, 3, false)
 
-        val upstreamExportedId = FunctionId.of("upstreamExported")
+        val upstreamExportedId = EntityId.of("upstreamExported")
         val upstreamExportedEntity = createEntity(upstreamExportedId, 4, true)
 
         val upstreamEntities = mapOf(upstreamInternalId to upstreamInternalEntity,
                 upstreamExportedId to upstreamExportedEntity,
                 coincidentallySharedInternalId to upstreamEntityWithSharedId)
 
-        val downstreamInternalId = FunctionId.of("downstreamInternal")
+        val downstreamInternalId = EntityId.of("downstreamInternal")
         val downstreamInternalEntity = createEntity(downstreamInternalId, 5, false)
 
-        val downstreamExportedId = FunctionId.of("downstreamExported")
+        val downstreamExportedId = EntityId.of("downstreamExported")
         val downstreamExportedEntity = createEntity(downstreamExportedId, 6, true)
 
         val downstreamEntities = mapOf(downstreamInternalId to downstreamInternalEntity,
@@ -93,7 +126,7 @@ class ContextTests {
     }
 }
 
-private fun createFunctionWithId(id: FunctionId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
+private fun createFunctionWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
     val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, uniqueAspect.toString()))
     val annotations = if (exported) {
         listOf(Annotation("Exported", null))
@@ -103,7 +136,7 @@ private fun createFunctionWithId(id: FunctionId, uniqueAspect: Int, exported: Bo
     return ValidatedFunction(id, listOf(), listOf(), Type.INTEGER, block, annotations)
 }
 
-private fun createStructWithId(id: FunctionId, uniqueAspect: Int, exported: Boolean): Struct {
+private fun createStructWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): Struct {
     val member = Member(uniqueAspect.toString(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation("Exported", null))
@@ -113,7 +146,7 @@ private fun createStructWithId(id: FunctionId, uniqueAspect: Int, exported: Bool
     return Struct(id, listOf(), listOf(member), null, annotations)
 }
 
-private fun createInterfaceWithId(id: FunctionId, uniqueAspect: Int, exported: Boolean): Interface {
+private fun createInterfaceWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): Interface {
     val method = Method(uniqueAspect.toString(), listOf(), listOf(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation("Exported", null))

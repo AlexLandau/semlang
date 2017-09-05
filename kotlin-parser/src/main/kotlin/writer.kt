@@ -146,7 +146,7 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
                     .append(expression.name)
         }
         is TypedExpression.NamedFunctionCall -> {
-            writer.append(expression.functionId.toString())
+            writer.append(expression.functionRef.toString())
             if (expression.chosenParameters.isNotEmpty()) {
                 writer.append("<")
                         .append(expression.chosenParameters.joinToString(", "))
@@ -164,7 +164,7 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
             writer.append(")")
         }
         is TypedExpression.NamedFunctionBinding -> {
-            writer.append(expression.functionId.toString())
+            writer.append(expression.functionRef.toString())
             if (expression.chosenParameters.isNotEmpty()) {
                 writer.append("<")
                         .append(expression.chosenParameters.joinToString(", "))

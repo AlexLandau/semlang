@@ -1,8 +1,9 @@
 package net.semlang.parser
 
-import net.semlang.api.FunctionId
-import net.semlang.api.HasFunctionId
+import net.semlang.api.EntityId
+import net.semlang.api.HasId
 
-fun <T: HasFunctionId> indexById(indexables: List<T>): Map<FunctionId, T> {
-    return indexables.associateBy(HasFunctionId::id)
+// TODO: Is this actually unused? Or subsumed by something elsewhere?
+fun <T: HasId> indexById(indexables: List<T>): Map<EntityId, T> {
+    return indexables.associateBy(HasId::id)
 }

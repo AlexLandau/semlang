@@ -1,0 +1,5 @@
+
+// Conflict with a native function
+function Integer.plus(left: Integer, right: Integer): Integer {
+    return Integer."42"
+}

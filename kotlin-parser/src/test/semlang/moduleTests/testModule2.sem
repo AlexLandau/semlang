@@ -1,0 +1,18 @@
+
+@Exported
+function exportedByBoth(): Integer {
+    Integer."5"
+}
+
+function exportedBy1(): Integer {
+    Integer."6"
+}
+
+@Exported
+function exportedBy2(): Integer {
+    Integer."7"
+}
+
+function exportedByNeither(): Integer {
+    Integer."8"
+}
