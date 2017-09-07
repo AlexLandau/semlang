@@ -1,5 +1,6 @@
 package net.semlang.transforms
 
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import org.junit.Assert.fail
 import org.junit.Test
@@ -28,7 +29,7 @@ class SimplifyExpressionsTest(private val file: File) {
 
     @Test
     fun testSimplification() {
-        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), listOf())
+        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
 
         // TODO: Check that the semantics of any examples are actually unchanged, according to our interpreter
         // (This requires storing inputs to try with each given code sample; ideally we'd combine this

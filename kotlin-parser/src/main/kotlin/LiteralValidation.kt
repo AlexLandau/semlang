@@ -47,7 +47,7 @@ fun getTypeValidatorFor(type: Type): LiteralValidator {
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> throw IllegalArgumentException("No literal validator for List: $type")
         is Type.NamedType -> {
-            if (type.id.moduleRef == null && type.id.id == NativeStruct.UNICODE_STRING.id) {
+            if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 return LiteralValidator.UNICODE_STRING
             }
             throw IllegalArgumentException("No literal validator for NamedTypes: $type")

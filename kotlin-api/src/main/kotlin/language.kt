@@ -52,6 +52,15 @@ data class ModuleId(val group: String, val module: String, val version: String) 
     }
 }
 
+val NATIVE_MODULE_GROUP = "semlang"
+val NATIVE_MODULE_NAME = "lang"
+val CURRENT_NATIVE_MODULE_VERSION = "0.0.0"
+val CURRENT_NATIVE_MODULE_ID = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
+
+fun isNativeModule(module: ModuleId): Boolean {
+    return module.group == NATIVE_MODULE_GROUP && module.module == NATIVE_MODULE_NAME
+}
+
 data class ModuleRef(val group: String?, val module: String, val version: String?) {
     init {
         if (group == null && version != null) {
@@ -93,7 +102,7 @@ data class EntityId(val namespacedName: List<String>) {
         return EntityRef(null, this)
     }
 }
-// Note: These should usually not be used as keys in a map; use an EntityResolver instead.
+// Note: These should usually not be used as keys in a map; use ResolvedEntityRefs from an EntityResolver instead.
 data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
     companion object {
         fun of(vararg names: String): EntityRef {
@@ -111,8 +120,10 @@ data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
 }
 // TODO: Rename these? Use in more places?
 // TODO: I'm not sure yet if we'll be using originalHints anywhere (perhaps in writer)
-// Note: Null module represents either a type parameter (TODO: handle a little differently) or the native module
-data class ResolvedEntityRef(val module: ModuleId?, val id: EntityId) {
+data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
+    override fun toString(): String {
+        return "${module.group}:${module.module}:${module.version}:$id"
+    }
 }
 
 // TODO: Are these actually useful?
@@ -336,7 +347,7 @@ sealed class Type {
     }
 
     //TODO: In the validator, validate that it does not share a name with a default type
-    data class NamedType(val id: EntityRef, val parameters: kotlin.collections.List<Type> = listOf()): Type(), ParameterizableType {
+    data class NamedType(val ref: EntityRef, val parameters: kotlin.collections.List<Type> = listOf()): Type(), ParameterizableType {
         companion object {
             fun forParameter(name: String): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(name))), listOf())
@@ -348,7 +359,7 @@ sealed class Type {
                 // TODO: Should this have replaceParameters applied to it?
                 return replacement
             }
-            return NamedType(id,
+            return NamedType(ref,
                     replaceParameters(parameters, parameterMap))
         }
 
@@ -357,7 +368,7 @@ sealed class Type {
         }
 
         override fun getTypeString(): String {
-            return id.toString() +
+            return ref.toString() +
                 if (parameters.isEmpty()) {
                     ""
                 } else {
@@ -544,6 +555,13 @@ fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
         return EntityId(adapterId.namespacedName.dropLast(1))
     }
     return null
+}
+fun getAdapterIdForInterfaceId(interfaceId: EntityId): EntityId {
+//    if (adapterId.namespacedName.size > 1 && adapterId.namespacedName.last() == "Adapter") {
+//        return EntityId(adapterId.namespacedName.dropLast(1))
+//    }
+//    return null
+    return EntityId(interfaceId.namespacedName + "Adapter")
 }
 fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     val interfaceId = getInterfaceIdForAdapterId(adapterRef.id)

@@ -1,5 +1,6 @@
 package net.semlang.test
 
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -36,7 +37,7 @@ class CorpusInterpreterTests(private val file: File) {
             val semlangLibraryFiles = semlangLibrarySources.listFiles().toList()
             val unvalidatedContext = parseFiles(semlangLibraryFiles)
 
-            val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, listOf())
+            val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 
             val localRepository = getDefaultLocalRepository()
             localRepository.unpublishIfPresent(LIBRARY_MODULE_ID)
@@ -60,5 +61,5 @@ private fun parseAndValidateFile(file: File): ValidatedModule {
     val libraryModule = localRepository.loadModule(LIBRARY_MODULE_ID)
 
     val unvalidatedContext = parseFile(file)
-    return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), listOf(libraryModule))
+    return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule))
 }

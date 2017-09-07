@@ -10,16 +10,10 @@ data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type
  * Note: This includes signatures for struct, instance, and adapter constructors.
  */
 // TODO: Maybe rename?
-fun getNativeFunctionDefinitions(): Map<EntityId, TypeSignature> {
+fun getAllNativeFunctionLikeDefinitions(): Map<EntityId, TypeSignature> {
     val definitions = ArrayList<TypeSignature>()
 
-    addBooleanFunctions(definitions)
-    addIntegerFunctions(definitions)
-    addNaturalFunctions(definitions)
-    addListFunctions(definitions)
-    addTryFunctions(definitions)
-    addSequenceFunctions(definitions)
-    addStringFunctions(definitions)
+    definitions.addAll(getNativeFunctionOnlyDefinitions().values)
 
     getNativeStructs().values.forEach { struct ->
         definitions.add(struct.getConstructorSignature())
@@ -29,6 +23,21 @@ fun getNativeFunctionDefinitions(): Map<EntityId, TypeSignature> {
         definitions.add(interfac.getInstanceConstructorSignature())
         definitions.add(interfac.getAdapterConstructorSignature())
     }
+
+    return toMap(definitions)
+}
+
+// TODO: Rename
+fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
+    val definitions = ArrayList<TypeSignature>()
+
+    addBooleanFunctions(definitions)
+    addIntegerFunctions(definitions)
+    addNaturalFunctions(definitions)
+    addListFunctions(definitions)
+    addTryFunctions(definitions)
+    addSequenceFunctions(definitions)
+    addStringFunctions(definitions)
 
     return toMap(definitions)
 }

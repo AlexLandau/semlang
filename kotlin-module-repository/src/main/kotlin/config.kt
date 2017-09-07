@@ -41,8 +41,8 @@ fun writeConfigFileString(module: ValidatedModule): String {
     rootNode.put("version", module.id.version)
 
     val arrayNode = rootNode.putArray("dependencies")
-    module.upstreamModules.forEach { dependency ->
-        writeDependencyNode(arrayNode.addObject(), dependency.id)
+    module.upstreamModules.keys.forEach { dependencyId ->
+        writeDependencyNode(arrayNode.addObject(), dependencyId)
     }
 
     return mapper.writeValueAsString(rootNode)

@@ -1,5 +1,0 @@
-
-// Conflict with a native struct
-struct Unicode.String {
-    foo: Integer
-}

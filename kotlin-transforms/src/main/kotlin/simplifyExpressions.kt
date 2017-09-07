@@ -9,7 +9,12 @@ import net.semlang.api.*
 // data structures that acknowledge the more limited set of possible expressions/assignments
 // TODO: This currently doesn't affect expressions in structs' requires blocks
 fun simplifyExpressions(module: ValidatedModule): ValidatedModule {
-    return ValidatedModule.create(module.id, simplifyFunctionExpressions(module.ownFunctions), module.ownStructs, module.ownInterfaces, module.upstreamModules)
+    return ValidatedModule.create(module.id,
+            module.nativeModuleVersion,
+            simplifyFunctionExpressions(module.ownFunctions),
+            module.ownStructs,
+            module.ownInterfaces,
+            module.upstreamModules.values)
 }
 
 private fun simplifyFunctionExpressions(functions: Map<EntityId, ValidatedFunction>): Map<EntityId, ValidatedFunction> {
@@ -103,7 +108,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
                 result.variable
             }
 
-            val replacementExpression = TypedExpression.NamedFunctionCall(expression.type, expression.functionId, newArguments, expression.chosenParameters)
+            val replacementExpression = TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, newArguments, expression.chosenParameters)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
@@ -138,7 +143,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
                 }
             }
 
-            val replacementExpression = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, newBindings, expression.chosenParameters)
+            val replacementExpression = TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, newBindings, expression.chosenParameters)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
     }
@@ -228,7 +233,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
                 subresult.variable
             }
 
-            val newFunctionCall = TypedExpression.NamedFunctionCall(expression.type, expression.functionId, newArguments, expression.chosenParameters)
+            val newFunctionCall = TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, newArguments, expression.chosenParameters)
 
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))
@@ -277,7 +282,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
                 }
             }
 
-            val newFunctionCall = TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, newBindings, expression.chosenParameters)
+            val newFunctionCall = TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, newBindings, expression.chosenParameters)
 
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newFunctionCall.type, newFunctionCall))

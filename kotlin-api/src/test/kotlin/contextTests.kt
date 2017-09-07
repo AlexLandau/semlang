@@ -42,9 +42,17 @@ class ContextTests {
     fun testFunctionVisibility() {
         testEntityVisibility(::createFunctionWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, entities, mapOf(), mapOf(), upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), upstreamModules)
                 },
-                { module, id -> module.getInternalFunction(EntityRef(null, id))?.function },
+                { module, id ->
+                    val resolved = module.resolve(EntityRef(null, id))
+                    System.out.println("Resolved of $id was $resolved")
+                    if (resolved == null) {
+                        null
+                    } else {
+                        module.getInternalFunction(resolved.entityRef).function
+                    }
+                },
                 { module, id -> module.getExportedFunction(id)?.function })
     }
 
@@ -52,9 +60,16 @@ class ContextTests {
     fun testStructVisibility() {
         testEntityVisibility(::createStructWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, mapOf(), entities, mapOf(), upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), upstreamModules)
                 },
-                { module, id -> module.getInternalStruct(EntityRef(null, id))?.struct },
+                { module, id ->
+                    val resolved = module.resolve(EntityRef(null, id))
+                    if (resolved == null) {
+                        null
+                    } else {
+                        module.getInternalStruct(resolved.entityRef).struct
+                    }
+                },
                 { module, id -> module.getExportedStruct(id)?.struct })
     }
 
@@ -62,9 +77,16 @@ class ContextTests {
     fun testInterfaceVisibility() {
         testEntityVisibility(::createInterfaceWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, mapOf(), mapOf(), entities, upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, upstreamModules)
                 },
-                { module, id -> module.getInternalInterface(EntityRef(null, id))?.interfac },
+                { module, id ->
+                    val resolved = module.resolve(EntityRef(null, id))
+                    if (resolved == null) {
+                        null
+                    } else {
+                        module.getInternalInterface(resolved.entityRef).interfac
+                    }
+                },
                 { module, id -> module.getExportedInterface(id)?.interfac })
     }
 

@@ -1,6 +1,7 @@
 package net.semlang.parser.test
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.parser.*
@@ -49,7 +50,7 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(ObjectMapper().writeValueAsString(asJson))
         System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, listOf())
+        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
         assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
 }
@@ -91,10 +92,10 @@ private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
 
 private fun parseAndValidateFile(file: File): ValidatedModule {
     val context = parseFile(file)
-    return validateModule(context, TEST_MODULE_ID, listOf())
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {
     val context = parseString(string)
-    return validateModule(context, TEST_MODULE_ID, listOf())
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 }

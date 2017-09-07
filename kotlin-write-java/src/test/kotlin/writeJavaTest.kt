@@ -1,5 +1,6 @@
 package net.semlang.writejava
 
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +33,7 @@ class WriteJavaTest(private val file: File) {
 
     @Test
     fun testWritingJava() {
-        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), listOf())
+        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
 
         val newSrcDir = Files.createTempDirectory("generatedJavaSource").toFile()
         val newTestSrcDir = Files.createTempDirectory("generatedJavaTestSource").toFile()

@@ -13,7 +13,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
     private val nativeFunctions: Map<EntityId, NativeFunction> = getNativeFunctions()
 
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
-        return interpret(EntityRef(null, functionId), arguments, mainModule)
+        return interpret(EntityRef(mainModule.id.asRef(), functionId), arguments, mainModule)
     }
 
     /**
@@ -22,78 +22,128 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
      * was written.
      */
     private fun interpret(functionRef: EntityRef, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
-        // Handle "native" functions
-        if (functionRef.moduleRef == null) {
-            val nativeFunction = nativeFunctions[functionRef.id]
-            if (nativeFunction != null) {
+        // This doesn't just apply to ___...
+        if (referringModule == null) {
+            return interpretNative(functionRef, arguments)
+        }
+
+        // TODO: Have one of these for native stuff, as well
+        val entityResolution = referringModule.resolve(functionRef) ?: error("The function $functionRef isn't recognized")
+
+        when (entityResolution.type) {
+            FunctionLikeType.NATIVE_FUNCTION -> {
+                val nativeFunction = nativeFunctions[functionRef.id] ?: error("Resolution error")
                 return nativeFunction.apply(arguments, this::interpretBinding)
             }
+            FunctionLikeType.FUNCTION -> {
+                val function: FunctionWithModule = referringModule.getInternalFunction(entityResolution.entityRef)
+                if (arguments.size != function.function.arguments.size) {
+                    throw IllegalArgumentException("Wrong number of arguments for function $functionRef")
+                }
+                val variableAssignments: MutableMap<String, SemObject> = HashMap()
+                for ((value, argumentDefinition) in arguments.zip(function.function.arguments)) {
+                    variableAssignments.put(argumentDefinition.name, value)
+                }
+                return evaluateBlock(function.function.block, variableAssignments, function.module)
+            }
+            FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                val struct: StructWithModule = referringModule.getInternalStruct(entityResolution.entityRef)
+                return evaluateStructConstructor(struct.struct, arguments, struct.module)
+            }
+            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
+                val interfac = referringModule.getInternalInterface(entityResolution.entityRef)
+                return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
+            }
+            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
+                val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
+                return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
+            }
+        }
+    }
+
+    private fun getModule(id: ModuleId, referringModule: ValidatedModule?): ValidatedModule? {
+        if (referringModule != null) {
+            if (id == referringModule.id) {
+                return referringModule
+            }
+            val upstreamModule = referringModule.upstreamModules[id]
+            if (upstreamModule != null) {
+                return upstreamModule
+            }
+        }
+        if (isNativeModule(id)) {
+            return null
+        }
+        error("I don't know what to do with the module $id from the referring module $referringModule")
+    }
+
+    private fun interpretNative(ref: EntityRef, arguments: List<SemObject>): SemObject {
+        // TODO: Better approach to figuring out the type of thing here (i.e. a TypeResolver just for native stuff)
+        assertModuleRefConsistentWithNative(ref)
+
+        val nativeFunction = nativeFunctions[ref.id]
+        if (nativeFunction != null) {
+            return nativeFunction.apply(arguments, this::interpretBinding)
         }
 
-        if (referringModule == null) {
-            error("We're in the native module, but $functionRef isn't a recognized native function")
-        }
-
-        // Handle struct constructors
-        val struct: StructWithModule? = referringModule.getInternalStruct(functionRef) ?: getNativeStruct(functionRef)
+        val struct = getNativeStructs()[ref.id]
         if (struct != null) {
-            // TODO: These might just be able to accept the StructWithModule
-            return evaluateStructConstructor(struct.struct, arguments, struct.module)
-        }
-
-        // Handle adapter constructors
-        val adapter: InterfaceWithModule? = referringModule.getInternalInterfaceByAdapterId(functionRef) ?: getNativeInterfaceByAdapterId(functionRef)
-        if (adapter != null) {
-            return evaluateAdapterConstructor(adapter.interfac, arguments, adapter.module)
+            return evaluateStructConstructor(struct, arguments, null)
         }
 
         // Handle instance constructors
-        val interfac: InterfaceWithModule? = referringModule.getInternalInterface(functionRef) ?: getNativeInterface(functionRef)
+        val interfac = getNativeInterfaces()[ref.id]
         if (interfac != null) {
-            return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
+            return evaluateInterfaceConstructor(interfac, arguments, null)
         }
 
-        // Handle non-native functions
-        val function: FunctionWithModule = referringModule.getInternalFunction(functionRef) ?: throw IllegalArgumentException("Unrecognized function ID $functionRef")
-        if (arguments.size != function.function.arguments.size) {
-            throw IllegalArgumentException("Wrong number of arguments for function $functionRef")
+        // Handle adapter constructors
+        val adapter = getNativeInterfaces()[getInterfaceIdForAdapterId(ref.id)]
+        if (adapter != null) {
+            return evaluateAdapterConstructor(adapter, arguments, null)
         }
-        val variableAssignments: MutableMap<String, SemObject> = HashMap()
-        for ((value, argumentDefinition) in arguments.zip(function.function.arguments)) {
-            variableAssignments.put(argumentDefinition.name, value)
-        }
-        return evaluateBlock(function.function.block, variableAssignments, function.module)
+        error("Unrecognized entity $ref")
     }
 
-    private fun getNativeStruct(ref: EntityRef): StructWithModule? {
-        if (ref.moduleRef == null) {
-            val struct = getNativeStructs()[ref.id]
-            if (struct != null) {
-                return StructWithModule(struct, null)
+    private fun assertModuleRefConsistentWithNative(entityRef: EntityRef) {
+        val moduleRef = entityRef.moduleRef
+        if (moduleRef != null) {
+            if (moduleRef.module != NATIVE_MODULE_NAME
+                    || (moduleRef.group != null && moduleRef.group != NATIVE_MODULE_GROUP)) {
+                error("We're trying to evaluate ${entityRef} like a native entity, but its module ref is not consistent with the native package")
             }
         }
-        return null
     }
 
-    private fun getNativeInterface(ref: EntityRef): InterfaceWithModule? {
-        if (ref.moduleRef == null) {
-            val interfac = getNativeInterfaces()[ref.id]
-            if (interfac != null) {
-                return InterfaceWithModule(interfac, null)
-            }
-        }
-        return null
-    }
-
-    private fun getNativeInterfaceByAdapterId(adapterRef: EntityRef): InterfaceWithModule? {
-        if (adapterRef.moduleRef == null) {
-            val interfaceRef = getInterfaceRefForAdapterRef(adapterRef)
-            if (interfaceRef != null) {
-                return getNativeInterface(interfaceRef)
-            }
-        }
-        return null
-    }
+//    private fun getNativeStruct(ref: EntityRef): StructWithModule? {
+//        if (ref.moduleRef == null) {
+//            val struct = getNativeStructs()[ref.id]
+//            if (struct != null) {
+//                return StructWithModule(struct, CURRENT_NATIVE_MODULE_ID)
+//            }
+//        }
+//        return null
+//    }
+//
+//    private fun getNativeInterface(ref: EntityRef): InterfaceWithModule? {
+//        if (ref.moduleRef == null) {
+//            val interfac = getNativeInterfaces()[ref.id]
+//            if (interfac != null) {
+//                return InterfaceWithModule(interfac, CURRENT_NATIVE_MODULE_ID)
+//            }
+//        }
+//        return null
+//    }
+//
+//    private fun getNativeInterfaceByAdapterId(adapterRef: EntityRef): InterfaceWithModule? {
+//        if (adapterRef.moduleRef == null) {
+//            val interfaceRef = getInterfaceRefForAdapterRef(adapterRef)
+//            if (interfaceRef != null) {
+//                return getNativeInterface(interfaceRef)
+//            }
+//        }
+//        return null
+//    }
 
     private fun interpretBinding(functionBinding: SemObject.FunctionBinding, args: List<SemObject>): SemObject {
         // TODO: Ideally this would be a ResolvedEntityRef, which would then give us the module?
@@ -224,17 +274,34 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionRef = expression.functionRef
-                val functionSignature = containingModule?.getInternalFunctionSignature(functionRef) ?:
-                        if (functionRef.moduleRef == null) {
-                            getNativeFunctionDefinitions()[functionRef.id]?.let { FunctionSignatureWithModule(it, null) }
-                        } else {
-                            null
-                        }
-                if (functionSignature == null) {
-                    error("Function ID not recognized: $functionRef")
-                }
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }
-                return SemObject.FunctionBinding(functionRef.id, functionSignature.module, bindings)
+                return if (containingModule != null) {
+                    val resolved = containingModule.resolve(functionRef) ?: error("Invalid function reference: $functionRef")
+                    val module = getModule(resolved.entityRef.module, containingModule)
+                    return SemObject.FunctionBinding(functionRef.id, module, bindings)
+                } else {
+                    // TODO: Use a resolver for natives so this can also handle constructors
+//                    val nativeFunction = getNativeFunctions()[functionRef.id]
+                    EntityResolution(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, functionRef.id), FunctionLikeType.NATIVE_FUNCTION)
+                    SemObject.FunctionBinding(functionRef.id, null, bindings)
+                }
+//                val functionSignature = containingModule?.getInternalFunctionSignature(functionRef) ?:
+//                        if (functionRef.moduleRef == null) {
+//                            getNativeFunctionDefinitions()[functionRef.id]?.let { FunctionSignatureWithModule(it, CURRENT_NATIVE_MODULE_ID) }
+//                        } else {
+//                            null
+//                        }
+//                if (functionSignature == null) {
+//                    error("Function ID not recognized: $functionRef")
+//                }
+//                val module = getModule(functionSignature.module, containingModule)
+//                val module2 = if (isNativeModule(functionSignature.module)) {
+//                    null
+//                } else {
+//                    if (containingModule == null) error("Non-native dependency of a native function")
+//                    containingModule.upstreamModules[functionSignature.module] ?: error("Upstream module ${functionSignature.module} wasn't available")
+//                }
+//                return SemObject.FunctionBinding(functionRef.id, module, bindings)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val function = evaluateExpression(expression.functionExpression, assignments, containingModule)
@@ -277,7 +344,7 @@ private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
 }
 
 private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
-    if (type.id.moduleRef == null && type.id.id == NativeStruct.UNICODE_STRING.id) {
+    if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
         // TODO: Check for errors related to string encodings
         return evaluateStringLiteral(literal)
     }

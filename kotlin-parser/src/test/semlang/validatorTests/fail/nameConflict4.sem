@@ -1,5 +1,0 @@
-
-// Conflict with a native struct
-function Unicode.String(): Integer {
-    Integer."100"
-}

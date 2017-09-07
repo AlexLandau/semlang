@@ -28,17 +28,18 @@ private fun fail(text: String): Nothing {
 
 data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>, val outputType: Type)
 
-fun validateModule(context: RawContext, moduleId: ModuleId, upstreamModules: List<ValidatedModule>): ValidatedModule {
-    val typeInfo = collectTypeInfo(context, moduleId, upstreamModules)
+fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidatedModule {
+    val typeInfo = collectTypeInfo(context, moduleId, nativeModuleVersion, upstreamModules)
 
     val ownFunctions = validateFunctions(context.functions, typeInfo)
     val ownStructs = validateStructs(context.structs, typeInfo)
     val ownInterfaces = validateInterfaces(context.interfaces, typeInfo)
-    return ValidatedModule.create(moduleId, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
+    return ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
 }
 
-private fun collectTypeInfo(context: RawContext, moduleId: ModuleId, upstreamModules: List<ValidatedModule>): AllTypeInfo {
-    val resolver = TypeResolver.create(moduleId,
+private fun collectTypeInfo(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): AllTypeInfo {
+    val resolver = TypeResolver2.create(moduleId,
+            nativeModuleVersion,
             context.functions.map(Function::id),
             context.structs.map(UnvalidatedStruct::id),
             context.interfaces.map(Interface::id),
@@ -84,7 +85,7 @@ private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Typ
 private data class StructTypeInfo(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean)
 private data class InterfaceTypeInfo(val typeParameters: List<String>, val methods: Map<String, Method>)
 
-private data class AllTypeInfo(val resolver: TypeResolver, val allFunctionTypeSignatures: Map<ResolvedEntityRef, TypeSignature>, val structs: Map<ResolvedEntityRef, StructTypeInfo>, val interfaces: Map<ResolvedEntityRef, InterfaceTypeInfo>)
+private data class AllTypeInfo(val resolver: TypeResolver2, val allFunctionTypeSignatures: Map<ResolvedEntityRef, TypeSignature>, val structs: Map<ResolvedEntityRef, StructTypeInfo>, val interfaces: Map<ResolvedEntityRef, InterfaceTypeInfo>)
 
 private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedBlock {
     val variableTypes = HashMap(externalVariableTypes)
@@ -115,9 +116,7 @@ private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Natural", "B
 
 private fun isInvalidVariableName(name: String, typeInfo: AllTypeInfo): Boolean {
     val nameAsEntityRef = EntityId.of(name).asRef()
-    return typeInfo.resolver.resolveFunction(nameAsEntityRef) != null
-        || typeInfo.resolver.resolveStruct(nameAsEntityRef) != null
-        || typeInfo.resolver.resolveInterface(nameAsEntityRef) != null
+    return typeInfo.resolver.resolve(nameAsEntityRef) != null
         || INVALID_VARIABLE_NAMES.contains(name)
 }
 
@@ -177,8 +176,8 @@ private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBin
     val functionRef = expression.functionRef
 
     // ...
-    val resolvedRef = typeInfo.resolver.resolveFunction(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
-    val signature = typeInfo.allFunctionTypeSignatures.get(resolvedRef) ?: getNativeFunctionDefinitions()[resolvedRef.id]
+    val resolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
+    val signature = typeInfo.allFunctionTypeSignatures[resolvedRef.entityRef] ?: getAllNativeFunctionLikeDefinitions()[resolvedRef.entityRef.id]
     if (signature == null) {
         fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
     }
@@ -188,7 +187,7 @@ private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBin
     }
     val typeParameters = signature.typeParameters
 
-    val parameterMap = makeParameterMap(typeParameters, chosenParameters, resolvedRef.id)
+    val parameterMap = makeParameterMap(typeParameters, chosenParameters, resolvedRef.entityRef.id)
     val preBindingArgumentTypes = signature.argumentTypes.map { type -> type.replacingParameters(parameterMap) }
 
     if (preBindingArgumentTypes.size != expression.bindings.size) {
@@ -227,42 +226,38 @@ private fun validateFollowExpression(expression: Expression.Follow, variableType
 
     val parentNamedType = innerExpression.type as? Type.NamedType ?: fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}")
 
-    val resolvedParentStructType = typeInfo.resolver.resolveStruct(parentNamedType.id)
-    if (resolvedParentStructType != null) {
-        val structInfo = typeInfo.structs[resolvedParentStructType] ?: getNativeStructInfo(resolvedParentStructType.id)
-        if (structInfo != null) {
-            val member = structInfo.members[expression.name]
-            if (member == null) {
-                fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
-            }
-
-            // Type parameters come from the struct definition itself
-            // Chosen types come from the struct type known for the variable
-            val typeParameters = structInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
-            val chosenTypes = parentNamedType.getParameterizedTypes()
-            val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentStructType.id)
-            //TODO: Ground this if needed
-
-            return TypedExpression.Follow(type, innerExpression, expression.name)
+    val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref) ?: error("In function $containingFunctionId, we try to dereference an expression $innerExpression of unrecognized type ${innerExpression.type}")
+    if (resolvedParentType.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
+        // TODO: TypeInfo should contain info on natives
+        val structInfo = typeInfo.structs[resolvedParentType.entityRef] ?: getNativeStructInfo(resolvedParentType.entityRef.id) ?: error("Internal error: Resolution or type info")
+        val member = structInfo.members[expression.name]
+        if (member == null) {
+            fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
         }
+
+        // Type parameters come from the struct definition itself
+        // Chosen types come from the struct type known for the variable
+        val typeParameters = structInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
+        val chosenTypes = parentNamedType.getParameterizedTypes()
+        val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
+        //TODO: Ground this if needed
+
+        return TypedExpression.Follow(type, innerExpression, expression.name)
     }
 
-    val resolvedParentInterfaceType = typeInfo.resolver.resolveInterface(parentNamedType.id)
-    if (resolvedParentInterfaceType != null) {
-        val interfac = typeInfo.interfaces[resolvedParentInterfaceType] ?: getNativeInterfaceInfo(resolvedParentInterfaceType.id)
-        if (interfac != null) {
-            val interfaceType = parentNamedType
-            val method = interfac.methods[expression.name]
-            if (method == null) {
-                fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
-            }
-
-            val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
-            val chosenTypes = interfaceType.getParameterizedTypes()
-            val type = parameterizeType(method.functionType, typeParameters, chosenTypes, resolvedParentInterfaceType.id)
-
-            return TypedExpression.Follow(type, innerExpression, expression.name)
+    if (resolvedParentType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
+        val interfac = typeInfo.interfaces[resolvedParentType.entityRef] ?: getNativeInterfaceInfo(resolvedParentType.entityRef.id) ?: error("Internal error: Resolution or type info")
+        val interfaceType = parentNamedType
+        val method = interfac.methods[expression.name]
+        if (method == null) {
+            fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
         }
+
+        val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
+        val chosenTypes = interfaceType.getParameterizedTypes()
+        val type = parameterizeType(method.functionType, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
+
+        return TypedExpression.Follow(type, innerExpression, expression.name)
     }
 
     fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of a type $parentNamedType that is not recognized as a struct or interface")
@@ -305,7 +300,7 @@ private fun validateExpressionFunctionCallExpression(expression: Expression.Expr
 
 private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {
     val functionRef = expression.functionRef
-    val functionResolvedRef = typeInfo.resolver.resolveFunction(functionRef)
+    val functionResolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("The function $containingFunctionId references a function $functionRef that was not found")
 
     val arguments = ArrayList<TypedExpression>()
     expression.arguments.forEach { untypedArgument ->
@@ -314,8 +309,8 @@ private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunc
     }
     val argumentTypes = arguments.map(TypedExpression::type)
 
-    val signature = typeInfo.allFunctionTypeSignatures[functionResolvedRef] ?: if (functionRef.moduleRef == null) {
-        getNativeFunctionDefinitions()[functionRef.id]
+    val signature = typeInfo.allFunctionTypeSignatures[functionResolvedRef.entityRef] ?: if (isNativeModule(functionResolvedRef.entityRef.module)) {
+        getAllNativeFunctionLikeDefinitions()[functionRef.id]
     } else {
         null
     }
@@ -490,7 +485,17 @@ private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId
     val results = HashMap<ResolvedEntityRef, TypeSignature>()
 
     upstreamModules.forEach { module ->
-        results.putAll(module.getAllInternalFunctionSignatures().mapKeys { (id, _) -> ResolvedEntityRef(module.id, id) })
+//        results.putAll(module.getAllInternalFunctionSignatures().mapKeys { (id, _) -> ResolvedEntityRef(module.id, id) })
+        module.getAllInternalFunctions().forEach { id, function ->
+            results.put(ResolvedEntityRef(module.id, id), function.toTypeSignature())
+        }
+        module.getAllInternalStructs().forEach { (id, struct) ->
+            results.put(ResolvedEntityRef(module.id, id), struct.getConstructorSignature())
+        }
+        module.getAllInternalInterfaces().forEach { id, interfac ->
+            results.put(ResolvedEntityRef(module.id, id), interfac.getInstanceConstructorSignature())
+            results.put(ResolvedEntityRef(module.id, interfac.adapterId), interfac.getAdapterConstructorSignature())
+        }
     }
     results.putAll(ownFunctionTypeSignatures.mapKeys { (id, _) -> ResolvedEntityRef(ownModuleId, id) })
 

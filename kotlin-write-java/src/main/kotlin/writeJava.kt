@@ -20,6 +20,8 @@ import javax.lang.model.element.Modifier
  * - Preprocess to identify places where Sequence.first() calls should be turned into while loops
  * - Add variables to the scope in more places (and remove when finished)
  * - This definitely has remaining bugs
+ *
+ * - Do we support multiple modules or require flattening to a single module?
  */
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
@@ -200,7 +202,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                         }
                     }
 
-                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionId)
+                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionRef)
                     val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters, callArgs)
                     methodBuilder.addStatement("return \$L", functionCall)
                 }
@@ -367,8 +369,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
-        if (semlangType.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
-            val count = typeVariablesCount[semlangType.id.namespacedName.last()]
+        if (semlangType.ref.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
+            val count = typeVariablesCount[semlangType.ref.id.namespacedName.last()]
             return count != null && count > 0
         }
         return false
@@ -417,7 +419,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> {
-                val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
+                val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionRef)
                 functionCallStrategy.apply(expression.chosenParameters, expression.arguments)
             }
             is TypedExpression.ExpressionFunctionCall -> {
@@ -443,14 +445,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Special sauce...
         val type = expression.expression.type
         if (type is Type.NamedType) {
-            if (type.id == NativeStruct.UNICODE_STRING.id) {
+            if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 if (expression.name != "value") {
                     error("...")
                 }
                 // Special handling
                 val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
                 return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.expression))
-            } else if (type.id == NativeStruct.UNICODE_CODE_POINT.id) {
+            } else if (type.ref.id == NativeStruct.UNICODE_CODE_POINT.id) {
                 if (expression.name != "value") {
                     error("...")
                 }
@@ -492,20 +494,41 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
-        val functionId = expression.functionId
-        val signature = module.getInternalFunctionSignature(functionId)?.function ?: getNativeFunctionDefinitions()[functionId] ?: error("Signature not found for $functionId")
+        val functionRef = expression.functionRef
+
+        val resolved = module.resolve(functionRef) ?: error("Could not resolve $functionRef")
+        // TODO: Put this in the module itself?
+        val signature = when (resolved.type) {
+            FunctionLikeType.NATIVE_FUNCTION -> {
+                getNativeFunctionOnlyDefinitions()[resolved.entityRef.id] ?: error("Resolution error")
+            }
+            FunctionLikeType.FUNCTION -> {
+                module.getInternalFunction(resolved.entityRef).function.toTypeSignature()
+            }
+            FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                module.getInternalStruct(resolved.entityRef).struct.getConstructorSignature()
+            }
+            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
+                module.getInternalInterface(resolved.entityRef).interfac.getInstanceConstructorSignature()
+            }
+            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
+                module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
+            }
+        }
+//        val signature = module.getInternalFunctionSignature(functionRef)?.function ?: getAllNativeFunctionLikeDefinitions()[functionRef] ?: error("Signature not found for $functionRef")
         // TODO: Be able to get this for native functions, as well (put in signatures, probably)
-        val referencedFunction = module.getInternalFunction(functionId)
+//        val referencedFunction = module.getInternalFunction(resolved)
 
         // TODO: More compact references when not binding arguments
-        val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
+        val functionCallStrategy = getNamedFunctionCallStrategy(functionRef)
 
         val unboundArgumentNames = ArrayList<String>()
         val arguments = ArrayList<TypedExpression>()
         // Lambda expression
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
-                val argumentName = ensureUnusedVariable(if (referencedFunction != null) {
+                val argumentName = ensureUnusedVariable(if (resolved.type == FunctionLikeType.FUNCTION) {
+                    val referencedFunction = module.getInternalFunction(resolved.entityRef)
                     referencedFunction.function.arguments[index].name
                 } else {
                     // TODO: Pick better names based on types
@@ -559,6 +582,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     // This gets populated early on in the write() method.
     val namedFunctionCallStrategies = HashMap<EntityId, FunctionCallStrategy>()
 
+    private fun getNamedFunctionCallStrategy(functionRef: EntityRef): FunctionCallStrategy {
+        // TODO: Currently we pretend other modules don't exist
+        return getNamedFunctionCallStrategy(functionRef.id)
+    }
     private fun getNamedFunctionCallStrategy(functionId: EntityId): FunctionCallStrategy {
         val cached = namedFunctionCallStrategies[functionId]
         if (cached != null) {
@@ -586,9 +613,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val followedExpression = expression.expression
             val followedExpressionType = followedExpression.type
             if (followedExpressionType is Type.NamedType) {
-                val followedInterface = module.getInternalInterface(followedExpressionType.id) ?: getNativeInterfaces()[followedExpressionType.id]
-                if (followedInterface != null) {
-                    return object: FunctionCallStrategy {
+                val resolvedFollowedType = module.resolve(followedExpressionType.ref)
+                // TODO: I don't think this handles native interfaces?
+                if (resolvedFollowedType != null && resolvedFollowedType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
+//                    val followedInterface = module.getInternalInterface(resolvedFollowedType.entityRef) // ?: getNativeInterfaces()[followedExpressionType.ref]
+                    return object : FunctionCallStrategy {
                         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                             return CodeBlock.of("\$L.\$L(\$L)", writeExpression(followedExpression), expression.name, getArgumentsBlock(arguments))
                         }
@@ -633,7 +662,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
-                if (type.id == NativeStruct.UNICODE_STRING.id) {
+                if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                    return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
                 }
                 error("Named type literals not supported")
@@ -665,30 +694,27 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
         if (isInTypeParameterScope(semlangType)) {
-            return TypeVariableName.get(semlangType.id.namespacedName.last())
+            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
         }
 
-        if (semlangType.id.namespacedName.last() == "Adapter") {
-            val parts = semlangType.id.namespacedName.dropLast(1)
-            if (parts.isNotEmpty()) {
-                val interfaceId = EntityId(semlangType.id.moduleRef, parts)
-                val interfac = module.getInternalInterface(interfaceId)
-                if (interfac != null) {
-                    val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
-                    val dataTypeParameter = getType(semlangType.parameters[0])
-                    val otherParameters = semlangType.parameters.drop(1).map{t -> getType(t)}
-                    val bareInterfaceName = getStructClassName(interfaceId)
-                    val interfaceJavaName = if (otherParameters.isEmpty()) {
-                        bareInterfaceName
-                    } else {
-                        ParameterizedTypeName.get(bareInterfaceName, *otherParameters.toTypedArray())
-                    }
-                    return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
-                }
+        //TODO: Resolve beforehand, not after (part of multi-module support (?))
+        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.ref)
+        if (interfaceRef != null) {
+            val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
+//            val interfac = module.getInternalInterface(module.resolve(interfaceRef)?.entityRef ?: error("error"))
+            val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
+            val dataTypeParameter = getType(semlangType.parameters[0])
+            val otherParameters = semlangType.parameters.drop(1).map { t -> getType(t) }
+            val bareInterfaceName = getStructClassName(interfaceId)
+            val interfaceJavaName = if (otherParameters.isEmpty()) {
+                bareInterfaceName
+            } else {
+                ParameterizedTypeName.get(bareInterfaceName, *otherParameters.toTypedArray())
             }
+            return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
         }
 
-        val predefinedClassName: ClassName? = when (semlangType.id.namespacedName) {
+        val predefinedClassName: ClassName? = when (semlangType.ref.id.namespacedName) {
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
@@ -699,7 +725,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.ref.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
