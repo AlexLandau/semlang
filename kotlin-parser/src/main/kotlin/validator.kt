@@ -38,7 +38,7 @@ fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion:
 }
 
 private fun collectTypeInfo(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): AllTypeInfo {
-    val resolver = TypeResolver2.create(moduleId,
+    val resolver = EntityResolver.create(moduleId,
             nativeModuleVersion,
             context.functions.map(Function::id),
             context.structs.map(UnvalidatedStruct::id),
@@ -85,7 +85,7 @@ private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Typ
 private data class StructTypeInfo(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean)
 private data class InterfaceTypeInfo(val typeParameters: List<String>, val methods: Map<String, Method>)
 
-private data class AllTypeInfo(val resolver: TypeResolver2, val allFunctionTypeSignatures: Map<ResolvedEntityRef, TypeSignature>, val structs: Map<ResolvedEntityRef, StructTypeInfo>, val interfaces: Map<ResolvedEntityRef, InterfaceTypeInfo>)
+private data class AllTypeInfo(val resolver: EntityResolver, val allFunctionTypeSignatures: Map<ResolvedEntityRef, TypeSignature>, val structs: Map<ResolvedEntityRef, StructTypeInfo>, val interfaces: Map<ResolvedEntityRef, InterfaceTypeInfo>)
 
 private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedBlock {
     val variableTypes = HashMap(externalVariableTypes)
@@ -446,7 +446,6 @@ private fun validateStruct(struct: UnvalidatedStruct, typeInfo: AllTypeInfo): St
     validateMemberNames(struct)
     val memberTypes = struct.members.associate { member -> member.name to member.type }
 
-//    val fakeContainingFunctionId = EntityId(struct.id.toPackage(), "requires")
     val fakeContainingFunctionId = EntityId(struct.id.namespacedName + "requires")
     val requires = struct.requires?.let { validateBlock(it, memberTypes, typeInfo, fakeContainingFunctionId) }
     if (requires != null && requires.type != Type.BOOLEAN) {
@@ -481,11 +480,9 @@ private fun getFunctionSignature(function: Function): TypeSignature {
 private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId, TypeSignature>,
                                          ownModuleId: ModuleId,
                                          upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeSignature> {
-//    return getAllEntities(ownFunctionTypeSignatures, ValidatedModule::getAllInternalFunctionSignatures, upstreamModules)
     val results = HashMap<ResolvedEntityRef, TypeSignature>()
 
     upstreamModules.forEach { module ->
-//        results.putAll(module.getAllInternalFunctionSignatures().mapKeys { (id, _) -> ResolvedEntityRef(module.id, id) })
         module.getAllInternalFunctions().forEach { id, function ->
             results.put(ResolvedEntityRef(module.id, id), function.toTypeSignature())
         }

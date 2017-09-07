@@ -3,36 +3,6 @@ package net.semlang.api
 import java.util.ArrayList
 import java.util.regex.Pattern
 
-//data class Package(val strings: List<String>) {
-//    companion object {
-//        val EMPTY = Package(listOf())
-//    }
-//
-//    override fun toString(): String {
-//        return strings.joinToString(".")
-//    }
-//}
-//TODO: Currently this plays double duty as the ID for functions and structs. We may want to make this a more general
-// "EntityId" type, or some such. (Other concepts like interfaces and annotations will probably use the same type.)
-//data class FunctionId(val thePackage: Package, val functionName: String) {
-//    companion object {
-//        fun of(name: String): FunctionId {
-//            return FunctionId(Package.EMPTY, name)
-//        }
-//    }
-//    fun toPackage(): Package {
-//        return Package(thePackage.strings + functionName)
-//    }
-//
-//    override fun toString(): String {
-//        if (thePackage.strings.isEmpty()) {
-//            return functionName;
-//        } else {
-//            return thePackage.toString() + "." + functionName
-//        }
-//    }
-//}
-
 private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z]+)*")
 
 data class ModuleId(val group: String, val module: String, val version: String) {
@@ -102,7 +72,9 @@ data class EntityId(val namespacedName: List<String>) {
         return EntityRef(null, this)
     }
 }
-// Note: These should usually not be used as keys in a map; use ResolvedEntityRefs from an EntityResolver instead.
+/**
+ * Note: These should usually not be used as keys in a map; use ResolvedEntityRefs from an EntityResolver instead.
+ */
 data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
     companion object {
         fun of(vararg names: String): EntityRef {
@@ -118,8 +90,6 @@ data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
         }
     }
 }
-// TODO: Rename these? Use in more places?
-// TODO: I'm not sure yet if we'll be using originalHints anywhere (perhaps in writer)
 data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
     override fun toString(): String {
         return "${module.group}:${module.module}:${module.version}:$id"
@@ -131,139 +101,11 @@ interface ParameterizableType {
     fun getParameterizedTypes(): List<Type>
 }
 
-//interface ParameterizableUncheckedType {
-//    fun getParameterizedTypes(): List<UncheckedType>
-//}
-//
-//private fun replaceParametersU(parameters: List<UncheckedType>, parameterMap: Map<UncheckedType, UncheckedType>): List<UncheckedType> {
-//    return parameters.map { type ->
-//        parameterMap.getOrElse(type, fun (): UncheckedType {return type})
-//    }
-//}
-
 private fun replaceParameters(parameters: List<Type>, parameterMap: Map<Type, Type>): List<Type> {
     return parameters.map { type ->
         parameterMap.getOrElse(type, fun (): Type {return type})
     }
 }
-
-// TODO: Hopefully some of this will be unused cruft...
-//sealed class UncheckedType {
-//    abstract fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType
-//    abstract protected fun getTypeString(): String
-//    override fun toString(): String {
-//        return getTypeString()
-//    }
-//
-//    object INTEGER : UncheckedType() {
-//        override fun getTypeString(): String {
-//            return "Integer"
-//        }
-//
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return this
-//        }
-//    }
-//    object NATURAL : UncheckedType() {
-//        override fun getTypeString(): String {
-//            return "Natural"
-//        }
-//
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return this
-//        }
-//    }
-//    object BOOLEAN : UncheckedType() {
-//        override fun getTypeString(): String {
-//            return "Boolean"
-//        }
-//
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return this
-//        }
-//    }
-//
-//    data class List(val parameter: UncheckedType): UncheckedType() {
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return List(parameter.replacingParameters(parameterMap))
-//        }
-//
-//        override fun getTypeString(): String {
-//            return "List<$parameter>"
-//        }
-//
-//        override fun toString(): String {
-//            return getTypeString()
-//        }
-//    }
-//
-//    data class Try(val parameter: UncheckedType): UncheckedType() {
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return Try(parameter.replacingParameters(parameterMap))
-//        }
-//
-//        override fun getTypeString(): String {
-//            return "Try<$parameter>"
-//        }
-//
-//        override fun toString(): String {
-//            return getTypeString()
-//        }
-//    }
-//
-//    data class FunctionType(val argTypes: kotlin.collections.List<UncheckedType>, val outputType: UncheckedType): UncheckedType() {
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-//                    outputType.replacingParameters(parameterMap))
-//        }
-//
-//        override fun getTypeString(): String {
-//            return "(" +
-//                    argTypes.joinToString(", ") +
-//                    ") -> " +
-//                    outputType.toString()
-//        }
-//
-//        override fun toString(): String {
-//            return getTypeString()
-//        }
-//    }
-//
-//    //TODO: In the validator, validate that it does not share a name with a default type
-//    data class NamedType(val id: EntityRef, val parameters: kotlin.collections.List<UncheckedType> = listOf()): UncheckedType(), ParameterizableUncheckedType {
-//        companion object {
-//            fun forParameter(name: String): NamedType {
-//                return NamedType(EntityRef.of(name), listOf())
-//            }
-//        }
-//        override fun replacingParameters(parameterMap: Map<UncheckedType, UncheckedType>): UncheckedType {
-//            val replacement = parameterMap[this]
-//            if (replacement != null) {
-//                // TODO: Should this have replaceParameters applied to it?
-//                return replacement
-//            }
-//            return NamedType(id,
-//                    replaceParametersU(parameters, parameterMap))
-//        }
-//
-//        override fun getParameterizedTypes(): kotlin.collections.List<UncheckedType> {
-//            return parameters
-//        }
-//
-//        override fun getTypeString(): String {
-//            return id.toString() +
-//                    if (parameters.isEmpty()) {
-//                        ""
-//                    } else {
-//                        "<" + parameters.joinToString(", ") + ">"
-//                    }
-//        }
-//
-//        override fun toString(): String {
-//            return super.toString()
-//        }
-//    }
-//}
 
 sealed class Type {
     abstract fun replacingParameters(parameterMap: Map<Type, Type>): Type
@@ -557,10 +399,6 @@ fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
     return null
 }
 fun getAdapterIdForInterfaceId(interfaceId: EntityId): EntityId {
-//    if (adapterId.namespacedName.size > 1 && adapterId.namespacedName.last() == "Adapter") {
-//        return EntityId(adapterId.namespacedName.dropLast(1))
-//    }
-//    return null
     return EntityId(interfaceId.namespacedName + "Adapter")
 }
 fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {

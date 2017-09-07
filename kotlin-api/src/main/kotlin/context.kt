@@ -10,149 +10,14 @@ data class FunctionSignatureWithModule(val function: TypeSignature, val module: 
 data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
 data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
 
-/**
- * Note: For modules other than our own, the EntityIds should be only those that are exported.
- */
-// TODO: Currently this assumes the native module ID corresponds to our current set of native constructs.
-// When we have some notion of backwards-compatibility for semlang native modules, this will no longer be
-// the case.
-//class TypeResolver(val nativeModuleId: ModuleId,
-//                   val functionIds: Map<ModuleId, Set<EntityId>>,
-//                   val structIds: Map<ModuleId, Set<EntityId>>,
-//                   val interfaceIds: Map<ModuleId, Set<EntityId>>) {
-//    companion object {
-//        fun create(id: ModuleId,
-//                   nativeModuleVersion: String,
-//                   ownFunctions: Collection<EntityId>,
-//                   ownStructs: Collection<EntityId>,
-//                   ownInterfaces: Collection<EntityId>,
-//                   upstreamModules: Collection<ValidatedModule>): TypeResolver {
-//            val nativeModuleId = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, nativeModuleVersion)
-//
-//            val functionIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            functionIds.put(id, HashSet<EntityId>())
-//            functionIds[id]!!.addAll(ownFunctions)
-//
-//            val structIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            structIds.put(id, HashSet<EntityId>())
-//            structIds[id]!!.addAll(ownStructs)
-//
-//            val interfaceIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            interfaceIds.put(id, HashSet<EntityId>())
-//            interfaceIds[id]!!.addAll(ownInterfaces)
-//
-//            upstreamModules.forEach { module ->
-//                functionIds.put(module.id, HashSet<EntityId>())
-//                functionIds[module.id]!!.addAll(module.getAllExportedFunctions().keys)
-//                structIds.put(module.id, HashSet<EntityId>())
-//                structIds[module.id]!!.addAll(module.getAllExportedStructs().keys)
-//                interfaceIds.put(module.id, HashSet<EntityId>())
-//                interfaceIds[module.id]!!.addAll(module.getAllExportedInterfaces().keys)
-//            }
-//            return TypeResolver(nativeModuleId, functionIds, structIds, interfaceIds)
-//        }
-//    }
-//
-//    fun resolveFunction(ref: EntityRef): ResolvedEntityRef? {
-//        return resolveEntity(ref, getNativeFunctionDefinitions(), functionIds)
-//    }
-//    fun resolveStruct(ref: EntityRef): ResolvedEntityRef? {
-//        System.out.println("Resolving structs for $ref")
-//        return resolveEntity(ref, getNativeStructs(), structIds)
-//    }
-//    fun resolveInterface(ref: EntityRef): ResolvedEntityRef? {
-//        return resolveEntity(ref, getNativeInterfaces(), interfaceIds)
-//    }
-//    fun <T> resolveEntity(ref: EntityRef,
-//                          nativeEntitiesOfType: Map<EntityId, T>,
-//                          entitiesOfType: Map<ModuleId, Set<EntityId>>): ResolvedEntityRef? {
-//        val ref = resolveInternalRef(ref)
-//        if (ref != null) {
-//            if (isNativeModule(ref.module)) {
-//                return if (nativeEntitiesOfType[ref.id] != null) {
-//                    System.out.println("Native entities of type was non-null")
-//                    ref
-//                } else {
-//                    null
-//                }
-//            }
-//            val entitiesOfTypeInModule = entitiesOfType[ref.module]
-//            if (entitiesOfTypeInModule != null
-//                    && entitiesOfTypeInModule.contains(ref.id)) {
-//                return ref
-//            }
-//        }
-//        return null
-//    }
-//
-//    // TODO: There is a version of this where this all happens during validation...
-//    private fun resolveInternalRef(entityRef: EntityRef): ResolvedEntityRef? {
-//        val containingModuleIds = getContainingModules(entityRef.id)
-//        if (entityRef.moduleRef == null) {
-//            return resolveToOnlyModule(containingModuleIds, entityRef)
-//        } else if (entityRef.moduleRef.group == null) {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module }
-//            return resolveToOnlyModule(filtered, entityRef)
-//        } else if (entityRef.moduleRef.version == null) {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module
-//                    && id.group == entityRef.moduleRef.group}
-//            return resolveToOnlyModule(filtered, entityRef)
-//        } else {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module
-//                    && id.group == entityRef.moduleRef.group
-//                    && id.version == entityRef.moduleRef.version}
-//            return resolveToOnlyModule(filtered, entityRef)
-//        }
-//    }
-//
-//    // Note: The ID shouldn't be an adapter ID; instead, use the ID for the corresponding interface.
-//    // TODO: What about native methods?
-//    // TODO: Cache and/or precompute these
-//    private fun getContainingModules(id: EntityId): Set<ModuleId> {
-//        val containingModules = HashSet<ModuleId>()
-//
-//        // TODO: There's a slight error here with adapters... (test "Sequence.Adapter.Adapter" type reference?)
-//        if (getNativeFunctionDefinitions()[id] != null) {
-//            containingModules.add(nativeModuleId)
-//        }
-//        for (idsMap in listOf(functionIds, structIds, interfaceIds)) {
-//            for ((moduleId, entityIds) in idsMap.entries) {
-//                if (entityIds.contains(id)) {
-//                    containingModules.add(moduleId)
-//                }
-//            }
-//        }
-//
-//        return containingModules
-//    }
-//
-//    private fun resolveToOnlyModule(containingModuleIds: Collection<ModuleId>, entityRef: EntityRef): ResolvedEntityRef? {
-//        if (containingModuleIds.size == 1) {
-//            return ResolvedEntityRef(containingModuleIds.single(), entityRef.id)
-//        } else if (containingModuleIds.size == 0) {
-//            return null
-//        } else {
-//            error("Expected only one module to have ID ${entityRef}, but found ${containingModuleIds.size}: $containingModuleIds")
-//        }
-//    }
-//
-//    fun resolveFunctionLike(ref: EntityRef): EntityResolution? {
-//        // TODO: This seems like something we should figure out earlier...
-////        val resolvedRef = resolveInternalRef(ref)
-//        // Then figure out the type?
-//    }
-//}
-
-class TypeResolver2(//val nativeModuleId: ModuleId,
-                    private val idResolutions: Map<EntityId, Set<EntityResolution>>) {
+class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResolution>>) {
     companion object {
         fun create(ownModuleId: ModuleId,
                    nativeModuleVersion: String, // TODO: This is unused
                    ownFunctions: Collection<EntityId>,
                    ownStructs: Collection<EntityId>,
                    ownInterfaces: Collection<EntityId>,
-                   upstreamModules: Collection<ValidatedModule>): TypeResolver2 {
-//            val nativeModuleId = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, nativeModuleVersion)
+                   upstreamModules: Collection<ValidatedModule>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
             val add = fun(id: EntityId, moduleId: ModuleId, type: FunctionLikeType) {
@@ -162,7 +27,6 @@ class TypeResolver2(//val nativeModuleId: ModuleId,
                 idResolutions[id]!!.add(EntityResolution(ResolvedEntityRef(moduleId, id), type))
             }
 
-            // TODO: Add natives
             // TODO: Add different things based on the native version in use
             getNativeFunctionOnlyDefinitions().keys.forEach { id ->
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.NATIVE_FUNCTION)
@@ -175,23 +39,14 @@ class TypeResolver2(//val nativeModuleId: ModuleId,
                 add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR)
             }
 
-//            val functionIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            functionIds.put(id, HashSet<EntityId>())
-//            functionIds[id]!!.addAll(ownFunctions)
             ownFunctions.forEach { id ->
                 add(id, ownModuleId, FunctionLikeType.FUNCTION)
             }
 
-//            val structIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            structIds.put(id, HashSet<EntityId>())
-//            structIds[id]!!.addAll(ownStructs)
             ownStructs.forEach { id ->
                 add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR)
             }
 
-//            val interfaceIds = HashMap<ModuleId, MutableSet<EntityId>>()
-//            interfaceIds.put(id, HashSet<EntityId>())
-//            interfaceIds[id]!!.addAll(ownInterfaces)
             ownInterfaces.forEach { id ->
                 add(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR)
                 add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR)
@@ -208,14 +63,8 @@ class TypeResolver2(//val nativeModuleId: ModuleId,
                     add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR)
                     add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR)
                 }
-//                functionIds.put(module.id, HashSet<EntityId>())
-//                functionIds[module.id]!!.addAll(module.getAllExportedFunctions().keys)
-//                structIds.put(module.id, HashSet<EntityId>())
-//                structIds[module.id]!!.addAll(module.getAllExportedStructs().keys)
-//                interfaceIds.put(module.id, HashSet<EntityId>())
-//                interfaceIds[module.id]!!.addAll(module.getAllExportedInterfaces().keys)
             }
-            return TypeResolver2(idResolutions)
+            return EntityResolver(idResolutions)
         }
     }
 
@@ -270,7 +119,7 @@ class ValidatedModule private constructor(val id: ModuleId,
             }
         }
     }
-    private val resolver = TypeResolver2.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.keys, ownInterfaces.keys, upstreamModules.values)
+    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.keys, ownInterfaces.keys, upstreamModules.values)
 
     companion object {
         fun create(id: ModuleId,
@@ -311,61 +160,14 @@ class ValidatedModule private constructor(val id: ModuleId,
         }
     }
 
-    // TODO: There is a version of this where this all happens during validation...
-//    private fun resolveInternalRef(entityRef: EntityRef): ResolvedEntityRef? {
-//        val containingModuleIds = getContainingModules(entityRef.id)
-//        if (entityRef.moduleRef == null) {
-//            return resolveToOnlyModule(containingModuleIds, entityRef)
-//        } else if (entityRef.moduleRef.group == null) {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module }
-//            return resolveToOnlyModule(filtered, entityRef)
-//        } else if (entityRef.moduleRef.version == null) {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module
-//                    && id.group == entityRef.moduleRef.group}
-//            return resolveToOnlyModule(filtered, entityRef)
-//        } else {
-//            val filtered = containingModuleIds.filter { id -> id.module == entityRef.moduleRef.module
-//                    && id.group == entityRef.moduleRef.group
-//                    && id.version == entityRef.moduleRef.version}
-//            return resolveToOnlyModule(filtered, entityRef)
-//        }
-//    }
-
-//    private fun resolveToOnlyModule(containingModuleIds: Collection<ModuleId>, entityRef: EntityRef): ResolvedEntityRef? {
-//        if (containingModuleIds.size == 1) {
-//            return ResolvedEntityRef(containingModuleIds.single(), entityRef.id)
-//        } else if (containingModuleIds.size == 0) {
-//            return null
-//        } else {
-//            error("Expected only one module to have ID ${entityRef}, but found ${containingModuleIds.size}: $containingModuleIds")
-//        }
-//    }
-//
-//    // Note: The ID shouldn't be an adapter ID; instead, use the ID for the corresponding interface.
-//    private fun getContainingModules(id: EntityId): Set<ModuleId> {
-//        val containingModules = HashSet<ModuleId>()
-//        if (ownFunctions.containsKey(id) || ownStructs.containsKey(id) || ownInterfaces.containsKey(id)) {
-//            containingModules.add(this.id)
-//        }
-//        upstreamModules.values.forEach { module ->
-//            if (module.getExportedFunction(id) != null
-//                    || module.getExportedStruct(id) != null
-//                    || module.getExportedInterface(id) != null) {
-//                containingModules.add(module.id)
-//            }
-//        }
-//        return containingModules
-//    }
-
-    // TODO: We don't actually want to be returning a Function when this is native!
     fun getInternalFunction(functionRef: ResolvedEntityRef): FunctionWithModule {
         val moduleId = functionRef.module
         if (moduleId == this.id) {
             return FunctionWithModule(ownFunctions[functionRef.id] ?: error("Expected ${functionRef.id} to be a function, but it's not"), this)
         }
 
-        if (moduleId == null) {
-            // Native
+        if (isNativeModule(moduleId)) {
+            error("Can't get Function objects for native functions")
         }
 
         val module = upstreamModules[moduleId] ?: error("Error in resolving $functionRef")
@@ -473,25 +275,6 @@ class ValidatedModule private constructor(val id: ModuleId,
         return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
     }
 
-//    fun getAllInternalFunctionSignatures(): Map<EntityId, TypeSignature> {
-//        val allFunctionSignatures = HashMap<EntityId, TypeSignature>()
-//
-//        allFunctionSignatures.putAll(getOwnFunctionSignatures())
-//
-//        for (module in upstreamModules.values) {
-//            allFunctionSignatures.putAll(module.getAllExportedFunctionSignatures())
-//        }
-//        return allFunctionSignatures
-//    }
-
-    private fun getOwnFunctionSignatures(): Map<EntityId, TypeSignature> {
-        return toFunctionSignatures(ownFunctions, ownStructs, ownInterfaces)
-    }
-
-//    private fun getAllExportedFunctionSignatures(): Map<EntityId, TypeSignature> {
-//        return toFunctionSignatures(getAllExportedFunctions(), getAllExportedStructs(), getAllExportedInterfaces())
-//    }
-
     private fun toFunctionSignatures(functions: Map<EntityId, ValidatedFunction>,
                                      structs: Map<EntityId, Struct>,
                                      interfaces: Map<EntityId, Interface>): Map<EntityId, TypeSignature> {
@@ -518,50 +301,6 @@ class ValidatedModule private constructor(val id: ModuleId,
         val interfaceRef = ResolvedEntityRef(adapterRef.module, interfaceId)
         return getInternalInterface(interfaceRef)
     }
-
-//    fun getInternalFunctionSignature(functionRef: EntityRef): FunctionSignatureWithModule? {
-//        val function = getInternalFunctionSignatureForFunction(functionRef)
-//        if (function != null) {
-//            return FunctionSignatureWithModule(function.function, function.module)
-//        }
-//
-//        val struct = getInternalStruct(functionRef)
-//        if (struct != null) {
-//            return FunctionSignatureWithModule(struct.struct.getConstructorSignature(), struct.module)
-//        }
-//
-//        val interfac = getInternalInterface(functionRef)
-//        if (interfac != null) {
-//            return FunctionSignatureWithModule(interfac.interfac.getInstanceConstructorSignature(), interfac.module)
-//        }
-//
-//        val adapter = getInternalInterfaceByAdapterId(functionRef)
-//        if (adapter != null) {
-//            return FunctionSignatureWithModule(adapter.interfac.getAdapterConstructorSignature(), adapter.module)
-//        }
-//        return null
-//    }
-//
-//    private fun getInternalFunctionSignatureForFunction(functionRef: EntityRef): FunctionSignatureWithModule? {
-//        val resolved = resolver.resolveFunction(functionRef)
-//        if (resolved == null) {
-//            return null
-//        }
-//        if (resolved.module == this.id) {
-//            return FunctionSignatureWithModule((ownFunctions[resolved.id] ?: error("Expected ${resolved.id} to be a function, but it's not")).toTypeSignature(), this.id)
-//        }
-//
-//        if (isNativeModule(resolved.module)) {
-//            // TODO: Something we'll have to fix for native module back-compat
-//            return FunctionSignatureWithModule(getNativeFunctionDefinitions()[resolved.id] ?: error("Error in resolving $resolved"),
-//                    resolved.module)
-//        }
-//
-//        val module = upstreamModules[resolved.module] ?: error("Error in resolving $resolved")
-//        return module.getExportedFunction(functionRef.id)?.let {
-//            FunctionSignatureWithModule(it.function.toTypeSignature(), it.module)
-//        }
-//    }
 
     fun resolve(ref: EntityRef): EntityResolution? {
         return resolver.resolve(ref)
