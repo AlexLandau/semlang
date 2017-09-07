@@ -2,9 +2,14 @@ package net.semlang.api
 
 import java.util.*
 
-// TODO: Maybe rename FunctionSignature?
-//data class UncheckedTypeSignature(override val id: EntityId, val argumentTypes: List<UncheckedType>, val outputType: UncheckedType, val typeParameters: List<UncheckedType> = listOf()): HasId
-data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasId
+val NATIVE_MODULE_GROUP = "semlang"
+val NATIVE_MODULE_NAME = "lang"
+val CURRENT_NATIVE_MODULE_VERSION = "0.0.0"
+val CURRENT_NATIVE_MODULE_ID = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
+
+fun isNativeModule(module: ModuleId): Boolean {
+    return module.group == NATIVE_MODULE_GROUP && module.module == NATIVE_MODULE_NAME
+}
 
 /**
  * Note: This includes signatures for struct, instance, and adapter constructors.

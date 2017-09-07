@@ -175,7 +175,6 @@ private fun validateExpressionFunctionBinding(expression: Expression.ExpressionF
 private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {
     val functionRef = expression.functionRef
 
-    // ...
     val resolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
     val signature = typeInfo.allFunctionTypeSignatures[resolvedRef.entityRef] ?: getAllNativeFunctionLikeDefinitions()[resolvedRef.entityRef.id]
     if (signature == null) {
@@ -429,7 +428,7 @@ private fun getFunctionTypeSignatures(context: RawContext, upstreamModules: List
         if (signatures.containsKey(id)) {
             fail("Function name $id overlaps with a struct's or interface's constructor name, or with a native function")
         }
-        signatures.put(id, getFunctionSignature(function))
+        signatures.put(id, function.getTypeSignature())
     }
     return signatures
 }
@@ -470,13 +469,6 @@ private fun validateInterfaces(interfaces: List<Interface>, typeInfo: AllTypeInf
     return interfaces.associateBy(Interface::id)
 }
 
-// TODO: This should be a method on the Function
-private fun getFunctionSignature(function: Function): TypeSignature {
-    val argumentTypes = function.arguments.map(Argument::type)
-    val typeParameters = function.typeParameters.map { id -> Type.NamedType.forParameter(id) }
-    return TypeSignature(function.id, argumentTypes, function.returnType, typeParameters)
-}
-
 private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId, TypeSignature>,
                                          ownModuleId: ModuleId,
                                          upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeSignature> {
@@ -484,7 +476,7 @@ private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId
 
     upstreamModules.forEach { module ->
         module.getAllInternalFunctions().forEach { id, function ->
-            results.put(ResolvedEntityRef(module.id, id), function.toTypeSignature())
+            results.put(ResolvedEntityRef(module.id, id), function.getTypeSignature())
         }
         module.getAllInternalStructs().forEach { (id, struct) ->
             results.put(ResolvedEntityRef(module.id, id), struct.getConstructorSignature())

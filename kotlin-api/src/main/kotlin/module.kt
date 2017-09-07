@@ -1,6 +1,43 @@
 package net.semlang.api
 
 import java.util.*
+import java.util.regex.Pattern
+
+private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z]+)*")
+
+data class ModuleId(val group: String, val module: String, val version: String) {
+    init {
+        // TODO: Consider if these restrictions can/should be relaxed
+        for ((string, stringType) in listOf(group to "group",
+                module to "name",
+                version to "version"))
+            if (!LEGAL_MODULE_PATTERN.matcher(string).matches()) {
+                // TODO: Update explanation
+                throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
+            }
+    }
+
+    fun asRef(): ModuleRef {
+        return ModuleRef(group, module, version)
+    }
+}
+
+data class ModuleRef(val group: String?, val module: String, val version: String?) {
+    init {
+        if (group == null && version != null) {
+            error("Version may not be set unless group is also set")
+        }
+    }
+    override fun toString(): String {
+        if (version != null) {
+            return "$group:$module:$version"
+        } else if (group != null) {
+            return "$group:$module"
+        } else {
+            return module
+        }
+    }
+}
 
 data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
 
@@ -281,7 +318,7 @@ class ValidatedModule private constructor(val id: ModuleId,
         val allSignatures = HashMap<EntityId, TypeSignature>()
 
         for (function in functions.values) {
-            allSignatures.put(function.id, function.toTypeSignature())
+            allSignatures.put(function.id, function.getTypeSignature())
         }
 
         for (struct in structs.values) {

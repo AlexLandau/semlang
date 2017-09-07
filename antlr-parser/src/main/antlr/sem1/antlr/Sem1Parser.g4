@@ -92,9 +92,6 @@ type : entity_ref
   | LPAREN cd_types RPAREN ARROW type ;
 // cd_types is nonempty
 cd_types : type | type COMMA | type COMMA cd_types ;
-// A "simple type ID" has no type parameters
-// TODO: This is currently the same as function_id, could be deduplicated
-//simple_type_id : ID | packag DOT ID ;
 expression : IF LPAREN expression RPAREN block ELSE block
   | entity_ref DOT LITERAL
   | expression ARROW ID

@@ -38,6 +38,7 @@
   - Point is to establish this before considering add'l characters in variable names
   - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
+- Typealias
 - Code writing into Java
   - We should have some way to specify the exposed API, and check the inputs of these methods for e.g. Natural >= 0
   - Probably put all our code from one module into the same package

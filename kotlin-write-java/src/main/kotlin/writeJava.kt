@@ -503,7 +503,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 getNativeFunctionOnlyDefinitions()[resolved.entityRef.id] ?: error("Resolution error")
             }
             FunctionLikeType.FUNCTION -> {
-                module.getInternalFunction(resolved.entityRef).function.toTypeSignature()
+                module.getInternalFunction(resolved.entityRef).function.getTypeSignature()
             }
             FunctionLikeType.STRUCT_CONSTRUCTOR -> {
                 module.getInternalStruct(resolved.entityRef).struct.getConstructorSignature()
@@ -515,9 +515,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
             }
         }
-//        val signature = module.getInternalFunctionSignature(functionRef)?.function ?: getAllNativeFunctionLikeDefinitions()[functionRef] ?: error("Signature not found for $functionRef")
-        // TODO: Be able to get this for native functions, as well (put in signatures, probably)
-//        val referencedFunction = module.getInternalFunction(resolved)
 
         // TODO: More compact references when not binding arguments
         val functionCallStrategy = getNamedFunctionCallStrategy(functionRef)
@@ -528,6 +525,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
                 val argumentName = ensureUnusedVariable(if (resolved.type == FunctionLikeType.FUNCTION) {
+                    // TODO: Be able to get this for native functions, as well
                     val referencedFunction = module.getInternalFunction(resolved.entityRef)
                     referencedFunction.function.arguments[index].name
                 } else {

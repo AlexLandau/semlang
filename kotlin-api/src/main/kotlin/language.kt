@@ -1,52 +1,8 @@
 package net.semlang.api
 
 import java.util.ArrayList
-import java.util.regex.Pattern
 
-private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z]+)*")
 
-data class ModuleId(val group: String, val module: String, val version: String) {
-    init {
-        // TODO: Consider if these restrictions can/should be relaxed
-        for ((string, stringType) in listOf(group to "group",
-                module to "name",
-                version to "version"))
-            if (!LEGAL_MODULE_PATTERN.matcher(string).matches()) {
-                // TODO: Update explanation
-                throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
-            }
-    }
-
-    fun asRef(): ModuleRef {
-        return ModuleRef(group, module, version)
-    }
-}
-
-val NATIVE_MODULE_GROUP = "semlang"
-val NATIVE_MODULE_NAME = "lang"
-val CURRENT_NATIVE_MODULE_VERSION = "0.0.0"
-val CURRENT_NATIVE_MODULE_ID = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
-
-fun isNativeModule(module: ModuleId): Boolean {
-    return module.group == NATIVE_MODULE_GROUP && module.module == NATIVE_MODULE_NAME
-}
-
-data class ModuleRef(val group: String?, val module: String, val version: String?) {
-    init {
-        if (group == null && version != null) {
-            error("Version may not be set unless group is also set")
-        }
-    }
-    override fun toString(): String {
-        if (version != null) {
-            return "$group:$module:$version"
-        } else if (group != null) {
-            return "$group:$module"
-        } else {
-            return module
-        }
-    }
-}
 // An EntityId uniquely identifies an entity within a module. An EntityRef refers to an entity that may be in this
 // module or another, and may or may not have hints pointing to a particular module.
 data class EntityId(val namespacedName: List<String>) {
@@ -224,6 +180,9 @@ sealed class Type {
     }
 }
 
+// TODO: Maybe rename FunctionSignature?
+data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasId
+
 data class Position(val lineNumber: Int, val column: Int, val rawStart: Int, val rawEnd: Int)
 
 data class Annotation(val name: String, val value: String?)
@@ -274,9 +233,16 @@ data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>) : TopLevelEntity
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>) : TopLevelEntity {
+    fun getTypeSignature(): TypeSignature {
+        return TypeSignature(id,
+                arguments.map(Argument::type),
+                returnType,
+                typeParameters.map { str -> Type.NamedType.forParameter(str) })
+    }
+}
 data class ValidatedFunction(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
-    fun toTypeSignature(): TypeSignature {
+    fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
                 returnType,
@@ -325,7 +291,7 @@ data class Interface(override val id: EntityId, val typeParameters: List<String>
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
-    val adapterId: EntityId = EntityId(id.namespacedName + "Adapter")
+    val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val adapterStruct: Struct = Struct(adapterId, typeParameters, methods.map { method -> Member(method.name, method.functionType) }, null, listOf())
 
     fun getInstanceConstructorSignature(): TypeSignature {
@@ -390,8 +356,6 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType,
     return Type.FunctionType(argTypes, method.returnType)
 }
 
-// TODO: Use this where appropriate, colocate with reverse function
-// TODO: EntityId or EntityRef?
 fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
     if (adapterId.namespacedName.size > 1 && adapterId.namespacedName.last() == "Adapter") {
         return EntityId(adapterId.namespacedName.dropLast(1))

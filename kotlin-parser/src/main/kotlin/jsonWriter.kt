@@ -113,12 +113,6 @@ private fun parseEntityId(text: String): EntityId {
         error("")
     }
     return EntityId(parts)
-//    if (parts.size == 1) {
-//        return EntityId.of(parts[0])
-//    }
-//    val packageParts = parts.subList(0, parts.size - 1)
-//    val name = parts.last()
-//    return EntityId(Package(packageParts), name)
 }
 
 private fun parseMembers(node: JsonNode): List<Member> {
