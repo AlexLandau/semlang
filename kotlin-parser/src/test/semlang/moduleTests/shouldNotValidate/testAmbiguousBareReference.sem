@@ -1,0 +1,4 @@
+
+function testExportedByBoth(): Integer {
+    exportedByBoth()
+}

@@ -1,22 +1,20 @@
-package semlang.interpreter.test
+package net.semlang.interpreter.test
 
+import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
-import semlang.api.*
-import semlang.interpreter.SemObject
-import semlang.interpreter.SemlangForwardInterpreter
-import semlang.parser.parseFileAgainstStandardLibrary
-import semlang.parser.parseFileNamed
-import semlang.parser.validateContext
+import net.semlang.api.*
+import net.semlang.interpreter.SemObject
+import net.semlang.interpreter.SemlangForwardInterpreter
+import net.semlang.parser.parseFileNamed
+import net.semlang.parser.validateModule
 import java.math.BigInteger
-import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.*
 
 class ProjectEulerExamples {
-    private fun eulerDot(name: String): FunctionId {
-        return FunctionId(Package(listOf("euler")), name)
+    private fun eulerDot(name: String): EntityId {
+        return EntityId.of("euler", name)
     }
 
     @Test
@@ -37,8 +35,11 @@ class ProjectEulerExamples {
     }
 
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
-        val functionsMap2 = parseFileAgainstStandardLibrary(filename)
-        return SemlangForwardInterpreter(validateContext(functionsMap2, listOf(getNativeContext())))
+        val functionsMap2 = parseFileNamed(filename)
+
+        val standardLibraryContext = getDefaultLocalRepository().loadModule(ModuleId("semlang", "standard-library", "develop-test"))
+
+        return SemlangForwardInterpreter(validateModule(functionsMap2, ModuleId("semlang", "eulerTestFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)))
     }
 }
 

@@ -1,19 +1,14 @@
-package semlang.parser.test
+package net.semlang.parser.test
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import fromJson
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
+import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedModule
+import net.semlang.parser.*
 import org.junit.Assert
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.ValidatedContext
-import semlang.api.getNativeContext
-import semlang.parser.parseFile
-import semlang.parser.parseString
-import semlang.parser.validateContext
-import toJson
-import writeToString
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -44,7 +39,7 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(writtenToString)
         System.out.println("(End contents)")
         val reparsed = parseAndValidateString(writtenToString)
-        assertContextsEqual(initiallyParsed, reparsed)
+        assertModulesEqual(initiallyParsed, reparsed)
     }
 
     @Test
@@ -55,18 +50,18 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(ObjectMapper().writeValueAsString(asJson))
         System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateContext(fromJson, listOf(getNativeContext()))
-        assertContextsEqual(initiallyParsed, fromJsonValidated)
+        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+        assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
 }
 
-fun assertContextsEqual(expected: ValidatedContext, actual: ValidatedContext) {
+fun assertModulesEqual(expected: ValidatedModule, actual: ValidatedModule) {
     // TODO: Check the upstream contexts
 
-    Assert.assertEquals(expected.ownFunctionImplementations, actual.ownFunctionImplementations)
-    Assert.assertEquals(expected.ownFunctionSignatures, actual.ownFunctionSignatures)
+    Assert.assertEquals(expected.ownFunctions, actual.ownFunctions)
     Assert.assertEquals(expected.ownStructs, actual.ownStructs)
     Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
+    // TODO: Maybe check more?
 }
 
 @RunWith(Parameterized::class)
@@ -85,7 +80,7 @@ class ValidatorNegativeTests(private val file: File) {
     @Test
     fun test() {
         try {
-            val result = parseAndValidateFile(file)
+            parseAndValidateFile(file)
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         } catch(e: Exception) {
             // Expected
@@ -93,12 +88,14 @@ class ValidatorNegativeTests(private val file: File) {
     }
 }
 
-private fun parseAndValidateFile(file: File): ValidatedContext {
+private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
+
+private fun parseAndValidateFile(file: File): ValidatedModule {
     val context = parseFile(file)
-    return validateContext(context, listOf(getNativeContext()))
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 }
 
-private fun parseAndValidateString(string: String): ValidatedContext {
+private fun parseAndValidateString(string: String): ValidatedModule {
     val context = parseString(string)
-    return validateContext(context, listOf(getNativeContext()))
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 }

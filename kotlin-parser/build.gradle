@@ -29,6 +29,8 @@ dependencies {
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
+  testCompile project(':kotlin-test-utils')
+
   testCompile 'junit:junit:4.12'
 }
 

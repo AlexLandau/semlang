@@ -1,3 +1,5 @@
+- Fix issue with ambiguous references to things in our dependencies
+  - Also test attempts to redefine native entities
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Turn NativeFunctions into library code written in semlang where possible
@@ -30,10 +32,13 @@
 - String library methods
 - Enum types
   - Might be a concept combinable with union types (like ADTs)?
+  - ADTs and when expressions could subsume booleans and if/then
+  - Is a singleton ADT really any different from a struct?
 - DSL for "selecting" expressions from anywhere in a function
   - Point is to establish this before considering add'l characters in variable names
   - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
 - Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
+- Typealias
 - Code writing into Java
   - We should have some way to specify the exposed API, and check the inputs of these methods for e.g. Natural >= 0
   - Probably put all our code from one module into the same package
@@ -79,6 +84,10 @@ Figuring out packages and a module system:
   - Automatic semantic versioning would be awesome, but I don't know what that would look like yet.
     - I took a look at Elm and their version treats "function returns a different value" as a patch change, so I don't
       think that's sufficient (unless programmers are very, very well-behaved).
+    - We may want to support multiple different notions of versioning, as well; for example, in some cases, clients will
+      depend on the exact behavior of a function remaining fixed over time (eg. I/O formats) while in others, changes in
+      behavior may be wanted immediately (e.g. an AI recommender system or time-zone information) even when used as a
+      transitive dependency.
 So a first pass would look like:
   - Groups of self-contained code are organized as modules, and have dependencies on other modules that by default are
     non-transitive (transitivity could be added later, in the form of re-declarations or otherwise).
@@ -95,6 +104,15 @@ So a first pass would look like:
     it shouldn't go away entirely, but "package" might be the wrong term now. It should probably be "namespace" and
     reserved for special cases within code, vs. including the org name, module name, etc. as seen in Java.
   - What does testing for this look like?
+What a Gradle plugin for this would do:
+  - Publish to the internal repository where approriate
+  - Possibly allow "linking" of dependencies from peer projects as opposed to the repository
+    - Do we want to specify all our dependencies in Gradle, or have a different mechanism to specify them? If the latter,
+      is there a problem with Gradle here?
+  - Once we know what our dependencies look like, run validation on the project's src/main/semlang and src/test/semlang,
+    probably as an "assemble" task
+  - As a "test" task, use the interpreter to run and check test annotations in the project
+  - The plugin will probably depend on published jars containing the Kotlin parser, validator, and interpreter
 
 Design choices to reconsider:
 - Figure out what to do about recursive function calls
@@ -116,6 +134,7 @@ Distinctions between possible sem0/sem1/sem2:
     - "Shortcut" literals
     - "Import" vs. module namespacing?
     - Default arguments? Named arguments?
+    - Always merge all modules into a single module before optimizing/executing
   - Language features that dialects might offer that standard semlang wouldn't
     - Operator overloading
     - Overloaded function names

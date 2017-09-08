@@ -5,6 +5,7 @@ struct AccumulatingSequenceElement<T> {
     curValue: T
     accumulatedValues: List<T>
 }
+@Exported
 function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
     let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
         AccumulatingSequenceElement<T>(initialValue, List.singleton<T>(initialValue)),
@@ -24,6 +25,7 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
 }
 
 
+@Exported
 function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())

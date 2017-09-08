@@ -1,8 +1,12 @@
+package net.semlang.writejava
+
 import com.squareup.javapoet.*
-import semlang.api.*
-import semlang.internal.test.TestAnnotationContents
-import semlang.internal.test.parseTestAnnotationContents
-import semlang.interpreter.evaluateStringLiteral
+import net.semlang.api.*
+import net.semlang.internal.test.TestAnnotationContents
+import net.semlang.internal.test.parseTestAnnotationContents
+import net.semlang.interpreter.evaluateStringLiteral
+import net.semlang.transforms.RenamingStrategies
+import net.semlang.transforms.constrainVariableNames
 import java.io.File
 import java.math.BigInteger
 import java.util.*
@@ -16,27 +20,29 @@ import javax.lang.model.element.Modifier
  * - Preprocess to identify places where Sequence.first() calls should be turned into while loops
  * - Add variables to the scope in more places (and remove when finished)
  * - This definitely has remaining bugs
+ *
+ * - Do we support multiple modules or require flattening to a single module?
  */
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
-fun writeJavaSourceIntoFolders(unprocessedContext: ValidatedContext, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
+fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
     if (javaPackage.isEmpty()) {
         error("The Java package must be non-empty.")
     }
     // Pre-processing steps
-    val context = constrainVariableNames(unprocessedContext, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val module = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
 
-    return JavaCodeWriter(context, javaPackage, newSrcDir, newTestSrcDir).write()
+    return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
 
-private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
+private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
     val classMap = HashMap<ClassName, TypeSpec.Builder>()
 
     fun write(): WrittenJavaInfo {
         namedFunctionCallStrategies.putAll(getNativeFunctionCallStrategies())
 
-        context.ownStructs.values.forEach { struct ->
+        module.ownStructs.values.forEach { struct ->
             val className = getStructClassName(struct.id)
             val structClassBuilder = writeStructClass(struct, className)
 
@@ -46,9 +52,9 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             classMap[className] = structClassBuilder
         }
         // Enable calls to struct constructors
-        addStructConstructorFunctionCallStrategies(context.getAllStructs().values)
+        addStructConstructorFunctionCallStrategies(module.getAllInternalStructs().values)
 
-        context.ownInterfaces.values.forEach { interfac ->
+        module.ownInterfaces.values.forEach { interfac ->
             val className = getStructClassName(interfac.id)
             val interfaceBuilder = writeInterface(interfac, className)
 
@@ -58,10 +64,10 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             classMap[className] = interfaceBuilder
         }
         // Enable calls to instance and adapter constructors
-        addInstanceConstructorFunctionCallStrategies(context.getAllInterfaces().values)
-        addAdapterConstructorFunctionCallStrategies(context.getAllInterfaces().values)
+        addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
+        addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
 
-        context.ownFunctionImplementations.values.forEach { function ->
+        module.ownFunctions.values.forEach { function ->
 
             val method = writeMethod(function)
 
@@ -196,7 +202,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
                         }
                     }
 
-                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionId)
+                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionRef)
                     val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters, callArgs)
                     methodBuilder.addStatement("return \$L", functionCall)
                 }
@@ -313,7 +319,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
         // TODO: Eventually, support non-static methods
-        val builder = MethodSpec.methodBuilder(function.id.functionName)
+        val builder = MethodSpec.methodBuilder(function.id.namespacedName.last())
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 
         for (typeParameter in function.typeParameters) {
@@ -363,8 +369,8 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
-        if (semlangType.id.thePackage.strings.isEmpty() && semlangType.parameters.isEmpty()) {
-            val count = typeVariablesCount[semlangType.id.functionName]
+        if (semlangType.ref.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
+            val count = typeVariablesCount[semlangType.ref.id.namespacedName.last()]
             return count != null && count > 0
         }
         return false
@@ -413,7 +419,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> {
-                val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionId)
+                val functionCallStrategy = getNamedFunctionCallStrategy(expression.functionRef)
                 functionCallStrategy.apply(expression.chosenParameters, expression.arguments)
             }
             is TypedExpression.ExpressionFunctionCall -> {
@@ -439,14 +445,14 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         // Special sauce...
         val type = expression.expression.type
         if (type is Type.NamedType) {
-            if (type.id == NativeStruct.UNICODE_STRING.id) {
+            if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 if (expression.name != "value") {
                     error("...")
                 }
                 // Special handling
                 val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
                 return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.expression))
-            } else if (type.id == NativeStruct.UNICODE_CODE_POINT.id) {
+            } else if (type.ref.id == NativeStruct.UNICODE_CODE_POINT.id) {
                 if (expression.name != "value") {
                     error("...")
                 }
@@ -488,21 +494,40 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
-        val functionId = expression.functionId
-        val signature = context.getFunctionOrConstructorSignature(functionId) ?: error("Signature not found for $functionId")
-        // TODO: Be able to get this for native functions, as well (put in signatures, probably)
-        val referencedFunction = context.getFunctionImplementation(functionId)
+        val functionRef = expression.functionRef
+
+        val resolved = module.resolve(functionRef) ?: error("Could not resolve $functionRef")
+        // TODO: Put this in the module itself?
+        val signature = when (resolved.type) {
+            FunctionLikeType.NATIVE_FUNCTION -> {
+                getNativeFunctionOnlyDefinitions()[resolved.entityRef.id] ?: error("Resolution error")
+            }
+            FunctionLikeType.FUNCTION -> {
+                module.getInternalFunction(resolved.entityRef).function.getTypeSignature()
+            }
+            FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                module.getInternalStruct(resolved.entityRef).struct.getConstructorSignature()
+            }
+            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
+                module.getInternalInterface(resolved.entityRef).interfac.getInstanceConstructorSignature()
+            }
+            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
+                module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
+            }
+        }
 
         // TODO: More compact references when not binding arguments
-        val functionCallStrategy = getNamedFunctionCallStrategy(functionId)
+        val functionCallStrategy = getNamedFunctionCallStrategy(functionRef)
 
         val unboundArgumentNames = ArrayList<String>()
         val arguments = ArrayList<TypedExpression>()
         // Lambda expression
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
-                val argumentName = ensureUnusedVariable(if (referencedFunction != null) {
-                    referencedFunction.arguments[index].name
+                val argumentName = ensureUnusedVariable(if (resolved.type == FunctionLikeType.FUNCTION) {
+                    // TODO: Be able to get this for native functions, as well
+                    val referencedFunction = module.getInternalFunction(resolved.entityRef)
+                    referencedFunction.function.arguments[index].name
                 } else {
                     // TODO: Pick better names based on types
                     "arg" + index
@@ -553,9 +578,13 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
     // This gets populated early on in the write() method.
-    val namedFunctionCallStrategies = HashMap<FunctionId, FunctionCallStrategy>()
+    val namedFunctionCallStrategies = HashMap<EntityId, FunctionCallStrategy>()
 
-    private fun getNamedFunctionCallStrategy(functionId: FunctionId): FunctionCallStrategy {
+    private fun getNamedFunctionCallStrategy(functionRef: EntityRef): FunctionCallStrategy {
+        // TODO: Currently we pretend other modules don't exist
+        return getNamedFunctionCallStrategy(functionRef.id)
+    }
+    private fun getNamedFunctionCallStrategy(functionId: EntityId): FunctionCallStrategy {
         val cached = namedFunctionCallStrategies[functionId]
         if (cached != null) {
             return cached
@@ -565,9 +594,9 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         val strategy = object: FunctionCallStrategy {
             override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                 if (chosenTypes.isEmpty()) {
-                    return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.functionName, getArgumentsBlock(arguments))
+                    return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.namespacedName.last(), getArgumentsBlock(arguments))
                 } else {
-                    return CodeBlock.of("\$T.<\$L>\$L(\$L)", classContainingFunction, getChosenTypesCode(chosenTypes), functionId.functionName, getArgumentsBlock(arguments))
+                    return CodeBlock.of("\$T.<\$L>\$L(\$L)", classContainingFunction, getChosenTypesCode(chosenTypes), functionId.namespacedName.last(), getArgumentsBlock(arguments))
                 }
             }
         }
@@ -582,9 +611,11 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             val followedExpression = expression.expression
             val followedExpressionType = followedExpression.type
             if (followedExpressionType is Type.NamedType) {
-                val followedInterface = context.getInterface(followedExpressionType.id)
-                if (followedInterface != null) {
-                    return object: FunctionCallStrategy {
+                val resolvedFollowedType = module.resolve(followedExpressionType.ref)
+                // TODO: I don't think this handles native interfaces?
+                if (resolvedFollowedType != null && resolvedFollowedType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
+//                    val followedInterface = module.getInternalInterface(resolvedFollowedType.entityRef) // ?: getNativeInterfaces()[followedExpressionType.ref]
+                    return object : FunctionCallStrategy {
                         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                             return CodeBlock.of("\$L.\$L(\$L)", writeExpression(followedExpression), expression.name, getArgumentsBlock(arguments))
                         }
@@ -629,7 +660,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
-                if (type.id == NativeStruct.UNICODE_STRING.id) {
+                if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                    return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
                 }
                 error("Named type literals not supported")
@@ -661,55 +692,38 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
         if (isInTypeParameterScope(semlangType)) {
-            return TypeVariableName.get(semlangType.id.functionName)
+            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
         }
 
-        if (semlangType.id.functionName == "Adapter") {
-            val parts = semlangType.id.thePackage.strings
-            if (parts.isNotEmpty()) {
-                val newName = parts.last()
-                // TODO: Namespace terminology elsewhere
-                val newNamespace = parts.dropLast(1)
-                val interfaceId = FunctionId(Package(newNamespace), newName)
-                val interfac = context.getInterface(interfaceId)
-                if (interfac != null) {
-                    val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
-                    val dataTypeParameter = getType(semlangType.parameters[0])
-                    val otherParameters = semlangType.parameters.drop(1).map{t -> getType(t)}
-                    val bareInterfaceName = getStructClassName(interfaceId)
-                    val interfaceJavaName = if (otherParameters.isEmpty()) {
-                        bareInterfaceName
-                    } else {
-                        ParameterizedTypeName.get(bareInterfaceName, *otherParameters.toTypedArray())
-                    }
-                    return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
-                }
+        //TODO: Resolve beforehand, not after (part of multi-module support (?))
+        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.ref)
+        if (interfaceRef != null) {
+            val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
+//            val interfac = module.getInternalInterface(module.resolve(interfaceRef)?.entityRef ?: error("error"))
+            val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
+            val dataTypeParameter = getType(semlangType.parameters[0])
+            val otherParameters = semlangType.parameters.drop(1).map { t -> getType(t) }
+            val bareInterfaceName = getStructClassName(interfaceId)
+            val interfaceJavaName = if (otherParameters.isEmpty()) {
+                bareInterfaceName
+            } else {
+                ParameterizedTypeName.get(bareInterfaceName, *otherParameters.toTypedArray())
             }
+            return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
         }
 
-        val predefinedClassName: ClassName? = if (semlangType.id.thePackage.strings.isEmpty()) {
-            if (semlangType.id.functionName == "Sequence") {
-                ClassName.bestGuess("net.semlang.java.Sequence")
-            } else {
-                null
-            }
-        } else if (semlangType.id.thePackage.strings == listOf("Unicode")) {
-            if (semlangType.id.functionName == "String") {
-                ClassName.get(String::class.java)
-            } else if (semlangType.id.functionName == "CodePoint") {
-                ClassName.get(Integer::class.java)
-            } else {
-                null
-            }
-        } else {
-            null
+        val predefinedClassName: ClassName? = when (semlangType.ref.id.namespacedName) {
+            listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
+            listOf("Unicode", "String") -> ClassName.get(String::class.java)
+            listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
+            else -> null
         }
 
         // TODO: The right general approach is going to be "find the context containing this type, and use the
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.id.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.ref.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
@@ -719,13 +733,13 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
         }
     }
 
-    private fun getStructClassName(functionId: FunctionId): ClassName {
-        return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), functionId.functionName)
+    private fun getStructClassName(functionId: EntityId): ClassName {
+        return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), functionId.namespacedName.last())
     }
 
-    private fun getContainingClassName(functionId: FunctionId): ClassName {
+    private fun getContainingClassName(functionId: EntityId): ClassName {
         //Assume the first capitalized string is the className
-        val allParts = (javaPackage + functionId.thePackage.strings) + functionId.functionName
+        val allParts = javaPackage + functionId.namespacedName
         val packageParts = ArrayList<String>()
         var className: String? = null
         for (part in allParts) {
@@ -736,7 +750,7 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
             packageParts.add(part)
         }
         if (className == null) {
-            return ClassName.get((javaPackage + functionId.thePackage.strings).joinToString("."), "Functions")
+            return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), "Functions")
         }
         return ClassName.get(packageParts.joinToString("."), className)
     }
@@ -793,64 +807,57 @@ private class JavaCodeWriter(val context: ValidatedContext, val javaPackage: Lis
     }
 
 
-    private fun getNativeFunctionCallStrategies(): Map<FunctionId, FunctionCallStrategy> {
-        val map = HashMap<FunctionId, FunctionCallStrategy>()
+    private fun getNativeFunctionCallStrategies(): Map<EntityId, FunctionCallStrategy> {
+        val map = HashMap<EntityId, FunctionCallStrategy>()
 
-        val boolean = Package(listOf("Boolean"))
         val javaBooleans = ClassName.bestGuess("net.semlang.java.Booleans")
         // TODO: Replace these with the appropriate operators (in parentheses)
-        map.put(FunctionId(boolean, "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
-        map.put(FunctionId(boolean, "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
-        map.put(FunctionId(boolean, "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
+        map.put(EntityId.of("Boolean", "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
+        map.put(EntityId.of("Boolean", "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
+        map.put(EntityId.of("Boolean", "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
 
-        val list = Package(listOf("List"))
         val javaLists = ClassName.bestGuess("net.semlang.java.Lists")
-        map.put(FunctionId(list, "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
+        map.put(EntityId.of("List", "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
         // TODO: Find an approach to remove most uses of append where we'd be better off with e.g. add
-        map.put(FunctionId(list, "append"), StaticFunctionCallStrategy(javaLists, "append"))
+        map.put(EntityId.of("List", "append"), StaticFunctionCallStrategy(javaLists, "append"))
         // TODO: Find an approach where we can replace this with a simple .get() call...
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
-        map.put(FunctionId(list, "get"), StaticFunctionCallStrategy(javaLists, "get"))
-        map.put(FunctionId(list, "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
+        map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
+        map.put(EntityId.of("List", "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
 
-        val integer = Package(listOf("Integer"))
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
-        map.put(FunctionId(integer, "plus"), MethodFunctionCallStrategy("add"))
-        map.put(FunctionId(integer, "minus"), MethodFunctionCallStrategy("subtract"))
-        map.put(FunctionId(integer, "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(FunctionId(integer, "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(FunctionId(integer, "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
-        map.put(FunctionId(integer, "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
-        map.put(FunctionId(integer, "fromNatural"), PassedThroughVarFunctionCallStrategy)
+        map.put(EntityId.of("Integer", "plus"), MethodFunctionCallStrategy("add"))
+        map.put(EntityId.of("Integer", "minus"), MethodFunctionCallStrategy("subtract"))
+        map.put(EntityId.of("Integer", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Integer", "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
+        map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
+        map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
 
-        val natural = Package(listOf("Natural"))
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         // Share implementations with Integer in some cases
-        map.put(FunctionId(natural, "plus"), MethodFunctionCallStrategy("add"))
-        map.put(FunctionId(natural, "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(FunctionId(natural, "lesser"), MethodFunctionCallStrategy("min"))
-        map.put(FunctionId(natural, "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(FunctionId(natural, "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
-        map.put(FunctionId(natural, "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
-        map.put(FunctionId(natural, "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
+        map.put(EntityId.of("Natural", "plus"), MethodFunctionCallStrategy("add"))
+        map.put(EntityId.of("Natural", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Natural", "lesser"), MethodFunctionCallStrategy("min"))
+        map.put(EntityId.of("Natural", "equals"), MethodFunctionCallStrategy("equals"))
+        map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
+        map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
+        map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
 
-        val tries = Package(listOf("Try"))
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
-        map.put(FunctionId(tries, "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
-        map.put(FunctionId(tries, "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
-        map.put(FunctionId(tries, "map"), StaticFunctionCallStrategy(javaTries, "map"))
+        map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
+        map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
+        map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
 
-        val sequence = Package(listOf("Sequence"))
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
-        map.put(FunctionId(sequence, "create"), StaticFunctionCallStrategy(javaSequences, "create"))
+        map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
-        val unicodeString = Package(listOf("Unicode", "String"))
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
-        map.put(FunctionId(unicodeString, "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+        map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
 
         // Unicode.CodePoint constructor
-        map.put(FunctionId(Package(listOf("Unicode")), "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
+        map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
 
         return map
     }

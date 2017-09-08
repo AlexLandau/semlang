@@ -1,13 +1,13 @@
-package semlang.interpreter.test
+package net.semlang.interpreter.test
 
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import semlang.api.*
-import semlang.parser.parseFile
-import semlang.parser.validateContext
-import semlang.internal.test.runAnnotationTests
+import net.semlang.api.*
+import net.semlang.parser.parseFile
+import net.semlang.parser.validateModule
+import net.semlang.internal.test.runAnnotationTests
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -25,15 +25,18 @@ class CorpusInterpreterTests(private val file: File) {
 
     @Test
     fun test() {
-        val validatedContext = parseAndValidateFile(file)
-        val testsCount = runAnnotationTests(validatedContext)
+        val validatedModule = parseAndValidateFile(file)
+        val testsCount = runAnnotationTests(validatedModule)
         if (testsCount == 0) {
             fail("Expected at least one @Test in file $file, but there were none")
         }
     }
 }
 
-private fun parseAndValidateFile(file: File): ValidatedContext {
+private fun parseAndValidateFile(file: File): ValidatedModule {
     val functionsMap2 = parseFile(file)
-    return validateContext(functionsMap2, listOf(getNativeContext()))
+    return validateModule(functionsMap2,
+            ModuleId("semlang", "corpusFile", "0.0.1"),
+            CURRENT_NATIVE_MODULE_VERSION,
+            listOf())
 }

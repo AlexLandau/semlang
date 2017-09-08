@@ -1,13 +1,14 @@
-import semlang.api.*
-import semlang.transforms.getAllDeclaredVarNames
+package net.semlang.transforms
+
+import net.semlang.api.*
 
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
  */
-fun constrainVariableNames(context: ValidatedContext, renamingStrategy: VariableRenamingStrategy): ValidatedContext {
+fun constrainVariableNames(module: ValidatedModule, renamingStrategy: VariableRenamingStrategy): ValidatedModule {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
-    return ValidatedContext.create(renameWithinFunctions(context.ownFunctionImplementations, validatingStrategy), context.ownStructs,
-            renameInterfaceArguments(context.ownInterfaces, validatingStrategy), context.upstreamContexts)
+    return ValidatedModule.create(module.id, module.nativeModuleVersion, renameWithinFunctions(module.ownFunctions, validatingStrategy), module.ownStructs,
+            renameInterfaceArguments(module.ownInterfaces, validatingStrategy), module.upstreamModules.values)
 }
 
 private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableRenamingStrategy {
@@ -27,7 +28,7 @@ private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableR
     }
 }
 
-private fun renameInterfaceArguments(ownInterfaces: Map<FunctionId, Interface>, rename: VariableRenamingStrategy): Map<FunctionId, Interface> {
+private fun renameInterfaceArguments(ownInterfaces: Map<EntityId, Interface>, rename: VariableRenamingStrategy): Map<EntityId, Interface> {
     return ownInterfaces.mapValues { (_, interfac) -> renameInterfaceArguments(interfac, rename) }
 }
 
@@ -47,7 +48,7 @@ private fun renameArgument(argument: Argument, otherVariables: Set<String>, rena
     return argument.copy(name = rename(argument.name, otherVariables))
 }
 
-private fun renameWithinFunctions(ownFunctionImplementations: Map<FunctionId, ValidatedFunction>, rename: VariableRenamingStrategy): Map<FunctionId, ValidatedFunction> {
+private fun renameWithinFunctions(ownFunctionImplementations: Map<EntityId, ValidatedFunction>, rename: VariableRenamingStrategy): Map<EntityId, ValidatedFunction> {
     return ownFunctionImplementations.mapValues { (_, function) -> renameWithinFunction(function, rename) }
 }
 
@@ -95,7 +96,7 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
         }
         is TypedExpression.NamedFunctionCall -> {
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            TypedExpression.NamedFunctionCall(expression.type, expression.functionId, arguments, expression.chosenParameters)
+            TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, arguments, expression.chosenParameters)
         }
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
@@ -111,7 +112,7 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            TypedExpression.NamedFunctionBinding(expression.type, expression.functionId, bindings, expression.chosenParameters)
+            TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, bindings, expression.chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)

@@ -1,0 +1,4 @@
+
+function testExportedByNeither(): Integer {
+    testModule2:exportedByNeither()
+}

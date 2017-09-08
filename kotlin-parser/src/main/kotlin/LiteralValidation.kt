@@ -1,7 +1,7 @@
-package semlang.interpreter
+package net.semlang.parser
 
-import semlang.api.NativeStruct
-import semlang.api.Type
+import net.semlang.api.NativeStruct
+import net.semlang.api.Type
 
 sealed class LiteralValidator {
     abstract fun validate(literal: String): Boolean
@@ -47,7 +47,8 @@ fun getTypeValidatorFor(type: Type): LiteralValidator {
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> throw IllegalArgumentException("No literal validator for List: $type")
         is Type.NamedType -> {
-            if (type.id == NativeStruct.UNICODE_STRING.id) {
+            // TODO: Bug; support :lang:Unicode.String."Foo"
+            if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 return LiteralValidator.UNICODE_STRING
             }
             throw IllegalArgumentException("No literal validator for NamedTypes: $type")

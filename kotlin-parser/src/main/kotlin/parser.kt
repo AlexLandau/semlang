@@ -1,6 +1,5 @@
-package semlang.parser
+package net.semlang.parser
 
-import indexById
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -9,14 +8,14 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import sem1.antlr.Sem1Lexer
 import sem1.antlr.Sem1Parser
 import sem1.antlr.Sem1ParserBaseListener
-import semlang.api.*
-import semlang.api.Function
-import semlang.api.Annotation
+import net.semlang.api.*
+import net.semlang.api.Function
+import net.semlang.api.Annotation
 import java.io.File
 import java.util.*
 
 private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
-    val id: FunctionId = parseFunctionId(function.function_id())
+    val id: EntityId = parseEntityId(function.entity_id())
 
     val typeParameters: List<String> = if (function.cd_ids() != null) {
         parseCommaDelimitedIds(function.cd_ids())
@@ -25,7 +24,7 @@ private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
     }
     if (function.function_arguments() == null) {
         error("function_arguments() is null: " + function.getText()
-                + "\n function_id: " + function.function_id()
+                + "\n entity_id: " + function.entity_id()
                 + "\n cd_ids: " + function.cd_ids()
                 + "\n function_arguments: " + function.function_arguments()
                 + "\n type:" + function.type()
@@ -36,7 +35,7 @@ private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
     val returnType: Type = parseType(function.type())
 
     val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
-    val argumentVariableIds = arguments.map { arg -> FunctionId.of(arg.name) }
+    val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
     val block = scopeBlock(argumentVariableIds, ambiguousBlock)
 
     val annotations = parseAnnotations(function.annotations())
@@ -62,12 +61,12 @@ private fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotatio
     return Annotation(name, value)
 }
 
-private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: AmbiguousBlock): Block {
+private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): Block {
     val localVariableIds = ArrayList(externalVariableIds)
     val assignments: MutableList<Assignment> = ArrayList()
     for (assignment in ambiguousBlock.assignments) {
         val expression = scopeExpression(localVariableIds, assignment.expression)
-        localVariableIds.add(FunctionId.of(assignment.name))
+        localVariableIds.add(EntityRef.of(assignment.name))
         assignments.add(Assignment(assignment.name, assignment.type, expression))
     }
     val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
@@ -75,7 +74,8 @@ private fun scopeBlock(externalVariableIds: List<FunctionId>, ambiguousBlock: Am
 }
 
 // TODO: Is it inefficient for varIds to be an ArrayList here?
-private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: AmbiguousExpression): Expression {
+// TODO: See if we can pull out the scoping step entirely, or rewrite (has seen too many changes now)
+private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): Expression {
     return when (expression) {
         is AmbiguousExpression.Follow -> Expression.Follow(
                 scopeExpression(varIds, expression.expression),
@@ -87,7 +87,7 @@ private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: Ambiguous
                     error("Had explicit parameters in a variable-based function binding")
                 }
                 // TODO: The position of the variable is incorrect here
-                return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.functionName, expression.position),
+                return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.position),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                         chosenParameters = expression.chosenParameters,
                         position = expression.position)
@@ -124,13 +124,13 @@ private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: Ambiguous
                 }
                 return Expression.ExpressionFunctionCall(
                         // TODO: The position of the variable is incorrect here
-                        functionExpression = Expression.Variable(expression.functionIdOrVariable.functionName, expression.position),
+                        functionExpression = Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.position),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                         chosenParameters = expression.chosenParameters,
                         position = expression.position)
             } else {
                 return Expression.NamedFunctionCall(
-                        functionId = expression.functionIdOrVariable,
+                        functionRef = expression.functionIdOrVariable,
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                         chosenParameters = expression.chosenParameters,
                         position = expression.position)
@@ -155,7 +155,7 @@ private fun scopeExpression(varIds: ArrayList<FunctionId>, expression: Ambiguous
 
 
 private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
-    val id: FunctionId = parseFunctionId(ctx.function_id())
+    val id: EntityId = parseEntityId(ctx.entity_id())
 
     val typeParameters: List<String> = if (ctx.cd_ids() != null) {
         parseCommaDelimitedIds(ctx.cd_ids())
@@ -165,7 +165,7 @@ private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
 
     val members: List<Member> = parseMembers(ctx.struct_members())
     val requires: Block? = ctx.maybe_requires().block()?.let {
-        val externalVarIds = members.map { member -> FunctionId.of(member.name) }
+        val externalVarIds = members.map { member -> EntityRef.of(member.name) }
         scopeBlock(externalVarIds, parseBlock(it))
     }
 
@@ -223,7 +223,7 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
     }
 
     if (expression.LITERAL() != null) {
-        val type = parseTypeGivenParameters(expression.simple_type_id(), listOf())
+        val type = parseTypeGivenParameters(expression.entity_ref(), listOf())
         val literal = parseLiteral(expression.LITERAL())
         return AmbiguousExpression.Literal(type, literal, positionOf(expression))
     }
@@ -240,8 +240,8 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
         } else {
             null
         }
-        val functionIdOrVar = if (expression.function_id() != null) {
-            parseFunctionId(expression.function_id())
+        val functionRefOrVar = if (expression.entity_ref() != null) {
+            parseEntityRef(expression.entity_ref())
         } else {
             null
         }
@@ -254,16 +254,16 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
         if (expression.PIPE() != null) {
             val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-            if (functionIdOrVar != null) {
-                return AmbiguousExpression.VarOrNamedFunctionBinding(functionIdOrVar, chosenParameters, bindings, positionOf(expression))
+            if (functionRefOrVar != null) {
+                return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, chosenParameters, bindings, positionOf(expression))
             } else {
                 return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, chosenParameters, bindings, positionOf(expression))
             }
         }
 
         val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-        if (functionIdOrVar != null) {
-            return AmbiguousExpression.VarOrNamedFunctionCall(functionIdOrVar, arguments, chosenParameters, positionOf(expression))
+        if (functionRefOrVar != null) {
+            return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, positionOf(expression))
         } else {
             return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, positionOf(expression))
         }
@@ -321,21 +321,40 @@ private fun parseFunctionArgument(function_argument: Sem1Parser.Function_argumen
     return Argument(name, type)
 }
 
-private fun parseFunctionId(function_id: Sem1Parser.Function_idContext): FunctionId {
-    if (function_id.packag() != null) {
-        val packag = parsePackage(function_id.packag())
-        return FunctionId(packag, function_id.ID().text)
+private fun parseEntityRef(entity_ref: Sem1Parser.Entity_refContext): EntityRef {
+    val module_ref = entity_ref.module_ref()
+    val moduleRef = if (module_ref == null) {
+        null
     } else {
-        return FunctionId.of(function_id.ID().text)
+        if (module_ref.childCount == 1) {
+            ModuleRef(null, module_ref.module_id(0).text, null)
+        } else if (module_ref.childCount == 3) {
+            ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
+        } else if (module_ref.childCount == 5) {
+            ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, module_ref.module_id(2).text)
+        } else {
+            error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
+        }
     }
+
+    return EntityRef(moduleRef, parseEntityId(entity_ref.entity_id()))
 }
 
-private fun parsePackage(packag: Sem1Parser.PackagContext): Package {
-    val parts = parseLinkedList(packag,
-            Sem1Parser.PackagContext::ID,
-            Sem1Parser.PackagContext::packag,
+private fun parseEntityId(entity_id: Sem1Parser.Entity_idContext): EntityId {
+    val namespacedName = if (entity_id.namespace() != null) {
+        parseNamespace(entity_id.namespace()) + entity_id.ID().text
+    } else {
+        listOf(entity_id.ID().text)
+    }
+
+    return EntityId(namespacedName)
+}
+
+private fun parseNamespace(namespace: Sem1Parser.NamespaceContext): List<String> {
+    return parseLinkedList(namespace,
+            Sem1Parser.NamespaceContext::ID,
+            Sem1Parser.NamespaceContext::namespace,
             TerminalNode::getText)
-    return Package(parts)
 }
 
 private fun parseType(type: Sem1Parser.TypeContext): Type {
@@ -348,11 +367,11 @@ private fun parseType(type: Sem1Parser.TypeContext): Type {
 
     if (type.LESS_THAN() != null) {
         val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-        return parseTypeGivenParameters(type.simple_type_id(), parameterTypes)
+        return parseTypeGivenParameters(type.entity_ref(), parameterTypes)
     }
 
-    if (type.simple_type_id() != null) {
-        return parseTypeGivenParameters(type.simple_type_id(), listOf())
+    if (type.entity_ref() != null) {
+        return parseTypeGivenParameters(type.entity_ref(), listOf())
     }
     throw IllegalArgumentException("Unparsed type " + type)
 }
@@ -364,12 +383,12 @@ private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List
             ::parseType)
 }
 
-private fun parseTypeGivenParameters(simple_type_id: Sem1Parser.Simple_type_idContext, parameters: List<Type>): Type {
-    if (simple_type_id.packag() != null) {
-        return Type.NamedType(FunctionId(parsePackage(simple_type_id.packag()), simple_type_id.ID().text), parameters)
+private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<Type>): Type {
+    if (entity_ref.module_ref() != null || entity_ref.entity_id().namespace() != null) {
+        return Type.NamedType(parseEntityRef(entity_ref), parameters)
     }
 
-    val typeId = simple_type_id.ID().text
+    val typeId = entity_ref.entity_id().ID().text
     if (typeId == "Natural") {
         return Type.NATURAL
     } else if (typeId == "Integer") {
@@ -388,11 +407,11 @@ private fun parseTypeGivenParameters(simple_type_id: Sem1Parser.Simple_type_idCo
         return Type.Try(parameters[0])
     }
 
-    return Type.NamedType(FunctionId.of(typeId), parameters)
+    return Type.NamedType(EntityRef.of(typeId), parameters)
 }
 
 private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
-    val id = parseFunctionId(interfac.function_id())
+    val id = parseEntityId(interfac.entity_id())
     val typeParameters = if (interfac.GREATER_THAN() != null) {
         parseCommaDelimitedIds(interfac.cd_ids())
     } else {
@@ -475,10 +494,22 @@ fun parseFile(file: File): RawContext {
     return parseFileNamed(file.absolutePath)
 }
 
+fun parseFiles(files: Collection<File>): RawContext {
+    val allFunctions = ArrayList<Function>()
+    val allStructs = ArrayList<UnvalidatedStruct>()
+    val allInterfaces = ArrayList<Interface>()
+    for (file in files) {
+        val rawContents = parseFileNamed(file.absolutePath)
+        allFunctions.addAll(rawContents.functions)
+        allStructs.addAll(rawContents.structs)
+        allInterfaces.addAll(rawContents.interfaces)
+    }
+    return RawContext(allFunctions, allStructs, allInterfaces)
+}
+
 fun parseFileNamed(filename: String): RawContext {
     val stream = ANTLRFileStream(filename, "UTF-8")
     val rawContents = parseANTLRStreamInner(stream)
-
     return rawContents
 }
 
@@ -527,27 +558,4 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
     }
 
     return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
-}
-
-fun parseFileAgainstStandardLibrary(filename: String): RawContext {
-    // TODO: This is not going to work consistently
-    val directory = File("../semlang-library/src/main/semlang")
-    // TODO: Will probably want to accept non-flat directory structures at some point
-    val sourceFiles = directory.listFiles() ?: error("It didn't like that directory... " + directory.absolutePath)
-    val functions = ArrayList<Function>()
-    val structs = ArrayList<UnvalidatedStruct>()
-    val interfaces = ArrayList<Interface>()
-    sourceFiles.forEach { sourceFile ->
-        val rawContents = parseANTLRStreamInner(ANTLRFileStream(sourceFile.absolutePath, "UTF-8"))
-        functions.addAll(rawContents.functions)
-        structs.addAll(rawContents.structs)
-        interfaces.addAll(rawContents.interfaces)
-    }
-
-    val ourContents = parseANTLRStreamInner(ANTLRFileStream(filename, "UTF-8"))
-    functions.addAll(ourContents.functions)
-    structs.addAll(ourContents.structs)
-    interfaces.addAll(ourContents.interfaces)
-
-    return RawContext(functions, structs, interfaces)
 }
