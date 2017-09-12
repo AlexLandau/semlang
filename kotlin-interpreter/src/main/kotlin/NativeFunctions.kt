@@ -149,6 +149,22 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
+    // Natural.toPower
+    list.add(NativeFunction(naturalDot("toPower"), { args: List<SemObject>, _: InterpreterCallback ->
+        val base = args[0] as? SemObject.Natural ?: typeError()
+        val exponent = args[1] as? SemObject.Natural ?: typeError()
+        // Note: Currently this crashes if the exponent is greater than Integer.MAX_VALUE.
+        // We could at least special-case when the base is 0 or 1.
+        SemObject.Natural(base.value.pow(exponent.value.intValueExact()))
+    }))
+
+    // Natural.bitwiseAnd
+    list.add(NativeFunction(naturalDot("bitwiseAnd"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Natural(left.value.and(right.value))
+    }))
+
     // Natural.equals
     list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
@@ -244,6 +260,20 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         SemObject.SemList(list.contents + item)
     }))
 
+    // List.appendFront
+    list.add(NativeFunction(listDot("appendFront"), { args: List<SemObject>, _: InterpreterCallback ->
+        val item = args[0]
+        val list = args[1] as? SemObject.SemList ?: typeError()
+        SemObject.SemList(listOf(item) + list.contents)
+    }))
+
+    // List.drop
+    list.add(NativeFunction(listDot("drop"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val numToDrop = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.SemList(list.contents.drop(numToDrop.value.intValueExact()))
+    }))
+
     // List.filter
     list.add(NativeFunction(listDot("filter"), { args: List<SemObject>, apply: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()
@@ -308,6 +338,11 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 
 private fun addTryFunctions(list: MutableList<NativeFunction>) {
     val tryDot = fun(name: String) = EntityId.of("Try", name)
+
+    // Try.success
+    list.add(NativeFunction(tryDot("success"), { args: List<SemObject>, _: InterpreterCallback ->
+        SemObject.Try.Success(args[0])
+    }))
 
     // Try.failure
     list.add(NativeFunction(tryDot("failure"), { _: List<SemObject>, _: InterpreterCallback ->

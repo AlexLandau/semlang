@@ -1,0 +1,13 @@
+
+@Test("['0']: 'success(0)'")
+@Test("['255']: 'success(255)'")
+@Test("['256']: 'failure'")
+@Test("['511']: 'failure'")
+function byteTest(i: Natural): Try<Natural> {
+    let byte: Try<Byte> = Byte(i)
+    Try.map<Byte, Natural>(byte, getByteValue|(_))
+}
+
+function getByteValue(byte: Byte): Natural {
+    byte->value
+}

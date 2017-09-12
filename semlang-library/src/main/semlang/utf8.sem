@@ -1,0 +1,32 @@
+
+// This could make an interesting test case for seeing if functions written to work on list-based
+// types can be automatically converted to work on streams instead.
+
+/* This version of the function requires the bytes given to correspond exactly to a complete
+ * string. If any part of the bytes are invalid, failure will be returned.
+ */
+// First implementation is silly recursive approach, just to work out the Byte functions needed.
+@Exported
+function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
+    Try.success<Unicode.String>(Unicode.String."")
+  } else {
+    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let 128bit = Try.assume<Byte.BitPosition>(Byte.BitPosition(Natural."7"))
+    if (Boolean.not(Byte.isBit1(firstByte, 128bit))) {
+      let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->value))
+      let remainingBytes = List.drop<Byte>(bytes, Natural."1")
+      Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+        finishStringLambda|(firstChar, _)
+      )
+    } else {
+      // TODO: Implement
+      Try.failure<Unicode.String>()
+    }
+  }
+}
+
+function finishStringLambda(firstChar: Unicode.CodePoint, remainingString: Unicode.String): Unicode.String {
+  let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->value)
+  Unicode.String(allChars)
+}

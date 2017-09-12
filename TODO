@@ -1,5 +1,3 @@
-- Fix issue with ambiguous references to things in our dependencies
-  - Also test attempts to redefine native entities
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Turn NativeFunctions into library code written in semlang where possible
@@ -16,6 +14,9 @@
   - In turn, we probably want to have a standard artifact format (even if it's just a .tgz or .zip
     of the source files) for ease of distribution via a Maven-like system
   - Should probably find a more pleasant-sounding word than "corpus"
+- List literals
+- Shortcut literals for single-member types (including validation-time "requires" checking)
+- Lambda expressions
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
@@ -126,6 +127,17 @@ Design choices to reconsider:
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
 - Probably rename the existing "Package" concept to "Namespace"
+
+Errors I've made in writing things:
+- (2) Used . in place of ->
+- Forgot to export something
+- Used "@Export" instead of "@Exported"
+- Typed "val" instead of "let"
+- Forgot the "->value"
+- Forgot Try.assume wrapping List.get
+- Forgot type parameter of List.append
+- Forgot to handle Try from a custom function
+- Forgot to write "function" as part of a function definition
 
 Distinctions between possible sem0/sem1/sem2:
 - Things that should be applied before whole-program optimization techniques but not when looking at its source code

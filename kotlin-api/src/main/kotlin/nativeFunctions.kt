@@ -109,6 +109,9 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.remainder
     definitions.add(TypeSignature(EntityId.of("Natural", "remainder"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
+    // Natural.toPower
+    definitions.add(TypeSignature(EntityId.of("Natural", "toPower"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
     // Natural.equals
     definitions.add(TypeSignature(EntityId.of("Natural", "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.lessThan
@@ -116,7 +119,9 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.greaterThan
     definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
-    // TODO: Resolve these conflicting definitions
+    // Natural.bitwiseAnd
+    definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+
     // Natural.max
     definitions.add(TypeSignature(EntityId.of("Natural", "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
     // Natural.lesser
@@ -146,6 +151,16 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     // List.append
     definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), paramT),
+            outputType = Type.List(paramT)))
+
+    // List.appendFront
+    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(paramT, Type.List(paramT)),
+            outputType = Type.List(paramT)))
+
+    // List.drop
+    definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.List(paramT)))
 
     // List.map
@@ -187,6 +202,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.NamedType.forParameter("T")
     val paramU = Type.NamedType.forParameter("U")
+
+    // Try.success
+    definitions.add(TypeSignature(EntityId.of("Try", "success"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(paramT),
+            outputType = Type.Try(paramT)))
 
     // Try.failure
     definitions.add(TypeSignature(EntityId.of("Try", "failure"), typeParameters = listOf(paramT),

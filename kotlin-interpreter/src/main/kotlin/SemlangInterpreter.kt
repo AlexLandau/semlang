@@ -31,7 +31,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
 
         when (entityResolution.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
-                val nativeFunction = nativeFunctions[functionRef.id] ?: error("Resolution error")
+                val nativeFunction = nativeFunctions[functionRef.id] ?: error("Native function not implemented: $functionRef")
                 return nativeFunction.apply(arguments, this::interpretBinding)
             }
             FunctionLikeType.FUNCTION -> {
@@ -130,6 +130,22 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
         if (arguments.size != struct.members.size) {
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + struct)
         }
+
+        if (struct.id == NativeStruct.UNICODE_STRING.id) {
+            val semList = arguments[0] as? SemObject.SemList ?: error("Type error when constructing a Unicode.String")
+            val codePoints: List<Int> = semList.contents.map { semObject ->
+                val codePointStruct = semObject as? SemObject.Struct ?: error("Type error when constructing a Unicode.String")
+                if (codePointStruct.struct.id != NativeStruct.UNICODE_CODE_POINT.id) {
+                    error("Invalid struct when constructing a Unicode.String")
+                }
+                val semNatural = codePointStruct.objects[0] as? SemObject.Natural ?: error("Type error when constructing a Unicode.String")
+                semNatural.value.intValueExact()
+            }
+            val asString = String(codePoints.toIntArray(), 0, codePoints.size)
+
+            return SemObject.UnicodeString(asString)
+        }
+
         val requiresBlock = struct.requires
         if (requiresBlock == null) {
             return SemObject.Struct(struct, arguments)

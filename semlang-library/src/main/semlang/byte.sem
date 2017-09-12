@@ -1,0 +1,22 @@
+
+@Exported
+struct Byte {
+  value: Natural
+  requires {
+    Natural.lessThan(value, Natural."256")
+  }
+}
+
+@Exported
+struct Byte.BitPosition {
+  value: Natural
+  requires {
+    Natural.lessThan(value, Natural."8")
+  }
+}
+
+@Exported
+function Byte.isBit1(byte: Byte, bitPosition: Byte.BitPosition): Boolean {
+  let mask = Natural.toPower(Natural."2", bitPosition->value)
+  Boolean.not(Natural.equals(Natural.bitwiseAnd(byte->value, mask), Natural."0"))
+}

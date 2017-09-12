@@ -1,0 +1,22 @@
+
+@Test("[]: 'success()'")
+function testUtf8NoBytes(): Try<Unicode.String> {
+  Utf8.decodeStrict1(List.empty<Byte>())
+}
+
+@Test("['65']: 'success(A)'")
+@Test("['70']: 'success(F)'")
+@Test("['97']: 'success(a)'")
+function testUtf8OneByte(val: Natural): Try<Unicode.String> {
+  let byte = Try.assume<Byte>(Byte(val))
+  Utf8.decodeStrict1(List.singleton<Byte>(byte))
+}
+
+@Test("['79', '75']: 'success(OK)'")
+@Test("['63', '33']: 'success(?!)'")
+function testUtf8TwoBytes(val1: Natural, val2: Natural): Try<Unicode.String> {
+  let byte1 = Try.assume<Byte>(Byte(val1))
+  let byte2 = Try.assume<Byte>(Byte(val2))
+  let list = List.appendFront<Byte>(byte1, List.singleton<Byte>(byte2))
+  Utf8.decodeStrict1(list)
+}
