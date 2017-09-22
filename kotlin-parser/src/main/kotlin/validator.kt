@@ -28,6 +28,55 @@ private fun fail(text: String): Nothing {
 
 data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>, val outputType: Type)
 
+/*
+ * So, the issue with validation-time-checked literal values is that at the time we want to check them, we don't have
+ * the rest of the code validated yet. In fact, you could end up with a situation like the following:
+ *
+ * struct Foo {
+ *   value: Integer
+ *   requires {
+ *     isAFoo(value)
+ *   }
+ * }
+ *
+ * function isAFoo(i: Integer): Boolean {
+ *   let foo: Try<Foo> = Foo(i)
+ *   if (isSuccess(foo)) {
+ *     false
+ *   } else {
+ *     true
+ *   }
+ * }
+ *
+ * Which would be an infinite loop, despite either half of this looking reasonable on its own. This can already be
+ * written, but you'd rather leave that loop at runtime, not compile-time. (Ideally you'd avoid any such loops, but
+ * there are computability-theory-type issues you run into there.)
+ *
+ * I've said before that we might consider this to be a pre-transformation of the language. The issue would be that
+ * we'd want to insert a variant of Try.assume that actually checked things at validation time (perhaps an early version
+ * of Try.assert?). You don't want to wait until runtime if necessary to check these things.
+ *
+ * So there are two things we'd seem to want:
+ *
+ * 1) A way to run the interpreter while bailing out of computations requiring over a certain amount of time
+ * 2) A way to run these checks after other types of checks have been finished
+ *
+ * In the latter case, if we have X and Y as assertions we want to confirm at compile-time, we can run them in either
+ * order; if we run into Y while validating X, we just use a runtime-based assertion of Y instead of a compile-time
+ * assertion.
+ *
+ * So a structure for this might look something like the following:
+ *
+ * 1) While validating, when we come across a case like this, we 1) put it in a list and 2) tag it with a specially-named
+ *    function that functions like Try.assume during validation
+ * 2) We do checks by going through the list and evaluating these things, collecting errors as we go
+ * 3) We either report errors if we collected any, or we make another pass through the code to remove the specially-named
+ *    function before returning it as validated code
+ *    - Tricky detail: We probably want pre-code to look like $assume(Byte(Natural."1")) but then turn into Byte."1"
+ *
+ * The added complexity here of the additional steps is a pretty good impetus for keeping this out of whatever the
+ * lowest-level version of semlang ends up being.
+ */
 fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidatedModule {
     val typeInfo = collectTypeInfo(context, moduleId, nativeModuleVersion, upstreamModules)
 

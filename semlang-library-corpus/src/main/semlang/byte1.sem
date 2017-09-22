@@ -11,3 +11,18 @@ function byteTest(i: Natural): Try<Natural> {
 function getByteValue(byte: Byte): Natural {
     byte->value
 }
+
+@Test("[]: '0'")
+function byteLiteralTest1(): Byte {
+    Byte."0"
+}
+
+@Test("[]: '25'")
+function byteLiteralTest1(): Byte {
+    Byte."25"
+}
+
+@Test("[]: '255'")
+function byteLiteralTest1(): Byte {
+    Byte."255"
+}

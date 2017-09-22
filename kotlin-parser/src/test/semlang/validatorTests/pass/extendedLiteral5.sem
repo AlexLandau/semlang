@@ -1,0 +1,17 @@
+struct Digit {
+  value: Natural
+  requires {
+    Natural.lessThan(value, Natural."10")
+  }
+}
+
+struct EvenDigit {
+  value: Digit
+  requires {
+    Natural.equals(Natural."0", Natural.remainder(value->value, Natural."2"))
+  }
+}
+
+function getEvenDigit(): EvenDigit {
+  EvenDigit."6"
+}
