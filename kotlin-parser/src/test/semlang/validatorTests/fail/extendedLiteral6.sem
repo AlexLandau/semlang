@@ -1,0 +1,11 @@
+struct Tweedledee {
+  value: Tweedledum
+}
+
+struct Tweedledum {
+  value: Tweedledee
+}
+
+function getSomething(): Tweedledee {
+  Tweedledee."Hello"
+}

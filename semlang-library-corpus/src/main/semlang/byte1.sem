@@ -18,11 +18,11 @@ function byteLiteralTest1(): Byte {
 }
 
 @Test("[]: '25'")
-function byteLiteralTest1(): Byte {
+function byteLiteralTest2(): Byte {
     Byte."25"
 }
 
 @Test("[]: '255'")
-function byteLiteralTest1(): Byte {
+function byteLiteralTest3(): Byte {
     Byte."255"
 }
