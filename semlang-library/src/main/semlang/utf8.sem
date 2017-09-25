@@ -12,7 +12,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
     Try.success<Unicode.String>(Unicode.String."")
   } else {
     let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-    let 128bit = Try.assume<Byte.BitPosition>(Byte.BitPosition(Natural."7"))
+    let 128bit = Byte.BitPosition."7"
     if (Boolean.not(Byte.isBit1(firstByte, 128bit))) {
       let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->value))
       let remainingBytes = List.drop<Byte>(bytes, Natural."1")

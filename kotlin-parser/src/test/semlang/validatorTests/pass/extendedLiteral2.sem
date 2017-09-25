@@ -1,0 +1,10 @@
+struct Digit {
+  value: Natural
+  requires {
+    Natural.lessThan(value, Natural."10")
+  }
+}
+
+function getDigit(): Digit {
+  Digit."1"
+}
