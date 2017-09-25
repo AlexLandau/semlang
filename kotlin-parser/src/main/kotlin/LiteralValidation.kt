@@ -40,20 +40,20 @@ sealed class LiteralValidator {
     }
 }
 
-fun getTypeValidatorFor(type: Type): LiteralValidator {
+fun getTypeValidatorFor(type: Type): LiteralValidator? {
     return when (type) {
         Type.INTEGER -> LiteralValidator.INTEGER
         Type.NATURAL -> LiteralValidator.NATURAL
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
-        is Type.List -> throw IllegalArgumentException("No literal validator for List: $type")
+        is Type.List -> null
         is Type.NamedType -> {
             // TODO: Bug; support :lang:Unicode.String."Foo"
             if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 return LiteralValidator.UNICODE_STRING
             }
-            throw IllegalArgumentException("No literal validator for NamedTypes: $type")
+            null
         }
-        is Type.FunctionType -> throw IllegalArgumentException("No literal validator for FunctionTypes: $type")
-        is Type.Try -> throw IllegalArgumentException("No literal validator for Trys: $type")
+        is Type.FunctionType -> null
+        is Type.Try -> null
     }
 }

@@ -29,53 +29,11 @@ private fun fail(text: String): Nothing {
 data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>, val outputType: Type)
 
 /*
- * So, the issue with validation-time-checked literal values is that at the time we want to check them, we don't have
- * the rest of the code validated yet. In fact, you could end up with a situation like the following:
- *
- * struct Foo {
- *   value: Integer
- *   requires {
- *     isAFoo(value)
- *   }
- * }
- *
- * function isAFoo(i: Integer): Boolean {
- *   let foo: Try<Foo> = Foo(i)
- *   if (isSuccess(foo)) {
- *     false
- *   } else {
- *     true
- *   }
- * }
- *
- * Which would be an infinite loop, despite either half of this looking reasonable on its own. This can already be
- * written, but you'd rather leave that loop at runtime, not compile-time. (Ideally you'd avoid any such loops, but
- * there are computability-theory-type issues you run into there.)
- *
- * I've said before that we might consider this to be a pre-transformation of the language. The issue would be that
- * we'd want to insert a variant of Try.assume that actually checked things at validation time (perhaps an early version
- * of Try.assert?). You don't want to wait until runtime if necessary to check these things.
- *
- * So there are two things we'd seem to want:
- *
- * 1) A way to run the interpreter while bailing out of computations requiring over a certain amount of time
- * 2) A way to run these checks after other types of checks have been finished
- *
- * In the latter case, if we have X and Y as assertions we want to confirm at compile-time, we can run them in either
- * order; if we run into Y while validating X, we just use a runtime-based assertion of Y instead of a compile-time
- * assertion.
- *
- * So a structure for this might look something like the following:
- *
- * 1) While validating, when we come across a case like this, we 1) put it in a list and 2) tag it with a specially-named
- *    function that functions like Try.assume during validation
- * 2) We do checks by going through the list and evaluating these things, collecting errors as we go
- * 3) We either report errors if we collected any, or we make another pass through the code to remove the specially-named
- *    function before returning it as validated code
- *    - Tricky detail: We probably want pre-code to look like $assume(Byte(Natural."1")) but then turn into Byte."1"
- *
- * The added complexity here of the additional steps is a pretty good impetus for keeping this out of whatever the
- * lowest-level version of semlang ends up being.
+ * Quick summary of current problems with this (will need a rewrite):
+ * 1) Doesn't report more than one error at a time
+ * 2) Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
+ *    check (albeit code that can always be run in a vacuum)
+ * 3) Someday this should be rewritten in Semlang
  */
 fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidatedModule {
     val typeInfo = collectTypeInfo(context, moduleId, nativeModuleVersion, upstreamModules)
@@ -413,7 +371,7 @@ private fun validateLiteralExpression(expression: Expression.Literal, typeInfo: 
 
     val nativeLiteralType = typeChain[0]
 
-    val validator = getTypeValidatorFor(nativeLiteralType)
+    val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
     val isValid = validator.validate(expression.literal)
     if (!isValid) {
         fail("Invalid literal value '${expression.literal}' for type '${expression.type}'")
@@ -438,7 +396,7 @@ private fun getLiteralTypeChain(initialType: Type, typeInfo: AllTypeInfo): List<
     var type = initialType
     val list = ArrayList<Type>()
     list.add(type)
-    while (!hasNativeLiteralImplementation(type)) {
+    while (getTypeValidatorFor(type) == null) {
         if (type is Type.NamedType) {
             val resolvedType = typeInfo.resolver.resolve(type.ref) ?: fail("Could not resolve type ${type.ref}")
             val struct = typeInfo.structs[resolvedType.entityRef] ?: fail("Trying to get a literal of a non-struct named type $resolvedType")
@@ -463,41 +421,6 @@ private fun getLiteralTypeChain(initialType: Type, typeInfo: AllTypeInfo): List<
     list.reverse()
     return list
 }
-
-// TODO: This is a joke
-private fun hasNativeLiteralImplementation(type: Type): Boolean {
-    try {
-        getTypeValidatorFor(type)
-        return true
-    } catch (e: RuntimeException) {
-        return false
-    }
-}
-
-//private fun validateNamedTypeLiteralExpression(type: Type.NamedType, literal: String, typeInfo: AllTypeInfo, looseEnds: MutableList<LooseEnd>): TypedExpression {
-//    val resolvedType = typeInfo.resolver.resolve(type.ref) ?: fail("Could not resolve type ${type.ref}")
-//    if (isNativeModule(resolvedType.entityRef.module)) {
-//        if (resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
-//            if (LiteralValidator.UNICODE_STRING.validate(literal)) {
-//                return TypedExpression.Literal(type, literal)
-//            } else {
-//                fail("Invalid Unicode.String literal: $literal")
-//            }
-//        }
-//        error("Unrecognized named literal from the native module: $type")
-//    }
-//    val struct = typeInfo.structs[resolvedType.entityRef] ?: fail("Trying to get a literal of a non-struct named type $resolvedType")
-//
-//    if (struct.typeParameters.isNotEmpty()) {
-//        fail("Can't have a literal of a type with type parameters: $type")
-//    }
-//    if (struct.members.size != 1) {
-//        fail("Can't have a literal of a struct type with more than one member")
-//    }
-//    // TODO: Prevalidate the whole chain of types (and absence of cycles)
-//    val memberType = struct.members.values.single().type
-//    // See if that is valid...
-//}
 
 private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {
     val condition = validateExpression(expression.condition, variableTypes, typeInfo, containingFunctionId)
