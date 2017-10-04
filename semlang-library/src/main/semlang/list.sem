@@ -1,0 +1,5 @@
+
+@Exported
+function List.isEmpty<T>(list: List<T>): Boolean {
+  Natural.equals(List.size<T>(list), Natural."0")
+}

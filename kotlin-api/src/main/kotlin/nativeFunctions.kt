@@ -71,6 +71,8 @@ private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Boolean.any
     definitions.add(TypeSignature(EntityId.of("Boolean", "any"), listOf(Type.List(Type.BOOLEAN)), Type.BOOLEAN))
+    // Boolean.all
+    definitions.add(TypeSignature(EntityId.of("Boolean", "all"), listOf(Type.List(Type.BOOLEAN)), Type.BOOLEAN))
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
@@ -118,6 +120,10 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Natural", "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.greaterThan
     definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.lessThanOrEqualTo
+    definitions.add(TypeSignature(EntityId.of("Natural", "lessThanOrEqualTo"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
+    // Natural.greaterThanOrEqualTo
+    definitions.add(TypeSignature(EntityId.of("Natural", "greaterThanOrEqualTo"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
     // Natural.bitwiseAnd
     definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
@@ -217,6 +223,12 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Try", "assume"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.Try(paramT)),
             outputType = paramT))
+
+
+    // Try.isSuccess
+    definitions.add(TypeSignature(EntityId.of("Try", "isSuccess"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.Try(paramT)),
+            outputType = Type.BOOLEAN))
 
     // Try.map
     definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf(paramT, paramU),

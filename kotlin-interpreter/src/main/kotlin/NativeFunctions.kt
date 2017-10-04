@@ -67,6 +67,16 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(anyTrue)
     }))
 
+    // Boolean.all
+    list.add(NativeFunction(booleanDot("all"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val allTrue = list.contents.all { obj ->
+            val boolean = obj as? SemObject.Boolean ?: typeError()
+            boolean.value
+        }
+        SemObject.Boolean(allTrue)
+    }))
+
 }
 
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
@@ -184,6 +194,20 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Natural ?: typeError()
         val right = args[1] as? SemObject.Natural ?: typeError()
         SemObject.Boolean(left.value > right.value)
+    }))
+
+    // Natural.lessThanOrEqualTo
+    list.add(NativeFunction(naturalDot("lessThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Boolean(left.value <= right.value)
+    }))
+
+    // Natural.greaterThanOrEqualTo
+    list.add(NativeFunction(naturalDot("greaterThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.Boolean(left.value >= right.value)
     }))
 
     // Natural.max
@@ -323,7 +347,15 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
-
+    // List.first
+    list.add(NativeFunction(listDot("first"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        if (list.contents.isEmpty()) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(list.contents[0])
+        }
+    }))
     // List.last
     list.add(NativeFunction(listDot("last"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()
@@ -354,6 +386,12 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
         val theTry = args[0] as? SemObject.Try ?: typeError()
         val success = theTry as? SemObject.Try.Success ?: throw IllegalStateException("Try.assume assumed incorrectly")
         success.contents
+    }))
+
+    // Try.isSuccess
+    list.add(NativeFunction(tryDot("isSuccess"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        SemObject.Boolean(theTry is SemObject.Try.Success)
     }))
 
     // Try.map

@@ -11,3 +11,11 @@ function Natural.arithmeticProgression(initialValue: Natural, increment: Natural
 function Natural.internal.plusProduct(a: Natural, b: Natural, c: Natural): Natural {
     Natural.plus(a, Natural.times(b, c))
 }
+
+@Exported
+function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upperBound: Natural): Boolean {
+    Boolean.and(
+        Natural.lessThanOrEqualTo(lowerBound, toCheck),
+        Natural.lessThanOrEqualTo(toCheck, upperBound)
+    )
+}
