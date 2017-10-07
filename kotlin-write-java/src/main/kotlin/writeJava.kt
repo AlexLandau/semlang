@@ -660,10 +660,28 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
-                if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
-                   return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                val resolvedType = this.module.resolve(type.ref) ?: error("Unresolved type ${type.ref}")
+                if (isNativeModule(resolvedType.entityRef.module) &&
+                    resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
+                    return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
                 }
-                error("Named type literals not supported")
+
+                // TODO: We need to know what the structs are here...
+                if (resolvedType.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
+                    val struct = module.getInternalStruct(resolvedType.entityRef).struct
+                    if (struct.members.size == 1) {
+                        val delegateType = struct.members[0].type
+                        val constructorStrategy = getNamedFunctionCallStrategy(type.ref)
+                        val constructorCall = constructorStrategy.apply(listOf(), listOf(TypedExpression.Literal(delegateType, literal)))
+                        if (struct.requires != null) {
+                            return CodeBlock.of("\$L.get()", constructorCall)
+                        } else {
+                            return constructorCall
+                        }
+                    }
+                }
+
+                error("Literals not supported for type ${resolvedType}")
             }
         }
     }
@@ -716,6 +734,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
+            listOf("Bit") -> ClassName.bestGuess("net.semlang.java.Bit")
+            listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
             else -> null
         }
 
@@ -844,6 +864,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
         map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
         map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
+        map.put(EntityId.of("Natural", "toBits"), StaticFunctionCallStrategy(javaNaturals, "toBits"))
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
@@ -858,6 +879,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         // Unicode.CodePoint constructor
         map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
+
+        // Bit constructor
+        map.put(EntityId.of("Bit"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.Bit"), "create"))
+
+        // BitsBigEndian constructor
+        map.put(EntityId.of("BitsBigEndian"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.BitsBigEndian"), "create"))
 
         return map
     }

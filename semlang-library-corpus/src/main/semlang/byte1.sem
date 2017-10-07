@@ -26,3 +26,27 @@ function byteLiteralTest2(): Byte {
 function byteLiteralTest3(): Byte {
     Byte."255"
 }
+
+@Test("['0']: '0'")
+@Test("['1']: '0'")
+@Test("['127']: '0'")
+@Test("['128']: '1'")
+@Test("['129']: '1'")
+@Test("['254']: '1'")
+@Test("['255']: '1'")
+function Byte.toBitsTest1(byte: Byte): Bit {
+  let bits = Byte.toBits(byte)
+  Try.assume<Bit>(List.get<Bit>(bits->value, Natural."0"))
+}
+
+@Test("['0']: '0'")
+@Test("['1']: '1'")
+@Test("['127']: '1'")
+@Test("['128']: '0'")
+@Test("['129']: '1'")
+@Test("['254']: '0'")
+@Test("['255']: '1'")
+function Byte.toBitsTest2(byte: Byte): Bit {
+  let bits = Byte.toBits(byte)
+  Try.assume<Bit>(List.get<Bit>(bits->value, Natural."7"))
+}

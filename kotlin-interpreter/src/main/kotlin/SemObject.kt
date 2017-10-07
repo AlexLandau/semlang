@@ -17,14 +17,26 @@ sealed class SemObject {
         }
     }
     data class Boolean(val value: kotlin.Boolean) : SemObject()
-    data class Struct(val struct: net.semlang.api.Struct, val objects: List<SemObject>): SemObject()
+    data class Struct(val struct: net.semlang.api.Struct, val objects: List<SemObject>): SemObject() {
+        override fun toString(): String {
+            return "${struct.id}[${
+              struct.members.mapIndexed { index, member ->
+                  "${member.name}: ${objects[index].toString()}"
+              }.joinToString(", ")
+            }]"
+        }
+    }
     // An instance of an interface.
     data class Instance(val interfaceDef: net.semlang.api.Interface, val dataObject: SemObject, val methods: List<SemObject.FunctionBinding>): SemObject()
     sealed class Try: SemObject() {
         data class Success(val contents: SemObject): Try()
         object Failure: Try()
     }
-    data class SemList(val contents: List<SemObject>): SemObject()
+    data class SemList(val contents: List<SemObject>): SemObject() {
+        override fun toString(): String {
+            return contents.toString()
+        }
+    }
     // Special case for the Unicode.String type
     data class UnicodeString(val contents: String): SemObject()
     // Note: The module here is the module that defines the bound function. It can be used to evaluate the function.

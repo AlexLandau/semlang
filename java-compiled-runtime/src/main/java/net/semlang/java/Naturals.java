@@ -1,6 +1,9 @@
 package net.semlang.java;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Naturals {
     private Naturals() {
@@ -19,4 +22,19 @@ public class Naturals {
         return left.subtract(right).abs();
     }
 
+    public static BitsBigEndian toBits(BigInteger value) {
+        int length = value.bitLength();
+        if (length == 0) {
+            return BitsBigEndian.create(Arrays.asList(Bit.ZERO));
+        }
+        List<Bit> bits = new ArrayList<>(length);
+        for (int i = length - 1; i >= 0; i--) {
+            if (value.testBit(i)) {
+                bits.add(Bit.ONE);
+            } else {
+                bits.add(Bit.ZERO);
+            }
+        }
+        return BitsBigEndian.create(bits);
+    }
 }

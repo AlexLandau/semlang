@@ -5,3 +5,35 @@
 function sequenceTest(index: Natural): Natural {
     Natural.sequence()->get(index)
 }
+
+@Test("['0']: '1'")
+@Test("['1']: '1'")
+@Test("['2']: '2'")
+@Test("['3']: '2'")
+@Test("['4']: '3'")
+@Test("['7']: '3'")
+@Test("['8']: '4'")
+@Test("['31']: '5'")
+@Test("['255']: '8'")
+@Test("['256']: '9'")
+function toBitsLengthTest(value: Natural): Natural {
+  let bits = Natural.toBits(value)
+  List.size<Bit>(bits->value)
+}
+
+@Test("['0', '0']: 'success(0)'")
+@Test("['0', '1']: 'success(1)'")
+@Test("['0', '7']: 'success(7)'")
+@Test("['1', '0']: 'failure'")
+@Test("['1', '1']: 'success(1)'")
+@Test("['1', '8']: 'success(8)'")
+@Test("['255', '8']: 'success(8)'")
+@Test("['256', '8']: 'failure'")
+function toNBitsLengthTest(value: Natural, numBits: Natural): Try<Natural> {
+  let bits: Try<BitsBigEndian> = Natural.toNBits(value, numBits)
+  Try.map<BitsBigEndian, Natural>(bits, bitsSizeLambda|(_))
+}
+
+function bitsSizeLambda(bits: BitsBigEndian): Natural {
+  List.size<Bit>(bits->value)
+}

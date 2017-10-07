@@ -22,41 +22,45 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
      * was written.
      */
     private fun interpret(functionRef: EntityRef, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
-        if (referringModule == null) {
-            return interpretNative(functionRef, arguments)
-        }
+        try {
+            if (referringModule == null) {
+                return interpretNative(functionRef, arguments)
+            }
 
-        // TODO: Have one of these for native stuff, as well
-        val entityResolution = referringModule.resolve(functionRef) ?: error("The function $functionRef isn't recognized")
+            // TODO: Have one of these for native stuff, as well
+            val entityResolution = referringModule.resolve(functionRef) ?: error("The function $functionRef isn't recognized")
 
-        when (entityResolution.type) {
-            FunctionLikeType.NATIVE_FUNCTION -> {
-                val nativeFunction = nativeFunctions[functionRef.id] ?: error("Native function not implemented: $functionRef")
-                return nativeFunction.apply(arguments, this::interpretBinding)
-            }
-            FunctionLikeType.FUNCTION -> {
-                val function: FunctionWithModule = referringModule.getInternalFunction(entityResolution.entityRef)
-                if (arguments.size != function.function.arguments.size) {
-                    throw IllegalArgumentException("Wrong number of arguments for function $functionRef")
+            when (entityResolution.type) {
+                FunctionLikeType.NATIVE_FUNCTION -> {
+                    val nativeFunction = nativeFunctions[functionRef.id] ?: error("Native function not implemented: $functionRef")
+                    return nativeFunction.apply(arguments, this::interpretBinding)
                 }
-                val variableAssignments: MutableMap<String, SemObject> = HashMap()
-                for ((value, argumentDefinition) in arguments.zip(function.function.arguments)) {
-                    variableAssignments.put(argumentDefinition.name, value)
+                FunctionLikeType.FUNCTION -> {
+                    val function: FunctionWithModule = referringModule.getInternalFunction(entityResolution.entityRef)
+                    if (arguments.size != function.function.arguments.size) {
+                        throw IllegalArgumentException("Wrong number of arguments for function $functionRef")
+                    }
+                    val variableAssignments: MutableMap<String, SemObject> = HashMap()
+                    for ((value, argumentDefinition) in arguments.zip(function.function.arguments)) {
+                        variableAssignments.put(argumentDefinition.name, value)
+                    }
+                    return evaluateBlock(function.function.block, variableAssignments, function.module)
                 }
-                return evaluateBlock(function.function.block, variableAssignments, function.module)
+                FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                    val struct: StructWithModule = referringModule.getInternalStruct(entityResolution.entityRef)
+                    return evaluateStructConstructor(struct.struct, arguments, struct.module)
+                }
+                FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
+                    val interfac = referringModule.getInternalInterface(entityResolution.entityRef)
+                    return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
+                }
+                FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
+                    val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
+                    return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
+                }
             }
-            FunctionLikeType.STRUCT_CONSTRUCTOR -> {
-                val struct: StructWithModule = referringModule.getInternalStruct(entityResolution.entityRef)
-                return evaluateStructConstructor(struct.struct, arguments, struct.module)
-            }
-            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
-                val interfac = referringModule.getInternalInterface(entityResolution.entityRef)
-                return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
-            }
-            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-                val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
-                return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
-            }
+        } catch (e: RuntimeException) {
+            throw IllegalStateException("Error while interpreting $functionRef with arguments $arguments", e)
         }
     }
 
@@ -329,15 +333,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             if (requiresBlock != null) {
                 val initialAssignments = mapOf(member.name to memberValue)
                 val validationResult = evaluateBlock(requiresBlock, initialAssignments, struct.module) as? SemObject.Boolean ?: error("Type error")
-                if (validationResult.value) {
-                    return SemObject.Struct(struct.struct, listOf(memberValue))
-                } else {
+                if (!validationResult.value) {
                     error("Literal value does not satisfy the requires block of type $resolved: \"$literal\"")
                 }
             }
+            return SemObject.Struct(struct.struct, listOf(memberValue))
         }
 
-        throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type; resolved as $resolved")
     }
 
     /**

@@ -4,6 +4,9 @@
 
 /* This version of the function requires the bytes given to correspond exactly to a complete
  * string. If any part of the bytes are invalid, failure will be returned.
+ *
+ * TODO: This is not actually as strict as desired yet. Disallow overlong encodings, invalid code points,
+ * etc. Also add a less-strict parser.
  */
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
 @Exported
@@ -11,6 +14,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
   if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
     Try.success<Unicode.String>(Unicode.String."")
   } else {
+    // TODO: Convert to the newer bytes-to-bits approach
     let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
     let 128bit = Byte.BitPosition."7"
     if (Boolean.not(Byte.isBit1(firstByte, 128bit))) {
@@ -20,8 +24,30 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
         finishStringLambda|(firstChar, _)
       )
     } else {
-      // TODO: Implement
-      Try.failure<Unicode.String>()
+      let 64bit = Byte.BitPosition."6"
+      let 32bit = Byte.BitPosition."5"
+      if (Boolean.and(
+        Byte.isBit1(firstByte, 64bit),
+        Boolean.not(Byte.isBit1(firstByte, 32bit))
+      )) {
+        // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
+        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
+        let firstByteBits = Byte.toBits(firstByte)
+        let secondByteBits = Byte.toBits(secondByte)
+        let fullBits = BitsBigEndian(List.concatenate<Bit>(
+          List.lastN<Bit>(firstByteBits->value, Natural."5"),
+          List.lastN<Bit>(secondByteBits->value, Natural."6")
+        ))
+        let codePointValue = Natural.fromBits(fullBits)
+        let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
+        let remainingBytes = List.drop<Byte>(bytes, Natural."2")
+        Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+          finishStringLambda|(firstChar, _)
+        )
+      } else {
+        // TODO: Implement
+        Try.failure<Unicode.String>()
+      }
     }
   }
 }

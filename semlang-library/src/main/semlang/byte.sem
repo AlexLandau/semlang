@@ -20,3 +20,8 @@ function Byte.isBit1(byte: Byte, bitPosition: Byte.BitPosition): Boolean {
   let mask = Natural.toPower(Natural."2", bitPosition->value)
   Boolean.not(Natural.equals(Natural.bitwiseAnd(byte->value, mask), Natural."0"))
 }
+
+@Exported
+function Byte.toBits(byte: Byte): BitsBigEndian {
+  Try.assume<BitsBigEndian>(Natural.toNBits(byte->value, Natural."8"))
+}

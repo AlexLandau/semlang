@@ -127,6 +127,12 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.bitwiseAnd
     definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
+    // Natural.toBits
+    definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef())))
+    // Natural.toNBits
+    definitions.add(TypeSignature(EntityId.of("Natural", "toNBits"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef()))))
+    // Natural.fromBits
+    definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef())), Type.NATURAL))
 
     // Natural.max
     definitions.add(TypeSignature(EntityId.of("Natural", "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
@@ -164,8 +170,19 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(paramT, Type.List(paramT)),
             outputType = Type.List(paramT)))
 
+    // List.concatenate
+    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), Type.List(paramT)),
+            outputType = Type.List(paramT)))
+
     // List.drop
     definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf(paramT),
+            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            outputType = Type.List(paramT)))
+
+    // TODO: Semantics of this are arguably different from last()... but I kind of like it that way
+    // List.lastN
+    definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.List(paramT)))
 
@@ -299,6 +316,43 @@ object NativeStruct {
             null,
             listOf()
     )
+    val BIT = Struct(
+            EntityId.of("Bit"),
+            listOf(),
+            listOf(
+                    Member("value", Type.NATURAL)
+            ),
+            // requires: value = 0 or value = 1
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    EntityRef.of("Boolean", "or"),
+                    listOf(TypedExpression.NamedFunctionCall(
+                            Type.BOOLEAN,
+                            EntityRef.of("Natural", "equals"),
+                            listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                                    TypedExpression.Literal(Type.NATURAL, "0")),
+                            listOf()
+                        ), TypedExpression.NamedFunctionCall(
+                            Type.BOOLEAN,
+                            EntityRef.of("Natural", "equals"),
+                            listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                                    TypedExpression.Literal(Type.NATURAL, "1")),
+                            listOf()
+                        )
+                    ),
+                    listOf()
+            )),
+            listOf()
+    )
+    val BITS_BIG_ENDIAN = Struct(
+            EntityId.of("BitsBigEndian"),
+            listOf(),
+            listOf(
+                    Member("value", Type.List(Type.NamedType(BIT.id.asRef())))
+            ),
+            null,
+            listOf()
+    )
 }
 
 fun getNativeStructs(): Map<EntityId, Struct> {
@@ -307,6 +361,8 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     structs.add(NativeStruct.BASIC_SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
+    structs.add(NativeStruct.BIT)
+    structs.add(NativeStruct.BITS_BIG_ENDIAN)
 
     return toMap(structs)
 }

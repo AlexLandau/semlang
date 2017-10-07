@@ -175,6 +175,65 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Natural(left.value.and(right.value))
     }))
 
+    // Natural.toBits
+    list.add(NativeFunction(naturalDot("toBits"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        // TODO: Get a more efficient internal representation
+        val length = left.value.bitLength()
+        val bitList = ArrayList<SemObject>()
+        if (length == 0) {
+            // Return a single 0
+            bitList.add(asBit(0))
+        } else {
+            for (i in (length - 1) downTo 0) {
+                val bit = asBit(left.value.testBit(i))
+                bitList.add(bit)
+            }
+        }
+        val bitSemList = SemObject.SemList(bitList)
+        SemObject.Struct(NativeStruct.BITS_BIG_ENDIAN, listOf(bitSemList))
+    }))
+
+    // Natural.toNBits
+    list.add(NativeFunction(naturalDot("toNBits"), { args: List<SemObject>, _: InterpreterCallback ->
+        val number = args[0] as? SemObject.Natural ?: typeError()
+        val numBitsToOutput = (args[1] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
+        // TODO: Get a more efficient internal representation
+        val actualNumBits = number.value.bitLength()
+        if (actualNumBits > numBitsToOutput) {
+            SemObject.Try.Failure
+        } else {
+            val bitList = ArrayList<SemObject>()
+            for (i in (numBitsToOutput - 1) downTo 0) {
+                val bit = asBit(number.value.testBit(i))
+                bitList.add(bit)
+            }
+            val bitSemList = SemObject.SemList(bitList)
+            SemObject.Try.Success(SemObject.Struct(NativeStruct.BITS_BIG_ENDIAN, listOf(bitSemList)))
+        }
+    }))
+
+    // Natural.fromBits
+    list.add(NativeFunction(naturalDot("fromBits"), { args: List<SemObject>, _: InterpreterCallback ->
+        val bitsStruct = args[0] as? SemObject.Struct ?: typeError()
+
+        if (bitsStruct.struct.id != NativeStruct.BITS_BIG_ENDIAN.id) {
+            typeError()
+        }
+        val bitsList = bitsStruct.objects[0] as? SemObject.SemList ?: typeError()
+        val bitStructs = bitsList.contents
+
+        val two = BigInteger.valueOf(2L)
+        var number = BigInteger.ZERO
+        bitStructs.forEach { bitStructArg ->
+            number = number.times(two)
+            val bitStruct = bitStructArg as? SemObject.Struct ?: typeError()
+            val bitValue = bitStruct.objects[0] as? SemObject.Natural ?: typeError()
+            number = number.plus(bitValue.value) // 1 or 0
+        }
+        SemObject.Natural(number)
+    }))
+
     // Natural.equals
     list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
@@ -263,6 +322,18 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
     }))
 }
 
+private fun asBit(value: Int): SemObject.Struct {
+    return SemObject.Struct(NativeStruct.BIT, listOf(asNatural(value)))
+}
+
+private fun asBit(value: Boolean): SemObject.Struct {
+    return asBit(if (value) 1 else 0)
+}
+
+private fun asNatural(value: Int): SemObject.Natural {
+    return SemObject.Natural(BigInteger.valueOf(value.toLong()))
+}
+
 private fun addListFunctions(list: MutableList<NativeFunction>) {
     val listDot = fun(name: String) = EntityId.of("List", name)
 
@@ -291,11 +362,25 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         SemObject.SemList(listOf(item) + list.contents)
     }))
 
+    // List.concatenate
+    list.add(NativeFunction(listDot("concatenate"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list1 = args[0] as? SemObject.SemList ?: typeError()
+        val list2 = args[1] as? SemObject.SemList ?: typeError()
+        SemObject.SemList(list1.contents + list2.contents)
+    }))
+
     // List.drop
     list.add(NativeFunction(listDot("drop"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()
         val numToDrop = args[1] as? SemObject.Natural ?: typeError()
         SemObject.SemList(list.contents.drop(numToDrop.value.intValueExact()))
+    }))
+
+    // List.lastN
+    list.add(NativeFunction(listDot("lastN"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val n = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.SemList(list.contents.takeLast(n.value.intValueExact()))
     }))
 
     // List.filter
