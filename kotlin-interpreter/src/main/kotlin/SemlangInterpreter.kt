@@ -261,6 +261,10 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             is TypedExpression.Literal -> {
                 return evaluateLiteral(expression.type, expression.literal)
             }
+            is TypedExpression.ListLiteral -> {
+                val contents = expression.contents.map { itemExpr -> evaluateExpression(itemExpr, assignments, containingModule) }
+                return SemObject.SemList(contents)
+            }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionRef = expression.functionRef
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }

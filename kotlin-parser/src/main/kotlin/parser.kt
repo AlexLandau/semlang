@@ -149,6 +149,10 @@ private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousE
                     position = expression.position)
         }
         is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.position)
+        is AmbiguousExpression.ListLiteral -> {
+            val contents = expression.contents.map { item -> scopeExpression(varIds, item) }
+            Expression.ListLiteral(contents, expression.chosenParameter, expression.position)
+        }
         is AmbiguousExpression.Variable -> Expression.Variable(expression.name, expression.position)
     }
 }
@@ -267,6 +271,12 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
         } else {
             return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, positionOf(expression))
         }
+    }
+
+    if (expression.LBRACKET() != null) {
+        val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
+        val chosenParameter = parseType(expression.type())
+        return AmbiguousExpression.ListLiteral(contents, chosenParameter, positionOf(expression))
     }
 
     if (expression.ID() != null) {

@@ -429,6 +429,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.Literal -> {
                 writeLiteralExpression(expression)
             }
+            is TypedExpression.ListLiteral -> {
+                writeListLiteralExpression(expression)
+            }
             is TypedExpression.Follow -> {
                 writeFollowExpression(expression)
             }
@@ -629,6 +632,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 return CodeBlock.of("\$L.apply(\$L)", writeExpression(expression), getArgumentsBlock(arguments))
             }
         }
+    }
+
+    private fun writeListLiteralExpression(expression: TypedExpression.ListLiteral): CodeBlock {
+        val contents = getArgumentsBlock(expression.contents)
+        return CodeBlock.of("\$T.asList(\$L)", Arrays::class.java, contents)
     }
 
     private fun writeLiteralExpression(expression: TypedExpression.Literal): CodeBlock {

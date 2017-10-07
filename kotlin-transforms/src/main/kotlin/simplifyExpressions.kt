@@ -67,6 +67,18 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
         is TypedExpression.Literal -> {
             ExpressionMultisplitResult(expression, listOf())
         }
+        is TypedExpression.ListLiteral -> {
+            val newAssignments = ArrayList<ValidatedAssignment>()
+
+            val newContents = expression.contents.map { item ->
+                val result = tryMakingIntoVar(item, varNamesToPreserve, varNamesInScope)
+                newAssignments.addAll(result.newAssignments)
+                result.variable
+            }
+
+            val replacementExpression = TypedExpression.ListLiteral(expression.type, newContents, expression.chosenParameter)
+            ExpressionMultisplitResult(replacementExpression, newAssignments)
+        }
         is TypedExpression.Follow -> {
             val result = tryMakingIntoVar(expression.expression, varNamesToPreserve, varNamesInScope)
             val replacementExpression = TypedExpression.Follow(expression.type, result.variable, expression.name)
@@ -182,6 +194,25 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             varNamesToPreserve.add(replacementName)
             varNamesInScope.add(replacementName)
             MakeIntoVarResult(typedVariable, listOf(assignment))
+        }
+        is TypedExpression.ListLiteral -> {
+            val newAssignments = ArrayList<ValidatedAssignment>()
+
+            val newContents = expression.contents.map { item ->
+                val subresult = tryMakingIntoVar(item, varNamesToPreserve, varNamesInScope)
+                newAssignments.addAll(subresult.newAssignments)
+                subresult.variable
+            }
+
+            val newListLiteral = TypedExpression.ListLiteral(expression.type, newContents, expression.chosenParameter)
+
+            val replacementName = getNewVarName(varNamesToPreserve)
+            newAssignments.add(ValidatedAssignment(replacementName, newListLiteral.type, newListLiteral))
+            val typedVariable = TypedExpression.Variable(expression.type, replacementName)
+
+            varNamesToPreserve.add(replacementName)
+            varNamesInScope.add(replacementName)
+            MakeIntoVarResult(typedVariable, newAssignments)
         }
         is TypedExpression.IfThen -> {
             val subresult = tryMakingIntoVar(expression.condition, varNamesToPreserve, varNamesInScope)

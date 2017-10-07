@@ -197,6 +197,7 @@ sealed class AmbiguousExpression {
     data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val position: Position): AmbiguousExpression()
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val position: Position): AmbiguousExpression()
     data class Literal(val type: Type, val literal: String, override val position: Position): AmbiguousExpression()
+    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val position: Position): AmbiguousExpression()
     data class Follow(val expression: AmbiguousExpression, val name: String, override val position: Position): AmbiguousExpression()
 }
 
@@ -209,6 +210,7 @@ sealed class Expression {
     //TODO: Make position of chosenParamters consistent with bindings below
     data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val position: Position?): Expression()
     data class Literal(val type: Type, val literal: String, override val position: Position?): Expression()
+    data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val position: Position?): Expression()
     data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val position: Position?): Expression()
     data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val position: Position?): Expression()
     data class Follow(val expression: Expression, val name: String, override val position: Position?): Expression()
@@ -221,6 +223,7 @@ sealed class TypedExpression {
     data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class Literal(override val type: Type, val literal: String): TypedExpression()
+    data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
     data class Follow(override val type: Type, val expression: TypedExpression, val name: String): TypedExpression()
     data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()

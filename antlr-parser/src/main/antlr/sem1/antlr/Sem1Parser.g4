@@ -94,6 +94,7 @@ type : entity_ref
 cd_types : type | type COMMA | type COMMA cd_types ;
 expression : IF LPAREN expression RPAREN block ELSE block
   | entity_ref DOT LITERAL
+  | LBRACKET cd_expressions RBRACKET LESS_THAN type GREATER_THAN
   | expression ARROW ID
   | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
   | entity_ref PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference

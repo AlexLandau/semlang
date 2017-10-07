@@ -137,6 +137,7 @@ private fun validateExpression(expression: Expression, variableTypes: Map<String
         is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(expression, variableTypes, typeInfo, containingFunctionId)
 
         is Expression.Literal -> validateLiteralExpression(expression, typeInfo)
+        is Expression.ListLiteral -> validateListLiteralExpression(expression, variableTypes, typeInfo, containingFunctionId)
         is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(expression, variableTypes, typeInfo, containingFunctionId)
         is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(expression, variableTypes, typeInfo, containingFunctionId)
     }
@@ -420,6 +421,21 @@ private fun getLiteralTypeChain(initialType: Type, typeInfo: AllTypeInfo): List<
 
     list.reverse()
     return list
+}
+
+private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {
+    val listType = Type.List(expression.chosenParameter)
+
+    val contents = expression.contents.map { item ->
+        validateExpression(item, variableTypes, typeInfo, containingFunctionId)
+    }
+    contents.forEach { item ->
+        if (item.type != expression.chosenParameter) {
+            error("Put an expression $item of type ${item.type} in a list literal of type ${listType}")
+        }
+    }
+
+    return TypedExpression.ListLiteral(listType, contents, expression.chosenParameter)
 }
 
 private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {

@@ -369,6 +369,11 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             node.put("value", expression.literal)
             return
         }
+        is TypedExpression.ListLiteral -> {
+            node.put("type", "list")
+            node.set("chosenParameter", toTypeNode(expression.chosenParameter))
+            addArray(node, "contents", expression.contents, ::addExpression)
+        }
         is TypedExpression.Follow -> {
             node.put("type", "follow")
             addExpression(node.putObject("expression"), expression.expression)
@@ -423,6 +428,11 @@ private fun parseExpression(node: JsonNode): Expression {
             val literalType = parseType(node["literalType"])
             val literal = node["value"]?.textValue() ?: error("Expected a literal expression to have a 'value' text field")
             return Expression.Literal(literalType, literal, position = null)
+        }
+        "list" -> {
+            val contents = parseExpressionsArray(node["contents"])
+            val chosenParameter = parseType(node["chosenParameter"])
+            return Expression.ListLiteral(contents, chosenParameter, position = null)
         }
         "follow" -> {
             val innerExpression = parseExpression(node["expression"])

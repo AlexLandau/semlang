@@ -129,7 +129,6 @@ private fun writeBlock(block: TypedBlock, indentationLevel: Int, writer: Writer)
 }
 
 private fun writeExpression(expression: TypedExpression, indentationLevel: Int, writer: Writer) {
-    val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
     when (expression) {
         is TypedExpression.Variable -> {
             writer.append(expression.name)
@@ -139,6 +138,20 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
                     .append(".\"")
                     .append(expression.literal) // TODO: Might need escaping here?
                     .append("\"")
+        }
+        is TypedExpression.ListLiteral -> {
+            writer.append("[")
+            var first = true
+            for (item in expression.contents) {
+                if (!first) {
+                    writer.append(", ")
+                }
+                first = false
+                writeExpression(item, indentationLevel, writer)
+            }
+            writer.append("]<")
+                    .append(expression.chosenParameter.toString())
+                    .append(">")
         }
         is TypedExpression.Follow -> {
             writeExpression(expression.expression, indentationLevel, writer)
@@ -226,6 +239,7 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
             writer.append(")")
         }
         is TypedExpression.IfThen -> {
+            val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
             writer.append("if (")
             writeExpression(expression.condition, indentationLevel, writer)
             writer.appendln(" ) {")
