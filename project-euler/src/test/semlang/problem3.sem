@@ -11,7 +11,7 @@ function getPrimeFactors(n: Natural): List<Natural> {
     let primes: Sequence<Natural> = getPrimes()
     let firstPrimeDivisor: Natural = primes->first(dividesEvenly|(_, n))
     if (Natural.equals(n, firstPrimeDivisor)) {
-        List.singleton<Natural>(n)
+        [n]<Natural>
     } else {
         let dividend: Natural = Try.assume<Natural>(Natural.divide(n, firstPrimeDivisor))
         let recursiveFactors: List<Natural> = getPrimeFactors(dividend)

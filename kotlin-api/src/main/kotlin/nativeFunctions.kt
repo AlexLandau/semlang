@@ -150,16 +150,6 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.NamedType.forParameter("T")
     val paramU = Type.NamedType.forParameter("U")
 
-    // List.empty
-    definitions.add(TypeSignature(EntityId.of("List", "empty"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(),
-            outputType = Type.List(paramT)))
-
-    // List.singleton
-    definitions.add(TypeSignature(EntityId.of("List", "singleton"), typeParameters = listOf(paramT),
-            argumentTypes = listOf(paramT),
-            outputType = Type.List(paramT)))
-
     // List.append
     definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(paramT),
             argumentTypes = listOf(Type.List(paramT), paramT),

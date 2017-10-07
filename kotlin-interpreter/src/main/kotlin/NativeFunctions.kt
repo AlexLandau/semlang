@@ -337,17 +337,6 @@ private fun asNatural(value: Int): SemObject.Natural {
 private fun addListFunctions(list: MutableList<NativeFunction>) {
     val listDot = fun(name: String) = EntityId.of("List", name)
 
-    // List.empty
-    list.add(NativeFunction(listDot("empty"), { _: List<SemObject>, _: InterpreterCallback ->
-        SemObject.SemList(ArrayList())
-    }))
-
-    // List.singleton
-    list.add(NativeFunction(listDot("singleton"), { args: List<SemObject>, _: InterpreterCallback ->
-        val element = args[0]
-        SemObject.SemList(listOf(element))
-    }))
-
     // List.append
     list.add(NativeFunction(listDot("append"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()

@@ -8,7 +8,7 @@ struct AccumulatingSequenceElement<T> {
 @Exported
 function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
     let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
-        AccumulatingSequenceElement<T>(initialValue, List.singleton<T>(initialValue)),
+        AccumulatingSequenceElement<T>(initialValue, [initialValue]<T>),
         Sequence.internal.accumulatingSequenceNext<T>|(_, nextValueFunction)
     )
     Sequence.map<AccumulatingSequenceElement<T>, T>(accumulatingSequence, Sequence.internal.fromAccumulatingSequenceElement<T>|(_))
