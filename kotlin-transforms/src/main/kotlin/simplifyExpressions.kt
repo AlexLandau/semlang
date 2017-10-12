@@ -12,9 +12,20 @@ fun simplifyExpressions(module: ValidatedModule): ValidatedModule {
     return ValidatedModule.create(module.id,
             module.nativeModuleVersion,
             simplifyFunctionExpressions(module.ownFunctions),
-            module.ownStructs,
+            simplifyRequiresBlocks(module.ownStructs),
             module.ownInterfaces,
             module.upstreamModules.values)
+}
+
+private fun simplifyRequiresBlocks(ownStructs: Map<EntityId, Struct>): Map<EntityId, Struct> {
+    return ownStructs.mapValues { (_, oldStruct) ->
+        val requires = oldStruct.requires
+        oldStruct.copy(requires = if (requires == null) {
+            null
+        } else {
+            simplifyBlockExpressions(requires, oldStruct.members.map(Member::name))
+        })
+    }
 }
 
 private fun simplifyFunctionExpressions(functions: Map<EntityId, ValidatedFunction>): Map<EntityId, ValidatedFunction> {

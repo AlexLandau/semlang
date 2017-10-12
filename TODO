@@ -147,6 +147,7 @@ Distinctions between possible sem0/sem1/sem2:
     - "Import" vs. module namespacing?
     - Default arguments? Named arguments?
     - Always merge all modules into a single module before optimizing/executing
+    - Always have full references for entities from other modules (with no module references otherwise)
   - Language features that dialects might offer that standard semlang wouldn't
     - Operator overloading
     - Overloaded function names
