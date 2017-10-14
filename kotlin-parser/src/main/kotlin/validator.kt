@@ -53,9 +53,10 @@ private fun collectTypeInfo(context: RawContext, moduleId: ModuleId, nativeModul
             context.interfaces.map(Interface::id),
             upstreamModules)
     val functionTypeSignatures = getFunctionTypeSignatures(context, upstreamModules)
+    val nativeModuleId = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, nativeModuleVersion)
     val allFunctionTypeSignatures = getAllFunctionTypeSignatures(functionTypeSignatures, moduleId, upstreamModules)
-    val allStructs = getAllStructsInfo(context.structs, moduleId, upstreamModules)
-    val allInterfaces = getAllInterfacesInfo(context.interfaces, moduleId, upstreamModules)
+    val allStructs = getAllStructsInfo(context.structs, moduleId, nativeModuleId, upstreamModules)
+    val allInterfaces = getAllInterfacesInfo(context.interfaces, moduleId, nativeModuleId, upstreamModules)
 
     return AllTypeInfo(resolver, allFunctionTypeSignatures, allStructs, allInterfaces)
 }
@@ -562,8 +563,12 @@ private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId
     return results
 }
 
-private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, ownModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, StructTypeInfo> {
+private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, ownModuleId: ModuleId, nativeModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, StructTypeInfo> {
     val allStructsInfo = HashMap<ResolvedEntityRef, StructTypeInfo>()
+    getNativeStructs().values.forEach { struct ->
+        allStructsInfo.put(ResolvedEntityRef(nativeModuleId, struct.id),
+                StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null))
+    }
     upstreamModules.forEach { module ->
         module.getAllInternalStructs().forEach { (_, struct) ->
             allStructsInfo.put(ResolvedEntityRef(module.id, struct.id),
@@ -577,8 +582,10 @@ private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, ownModuleId: 
     return allStructsInfo
 }
 
-private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, ownModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, InterfaceTypeInfo> {
+private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, ownModuleId: ModuleId, nativeModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, InterfaceTypeInfo> {
     val allInterfaces = HashMap<ResolvedEntityRef, Interface>()
+
+    allInterfaces.putAll(getNativeInterfaces().mapKeys { (id, _) -> ResolvedEntityRef(nativeModuleId, id) })
 
     upstreamModules.forEach { module ->
         allInterfaces.putAll(module.getAllInternalInterfaces().mapKeys { (id, _) -> ResolvedEntityRef(module.id, id) })

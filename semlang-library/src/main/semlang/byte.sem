@@ -8,6 +8,14 @@ struct Byte {
 }
 
 @Exported
+struct ByteBits {
+  value: BitsBigEndian
+  requires {
+    Natural.equals(Natural."8", List.size<Bit>(value->value))
+  }
+}
+
+@Exported
 struct Byte.BitPosition {
   value: Natural
   requires {
@@ -16,12 +24,12 @@ struct Byte.BitPosition {
 }
 
 @Exported
-function Byte.isBit1(byte: Byte, bitPosition: Byte.BitPosition): Boolean {
-  let mask = Natural.toPower(Natural."2", bitPosition->value)
-  Boolean.not(Natural.equals(Natural.bitwiseAnd(byte->value, mask), Natural."0"))
+function Byte.toBits(byte: Byte): ByteBits {
+  let bits = Try.assume<BitsBigEndian>(Natural.toNBits(byte->value, Natural."8"))
+  Try.assume<ByteBits>(ByteBits(bits))
 }
 
 @Exported
-function Byte.toBits(byte: Byte): BitsBigEndian {
-  Try.assume<BitsBigEndian>(Natural.toNBits(byte->value, Natural."8"))
+function ByteBits.get(bits: ByteBits, bitPosition: Byte.BitPosition): Bit {
+  Try.assume<Bit>(List.get<Bit>(bits->value->value, bitPosition->value))
 }
