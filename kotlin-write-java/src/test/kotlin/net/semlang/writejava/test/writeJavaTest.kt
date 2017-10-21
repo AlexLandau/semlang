@@ -1,4 +1,4 @@
-package net.semlang.writejava
+package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
@@ -7,6 +7,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
+import net.semlang.writejava.writeJavaSourceIntoFolders
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.fail

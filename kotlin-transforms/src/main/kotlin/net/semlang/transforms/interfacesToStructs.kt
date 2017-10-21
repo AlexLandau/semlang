@@ -1,3 +1,5 @@
+package net.semlang.transforms
+
 import net.semlang.api.*
 import net.semlang.transforms.replaceLocalFunctionNameReferences
 

@@ -1,5 +1,6 @@
-package net.semlang.api
+package net.semlang.api.test
 
+import net.semlang.api.*
 import org.junit.Assert
 import org.junit.Test
 

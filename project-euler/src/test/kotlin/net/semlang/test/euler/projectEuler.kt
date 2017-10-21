@@ -1,4 +1,4 @@
-package net.semlang.interpreter.test
+package net.semlang.test.euler
 
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert.assertEquals

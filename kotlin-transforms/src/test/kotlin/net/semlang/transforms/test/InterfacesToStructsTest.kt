@@ -1,19 +1,20 @@
-package net.semlang.transforms
+package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
-import org.junit.Assert.fail
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
+import net.semlang.transforms.transformInterfacesToStructs
+import org.junit.Assert
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.io.File
 
 @RunWith(Parameterized::class)
-class SimplifyExpressionsTest(private val file: File) {
+class InterfacesToStructsTest(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
@@ -31,19 +32,22 @@ class SimplifyExpressionsTest(private val file: File) {
     fun testSimplification() {
         val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
 
-        val simplified = simplifyExpressions(module)
+        val withoutInterfaces = transformInterfacesToStructs(module)
+
+        Assert.assertEquals(0, withoutInterfaces.ownInterfaces.size)
+        Assert.assertEquals(0, withoutInterfaces.exportedInterfaces.size)
 
         try {
             try {
-                val testsRun = runAnnotationTests(simplified)
+                val testsRun = runAnnotationTests(withoutInterfaces)
                 if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
-                    fail("Found no @Test annotations in corpus file $file")
+                    Assert.fail("Found no @Test annotations in corpus file $file")
                 }
             } catch (e: AssertionError) {
-                throw AssertionError("Simplified context was:\n" + writeToString(simplified), e)
+                throw AssertionError("Simplified context was:\n" + writeToString(withoutInterfaces), e)
             }
         } catch (e: RuntimeException) {
-            throw RuntimeException("Simplified context was:\n" + writeToString(simplified), e)
+            throw RuntimeException("Simplified context was:\n" + writeToString(withoutInterfaces), e)
         }
 
         // TODO: Test sem0 output and parsing round-trip
