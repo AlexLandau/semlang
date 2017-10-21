@@ -1,0 +1,136 @@
+// Possible syntax:
+
+@Application
+function helloWorld(out1 >> out3: StandardOut!): ExitCode {
+  // Note the lack of "let" here...
+  StandardOut.print(out1 >> out2, Unicode.String."Hello, world!")
+  StandardOut.newLine(out2 >> out3)
+  ExitCode."0"
+}
+
+// Another possible syntax:
+
+@Script
+function helloWorld(out1 >> out3: StandardOut!): ExitCode {
+  out2 << out1->print(Unicode.String."Hello, world!")
+  out3 << out2->newLine()
+  ExitCode.success()
+}
+
+// Or another:
+
+@Application("Script")
+function helloWorld(out: StandardOut!): ExitCode {
+  StandardOut.print(out!1, Unicode.String."Hello, world!")
+  StandardOut.newLine(out!2)
+  ExitCode.success()
+}
+
+// Consider structs:
+
+fluid struct ProcessOuts {
+  out: StandardOut!
+  err: StandardErr!
+}
+
+// Style 1:
+  StandardOut.print((outs1 >> outs2)->out, Unicode.String."Hello, world!")
+// Style 2:
+  outs2 << outs1->out->print(Unicode.String."Hello, world!")
+// Style 3:
+  StandardOut.print(outs!1->out, Unicode.String."Hello, world!")
+
+// Something else to consider: What if we want to redirect err to out by making that change in the struct, so there is
+// aliasing of the fluid? Should that be allowed at all? If so, what does it look like?
+// Let's start by considering a simpler case: fluid struct containing non-fluid data
+
+fluid struct ListBuilder<T> {
+  listSoFar: List<T>
+}
+
+// Style 1:
+function ListBuilder.add<T>(builder1 >> builder2: ListBuilder<T>!, item: T) { // Note lack of explicit return type
+  // Not sure the builder1->listSoFar should even be allowed here? Would have to be a special case for
+  // fluid structs
+  let (builder1 >> builder2)->listSoFar = List.append<>(builder1->listSoFar, item)
+  // Inspired by the long-form below:
+  let list = (builder1 >> builder2)->listSoFar // Do we need the >>? Does either way make sense for fluids?
+  let newList = ...
+  set (builder2 >> builder3)->listSoFar = newList
+}
+// Style 2:
+function ListBuilder.add<T>(builder1 >> builder2: ListBuilder!<T>, item: T): Empty {
+  // The in-scoping of "out" here has issues
+  builder2 << builder1->(listSoFar = List.append<>(listSoFar, item))
+  // Or this:
+  builder2 << builder1 {
+    listSoFar << List.append<>(listSoFar, item)
+  }
+}
+// Style 3:
+function ListBuilder.add<T>(builder: ListBuilder!<T>, item: T) {
+  // Long-form version:
+  let list = builder!1->listSoFar
+  let newList = List.append<T>(list, item)
+  set builder!2->listSoFar = newList
+  // Shorter version:
+  set builder!2->listSoFar = List.append<T>(builder!1->listSoFar, item)
+}
+
+// Okay, so let's consider a fluid struct with fluid contents again:
+
+fluid struct Loggers {
+  fooLog: Logger!
+  barLog: Logger!
+}
+
+function recordFoo(loggers1 >> loggers2: Loggers!) {
+  // Short-form direct call
+  Loggers.log(loggers1->fooLog >> loggers2->fooLog, Foo."foo") // ???
+  Loggers.log((loggers1 >> loggers2)->fooLog, Foo."foo") // ???
+  // More explicit unstructuring...
+  let fooLog1 << loggers1->fooLog
+  Loggers.log(fooLog1 >> fooLog2, Foo."foo")
+  set loggers1->fooLog << fooLog2
+  // Now I think we're getting somewhere...
+  grab (loggers1 >> loggers2)->fooLog as fooLog1 >> fooLog2 in {
+    Loggers.log(fooLog1 >> fooLog2, Foo."foo")
+  }
+}
+// And what does that look like in syntax 3?
+function recordFoo(loggers: Loggers!) {
+  grab loggers!1->fooLog as fooLog in {
+    Loggers.log(fooLog!1, Foo."foo")
+  }
+  // Or even shorter:
+  use loggers!->fooLog in {
+    Loggers.log(fooLog!, Foo."foo")
+  }
+  // Extend the notation:
+  let count = use loggers!1->fooLog, loggers!2->barLog, loggers!3->otherLoggers->myBazLog as bazLog in {
+    Loggers.log(fooLog!, Foo."foo")
+    Loggers.log(barLog!, Foo."bar")
+    Loggers.log(bazLog!, Foo."baz")
+    Integer."3"
+  }
+  // So this becomes a sort of unbundling operation where loggers itself would go out of scope (and otherLoggers)
+  // Another take:
+  use fooLog, barLog, otherLoggers as moreLogs from loggers! in {
+    use myBazLog as bazLog from from moreLogs! in {
+      // ...
+    }
+  }
+
+}
+
+// Took a look at Clean. Realized that it's worth thinking in terms of reference counts. One part of this is that we
+// should explicitly handle cases where a unique thing is expected to be subsumed by a function vs. returned in its
+// arguments:
+
+// Add a file to a list of files
+FluidList!.add<File!>(filesList!1 >> filesList!2, curFile! >> *) // Would have used _, but it's already used in bindings
+FluidList!.add<File!>(filesList!, curFile!!) // Removes curFile from the scope; it ends up in the filesList instead
+
+// Mercury uses e.g. !IO as a shorthand for IO0, IO and then for IO0, IO1 and IO1, IO in the arguments later on
+
+// So what's next?
