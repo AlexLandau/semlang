@@ -47,15 +47,15 @@ class WriteJavaTest(private val file: File) {
         // TODO: Get from writtenJavaSourceInfo
         val sourceFiles = collectNonDirFiles(listOf(newSrcDir, newTestSrcDir))
         val fileManager = compiler.getStandardFileManager(null, null, Charsets.UTF_8)
-        System.out.println("Source files: ${sourceFiles}")
+        System.out.println("Source files: $sourceFiles")
         val compilationUnits = fileManager.getJavaFileObjectsFromFiles(sourceFiles)
         fileManager.setLocation(StandardLocation.CLASS_OUTPUT, listOf(destFolder))
 
         System.out.println("Files in bin: ${collectNonDirFiles(listOf(destFolder))}")
         System.out.println("Here are the source files:")
         for (sourceFile in sourceFiles) {
-            System.out.println("Generated code for test " + file + ":")
-            System.out.println(Files.readAllLines(sourceFile.toPath()).joinToString("\n"));
+            System.out.println("Generated code for test $file:")
+            System.out.println(Files.readAllLines(sourceFile.toPath()).joinToString("\n"))
         }
 
         val task = compiler.getTask(null, fileManager, null, null, null, compilationUnits)

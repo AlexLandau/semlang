@@ -1,7 +1,6 @@
 package net.semlang.transforms
 
 import net.semlang.api.*
-import net.semlang.transforms.replaceLocalFunctionNameReferences
 
 // Note: Only converts new interfaces in the module itself
 // TODO: I really shouldn't be returning ValidatedModules in these...

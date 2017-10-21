@@ -689,7 +689,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     }
                 }
 
-                error("Literals not supported for type ${resolvedType}")
+                error("Literals not supported for type $resolvedType")
             }
         }
     }

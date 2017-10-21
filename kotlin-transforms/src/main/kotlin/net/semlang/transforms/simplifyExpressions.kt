@@ -349,7 +349,7 @@ private fun getNewVarName(varNamesToPreserve: Set<String>): String {
     while (true) {
         val name = "temp_" + i
         if (!varNamesToPreserve.contains(name)) {
-            return name;
+            return name
         }
         i++
     }

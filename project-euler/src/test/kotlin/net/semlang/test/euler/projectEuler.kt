@@ -47,8 +47,8 @@ class ProjectEulerExamples {
 private fun hash(output: SemObject): String {
     val answer = toLong(output)
 
-    val digest: MessageDigest = MessageDigest.getInstance("SHA-256");
-    val hash: ByteArray = digest.digest(answer.toString().toByteArray(Charsets.UTF_8));
+    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+    val hash: ByteArray = digest.digest(answer.toString().toByteArray(Charsets.UTF_8))
 
     return Base64.getEncoder().encodeToString(hash)
 }
