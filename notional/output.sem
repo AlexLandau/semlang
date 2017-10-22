@@ -134,3 +134,11 @@ FluidList!.add<File!>(filesList!, curFile!!) // Removes curFile from the scope; 
 // Mercury uses e.g. !IO as a shorthand for IO0, IO and then for IO0, IO1 and IO1, IO in the arguments later on
 
 // So what's next?
+
+// Somewhat different proposal: Disallow the use of a given fluid variable more than once in a given assignment, to
+// begin with; allow shoehorning in some alternative syntax later, but for sem0 we shouldn't need to support passing in
+// the same thing twice to the same function. We may want some indication of whether the input is consumed by the
+// function, but this is only strictly needed in the type signature of the function. (Good side point: We'd also want
+// syntax for the function type itself.)
+
+

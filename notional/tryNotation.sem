@@ -1,0 +1,77 @@
+
+// Before committing to using ! for fluid types, we should explore how we expect to streamline Try types in sem1/sem2.
+
+// Task: Reading JSON from a file, then applying a transformation to part of it if it exists
+// Omit special notation for the fluid types for now
+
+// Here's what it might look like without special notation:
+function readConfig(filename: Unicode.String, fs: FileSystem!): Config {
+  let fileContents: Try<String> = FileSystem.readFile(fs, filename)
+  let json: Try<JsonNode> = Try.flatMap<>(fileContents, Json.parse|(_))
+  let config: Try<Config> = Try.map<>(json, Config.create|(_))
+  // Yes, we're swallowing the error; not saying this is good software engineering
+  Try.catch<Config>(config, () -> getDefaultConfig()) // Someday the lambda might get an error object
+}
+
+// So can we get rid of all those Try methods?
+function readConfig(filename: Unicode.String, fs: FileSystem!): Config {
+  let fileContents: String? = FileSystem.readFile(fs, filename)
+  let json: JsonNode? = Json.parse(fileContents?)
+  let config: Config? = Config.create(json?)
+  config ?: getDefaultConfig()
+}
+
+// So here are are the rules of that:
+// The type Try<Foo> can be written as Foo?
+// A function can be called with one or more arguments given ? as a postfix operator. (This is only valid if those
+// arguments are all Try<*>.) This means:
+// 1) If the function previously returned Foo != Try<*>, it is wrapped in Try.maps appropriately so as to return a
+//    Try<Foo>.
+// 2) If it did return Try<*>, we need to figure out whether to map and return Try<Try<*>>, or to flatMap and return
+//    Try<*>. I'm not sure if this should be deterministic (opinionated) or not; functions that operate on generics
+//    are still going to result in Try<Try<*>> types in some places, and there are conceivable situations where we want
+//    to at least permit these.
+//    - One option here is suffixing the function name itself with a ?, but I'm not sure what the right situations for
+//      this should be. Does this indicate the flatMap case? Does it indicate the Try<Try<*>> case? Does it indicate
+//      any case where we add to the number of Try<*> layers in the output?
+//      - I *think* we should avoid using extra notation in the common case (for sem2 in particular), which means the
+//        function postfix should be specifically for the Try<Try<*>> case.
+// Finally, the ?: operator can be used for the Try.catch function. (Perhaps this could be named "orElse", which would
+// sound better if we wanted to have operator "overloading" more generally.)
+
+// An important clarifying aspect of the above is that the ? is not part of the expression, but rather part of the
+// function argument.
+
+// Tangent: When we fail on a Try.assume(), we should ideally maintain some info about where that Try failure came from
+// in the first place -- i.e. stacktraces, etc. there as well as at the location of the assume().
+
+// We still don't have examples of assume/assert. This is the part most likely to use !, so it's the aspect we need to
+// understand most urgently.
+
+// We could just go back to the same example, but with worse coding that's more crashy.
+
+// Version 1:
+function readConfig(filename: Unicode.String, fs: FileSystem!): Config {
+  let fileContents: String = FileSystem.readFile(fs, filename)!
+  let json: JsonNode = Json.parse(fileContents)!
+  Config.create(json)
+}
+// This might be an expression postfix or function-specific.
+// Version 2:
+function readConfig(filename: Unicode.String, fs: FileSystem!): Config {
+  let fileContents: String = FileSystem.readFile!(fs, filename)
+  let json: JsonNode = Json.parse!(fileContents)
+  Config.create(json)
+}
+// Version 3:
+function readConfig(filename: Unicode.String, fs: FileSystem!): Config {
+  let fileContents: String = FileSystem.readFile(fs, filename)?!
+  let json: JsonNode = Json.parse(fileContents)?!
+  Config.create(json)
+}
+
+// Meh...
+// Still doesn't distinguish between assume and assert, and will be confusing if it can't be applied to an arbitrary
+// expression. Probably we'd have to use ! for assert and !! or ?! for assume.
+
+// Could we use a ! prefix for fluid variables and so keep the postfix version intact for Try?
