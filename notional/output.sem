@@ -141,4 +141,181 @@ FluidList!.add<File!>(filesList!, curFile!!) // Removes curFile from the scope; 
 // function, but this is only strictly needed in the type signature of the function. (Good side point: We'd also want
 // syntax for the function type itself.)
 
+// The above still doesn't settle the question of how to handle modification within a fluid struct -- if that is even
+// something we want?
 
+// Perhaps instead we should have a Mutable<T> type and require that to be used in fluid structs in places where we
+// want to be able to set new values entirely, vs. having a member that only gets referenced through ___?
+// One implication is that we couldn't have a member of a fluid struct get consumed in a function call, unless we
+// offered some sort of "unbind" functionality to break it into its component parts.
+
+function recordFoo(loggers: Loggers) {
+  // Short-form direct call
+  Loggers.log(loggers->fooLog!, Foo."foo") // ???
+  // This wouldn't be allowed, which could be awkward:
+  // let fooLog = loggers->fooLog!
+  // Or what if we did allow it, but the thing that is equivalent between the two is the reference, not the implicit
+  // "value"? That might miss some of the benefits of referential transparency... What goes wrong in that case?
+  // - One thing you get is that "foo" can change even if it hasn't been referenced at all since its last reference.
+  //   That seems worth avoiding.
+  // Dialects could just have something like:
+  let fooLog be loggers->fooLog
+  // which would be just a shallow substitution at the source code level.
+  // Instead you'd need something like:
+  grab fooLog, barLog from loggers {
+    Loggers.log(fooLog!, Foo."foo")
+    Loggers.log(barLog!, Foo."bar")
+  }
+  // More explicit unstructuring...
+  let fooLog1 << loggers1->fooLog
+  Loggers.log(fooLog1 >> fooLog2, Foo."foo")
+  set loggers1->fooLog << fooLog2
+  // Now I think we're getting somewhere...
+  grab (loggers1 >> loggers2)->fooLog as fooLog1 >> fooLog2 in {
+    Loggers.log(fooLog1 >> fooLog2, Foo."foo")
+  }
+}
+
+// So what about this consumption thing?
+function makeLoggers(fooLog >> _: FooLogger!, barLog >> _: BarLogger!) {
+  Loggers(fooLog!!, barLog!!)
+  // or:
+  Loggers(end fooLog, end barLog)
+}
+
+// Current thought around fluid structs: They don't implicitly let you set their members, and instead you have to use
+// Mutable<T> if that's your intent. However, we *probably* need to support some concept of losing ownership over a
+// member; which in turn implies, awkwardly, that if a fluid struct contains another fluid struct that lost a member,
+// then the (effective) type of the outer struct also must change to adapt to the inner struct's type having changed.
+// This is not computationally difficult to track, but there needs to be a clear way to express that in syntax/notation...
+
+// And then we haven't yet gotten back to the question of bindings.
+
+// Okay, so what if a fluid struct has a type that is also "fluid" in some sense? Like, it can actually change when we
+// interact with it. And for that matter, what about the basic fluid types? When we "lose" something we pass as a
+// function argument, does that qualify as a change in type?
+
+function makeLoggers(fooLog: FooLogger! >> void, barLog: BarLogger! >> void) {
+  // ...
+}
+
+function takeFooLog(loggers: Loggers! >> Loggers! - {fooLog}): FooLogger! {
+  loggers->fooLog
+}
+
+// This starts to get a little TypeScript-ish/duck-typey and that's not a great fit for the language, plus any syntax
+// is going to contain so much information that it might end up looking horrible. So is that intrinsic to allowing the
+// user to rearrange these structs (in conjunction with referential transparency and strict typing), or is there any
+// way around that?
+
+// So the basic issues we're anticipating that we want fluid structs for are:
+// 1) Applications need access to a ton of monads/fluids to interact with the OS/IO/network/etc. Having these appear as
+//    separate inputs to the application function is terrible; better to offer them through a single structured object.
+// 2) We want to reuse functions that use some subset of this functionality and don't take the god object as an argument.
+// 3) As a consequence of 1 and 2, we need to be able to temporarily break up the big struct and use its components in
+//    some other structure.
+// 4) And the ideal (maybe impossible) is that all this happens with little or no effort by the programmer... except
+//    that that makes things that much harder to understand if things don't go right.
+
+// Perhaps one approach would be to have a single "Time" type (object?) that gets passed around as the monad/unique
+// stand-in. This avoids the need for separate monads for each use case of I/O or non-determinism. The question there
+// would be whether this necessarily produces serialization of operations, and how to represent non-linearity (i.e. the
+// possibility of parallelism) if that's the case. On the other hand, that's a question worth asking in any case.
+
+// One example: Suppose we have the operation "Read all the files in this list". In many cases, it's perfectly
+// acceptable to read the files in parallel, but one could imagine cases where it's important that we finish reading
+// one file before starting the next. (Or consider, "send all these packets over this TCP socket".) Thus, it's still the
+// responsibility of the programmer to specify whether these may happen in non-deterministic order, or may happen in
+// fixed order. The chosen philosophy of Semlang for cases like this is to prefer determinism and correctness over
+// performance, and to instead require the programmer to identify specific improvements, like indicating that the I/O
+// may happen simultaneously; this applies in all cases. (This may be a case where the ideal long-term solution is to
+// delegate to the underlying environment the details of persisting data, managing configuration, or communicating over
+// the wire between parts of the program. Eventually, the environments may also be able to identify parts of the program
+// where non-determinism may be temporarily introduced for the sake of performance without creating overall behavior
+// changes at the application level.)
+
+// So we might as well sketch out what that "time" object might look like and how it might offer parallelism.
+
+// Using "invisible" or implicit uniqueness typing:
+@Application("Script")
+function helloWorld(time: Time): Time {
+  StandardOut.printLine(time, Unicode.String."Hello, world!")
+  time
+}
+// Using explicit types:
+@Script
+function helloWorld(time: Time): Time {
+  let time2 = StandardOut.printLine(time, Unicode.String."Hello, world!")
+  time2
+}
+// It feels weird to have syntax that can only apply to one type, but StringBuffer?:
+@Script
+function helloWorld(time: Time!) {
+  StandardOut.printLine(time >> time2, Unicode.String."Hello, world!")
+}
+// Let's try the !1 syntax for the hell of it:
+@Script
+function helloWorld(time: Time!) {
+  StandardOut.print(time!1, Unicode.String."Hello, world!")
+  StandardOut.newLine(time!2)
+}
+// So how about parallelization?
+function greetWorld(time: Time!, planetName: Unicode.String): Time {
+  StandardOut.print(time, Unicode.String."Hello, ")
+  StandardOut.print(time, planetName)
+  StandardOut.printLine(time, Unicode.String."!")
+}
+@Script
+function helloWorlds(time: Time!) {
+  // Note: It would be nice to have this shorter literal syntax available within type literals
+  let planets = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]<Unicode.String>
+  // Approach with a convenience function
+  List.mapParallel<Unicode.String>(planets, time, greetWorld|(_, _)) // might have the arguments backwards
+  // Or a more direct possible route...
+  Time.doInParallel(time, List.map<>(planets, planet -> greetWorld|(_, planet))) // pseudocode
+  // Second argument is a list of (Time >> Time) -> void
+}
+
+// A couple of possible refinements:
+// 1) At the sem0 level, either allow multiple returned elements or tuple types to allow for elements to return Time
+//    (or do they return InTime<*>?)
+// 2) At higher levels, consider a keyword for functions indicating they accept and return Time, and implicitly pass it
+//    to functions that use it
+// 3) Consider other names, like Outside; Timeline; Reality
+// 4) One thing this loses is a type-definition assurance that certain types of resources (and not others) are available
+//    to the function. Arguably this could still be offered by passing in non-monad FileSystem, etc. objects as well as
+//    the Time object.
+
+
+// Okay, here are some more thoughts after coming back to this after a while:
+// 1) The terms "Order" (for the object) and "threaded types" seem appropriate.
+// 2) Tilde (~) seems free to be used as an operator for this, without too much existing semantic baggage.
+// 3) Another type of method that seems reasonable to stub out: Run these X threaded methods that use SystemOut and
+//    bundle their outputs, displaying periodically, a la Gradle.
+// 4) Probably worth making a list of currently used notation/operators and notation to reserve for the future
+
+@Script
+function helloWorlds(order: ~Order, env: ScriptEnvironment) {
+  let planets: List<Unicode.String> = getPlanets()
+  let greetingTasks: List<(~Order) -> void> = List.map<>(planets, planet -> greetWorld|(_, env->out, planet))
+  Order.doInParallel(~order, greetingTasks)
+}
+function greetWorld(order: ~Order, out: TextOut, planet: Unicode.String) {
+  out->print(~order, Unicode.String."Hello, ")
+  out->print(~order, planet)
+  out->printLine(~order, "!")
+}
+
+// At this point, don't add the ability to "consume" an argument, don't add threaded struct types, and require at most
+// one reference to a given threaded object per "block-element" (except when e.g. an assignment has its own block
+// within).
+
+// That reserves all the ! operators for Try functionality. Anything else we're missing here that's unresolved?
+
+// We could still have a Mutable type, I believe; give it a set() function, and a use(T -> U) function -- note that in
+// the latter, we should prevent the Mutable from being used within the lambda expression, which slightly contradicts
+// what I said about "assignment has its own block within" earlier. Special rules for if/then/else blocks instead?
+// (Also, it's not obvious why you'd want to use a Mutable type. No need to add it just yet.)
+
+// We still don't have support for function bindings figured out. However, with a single Order type, it's significantly
+// easier to support e.g. List.reduceThreaded() as a special solution.

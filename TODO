@@ -1,3 +1,13 @@
+Major near-term projects:
+- Threaded types, console-out support, and application functions
+- Lambda expressions
+- Build system
+  - Let's start by creating a repo where buildSrc depends on hand-built jars...
+- IDE support (probably requiring a rewrite of the validator)
+- Sem1 vs. sem0 separation and Try notation
+- JavaScript-environment interpreter and/or transpiler
+
+
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Turn NativeFunctions into library code written in semlang where possible
@@ -27,13 +37,16 @@
   - Make code style more consistent
 - Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
+- Convert Natural to a restricted struct (restruct?) of Integer
 - Additional primitive types (N-bit integers, floating-point numbers, rationals?)
 - Other native-y types: Set, UniqueList, Map, Symbol, Snow?
+- Try error tracking
 - There needs to be some way for interpreters/transpilers/compilers to have optional Semlang implementations of native
   thing A in terms of B, thing B in terms of A, etc.
 - String library methods
 - List literals: Don't require parameter type if non-empty
   - (But avoid this in the base language if it looks like we can't avoid subtypes in the future)
+  - Support short-form embedded literals when parameter type is present
 - Enum types
   - Might be a concept combinable with union types (like ADTs)?
   - ADTs and when expressions could subsume booleans and if/then
@@ -123,7 +136,6 @@ Design choices to reconsider:
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions
-  - Integer.fromNatural or Natural.toInteger?
 - Slightly alternative semantics: A function ID is an expression representing a function binding for that function with
   empty bindings; this would simplify "named" vs. "expression" calls, but there would (still) be ambiguities between
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.
