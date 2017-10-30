@@ -10,6 +10,16 @@
     "categories": [
         "Languages"
     ],
+    "activationEvents": [
+        "onLanguage:semlang"
+    ],
+    "main": "./out/main",
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+    },
     "contributes": {
         "languages": [{
             "id": "semlang",
@@ -22,5 +32,10 @@
             "scopeName": "source.semlang",
             "path": "./syntaxes/semlang.tmLanguage.json"
         }]
+    },
+    "devDependencies": {
+        "typescript": "~2.5.3",
+        "vscode": "^1.1.5",
+        "@types/node": "^7.0.43"
     }
 }
