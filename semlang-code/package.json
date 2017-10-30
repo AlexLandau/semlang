@@ -1,0 +1,26 @@
+{
+    "name": "semlang-code",
+    "displayName": "semlang-code",
+    "description": "foo",
+    "version": "0.0.1",
+    "publisher": "donthaveoneyet",
+    "engines": {
+        "vscode": "^1.17.0"
+    },
+    "categories": [
+        "Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "semlang",
+            "aliases": ["Semlang", "semlang"],
+            "extensions": [".sem",".sem1",".sem0"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "semlang",
+            "scopeName": "source.semlang",
+            "path": "./syntaxes/semlang.tmLanguage.json"
+        }]
+    }
+}
