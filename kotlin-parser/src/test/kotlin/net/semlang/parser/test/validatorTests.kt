@@ -32,6 +32,12 @@ class ValidatorPositiveTests(private val file: File) {
     }
 
     @Test
+    fun testNewApproach() {
+        val result = parseAndValidateFile2(file)
+        Assert.assertTrue(result is ValidationResult.Success)
+    }
+
+    @Test
     fun testParseWriteParseEquality() {
         val initiallyParsed = parseAndValidateFile(file)
         val writtenToString = writeToString(initiallyParsed)
@@ -86,6 +92,16 @@ class ValidatorNegativeTests(private val file: File) {
             // Expected
         }
     }
+
+    @Test
+    fun testNewApproach() {
+        val result = parseAndValidateFile2(file)
+        if (result is ValidationResult.Failure) {
+            Assert.assertNotEquals(listOf<Issue>(), result.errors)
+        } else {
+            throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
+        }
+    }
 }
 
 private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
@@ -93,6 +109,11 @@ private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
 private fun parseAndValidateFile(file: File): ValidatedModule {
     val context = parseFile(file)
     return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+}
+
+private fun parseAndValidateFile2(file: File): ValidationResult {
+    val context = parseFile(file)
+    return validateModule2(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {
