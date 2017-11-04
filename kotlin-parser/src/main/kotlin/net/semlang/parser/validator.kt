@@ -56,7 +56,7 @@ enum class IssueLevel {
     ERROR,
 }
 
-data class Issue(val message: String, val position: Position, val level: IssueLevel)
+data class Issue(val message: String, val position: Position?, val level: IssueLevel)
 
 sealed class ValidationResult {
     data class Success(val module: ValidatedModule, val warnings: List<Issue>): ValidationResult()
@@ -122,11 +122,12 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val variableTypes = getArgumentVariableTypes(function.arguments)
         val block = validateBlock(function.block, variableTypes, typeInfo, function.id)
         if (function.returnType != block.type) {
-            fail("Function ${function.id}'s stated return type ${function.returnType} does " +
-                    "not match the block's actual return type ${block.type}")
-        } else {
-            return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
+            errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypePosition, IssueLevel.ERROR))
+//            fail("Function ${function.id}'s stated return type ${function.returnType} does " +
+//                    "not match the block's actual return type ${block.type}")
         }
+
+        return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
     }
 
     private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
@@ -144,10 +145,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val validatedAssignments = ArrayList<ValidatedAssignment>()
         block.assignments.forEach { assignment ->
             if (variableTypes.containsKey(assignment.name)) {
-                fail("In function $containingFunctionId, there is a reassignment of the already-assigned variable ${assignment.name}")
+                errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.namePosition, IssueLevel.ERROR))
             }
             if (isInvalidVariableName(assignment.name, typeInfo)) {
-                fail("In function $containingFunctionId, there is an invalid variable name ${assignment.name}")
+                errors.add(Issue("Invalid variable name ${assignment.name}", assignment.namePosition, IssueLevel.ERROR))
             }
 
             val validatedExpression = validateExpression(assignment.expression, variableTypes, typeInfo, containingFunctionId)
@@ -374,7 +375,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //Ground the signature
         val groundSignature = ground(signature, expression.chosenParameters, functionRef.id)
         if (argumentTypes != groundSignature.argumentTypes) {
-            fail("The function $containingFunctionId tries to call $functionRef with argument types $argumentTypes, but the function expects argument types ${groundSignature.argumentTypes}")
+            errors.add(Issue("The function $functionRef expects argument types ${groundSignature.argumentTypes}, but is given arguments with types $argumentTypes", expression.position, IssueLevel.ERROR))
         }
 
         return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionRef, arguments, expression.chosenParameters)
@@ -419,8 +420,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
         val isValid = validator.validate(expression.literal)
         if (!isValid) {
-            System.out.println("Position of invalid literal: " + expression.position)
-            errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.position!!, IssueLevel.ERROR))
+            errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.position, IssueLevel.ERROR))
         }
         // TODO: Someday we need to check for invalid literal values at validation time
         return TypedExpression.Literal(expression.type, expression.literal)

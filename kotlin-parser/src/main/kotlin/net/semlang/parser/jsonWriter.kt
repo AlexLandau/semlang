@@ -293,7 +293,7 @@ private fun parseFunction(node: JsonNode): Function {
     val block = parseBlock(node["block"] ?: error("Functions must have a 'block' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations)
+    return Function(id, typeParameters, arguments, returnType, block, annotations, null)
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
@@ -331,7 +331,7 @@ private fun parseAssignment(node: JsonNode): Assignment {
     val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
     val expression = parseExpression(node["="] ?: error("Assignments should have a '=' field indicating the expression"))
 
-    return Assignment(name, null, expression)
+    return Assignment(name, null, expression, null)
 }
 
 private fun addExpression(node: ObjectNode, expression: TypedExpression) {

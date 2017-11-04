@@ -40,7 +40,7 @@ private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
 
     val annotations = parseAnnotations(function.annotations())
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations)
+    return Function(id, typeParameters, arguments, returnType, block, annotations, positionOf(function.type()))
 }
 
 private fun parseAnnotations(annotations: Sem1Parser.AnnotationsContext?): List<Annotation> {
@@ -67,7 +67,7 @@ private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: Amb
     for (assignment in ambiguousBlock.assignments) {
         val expression = scopeExpression(localVariableIds, assignment.expression)
         localVariableIds.add(EntityRef.of(assignment.name))
-        assignments.add(Assignment(assignment.name, assignment.type, expression))
+        assignments.add(Assignment(assignment.name, assignment.type, expression, assignment.namePosition))
     }
     val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
     return Block(assignments, returnedExpression)
@@ -215,7 +215,7 @@ private fun parseAssignment(assignment: Sem1Parser.AssignmentContext): Ambiguous
     val name = assignment.ID().text
     val type = if (assignment.type() != null) parseType(assignment.type()) else null
     val expression = parseExpression(assignment.expression())
-    return AmbiguousAssignment(name, type, expression)
+    return AmbiguousAssignment(name, type, expression, positionOf(assignment.ID().symbol))
 }
 
 private fun parseExpression(expression: Sem1Parser.ExpressionContext): AmbiguousExpression {
@@ -293,6 +293,15 @@ private fun positionOf(expression: ParserRuleContext): Position {
             expression.start.charPositionInLine,
             expression.start.startIndex,
             expression.stop.stopIndex
+    )
+}
+
+private fun positionOf(token: Token): Position {
+    return Position(
+            token.line,
+            token.charPositionInLine,
+            token.startIndex,
+            token.stopIndex
     )
 }
 

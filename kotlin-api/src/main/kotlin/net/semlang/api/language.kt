@@ -229,14 +229,14 @@ sealed class TypedExpression {
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
 }
 
-data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression)
-data class Assignment(val name: String, val type: Type?, val expression: Expression)
+data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression, val namePosition: Position?)
+data class Assignment(val name: String, val type: Type?, val expression: Expression, val namePosition: Position?)
 data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
 data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val returnTypePosition: Position?) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
