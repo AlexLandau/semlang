@@ -317,7 +317,7 @@ private fun parseBlock(node: JsonNode): Block {
     }
     val returnedExpression = parseExpression(node.last()["return"])
 
-    return Block(assignments, returnedExpression)
+    return Block(assignments, returnedExpression, null)
 }
 
 private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {

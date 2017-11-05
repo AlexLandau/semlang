@@ -70,7 +70,7 @@ private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: Amb
         assignments.add(Assignment(assignment.name, assignment.type, expression, assignment.namePosition))
     }
     val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
-    return Block(assignments, returnedExpression)
+    return Block(assignments, returnedExpression, ambiguousBlock.position)
 }
 
 // TODO: Is it inefficient for varIds to be an ArrayList here?
@@ -201,7 +201,7 @@ private fun parseMember(member: Sem1Parser.Struct_memberContext): Member {
 private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
     val assignments = parseAssignments(block.assignments())
     val returnedExpression = parseExpression(block.return_statement().expression())
-    return AmbiguousBlock(assignments, returnedExpression)
+    return AmbiguousBlock(assignments, returnedExpression, positionOf(block))
 }
 
 private fun parseAssignments(assignments: Sem1Parser.AssignmentsContext): List<AmbiguousAssignment> {
@@ -513,6 +513,15 @@ fun parseFile(file: File): RawContext {
     return parseFileNamed(file.absolutePath)
 }
 
+sealed class ParsingResult {
+    data class Success(val context: RawContext): ParsingResult()
+    data class Failure(val errors: List<Issue>): ParsingResult()
+}
+
+fun parseFile2(file: File): ParsingResult {
+    return parseFileNamed2(file.absolutePath)
+}
+
 fun parseFiles(files: Collection<File>): RawContext {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
@@ -527,24 +536,46 @@ fun parseFiles(files: Collection<File>): RawContext {
 }
 
 fun parseFileNamed(filename: String): RawContext {
+    val result = parseFileNamed2(filename)
+    return when (result) {
+        is ParsingResult.Success -> {
+            result.context
+        }
+        is ParsingResult.Failure -> {
+            error("Found errors: " + result.errors)
+        }
+    }
+}
+
+fun parseFileNamed2(filename: String): ParsingResult {
     val stream = ANTLRFileStream(filename, "UTF-8")
-    val rawContents = parseANTLRStreamInner(stream)
-    return rawContents
+    return parseANTLRStreamInner2(stream)
 }
 
 fun parseString(string: String): RawContext {
-    val stream = ANTLRInputStream(string)
-    val rawContents = parseANTLRStreamInner(stream)
-    return rawContents
+    val result = parseString2(string)
+    return when (result) {
+        is ParsingResult.Success -> {
+            result.context
+        }
+        is ParsingResult.Failure -> {
+            error("Found errors: " + result.errors)
+        }
+    }
 }
 
-private class ErrorListener(val errorsFound: ArrayList<String> = ArrayList<String>()): ANTLRErrorListener {
+fun parseString2(string: String): ParsingResult {
+    val stream = ANTLRInputStream(string)
+    return parseANTLRStreamInner2(stream)
+}
+
+private class ErrorListener(val errorsFound: ArrayList<Issue> = ArrayList<Issue>()): ANTLRErrorListener {
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
-        if (msg != null) {
-            errorsFound.add(msg)
-        } else {
-            errorsFound.add("Error with no message at line $line and column $charPositionInLine")
-        }
+        val message = msg ?: "Error with no message"
+        val position = Position(line, charPositionInLine,
+                (offendingSymbol as? Token)?.startIndex ?: 0,
+                (offendingSymbol as? Token)?.stopIndex ?: 1)
+        errorsFound.add(Issue(message, position, IssueLevel.ERROR))
     }
 
     override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
@@ -560,7 +591,26 @@ private class ErrorListener(val errorsFound: ArrayList<String> = ArrayList<Strin
     }
 }
 
-private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
+//private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
+//    val lexer = Sem1Lexer(stream)
+//    val errorListener = ErrorListener()
+//    lexer.addErrorListener(errorListener)
+//    val tokens = CommonTokenStream(lexer)
+//    val parser = Sem1Parser(tokens)
+//    parser.addErrorListener(errorListener)
+//    val tree: Sem1Parser.FileContext = parser.file()
+//
+//    val extractor = ContextListener()
+//    ParseTreeWalker.DEFAULT.walk(extractor, tree)
+//
+//    if (!errorListener.errorsFound.isEmpty()) {
+//        error("Found errors: " + errorListener.errorsFound)
+//    }
+//
+//    return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+//}
+
+private fun parseANTLRStreamInner2(stream: ANTLRInputStream): ParsingResult {
     val lexer = Sem1Lexer(stream)
     val errorListener = ErrorListener()
     lexer.addErrorListener(errorListener)
@@ -573,8 +623,10 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
     ParseTreeWalker.DEFAULT.walk(extractor, tree)
 
     if (!errorListener.errorsFound.isEmpty()) {
-        error("Found errors: " + errorListener.errorsFound)
+//        error("Found errors: " + errorListener.errorsFound)
+        return ParsingResult.Failure(errorListener.errorsFound)
     }
 
-    return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+    val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+    return ParsingResult.Success(context)
 }

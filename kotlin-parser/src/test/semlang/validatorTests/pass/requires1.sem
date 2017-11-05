@@ -1,0 +1,8 @@
+// Trivial requires block
+
+struct Foo {
+  a: Integer
+  requires {
+    Boolean."true"
+  }
+}

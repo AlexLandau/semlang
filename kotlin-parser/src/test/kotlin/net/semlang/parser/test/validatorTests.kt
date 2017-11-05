@@ -112,8 +112,17 @@ private fun parseAndValidateFile(file: File): ValidatedModule {
 }
 
 private fun parseAndValidateFile2(file: File): ValidationResult {
-    val context = parseFile(file)
-    return validateModule2(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+    val parsingResult = parseFile2(file)
+    // TODO: This belongs in the API, not test code
+    return when (parsingResult) {
+        is ParsingResult.Success -> {
+            validateModule2(parsingResult.context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+        }
+        is ParsingResult.Failure -> {
+            ValidationResult.Failure(parsingResult.errors, listOf())
+        }
+    }
+
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {

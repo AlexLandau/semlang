@@ -95,7 +95,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 context.structs.map(UnvalidatedStruct::id),
                 context.interfaces.map(Interface::id),
                 upstreamModules)
-        val functionTypeSignatures = getFunctionTypeSignatures(context, upstreamModules)
+        val functionTypeSignatures = getLocalFunctionTypeSignatures(context)
         val nativeModuleId = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, nativeModuleVersion)
         val allFunctionTypeSignatures = getAllFunctionTypeSignatures(functionTypeSignatures, moduleId, upstreamModules)
         val allStructs = getAllStructsInfo(context.structs, moduleId, nativeModuleId, upstreamModules)
@@ -520,7 +520,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun getFunctionTypeSignatures(context: RawContext, upstreamModules: List<ValidatedModule>): Map<EntityId, TypeSignature> {
+    private fun getLocalFunctionTypeSignatures(context: RawContext): Map<EntityId, TypeSignature> {
         val signatures = HashMap<EntityId, TypeSignature>()
 
         context.structs.forEach { struct ->
@@ -564,7 +564,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val fakeContainingFunctionId = EntityId(struct.id.namespacedName + "requires")
         val requires = struct.requires?.let { validateBlock(it, memberTypes, typeInfo, fakeContainingFunctionId) }
         if (requires != null && requires.type != Type.BOOLEAN) {
-            error("Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean")
+            val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
+            val position = struct.requires!!.position
+            val issue: Issue = Issue(message, position, IssueLevel.ERROR)
+            errors.add(issue)
         }
 
         return Struct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations)
