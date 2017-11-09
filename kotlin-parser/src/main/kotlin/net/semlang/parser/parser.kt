@@ -282,7 +282,8 @@ private fun parseExpression(expression: Sem1Parser.ExpressionContext): Ambiguous
     if (expression.ID() != null) {
         return AmbiguousExpression.Variable(expression.ID().text, positionOf(expression))
     }
-    throw IllegalArgumentException("Couldn't parseFunction $expression")
+
+    throw PositionAwareParsingException("Couldn't parse expression '${expression.text}'", positionOf(expression))
 }
 
 private fun parseLiteral(literalFromParser: TerminalNode) = literalFromParser.text.drop(1).dropLast(1)
@@ -610,6 +611,8 @@ private class ErrorListener(val errorsFound: ArrayList<Issue> = ArrayList<Issue>
 //    return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
 //}
 
+class PositionAwareParsingException(message: String, val position: Position): Exception(message)
+
 private fun parseANTLRStreamInner2(stream: ANTLRInputStream): ParsingResult {
     val lexer = Sem1Lexer(stream)
     val errorListener = ErrorListener()
@@ -620,7 +623,11 @@ private fun parseANTLRStreamInner2(stream: ANTLRInputStream): ParsingResult {
     val tree: Sem1Parser.FileContext = parser.file()
 
     val extractor = ContextListener()
-    ParseTreeWalker.DEFAULT.walk(extractor, tree)
+    try {
+        ParseTreeWalker.DEFAULT.walk(extractor, tree)
+    } catch(e: PositionAwareParsingException) {
+        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), null, IssueLevel.ERROR)))
+    }
 
     if (!errorListener.errorsFound.isEmpty()) {
 //        error("Found errors: " + errorListener.errorsFound)
