@@ -36,13 +36,6 @@ data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>
  * 3) Someday this should be rewritten in Semlang
  */
 fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidatedModule {
-//    val typeInfo = collectTypeInfo(context, moduleId, nativeModuleVersion, upstreamModules)
-//
-//    val ownFunctions = validateFunctions(context.functions, typeInfo)
-//    val ownStructs = validateStructs(context.structs, typeInfo)
-//    val ownInterfaces = validateInterfaces(context.interfaces, typeInfo)
-//
-//    return ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
     val result = validateModule2(context, moduleId, nativeModuleVersion, upstreamModules)
     if (result is ValidationResult.Success) {
         return result.module
@@ -89,19 +82,236 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun collectTypeInfo(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): AllTypeInfo {
+        /*
+         * Some notes about how we deal with error cases here:
+         * - Name collisions involving other modules (which are assumed valid at this point) aren't a problem at this
+         *   level. Instead, there will be an error found at the location of the reference, when the reference is
+         *   ambiguous.
+         * - Name collisions within the module may occur either for both types and functions, or for functions only.
+         * - Collisions should be noted in both locations. References to these types/functions (when they resolve to the
+         *   current module) will then be their own errors.
+         */
         val resolver = EntityResolver.create(moduleId,
                 nativeModuleVersion,
                 context.functions.map(Function::id),
                 context.structs.map(UnvalidatedStruct::id),
-                context.interfaces.map(Interface::id),
+                context.interfaces.map(UnvalidatedInterface::id),
                 upstreamModules)
-        val functionTypeSignatures = getLocalFunctionTypeSignatures(context)
-        val nativeModuleId = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, nativeModuleVersion)
-        val allFunctionTypeSignatures = getAllFunctionTypeSignatures(functionTypeSignatures, moduleId, upstreamModules)
-        val allStructs = getAllStructsInfo(context.structs, moduleId, nativeModuleId, upstreamModules)
-        val allInterfaces = getAllInterfacesInfo(context.interfaces, moduleId, nativeModuleId, upstreamModules)
 
-        return AllTypeInfo(resolver, allFunctionTypeSignatures, allStructs, allInterfaces)
+        val localTypes = HashMap<EntityId, TypeInfo>()
+        val duplicateLocalTypeIds = HashSet<EntityId>()
+
+        val localFunctions = HashMap<EntityId, FunctionInfo>()
+        val duplicateLocalFunctionIds = HashSet<EntityId>()
+
+        // For sanity-checking the results of the spaghetti logic below
+        val seenTypeIds = HashSet<EntityId>()
+        val seenFunctionIds = HashSet<EntityId>()
+
+        val addDuplicateIdError = fun(id: EntityId, idPosition: Position?) { errors.add(Issue("Duplicate ID ${id}", idPosition, IssueLevel.ERROR)) }
+
+        context.structs.forEach { struct ->
+            val id = struct.id
+            seenTypeIds.add(id)
+            seenFunctionIds.add(id)
+
+            var isDuplicate = false
+            // Check for duplicate declarations
+            if (duplicateLocalTypeIds.contains(id)) {
+                isDuplicate = true
+            } else if (localTypes.containsKey(id)) {
+                isDuplicate = true
+                duplicateLocalTypeIds.add(id)
+                addDuplicateIdError(id, localTypes[id]?.idPosition)
+                localTypes.remove(id)
+            }
+            if (duplicateLocalFunctionIds.contains(id)) {
+                isDuplicate = true
+            } else if (localFunctions.containsKey(id)) {
+                isDuplicate = true
+                duplicateLocalFunctionIds.add(id)
+                addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                localFunctions.remove(id)
+            }
+            if (isDuplicate) {
+                addDuplicateIdError(id, struct.idPosition)
+            }
+
+            if (!duplicateLocalTypeIds.contains(id)) {
+                // Collect the type info
+                localTypes.put(id, getTypeInfo(struct))
+            }
+            if (!duplicateLocalFunctionIds.contains(id)) {
+                // Collect the constructor function info
+                localFunctions.put(id, FunctionInfo(struct.getConstructorSignature(), struct.idPosition))
+            }
+        }
+
+        context.interfaces.forEach { interfac ->
+            seenTypeIds.add(interfac.id)
+            seenFunctionIds.add(interfac.id)
+            seenTypeIds.add(interfac.adapterId)
+            seenFunctionIds.add(interfac.adapterId)
+
+            // Check for duplicate declarations
+            for (id in listOf(interfac.id, interfac.adapterId)) {
+                var isDuplicate = false
+                if (duplicateLocalTypeIds.contains(id)) {
+                    isDuplicate = true
+                } else if (localTypes.containsKey(id)) {
+                    isDuplicate = true
+                    duplicateLocalTypeIds.add(id)
+                    addDuplicateIdError(id, localTypes[id]?.idPosition)
+                    localTypes.remove(id)
+                }
+                if (duplicateLocalFunctionIds.contains(id)) {
+                    isDuplicate = true
+                } else if (localFunctions.containsKey(id)) {
+                    isDuplicate = true
+                    duplicateLocalFunctionIds.add(id)
+                    addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                    localFunctions.remove(id)
+                }
+                if (isDuplicate) {
+                    addDuplicateIdError(id, interfac.idPosition)
+                }
+            }
+
+            if (!duplicateLocalTypeIds.contains(interfac.id)) {
+                localTypes.put(interfac.id, getTypeInfo(interfac))
+            }
+            if (!duplicateLocalFunctionIds.contains(interfac.id)) {
+                localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idPosition))
+            }
+            if (!duplicateLocalTypeIds.contains(interfac.adapterId)) {
+                localTypes.put(interfac.adapterId, getTypeInfo(interfac.adapterStruct))
+            }
+            if (!duplicateLocalFunctionIds.contains(interfac.adapterId)) {
+                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterConstructorSignature(), interfac.idPosition))
+            }
+        }
+
+        context.functions.forEach { function ->
+            val id = function.id
+            seenFunctionIds.add(id)
+
+            if (duplicateLocalFunctionIds.contains(id)) {
+                addDuplicateIdError(id, function.idPosition)
+            } else if (localFunctions.containsKey(id)) {
+                addDuplicateIdError(id, function.idPosition)
+                duplicateLocalFunctionIds.add(id)
+                addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                localFunctions.remove(id)
+            }
+
+            if (!duplicateLocalFunctionIds.contains(id)) {
+                localFunctions.put(id, FunctionInfo(function.getTypeSignature(), function.idPosition))
+            }
+        }
+
+        // TODO: Check a few invariants here...
+        // Hopefully we only register one error per duplicate, but that can be dealt with later
+        for (id in duplicateLocalTypeIds) {
+            if (localTypes.containsKey(id)) {
+                error("localTypes has key $id that is also listed in duplicates")
+            }
+        }
+        for (id in seenTypeIds) {
+            if (!localTypes.containsKey(id) && !duplicateLocalTypeIds.contains(id)) {
+                error("We saw a type ID $id that did not end up in the local types or duplicates")
+            }
+        }
+        for (id in duplicateLocalFunctionIds) {
+            if (localFunctions.containsKey(id)) {
+                error("localTypes has key $id that is also listed in duplicates")
+            }
+        }
+        for (id in seenFunctionIds) {
+            if (!localFunctions.containsKey(id) && !duplicateLocalFunctionIds.contains(id)) {
+                error("We saw a function ID $id that did not end up in the local functions or duplicates")
+            }
+        }
+        if ((duplicateLocalTypeIds.isNotEmpty() || duplicateLocalFunctionIds.isNotEmpty()) && errors.isEmpty()) {
+            error("Should have at least one error when there are duplicate IDs")
+        }
+
+        val upstreamTypes = getUpstreamTypes(nativeModuleVersion, upstreamModules)
+        val upstreamFunctions = getUpstreamFunctions(nativeModuleVersion, upstreamModules)
+
+        return AllTypeInfo(resolver, localTypes, duplicateLocalTypeIds, localFunctions, duplicateLocalFunctionIds, upstreamTypes, upstreamFunctions)
+    }
+
+    private fun getUpstreamTypes(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeInfo> {
+        val upstreamTypes = HashMap<ResolvedEntityRef, TypeInfo>()
+
+        // TODO: Fix this to use nativeModuleVersion
+        val nativeModuleId = CURRENT_NATIVE_MODULE_ID
+        getNativeStructs().values.forEach { struct ->
+            val ref = ResolvedEntityRef(nativeModuleId, struct.id)
+            upstreamTypes.put(ref, getTypeInfo(struct, null))
+        }
+        getNativeInterfaces().values.forEach { interfac ->
+            val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
+            upstreamTypes.put(ref, getTypeInfo(interfac, null))
+            val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
+            upstreamTypes.put(adapterRef, getTypeInfo(interfac.adapterStruct, null))
+        }
+
+        upstreamModules.forEach { module ->
+            module.getAllExportedStructs().values.forEach { struct ->
+                val ref = ResolvedEntityRef(module.id, struct.id)
+                upstreamTypes.put(ref, getTypeInfo(struct, null))
+            }
+            module.getAllExportedInterfaces().values.forEach { interfac ->
+                val ref = ResolvedEntityRef(module.id, interfac.id)
+                upstreamTypes.put(ref, getTypeInfo(interfac, null))
+                val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
+                upstreamTypes.put(adapterRef, getTypeInfo(interfac.adapterStruct, null))
+            }
+        }
+        return upstreamTypes
+    }
+
+    private fun getUpstreamFunctions(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, FunctionInfo> {
+        val upstreamFunctions = HashMap<ResolvedEntityRef, FunctionInfo>()
+
+        // (We don't need the idPosition for functions in upstream modules)
+        val functionInfo = fun(signature: TypeSignature): FunctionInfo { return FunctionInfo(signature, null) }
+
+        // TODO: Fix this to use nativeModuleVersion
+        val nativeModuleId = CURRENT_NATIVE_MODULE_ID
+        getNativeStructs().values.forEach { struct ->
+            val ref = ResolvedEntityRef(nativeModuleId, struct.id)
+            upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
+        }
+        getNativeInterfaces().values.forEach { interfac ->
+            val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
+            upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
+            val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
+            upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
+        }
+        getNativeFunctionOnlyDefinitions().values.forEach { function ->
+            val ref = ResolvedEntityRef(nativeModuleId, function.id)
+            upstreamFunctions.put(ref, functionInfo(function))
+        }
+
+        upstreamModules.forEach { module ->
+            module.getAllExportedStructs().values.forEach { struct ->
+                val ref = ResolvedEntityRef(module.id, struct.id)
+                upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
+            }
+            module.getAllExportedInterfaces().values.forEach { interfac ->
+                val ref = ResolvedEntityRef(module.id, interfac.id)
+                upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
+                val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
+                upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
+            }
+            module.getAllExportedFunctions().values.forEach { function ->
+                val ref = ResolvedEntityRef(module.id, function.id)
+                upstreamFunctions.put(ref, functionInfo(function.getTypeSignature()))
+            }
+        }
+        return upstreamFunctions
     }
 
     private fun validateFunctions(functions: List<Function>, typeInfo: AllTypeInfo): Map<EntityId, ValidatedFunction> {
@@ -123,8 +333,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val block = validateBlock(function.block, variableTypes, typeInfo, function.id)
         if (function.returnType != block.type) {
             errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypePosition, IssueLevel.ERROR))
-//            fail("Function ${function.id}'s stated return type ${function.returnType} does " +
-//                    "not match the block's actual return type ${block.type}")
         }
 
         return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
@@ -135,10 +343,57 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
 
-    private data class StructTypeInfo(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean)
-    private data class InterfaceTypeInfo(val typeParameters: List<String>, val methods: Map<String, Method>)
+    private sealed class TypeInfo {
+        abstract val idPosition: Position?
+        data class Struct(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean, override val idPosition: Position?): TypeInfo()
+        data class Interface(val typeParameters: List<String>, val methods: Map<String, Method>, override val idPosition: Position?): TypeInfo()
+    }
+    private data class FunctionInfo(val signature: TypeSignature, val idPosition: Position?)
 
-    private data class AllTypeInfo(val resolver: EntityResolver, val allFunctionTypeSignatures: Map<ResolvedEntityRef, TypeSignature>, val structs: Map<ResolvedEntityRef, StructTypeInfo>, val interfaces: Map<ResolvedEntityRef, InterfaceTypeInfo>)
+    private fun getTypeInfo(struct: UnvalidatedStruct): TypeInfo.Struct {
+        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, struct.idPosition)
+    }
+    // TODO: Null position
+    private fun getTypeInfo(struct: Struct, idPosition: Position?): TypeInfo.Struct {
+        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, idPosition)
+    }
+
+    private fun getTypeInfo(interfac: UnvalidatedInterface): TypeInfo.Interface {
+        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), interfac.idPosition)
+    }
+    // TODO: Null position
+    private fun getTypeInfo(interfac: Interface, idPosition: Position?): TypeInfo.Interface {
+        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), idPosition)
+    }
+
+    private inner class AllTypeInfo(val resolver: EntityResolver,
+                                    val localTypes: Map<EntityId, TypeInfo>,
+                                    val duplicateLocalTypeIds: Set<EntityId>,
+                                    val localFunctions: Map<EntityId, FunctionInfo>,
+                                    val duplicateLocalFunctionIds: Set<EntityId>,
+                                    val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
+                                    val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>) {
+        fun getTypeInfo(resolvedRef: ResolvedEntityRef): TypeInfo? {
+            return if (resolvedRef.module == moduleId) {
+                if (duplicateLocalTypeIds.contains(resolvedRef.id)) {
+                    fail("There are multiple declarations of the type name ${resolvedRef.id}")
+                }
+                localTypes[resolvedRef.id]
+            } else {
+                upstreamTypes[resolvedRef]
+            }
+        }
+        fun getFunctionInfo(resolvedRef: ResolvedEntityRef): FunctionInfo? {
+            return if (resolvedRef.module == moduleId) {
+                if (duplicateLocalFunctionIds.contains(resolvedRef.id)) {
+                    fail("There are multiple declarations of the function name ${resolvedRef.id}")
+                }
+                localFunctions[resolvedRef.id]
+            } else {
+                upstreamFunctions[resolvedRef]
+            }
+        }
+    }
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedBlock {
         val variableTypes = HashMap(externalVariableTypes)
@@ -230,10 +485,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val functionRef = expression.functionRef
 
         val resolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
-        val signature = typeInfo.allFunctionTypeSignatures[resolvedRef.entityRef] ?: getAllNativeFunctionLikeDefinitions()[resolvedRef.entityRef.id]
-        if (signature == null) {
+        val functionInfo = typeInfo.getFunctionInfo(resolvedRef.entityRef)
+        if (functionInfo == null) {
             fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
         }
+        val signature = functionInfo.signature
         val chosenParameters = expression.chosenParameters
         if (chosenParameters.size != signature.typeParameters.size) {
             fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
@@ -280,56 +536,40 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val parentNamedType = innerExpression.type as? Type.NamedType ?: fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}")
 
         val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref) ?: error("In function $containingFunctionId, we try to dereference an expression $innerExpression of unrecognized type ${innerExpression.type}")
-        if (resolvedParentType.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
-            // TODO: TypeInfo should contain info on natives
-            val structInfo = typeInfo.structs[resolvedParentType.entityRef] ?: getNativeStructInfo(resolvedParentType.entityRef.id) ?: error("Internal error: Resolution or type info")
-            val member = structInfo.members[expression.name]
-            if (member == null) {
-                fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
+        val parentTypeInfo = typeInfo.getTypeInfo(resolvedParentType.entityRef) ?: error("No type info for ${resolvedParentType.entityRef}")
+
+        return when (parentTypeInfo) {
+            is TypeInfo.Struct -> {
+                val member = parentTypeInfo.members[expression.name]
+                if (member == null) {
+                    fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
+                }
+
+                // Type parameters come from the struct definition itself
+                // Chosen types come from the struct type known for the variable
+                val typeParameters = parentTypeInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
+                val chosenTypes = parentNamedType.getParameterizedTypes()
+                val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
+                //TODO: Ground this if needed
+
+                return TypedExpression.Follow(type, innerExpression, expression.name)
+
             }
+            is TypeInfo.Interface -> {
+                val interfac = parentTypeInfo
+                val interfaceType = parentNamedType
+                val method = interfac.methods[expression.name]
+                if (method == null) {
+                    fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
+                }
 
-            // Type parameters come from the struct definition itself
-            // Chosen types come from the struct type known for the variable
-            val typeParameters = structInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
-            val chosenTypes = parentNamedType.getParameterizedTypes()
-            val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
-            //TODO: Ground this if needed
+                val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
+                val chosenTypes = interfaceType.getParameterizedTypes()
+                val type = parameterizeType(method.functionType, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
 
-            return TypedExpression.Follow(type, innerExpression, expression.name)
-        }
-
-        if (resolvedParentType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
-            val interfac = typeInfo.interfaces[resolvedParentType.entityRef] ?: getNativeInterfaceInfo(resolvedParentType.entityRef.id) ?: error("Internal error: Resolution or type info")
-            val interfaceType = parentNamedType
-            val method = interfac.methods[expression.name]
-            if (method == null) {
-                fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
+                return TypedExpression.Follow(type, innerExpression, expression.name)
             }
-
-            val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
-            val chosenTypes = interfaceType.getParameterizedTypes()
-            val type = parameterizeType(method.functionType, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
-
-            return TypedExpression.Follow(type, innerExpression, expression.name)
         }
-
-        fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of a type $parentNamedType that is not recognized as a struct or interface")
-    }
-
-    private fun getNativeStructInfo(id: EntityId): StructTypeInfo? {
-        val struct = getNativeStructs()[id]
-        if (struct == null) {
-            return null
-        }
-        return StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null)
-    }
-
-    private fun getNativeInterfaceInfo(id: EntityId): InterfaceTypeInfo? {
-        val interfac = getNativeInterfaces()[id]
-        if (interfac == null) {
-            return null
-        }
-        return InterfaceTypeInfo(interfac.typeParameters, interfac.methods.associateBy(Method::name))
     }
 
     private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression {
@@ -362,11 +602,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
         val argumentTypes = arguments.map(TypedExpression::type)
 
-        val signature = typeInfo.allFunctionTypeSignatures[functionResolvedRef.entityRef] ?: if (isNativeModule(functionResolvedRef.entityRef.module)) {
-            getAllNativeFunctionLikeDefinitions()[functionRef.id]
-        } else {
-            null
-        }
+        val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature
         if (signature == null) {
             fail("The function $containingFunctionId references a function $functionRef that was not found")
         }
@@ -445,7 +681,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
                 val resolvedType = typeInfo.resolver.resolve(type.ref) ?: fail("Could not resolve type ${type.ref}")
-                val struct = typeInfo.structs[resolvedType.entityRef] ?: fail("Trying to get a literal of a non-struct named type $resolvedType")
+                val struct = typeInfo.getTypeInfo(resolvedType.entityRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a non-struct named type $resolvedType")
 
                 if (struct.typeParameters.isNotEmpty()) {
                     fail("Can't have a literal of a type with type parameters: $type")
@@ -520,35 +756,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun getLocalFunctionTypeSignatures(context: RawContext): Map<EntityId, TypeSignature> {
-        val signatures = HashMap<EntityId, TypeSignature>()
-
-        context.structs.forEach { struct ->
-            val id = struct.id
-            if (signatures.containsKey(id)) {
-                fail("Struct name $id has an overlap with a native function")
-            }
-            signatures.put(id, struct.getConstructorSignature())
-        }
-
-        context.interfaces.forEach { interfac ->
-            val id = interfac.id
-            if (signatures.containsKey(id)) {
-                fail("Interface name $id has an overlap with a native function or struct")
-            }
-            signatures.put(interfac.adapterId, interfac.getAdapterConstructorSignature())
-            signatures.put(id, interfac.getInstanceConstructorSignature())
-        }
-        context.functions.forEach { function ->
-            val id = function.id
-            if (signatures.containsKey(id)) {
-                fail("Function name $id overlaps with a struct's or interface's constructor name, or with a native function")
-            }
-            signatures.put(id, function.getTypeSignature())
-        }
-        return signatures
-    }
-
     private fun validateStructs(structs: List<UnvalidatedStruct>, typeInfo: AllTypeInfo): Map<EntityId, Struct> {
         val validatedStructs = HashMap<EntityId, Struct>()
         for (struct in structs) {
@@ -583,64 +790,16 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun validateInterfaces(interfaces: List<Interface>, typeInfo: AllTypeInfo): Map<EntityId, Interface> {
+    private fun validateInterfaces(interfaces: List<UnvalidatedInterface>, typeInfo: AllTypeInfo): Map<EntityId, Interface> {
+        val validatedInterfaces = HashMap<EntityId, Interface>()
+        for (interfac in interfaces) {
+            validatedInterfaces.put(interfac.id, validateInterface(interfac, typeInfo))
+        }
+        return validatedInterfaces
+    }
+
+    private fun validateInterface(interfac: UnvalidatedInterface, typeInfo: AllTypeInfo): Interface {
         // TODO: Do some actual validation of interfaces
-        return interfaces.associateBy(Interface::id)
-    }
-
-    private fun getAllFunctionTypeSignatures(ownFunctionTypeSignatures: Map<EntityId, TypeSignature>,
-                                             ownModuleId: ModuleId,
-                                             upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeSignature> {
-        val results = HashMap<ResolvedEntityRef, TypeSignature>()
-
-        upstreamModules.forEach { module ->
-            module.getAllInternalFunctions().forEach { id, function ->
-                results.put(ResolvedEntityRef(module.id, id), function.getTypeSignature())
-            }
-            module.getAllInternalStructs().forEach { (id, struct) ->
-                results.put(ResolvedEntityRef(module.id, id), struct.getConstructorSignature())
-            }
-            module.getAllInternalInterfaces().forEach { id, interfac ->
-                results.put(ResolvedEntityRef(module.id, id), interfac.getInstanceConstructorSignature())
-                results.put(ResolvedEntityRef(module.id, interfac.adapterId), interfac.getAdapterConstructorSignature())
-            }
-        }
-        results.putAll(ownFunctionTypeSignatures.mapKeys { (id, _) -> ResolvedEntityRef(ownModuleId, id) })
-
-        return results
-    }
-
-    private fun getAllStructsInfo(ownStructs: List<UnvalidatedStruct>, ownModuleId: ModuleId, nativeModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, StructTypeInfo> {
-        val allStructsInfo = HashMap<ResolvedEntityRef, StructTypeInfo>()
-        getNativeStructs().values.forEach { struct ->
-            allStructsInfo.put(ResolvedEntityRef(nativeModuleId, struct.id),
-                    StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null))
-        }
-        upstreamModules.forEach { module ->
-            module.getAllInternalStructs().forEach { (_, struct) ->
-                allStructsInfo.put(ResolvedEntityRef(module.id, struct.id),
-                        StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null))
-            }
-        }
-        ownStructs.forEach { struct ->
-            allStructsInfo.put(ResolvedEntityRef(ownModuleId, struct.id),
-                    StructTypeInfo(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null))
-        }
-        return allStructsInfo
-    }
-
-    private fun getAllInterfacesInfo(ownInterfaces: List<Interface>, ownModuleId: ModuleId, nativeModuleId: ModuleId, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, InterfaceTypeInfo> {
-        val allInterfaces = HashMap<ResolvedEntityRef, Interface>()
-
-        allInterfaces.putAll(getNativeInterfaces().mapKeys { (id, _) -> ResolvedEntityRef(nativeModuleId, id) })
-
-        upstreamModules.forEach { module ->
-            allInterfaces.putAll(module.getAllInternalInterfaces().mapKeys { (id, _) -> ResolvedEntityRef(module.id, id) })
-        }
-        allInterfaces.putAll(ownInterfaces.associateBy({ interfac -> ResolvedEntityRef(ownModuleId, interfac.id) }))
-
-        return allInterfaces.mapValues { (_, interfac) ->
-            InterfaceTypeInfo(interfac.typeParameters, interfac.methods.associateBy(Method::name))
-        }
+        return Interface(interfac.id, interfac.typeParameters, interfac.methods, interfac.annotations)
     }
 }

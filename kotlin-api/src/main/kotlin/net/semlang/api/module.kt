@@ -39,7 +39,7 @@ data class ModuleRef(val group: String?, val module: String, val version: String
     }
 }
 
-data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<Interface>)
+data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<UnvalidatedInterface>)
 
 // Note: Absence of a module indicates a native function, struct, or interface.
 data class FunctionWithModule(val function: ValidatedFunction, val module: ValidatedModule)

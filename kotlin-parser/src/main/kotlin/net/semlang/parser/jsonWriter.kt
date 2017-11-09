@@ -65,7 +65,7 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations, null)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {
@@ -228,7 +228,7 @@ private fun addInterface(node: ObjectNode, interfac: Interface) {
     addArray(node, "methods", interfac.methods, ::addMethod)
 }
 
-private fun parseInterface(node: JsonNode): Interface {
+private fun parseInterface(node: JsonNode): UnvalidatedInterface {
     if (!node.isObject()) error("Expected an interface to be an object")
 
     val id = parseEntityId(node["id"] ?: error("Interfaces must have an 'id' field"))
@@ -236,7 +236,7 @@ private fun parseInterface(node: JsonNode): Interface {
     val methods = parseMethods(node["methods"] ?: error("Interfaces must have a 'methods' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Interface(id, typeParameters, methods, annotations)
+    return UnvalidatedInterface(id, typeParameters, methods, annotations, null)
 }
 
 private fun parseMethods(node: JsonNode): List<Method> {
@@ -293,7 +293,7 @@ private fun parseFunction(node: JsonNode): Function {
     val block = parseBlock(node["block"] ?: error("Functions must have a 'block' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations, null)
+    return Function(id, typeParameters, arguments, returnType, block, annotations, null, null)
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
@@ -539,7 +539,7 @@ private fun parseStructs(node: JsonNode): List<UnvalidatedStruct> {
     return node.map { structNode -> parseStruct(structNode) }
 }
 
-private fun parseInterfaces(node: JsonNode): List<Interface> {
+private fun parseInterfaces(node: JsonNode): List<UnvalidatedInterface> {
     if (!node.isArray()) error("Expected interfaces to be in an array")
     return node.map { interfaceNode -> parseInterface(interfaceNode) }
 }

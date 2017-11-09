@@ -40,7 +40,7 @@ private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
 
     val annotations = parseAnnotations(function.annotations())
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations, positionOf(function.type()))
+    return Function(id, typeParameters, arguments, returnType, block, annotations, positionOf(function.entity_id()), positionOf(function.type()))
 }
 
 private fun parseAnnotations(annotations: Sem1Parser.AnnotationsContext?): List<Annotation> {
@@ -175,7 +175,7 @@ private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
 
     val annotations = parseAnnotations(ctx.annotations())
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations, positionOf(ctx.entity_id()))
 }
 
 private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
@@ -429,7 +429,7 @@ private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, p
     return Type.NamedType(EntityRef.of(typeId), parameters)
 }
 
-private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
+private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {
     val id = parseEntityId(interfac.entity_id())
     val typeParameters = if (interfac.GREATER_THAN() != null) {
         parseCommaDelimitedIds(interfac.cd_ids())
@@ -440,7 +440,7 @@ private fun parseInterface(interfac: Sem1Parser.InterfacContext): Interface {
 
     val annotations = parseAnnotations(interfac.annotations())
 
-    return Interface(id, typeParameters, methods, annotations)
+    return UnvalidatedInterface(id, typeParameters, methods, annotations, positionOf(interfac.entity_id()))
 }
 
 private fun parseMethods(methods: Sem1Parser.MethodsContext): List<Method> {
@@ -494,7 +494,7 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
 private class ContextListener : Sem1ParserBaseListener() {
     val structs: MutableList<UnvalidatedStruct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
-    val interfaces: MutableList<Interface> = ArrayList()
+    val interfaces: MutableList<UnvalidatedInterface> = ArrayList()
 
     override fun exitFunction(ctx: Sem1Parser.FunctionContext) {
         functions.add(parseFunction(ctx))
@@ -525,7 +525,7 @@ fun parseFile2(file: File): ParsingResult {
 fun parseFiles(files: Collection<File>): RawContext {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
-    val allInterfaces = ArrayList<Interface>()
+    val allInterfaces = ArrayList<UnvalidatedInterface>()
     for (file in files) {
         val rawContents = parseFileNamed(file.absolutePath)
         allFunctions.addAll(rawContents.functions)

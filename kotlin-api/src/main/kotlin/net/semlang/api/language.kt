@@ -236,7 +236,7 @@ data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val position: Position?)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val position: Position?)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val returnTypePosition: Position?) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val idPosition: Position?, val returnTypePosition: Position?) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
@@ -253,7 +253,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, override val annotations: List<Annotation>, val idPosition: Position?) : TopLevelEntity {
     fun getConstructorSignature(): TypeSignature {
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
@@ -290,6 +290,44 @@ interface TopLevelEntity: HasId {
 }
 data class Member(val name: String, val type: Type)
 
+data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>, val idPosition: Position?) : TopLevelEntity {
+    fun getIndexForName(name: String): Int {
+        return methods.indexOfFirst { method -> method.name == name }
+    }
+    val adapterId: EntityId = getAdapterIdForInterfaceId(id)
+    val adapterStruct: UnvalidatedStruct = UnvalidatedStruct(adapterId, listOf(getUnusedTypeParameterName(typeParameters)) + typeParameters,
+            methods.map { method -> Member(method.name, method.functionType) }, null, listOf(), idPosition)
+
+    fun getInstanceConstructorSignature(): TypeSignature {
+        val explicitTypeParameters = this.typeParameters
+        val allTypeParameters = this.adapterStruct.typeParameters
+        val dataTypeParameter = allTypeParameters[0]
+
+        val argumentTypes = ArrayList<Type>()
+        val dataStructType = Type.NamedType.forParameter(dataTypeParameter)
+        argumentTypes.add(dataStructType)
+
+        val adapterType = Type.NamedType(this.adapterId.asRef(), allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+        argumentTypes.add(adapterType)
+
+        val outputType = Type.NamedType(this.id.asRef(), explicitTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+        return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    }
+    fun getAdapterConstructorSignature(): TypeSignature {
+        val adapterTypeParameters = this.adapterStruct.typeParameters
+        val dataStructType = Type.NamedType.forParameter(adapterTypeParameters[0])
+
+        val argumentTypes = ArrayList<Type>()
+        this.methods.forEach { method ->
+            argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
+        }
+
+        val outputType = Type.NamedType(this.adapterId.asRef(), adapterTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+
+        return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters.map { name -> Type.NamedType.forParameter(name) })
+    }
+}
 data class Interface(override val id: EntityId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
