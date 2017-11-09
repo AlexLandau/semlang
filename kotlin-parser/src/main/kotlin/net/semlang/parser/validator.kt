@@ -649,14 +649,18 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeInfo: AllTypeInfo): TypedExpression {
-        val typeChain = getLiteralTypeChain(expression.type, typeInfo)
+        val typeChain = getLiteralTypeChain(expression.type, expression.position, typeInfo)
 
-        val nativeLiteralType = typeChain[0]
+        if (typeChain != null) {
+            val nativeLiteralType = typeChain[0]
 
-        val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
-        val isValid = validator.validate(expression.literal)
-        if (!isValid) {
-            errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.position, IssueLevel.ERROR))
+            val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
+            val isValid = validator.validate(expression.literal)
+            if (!isValid) {
+                errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.position, IssueLevel.ERROR))
+            }
+        } else if (errors.isEmpty()) {
+            fail("Something went wrong")
         }
         // TODO: Someday we need to check for invalid literal values at validation time
         return TypedExpression.Literal(expression.type, expression.literal)
@@ -674,7 +678,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
      * native literal implementation) and then following the chain in successive layers
      * outwards to the original type.
      */
-    private fun getLiteralTypeChain(initialType: Type, typeInfo: AllTypeInfo): List<Type> {
+    private fun getLiteralTypeChain(initialType: Type, literalPosition: Position?, typeInfo: AllTypeInfo): List<Type>? {
         var type = initialType
         val list = ArrayList<Type>()
         list.add(type)
@@ -691,7 +695,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 }
                 val memberType = struct.members.values.single().type
                 if (list.contains(memberType)) {
-                    fail("Error: Literal type involves cycle of structs: ${list}")
+                    errors.add(Issue("Error: Literal type involves cycle of structs: ${list}", literalPosition, IssueLevel.ERROR))
+                    return null
                 }
                 type = memberType
                 list.add(type)
