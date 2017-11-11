@@ -8,6 +8,7 @@ import net.semlang.api.*
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.internal.test.runAnnotationTests
+import net.semlang.parser.parseAndValidateFile
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -34,9 +35,5 @@ class CorpusInterpreterTests(private val file: File) {
 }
 
 private fun parseAndValidateFile(file: File): ValidatedModule {
-    val functionsMap2 = parseFile(file)
-    return validateModule(functionsMap2,
-            ModuleId("semlang", "corpusFile", "0.0.1"),
-            CURRENT_NATIVE_MODULE_VERSION,
-            listOf())
+    return parseAndValidateFile(file, ModuleId("semlang", "corpusFile", "0.0.1"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
 }

@@ -1,0 +1,9 @@
+
+// Non-boolean requires block
+
+struct Foo {
+  a: Integer
+  requires {
+    a
+  }
+}

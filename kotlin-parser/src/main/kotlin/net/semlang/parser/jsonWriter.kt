@@ -65,7 +65,7 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations, null)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {
@@ -228,7 +228,7 @@ private fun addInterface(node: ObjectNode, interfac: Interface) {
     addArray(node, "methods", interfac.methods, ::addMethod)
 }
 
-private fun parseInterface(node: JsonNode): Interface {
+private fun parseInterface(node: JsonNode): UnvalidatedInterface {
     if (!node.isObject()) error("Expected an interface to be an object")
 
     val id = parseEntityId(node["id"] ?: error("Interfaces must have an 'id' field"))
@@ -236,7 +236,7 @@ private fun parseInterface(node: JsonNode): Interface {
     val methods = parseMethods(node["methods"] ?: error("Interfaces must have a 'methods' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Interface(id, typeParameters, methods, annotations)
+    return UnvalidatedInterface(id, typeParameters, methods, annotations, null)
 }
 
 private fun parseMethods(node: JsonNode): List<Method> {
@@ -293,7 +293,7 @@ private fun parseFunction(node: JsonNode): Function {
     val block = parseBlock(node["block"] ?: error("Functions must have a 'block' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations)
+    return Function(id, typeParameters, arguments, returnType, block, annotations, null, null)
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
@@ -317,7 +317,7 @@ private fun parseBlock(node: JsonNode): Block {
     }
     val returnedExpression = parseExpression(node.last()["return"])
 
-    return Block(assignments, returnedExpression)
+    return Block(assignments, returnedExpression, null)
 }
 
 private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {
@@ -331,7 +331,7 @@ private fun parseAssignment(node: JsonNode): Assignment {
     val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
     val expression = parseExpression(node["="] ?: error("Assignments should have a '=' field indicating the expression"))
 
-    return Assignment(name, null, expression)
+    return Assignment(name, null, expression, null)
 }
 
 private fun addExpression(node: ObjectNode, expression: TypedExpression) {
@@ -404,52 +404,52 @@ private fun parseExpression(node: JsonNode): Expression {
     return when (type) {
         "var" -> {
             val name = node["var"]?.textValue() ?: error("Variable expressions must have a 'var' text field")
-            return Expression.Variable(name, position = null)
+            return Expression.Variable(name, location = null)
         }
         "ifThen" -> {
             val condition = parseExpression(node["if"])
             val thenBlock = parseBlock(node["then"])
             val elseBlock = parseBlock(node["else"])
-            return Expression.IfThen(condition, thenBlock, elseBlock, position = null)
+            return Expression.IfThen(condition, thenBlock, elseBlock, location = null)
         }
         "namedCall" -> {
             val functionRef = parseEntityRef(node["function"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, position = null)
+            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null)
         }
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, position = null)
+            return Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, location = null)
         }
         "literal" -> {
             val literalType = parseType(node["literalType"])
             val literal = node["value"]?.textValue() ?: error("Expected a literal expression to have a 'value' text field")
-            return Expression.Literal(literalType, literal, position = null)
+            return Expression.Literal(literalType, literal, location = null)
         }
         "list" -> {
             val contents = parseExpressionsArray(node["contents"])
             val chosenParameter = parseType(node["chosenParameter"])
-            return Expression.ListLiteral(contents, chosenParameter, position = null)
+            return Expression.ListLiteral(contents, chosenParameter, location = null)
         }
         "follow" -> {
             val innerExpression = parseExpression(node["expression"])
             val name = node["name"]?.textValue() ?: error("Expected a follow expression to have a 'name' text field")
-            return Expression.Follow(innerExpression, name, position = null)
+            return Expression.Follow(innerExpression, name, location = null)
         }
         "namedBinding" -> {
             val functionRef = parseEntityRef(node["function"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionBinding(functionRef, chosenParameters, bindings, position = null)
+            return Expression.NamedFunctionBinding(functionRef, chosenParameters, bindings, location = null)
         }
         "expressionBinding" -> {
             val functionExpression = parseExpression(node["expression"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.ExpressionFunctionBinding(functionExpression, chosenParameters, bindings, position = null)
+            return Expression.ExpressionFunctionBinding(functionExpression, chosenParameters, bindings, location = null)
         }
         else -> {
             error("Unknown expression type '$type'")
@@ -539,7 +539,7 @@ private fun parseStructs(node: JsonNode): List<UnvalidatedStruct> {
     return node.map { structNode -> parseStruct(structNode) }
 }
 
-private fun parseInterfaces(node: JsonNode): List<Interface> {
+private fun parseInterfaces(node: JsonNode): List<UnvalidatedInterface> {
     if (!node.isArray()) error("Expected interfaces to be in an array")
     return node.map { interfaceNode -> parseInterface(interfaceNode) }
 }

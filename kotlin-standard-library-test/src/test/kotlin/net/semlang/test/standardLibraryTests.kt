@@ -18,7 +18,7 @@ import java.io.File
 private val LIBRARY_MODULE_ID = ModuleId("semlang", "standard-library", "develop-test")
 
 @RunWith(Parameterized::class)
-class CorpusInterpreterTests(private val file: File) {
+class StandardLibraryTests(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
@@ -37,7 +37,7 @@ class CorpusInterpreterTests(private val file: File) {
             val semlangLibraryFiles = semlangLibrarySources.listFiles().toList()
             val unvalidatedContext = parseFiles(semlangLibraryFiles)
 
-            val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+            val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
             val localRepository = getDefaultLocalRepository()
             localRepository.unpublishIfPresent(LIBRARY_MODULE_ID)
@@ -60,6 +60,6 @@ private fun parseAndValidateFile(file: File): ValidatedModule {
     val localRepository = getDefaultLocalRepository()
     val libraryModule = localRepository.loadModule(LIBRARY_MODULE_ID)
 
-    val unvalidatedContext = parseFile(file)
-    return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule))
+    val unvalidatedContext = parseFile(file).assumeSuccess()
+    return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule)).assumeSuccess()
 }

@@ -1,0 +1,8 @@
+
+function Bar.Adapter(): Integer {
+  Integer."1"
+}
+
+interface Bar {
+  a(): Integer
+}

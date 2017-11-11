@@ -1,0 +1,8 @@
+
+interface Foo {
+  a(): Integer
+}
+
+struct Foo {
+  b: Integer
+}

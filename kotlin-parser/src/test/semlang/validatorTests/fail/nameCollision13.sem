@@ -1,0 +1,8 @@
+
+function Foo(): Integer {
+  Integer."1"
+}
+
+interface Foo {
+  a(): Integer
+}

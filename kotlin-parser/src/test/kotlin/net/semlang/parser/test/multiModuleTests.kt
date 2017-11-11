@@ -64,7 +64,7 @@ val TEST_MODULE_1_ID = ModuleId("semlang-test", "testModule1", "devTest")
 val TEST_MODULE_2_ID = ModuleId("semlang-test", "testModule2", "devTest")
 
 private fun parseAndValidateModule(file: File): ValidatedModule {
-    val testModule1 = validateModule(parseFile(TEST_MODULE_1_FILE), TEST_MODULE_1_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
-    val testModule2 = validateModule(parseFile(TEST_MODULE_2_FILE), TEST_MODULE_2_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
-    return validateModule(parseFile(file), ModuleId("semlangTest", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf(testModule1, testModule2))
+    val testModule1 = validateModule(parseFile(TEST_MODULE_1_FILE).assumeSuccess(), TEST_MODULE_1_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+    val testModule2 = validateModule(parseFile(TEST_MODULE_2_FILE).assumeSuccess(), TEST_MODULE_2_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+    return validateModule(parseFile(file).assumeSuccess(), ModuleId("semlangTest", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf(testModule1, testModule2)).assumeSuccess()
 }

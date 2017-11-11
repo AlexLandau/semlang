@@ -1,0 +1,8 @@
+// Unusual requires block
+
+struct Foo {
+  a: Boolean
+  requires {
+    a
+  }
+}
