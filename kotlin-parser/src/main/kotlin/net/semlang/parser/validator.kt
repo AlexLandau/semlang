@@ -4,23 +4,12 @@ import net.semlang.api.*
 import net.semlang.api.Function
 import java.util.*
 
-// TODO: Probably need several overloads of this, and Positions stored in more places
-private fun fail(expression: Expression, text: String): Nothing {
-    val position = expression.position
-    val fullMessage = if (position != null) {
-        "Validation error, ${position.lineNumber}:${position.column}: " + text
-    } else {
-        "Validation error: " + text
-    }
-    error(fullMessage)
-}
-
-// TODO: Consider removing in favor of versions taking positions
+// TODO: Remove once unused
 private fun fail(e: Exception, text: String): Nothing {
     throw IllegalStateException(text, e)
 }
 
-// TODO: Remove in favor of versions taking positions
+// TODO: Remove once unused
 private fun fail(text: String): Nothing {
     val fullMessage = "Validation error, position not recorded: " + text
     error(fullMessage)
@@ -49,7 +38,7 @@ enum class IssueLevel {
     ERROR,
 }
 
-data class Issue(val message: String, val position: Position?, val level: IssueLevel)
+data class Issue(val message: String, val location: Location?, val level: IssueLevel)
 
 sealed class ValidationResult {
     data class Success(val module: ValidatedModule, val warnings: List<Issue>): ValidationResult()
@@ -108,7 +97,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val seenTypeIds = HashSet<EntityId>()
         val seenFunctionIds = HashSet<EntityId>()
 
-        val addDuplicateIdError = fun(id: EntityId, idPosition: Position?) { errors.add(Issue("Duplicate ID ${id}", idPosition, IssueLevel.ERROR)) }
+        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { errors.add(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
         context.structs.forEach { struct ->
             val id = struct.id
@@ -122,7 +111,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             } else if (localTypes.containsKey(id)) {
                 isDuplicate = true
                 duplicateLocalTypeIds.add(id)
-                addDuplicateIdError(id, localTypes[id]?.idPosition)
+                addDuplicateIdError(id, localTypes[id]?.idLocation)
                 localTypes.remove(id)
             }
             if (duplicateLocalFunctionIds.contains(id)) {
@@ -130,11 +119,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             } else if (localFunctions.containsKey(id)) {
                 isDuplicate = true
                 duplicateLocalFunctionIds.add(id)
-                addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                addDuplicateIdError(id, localFunctions[id]?.idLocation)
                 localFunctions.remove(id)
             }
             if (isDuplicate) {
-                addDuplicateIdError(id, struct.idPosition)
+                addDuplicateIdError(id, struct.idLocation)
             }
 
             if (!duplicateLocalTypeIds.contains(id)) {
@@ -143,7 +132,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
             if (!duplicateLocalFunctionIds.contains(id)) {
                 // Collect the constructor function info
-                localFunctions.put(id, FunctionInfo(struct.getConstructorSignature(), struct.idPosition))
+                localFunctions.put(id, FunctionInfo(struct.getConstructorSignature(), struct.idLocation))
             }
         }
 
@@ -161,7 +150,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 } else if (localTypes.containsKey(id)) {
                     isDuplicate = true
                     duplicateLocalTypeIds.add(id)
-                    addDuplicateIdError(id, localTypes[id]?.idPosition)
+                    addDuplicateIdError(id, localTypes[id]?.idLocation)
                     localTypes.remove(id)
                 }
                 if (duplicateLocalFunctionIds.contains(id)) {
@@ -169,11 +158,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 } else if (localFunctions.containsKey(id)) {
                     isDuplicate = true
                     duplicateLocalFunctionIds.add(id)
-                    addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                    addDuplicateIdError(id, localFunctions[id]?.idLocation)
                     localFunctions.remove(id)
                 }
                 if (isDuplicate) {
-                    addDuplicateIdError(id, interfac.idPosition)
+                    addDuplicateIdError(id, interfac.idLocation)
                 }
             }
 
@@ -181,13 +170,13 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 localTypes.put(interfac.id, getTypeInfo(interfac))
             }
             if (!duplicateLocalFunctionIds.contains(interfac.id)) {
-                localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idPosition))
+                localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idLocation))
             }
             if (!duplicateLocalTypeIds.contains(interfac.adapterId)) {
                 localTypes.put(interfac.adapterId, getTypeInfo(interfac.adapterStruct))
             }
             if (!duplicateLocalFunctionIds.contains(interfac.adapterId)) {
-                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterConstructorSignature(), interfac.idPosition))
+                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterConstructorSignature(), interfac.idLocation))
             }
         }
 
@@ -196,16 +185,16 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             seenFunctionIds.add(id)
 
             if (duplicateLocalFunctionIds.contains(id)) {
-                addDuplicateIdError(id, function.idPosition)
+                addDuplicateIdError(id, function.idLocation)
             } else if (localFunctions.containsKey(id)) {
-                addDuplicateIdError(id, function.idPosition)
+                addDuplicateIdError(id, function.idLocation)
                 duplicateLocalFunctionIds.add(id)
-                addDuplicateIdError(id, localFunctions[id]?.idPosition)
+                addDuplicateIdError(id, localFunctions[id]?.idLocation)
                 localFunctions.remove(id)
             }
 
             if (!duplicateLocalFunctionIds.contains(id)) {
-                localFunctions.put(id, FunctionInfo(function.getTypeSignature(), function.idPosition))
+                localFunctions.put(id, FunctionInfo(function.getTypeSignature(), function.idLocation))
             }
         }
 
@@ -333,7 +322,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val variableTypes = getArgumentVariableTypes(function.arguments)
         val block = validateBlock(function.block, variableTypes, typeInfo, function.id) ?: return null
         if (function.returnType != block.type) {
-            errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypePosition, IssueLevel.ERROR))
+            errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypeLocation, IssueLevel.ERROR))
         }
 
         return ValidatedFunction(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
@@ -345,26 +334,26 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
 
     private sealed class TypeInfo {
-        abstract val idPosition: Position?
-        data class Struct(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean, override val idPosition: Position?): TypeInfo()
-        data class Interface(val typeParameters: List<String>, val methods: Map<String, Method>, override val idPosition: Position?): TypeInfo()
+        abstract val idLocation: Location?
+        data class Struct(val typeParameters: List<String>, val members: Map<String, Member>, val usesRequires: Boolean, override val idLocation: Location?): TypeInfo()
+        data class Interface(val typeParameters: List<String>, val methods: Map<String, Method>, override val idLocation: Location?): TypeInfo()
     }
-    private data class FunctionInfo(val signature: TypeSignature, val idPosition: Position?)
+    private data class FunctionInfo(val signature: TypeSignature, val idLocation: Location?)
 
     private fun getTypeInfo(struct: UnvalidatedStruct): TypeInfo.Struct {
-        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, struct.idPosition)
+        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, struct.idLocation)
     }
     // TODO: Null position
-    private fun getTypeInfo(struct: Struct, idPosition: Position?): TypeInfo.Struct {
-        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, idPosition)
+    private fun getTypeInfo(struct: Struct, idLocation: Location?): TypeInfo.Struct {
+        return TypeInfo.Struct(struct.typeParameters, struct.members.associateBy(Member::name), struct.requires != null, idLocation)
     }
 
     private fun getTypeInfo(interfac: UnvalidatedInterface): TypeInfo.Interface {
-        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), interfac.idPosition)
+        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), interfac.idLocation)
     }
     // TODO: Null position
-    private fun getTypeInfo(interfac: Interface, idPosition: Position?): TypeInfo.Interface {
-        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), idPosition)
+    private fun getTypeInfo(interfac: Interface, idLocation: Location?): TypeInfo.Interface {
+        return TypeInfo.Interface(interfac.typeParameters, interfac.methods.associateBy(Method::name), idLocation)
     }
 
     private inner class AllTypeInfo(val resolver: EntityResolver,
@@ -401,10 +390,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val validatedAssignments = ArrayList<ValidatedAssignment>()
         block.assignments.forEach { assignment ->
             if (variableTypes.containsKey(assignment.name)) {
-                errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.namePosition, IssueLevel.ERROR))
+                errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.nameLocation, IssueLevel.ERROR))
             }
             if (isInvalidVariableName(assignment.name, typeInfo)) {
-                errors.add(Issue("Invalid variable name ${assignment.name}", assignment.namePosition, IssueLevel.ERROR))
+                errors.add(Issue("Invalid variable name ${assignment.name}", assignment.nameLocation, IssueLevel.ERROR))
             }
 
             val validatedExpression = validateExpression(assignment.expression, variableTypes, typeInfo, containingFunctionId) ?: return null
@@ -612,7 +601,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //Ground the signature
         val groundSignature = ground(signature, expression.chosenParameters, functionRef.id)
         if (argumentTypes != groundSignature.argumentTypes) {
-            errors.add(Issue("The function $functionRef expects argument types ${groundSignature.argumentTypes}, but is given arguments with types $argumentTypes", expression.position, IssueLevel.ERROR))
+            errors.add(Issue("The function $functionRef expects argument types ${groundSignature.argumentTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
         }
 
         return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionRef, arguments, expression.chosenParameters)
@@ -650,7 +639,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeInfo: AllTypeInfo): TypedExpression {
-        val typeChain = getLiteralTypeChain(expression.type, expression.position, typeInfo)
+        val typeChain = getLiteralTypeChain(expression.type, expression.location, typeInfo)
 
         if (typeChain != null) {
             val nativeLiteralType = typeChain[0]
@@ -658,7 +647,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
             val isValid = validator.validate(expression.literal)
             if (!isValid) {
-                errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.position, IssueLevel.ERROR))
+                errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.location, IssueLevel.ERROR))
             }
         } else if (errors.isEmpty()) {
             fail("Something went wrong")
@@ -679,7 +668,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
      * native literal implementation) and then following the chain in successive layers
      * outwards to the original type.
      */
-    private fun getLiteralTypeChain(initialType: Type, literalPosition: Position?, typeInfo: AllTypeInfo): List<Type>? {
+    private fun getLiteralTypeChain(initialType: Type, literalLocation: Location?, typeInfo: AllTypeInfo): List<Type>? {
         var type = initialType
         val list = ArrayList<Type>()
         list.add(type)
@@ -696,7 +685,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 }
                 val memberType = struct.members.values.single().type
                 if (list.contains(memberType)) {
-                    errors.add(Issue("Error: Literal type involves cycle of structs: ${list}", literalPosition, IssueLevel.ERROR))
+                    errors.add(Issue("Error: Literal type involves cycle of structs: ${list}", literalLocation, IssueLevel.ERROR))
                     return null
                 }
                 type = memberType
@@ -758,7 +747,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         if (type != null) {
             return TypedExpression.Variable(type, expression.name)
         } else {
-            errors.add(Issue("Unknown variable ${expression.name}", expression.position, IssueLevel.ERROR))
+            errors.add(Issue("Unknown variable ${expression.name}", expression.location, IssueLevel.ERROR))
             return null
         }
     }
@@ -787,7 +776,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
         if (requires != null && requires.type != Type.BOOLEAN) {
             val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
-            val position = struct.requires!!.position
+            val position = struct.requires!!.location
             val issue: Issue = Issue(message, position, IssueLevel.ERROR)
             errors.add(issue)
         }
@@ -800,7 +789,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         for (member in struct.members) {
             if (allNames.contains(member.name)) {
                 // TODO: Improve position of message
-                errors.add(Issue("Struct ${struct.id} has multiple members named ${member.name}", struct.idPosition, IssueLevel.ERROR))
+                errors.add(Issue("Struct ${struct.id} has multiple members named ${member.name}", struct.idLocation, IssueLevel.ERROR))
             }
             allNames.add(member.name)
         }

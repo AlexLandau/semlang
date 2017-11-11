@@ -183,37 +183,39 @@ sealed class Type {
 // TODO: Maybe rename FunctionSignature?
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<Type> = listOf()): HasId
 
-data class Position(val lineNumber: Int, val column: Int, val rawStart: Int, val rawEnd: Int)
+data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
+data class Range(val start: Position, val end: Position)
+data class Location(val documentUri: String, val range: Range)
 
 data class Annotation(val name: String, val value: String?)
 
 // Pre-scoping
 sealed class AmbiguousExpression {
-    abstract val position: Position
-    data class Variable(val name: String, override val position: Position): AmbiguousExpression()
-    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val position: Position): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val position: Position): AmbiguousExpression()
-    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val position: Position): AmbiguousExpression()
-    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val position: Position): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val position: Position): AmbiguousExpression()
-    data class Literal(val type: Type, val literal: String, override val position: Position): AmbiguousExpression()
-    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val position: Position): AmbiguousExpression()
-    data class Follow(val expression: AmbiguousExpression, val name: String, override val position: Position): AmbiguousExpression()
+    abstract val location: Location
+    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
+    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
+    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
+    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
+    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
+    data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
+    data class Literal(val type: Type, val literal: String, override val location: Location): AmbiguousExpression()
+    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val location: Location): AmbiguousExpression()
+    data class Follow(val expression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
 }
 
 // Post-scoping, pre-type-analysis
 sealed class Expression {
-    abstract val position: Position?
-    data class Variable(val name: String, override val position: Position?): Expression()
-    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val position: Position?): Expression()
-    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<Type>, override val position: Position?): Expression()
+    abstract val location: Location?
+    data class Variable(val name: String, override val location: Location?): Expression()
+    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location?): Expression()
+    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
     //TODO: Make position of chosenParamters consistent with bindings below
-    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val position: Position?): Expression()
-    data class Literal(val type: Type, val literal: String, override val position: Position?): Expression()
-    data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val position: Position?): Expression()
-    data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val position: Position?): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val position: Position?): Expression()
-    data class Follow(val expression: Expression, val name: String, override val position: Position?): Expression()
+    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
+    data class Literal(val type: Type, val literal: String, override val location: Location?): Expression()
+    data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val location: Location?): Expression()
+    data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
+    data class Follow(val expression: Expression, val name: String, override val location: Location?): Expression()
 }
 // Post-type-analysis
 sealed class TypedExpression {
@@ -229,14 +231,14 @@ sealed class TypedExpression {
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
 }
 
-data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression, val namePosition: Position?)
-data class Assignment(val name: String, val type: Type?, val expression: Expression, val namePosition: Position?)
+data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression, val nameLocation: Location?)
+data class Assignment(val name: String, val type: Type?, val expression: Expression, val nameLocation: Location?)
 data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
 data class Argument(val name: String, val type: Type)
-data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val position: Position?)
-data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val position: Position?)
+data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
+data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location?)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val idPosition: Position?, val returnTypePosition: Position?) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val idLocation: Location?, val returnTypeLocation: Location?) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
@@ -253,7 +255,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, override val annotations: List<Annotation>, val idPosition: Position?) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<Member>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
     fun getConstructorSignature(): TypeSignature {
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type.NamedType.Companion::forParameter)
@@ -290,13 +292,13 @@ interface TopLevelEntity: HasId {
 }
 data class Member(val name: String, val type: Type)
 
-data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>, val idPosition: Position?) : TopLevelEntity {
+data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val adapterStruct: UnvalidatedStruct = UnvalidatedStruct(adapterId, listOf(getUnusedTypeParameterName(typeParameters)) + typeParameters,
-            methods.map { method -> Member(method.name, method.functionType) }, null, listOf(), idPosition)
+            methods.map { method -> Member(method.name, method.functionType) }, null, listOf(), idLocation)
 
     fun getInstanceConstructorSignature(): TypeSignature {
         val explicitTypeParameters = this.typeParameters
