@@ -1,0 +1,8 @@
+
+interface Bar.Adapter {
+  a(): Integer
+}
+
+interface Bar {
+  b(): Integer
+}

@@ -1,0 +1,8 @@
+
+function Bar(): Integer {
+  Integer."1"
+}
+
+function Bar(): Integer {
+  Integer."1"
+}

@@ -1,0 +1,8 @@
+
+interface Baz {
+  a(): Integer
+}
+
+function Baz(): Integer {
+  Integer."1"
+}

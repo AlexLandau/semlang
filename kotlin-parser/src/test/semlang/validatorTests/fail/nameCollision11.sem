@@ -1,0 +1,8 @@
+
+interface Baz {
+  a(): Integer
+}
+
+function Baz.Adapter(): Integer {
+  Integer."1"
+}

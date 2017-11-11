@@ -317,11 +317,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateFunctions(functions: List<Function>, typeInfo: AllTypeInfo): Map<EntityId, ValidatedFunction> {
         val validatedFunctions = HashMap<EntityId, ValidatedFunction>()
         functions.forEach { function ->
-            if (validatedFunctions.containsKey(function.id)) {
-                error("Duplicate function ID ${function.id}")
-            }
             val validatedFunction = validateFunction(function, typeInfo)
-            if (validatedFunction != null) {
+            if (validatedFunction != null && !typeInfo.duplicateLocalFunctionIds.contains(validatedFunction.id)) {
                 validatedFunctions.put(function.id, validatedFunction)
             } else if (errors.isEmpty()) {
                 fail("Something bad happened")
@@ -769,17 +766,25 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateStructs(structs: List<UnvalidatedStruct>, typeInfo: AllTypeInfo): Map<EntityId, Struct> {
         val validatedStructs = HashMap<EntityId, Struct>()
         for (struct in structs) {
-            validatedStructs.put(struct.id, validateStruct(struct, typeInfo))
+            val validatedStruct = validateStruct(struct, typeInfo)
+            if (validatedStruct != null) {
+                validatedStructs.put(struct.id, validatedStruct)
+            }
         }
         return validatedStructs
     }
 
-    private fun validateStruct(struct: UnvalidatedStruct, typeInfo: AllTypeInfo): Struct {
+    private fun validateStruct(struct: UnvalidatedStruct, typeInfo: AllTypeInfo): Struct? {
         validateMemberNames(struct)
         val memberTypes = struct.members.associate { member -> member.name to member.type }
 
         val fakeContainingFunctionId = EntityId(struct.id.namespacedName + "requires")
-        val requires = struct.requires?.let { validateBlock(it, memberTypes, typeInfo, fakeContainingFunctionId) }
+        val uncheckedRequires = struct.requires
+        val requires = if (uncheckedRequires != null) {
+            validateBlock(uncheckedRequires, memberTypes, typeInfo, fakeContainingFunctionId) ?: return null
+        } else {
+            null
+        }
         if (requires != null && requires.type != Type.BOOLEAN) {
             val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
             val position = struct.requires!!.position

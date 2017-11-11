@@ -1,0 +1,8 @@
+
+struct Baz.Adapter {
+  a: Integer
+}
+
+interface Baz {
+  b(): Integer
+}

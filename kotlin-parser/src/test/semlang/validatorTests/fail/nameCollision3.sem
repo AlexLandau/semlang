@@ -1,0 +1,8 @@
+
+struct Bar {
+  a: Integer
+}
+
+function Bar(): Integer {
+  Integer."1"
+}
