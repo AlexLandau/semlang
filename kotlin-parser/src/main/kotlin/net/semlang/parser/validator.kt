@@ -2,6 +2,7 @@ package net.semlang.parser
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import java.io.File
 import java.util.*
 
 // TODO: Remove once unused
@@ -24,6 +25,18 @@ data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>
 fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
     val validator = Validator(moduleId, nativeModuleVersion, upstreamModules)
     return validator.validate(context)
+}
+
+fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+    val parsingResult = parseFile(file)
+    return when (parsingResult) {
+        is ParsingResult.Success -> {
+            validateModule(parsingResult.context, moduleId, nativeModuleVersion, listOf())
+        }
+        is ParsingResult.Failure -> {
+            ValidationResult.Failure(parsingResult.errors, listOf())
+        }
+    }
 }
 
 enum class IssueLevel {
@@ -58,9 +71,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val ownStructs = validateStructs(context.structs, typeInfo)
         val ownInterfaces = validateInterfaces(context.interfaces, typeInfo)
 
-        val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
-        // TODO: Will be different once good tests are in place and fixed...
         if (errors.isEmpty()) {
+            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
             return ValidationResult.Success(createdModule, warnings)
         } else {
             return ValidationResult.Failure(errors, warnings)

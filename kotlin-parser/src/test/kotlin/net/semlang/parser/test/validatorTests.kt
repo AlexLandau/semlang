@@ -28,18 +28,13 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun test() {
-        parseAndValidateFileOldStyle(file)
-    }
-
-    @Test
-    fun testNewApproach() {
         val result = parseAndValidateFile(file)
         Assert.assertTrue(result is ValidationResult.Success)
     }
 
     @Test
     fun testParseWriteParseEquality() {
-        val initiallyParsed = parseAndValidateFileOldStyle(file)
+        val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
         System.out.println("Rewritten contents for file $file:")
         System.out.println(writtenToString)
@@ -50,7 +45,7 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun testJsonWriteParseEquality() {
-        val initiallyParsed = parseAndValidateFileOldStyle(file)
+        val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val asJson = toJson(initiallyParsed)
         System.out.println("Contents for file $file as JSON:")
         System.out.println(ObjectMapper().writeValueAsString(asJson))
@@ -85,19 +80,9 @@ class ValidatorNegativeTests(private val file: File) {
 
     @Test
     fun test() {
-        try {
-            parseAndValidateFileOldStyle(file)
-            throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
-        } catch(e: Exception) {
-            // Expected
-        }
-    }
-
-    @Test
-    fun testNewApproach() {
         val result = parseAndValidateFile(file)
         if (result is ValidationResult.Failure) {
-            Assert.assertNotEquals(listOf<Issue>(), result.errors)
+            Assert.assertNotEquals(0, result.errors.size)
         } else {
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         }
@@ -106,23 +91,8 @@ class ValidatorNegativeTests(private val file: File) {
 
 private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
 
-private fun parseAndValidateFileOldStyle(file: File): ValidatedModule {
-    val context = parseFile(file).assumeSuccess()
-    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
-}
-
 private fun parseAndValidateFile(file: File): ValidationResult {
-    val parsingResult = parseFile(file)
-    // TODO: This belongs in the API, not test code
-    return when (parsingResult) {
-        is ParsingResult.Success -> {
-            validateModule(parsingResult.context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
-        }
-        is ParsingResult.Failure -> {
-            ValidationResult.Failure(parsingResult.errors, listOf())
-        }
-    }
-
+    return parseAndValidateFile(file, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION)
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {
