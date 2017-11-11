@@ -18,7 +18,7 @@ data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
  * For now, will treat as unvalidated for safety's sake (and because we'll catch more bugs that way)
  */
 // TODO: This should be made thread-safe
-class LocalRepository(val rootDirectory: File) {
+class LocalRepository(private val rootDirectory: File) {
     init {
         if (!rootDirectory.exists()) {
             rootDirectory.mkdirs()
@@ -33,7 +33,7 @@ class LocalRepository(val rootDirectory: File) {
         val containingDirectory = getDirectoryForId(id)
 
         // TODO: Nice-to-have: filename based on module name/version
-        val rawContents = parseFile(File(containingDirectory, "module.sem"))
+        val rawContents = parseFile(File(containingDirectory, "module.sem")).assumeSuccess()
 
         val moduleInfo = parseConfigFile(File(containingDirectory, "module"))
 

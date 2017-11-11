@@ -30,7 +30,7 @@ class SimplifyExpressionsTest(private val file: File) {
 
     @Test
     fun testSimplification() {
-        val module = validateModule(parseFile(file), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
+        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
 
         val simplified = simplifyExpressions(module)
 

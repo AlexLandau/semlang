@@ -34,8 +34,8 @@ class CorpusInterpreterTests(private val file: File) {
 }
 
 private fun parseAndValidateFile(file: File): ValidatedModule {
-    val functionsMap2 = parseFile(file)
-    return validateModule(functionsMap2,
+    val rawContext = parseFile(file).assumeSuccess()
+    return validateModule(rawContext,
             ModuleId("semlang", "corpusFile", "0.0.1"),
             CURRENT_NATIVE_MODULE_VERSION,
             listOf())

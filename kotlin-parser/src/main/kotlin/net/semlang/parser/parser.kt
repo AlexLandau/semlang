@@ -532,64 +532,51 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
 }
 
-fun parseFile(file: File): RawContext {
-    return parseFileNamed(file.absolutePath)
-}
-
 sealed class ParsingResult {
-    data class Success(val context: RawContext): ParsingResult()
-    data class Failure(val errors: List<Issue>): ParsingResult()
+    abstract fun assumeSuccess(): RawContext
+    data class Success(val context: RawContext): ParsingResult() {
+        override fun assumeSuccess(): RawContext {
+            return context
+        }
+    }
+    data class Failure(val errors: List<Issue>): ParsingResult() {
+        override fun assumeSuccess(): RawContext {
+            error("Parsing was not successful. Errors: $errors")
+        }
+    }
 }
 
-fun parseFile2(file: File): ParsingResult {
-    return parseFileNamed2(file.absolutePath)
+fun parseFile(file: File): ParsingResult {
+    return parseFileNamed(file.absolutePath)
 }
 
 fun parseFiles(files: Collection<File>): RawContext {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
     val allInterfaces = ArrayList<UnvalidatedInterface>()
+    val allErrors = ArrayList<Issue>()
     for (file in files) {
-        val rawContents = parseFileNamed(file.absolutePath)
-        allFunctions.addAll(rawContents.functions)
-        allStructs.addAll(rawContents.structs)
-        allInterfaces.addAll(rawContents.interfaces)
+        val parsingResult = parseFileNamed(file.absolutePath)
+        if (parsingResult is ParsingResult.Success) {
+            val rawContext = parsingResult.context
+            allFunctions.addAll(rawContext.functions)
+            allStructs.addAll(rawContext.structs)
+            allInterfaces.addAll(rawContext.interfaces)
+        } else if (parsingResult is ParsingResult.Failure) {
+            allErrors.addAll(parsingResult.errors)
+        }
     }
     return RawContext(allFunctions, allStructs, allInterfaces)
 }
 
-fun parseFileNamed(filename: String): RawContext {
-    val result = parseFileNamed2(filename)
-    return when (result) {
-        is ParsingResult.Success -> {
-            result.context
-        }
-        is ParsingResult.Failure -> {
-            error("Found errors: " + result.errors)
-        }
-    }
-}
-
-fun parseFileNamed2(filename: String): ParsingResult {
+fun parseFileNamed(filename: String): ParsingResult {
     val stream = ANTLRFileStream(filename, "UTF-8")
-    return parseANTLRStreamInner2(stream, filename)
+    return parseANTLRStreamInner(stream, filename)
 }
 
-fun parseString(string: String): RawContext {
-    val result = parseString2(string)
-    return when (result) {
-        is ParsingResult.Success -> {
-            result.context
-        }
-        is ParsingResult.Failure -> {
-            error("Found errors: " + result.errors)
-        }
-    }
-}
-
-fun parseString2(string: String): ParsingResult {
+fun parseString(string: String): ParsingResult {
     val stream = ANTLRInputStream(string)
-    return parseANTLRStreamInner2(stream, "unsourcedString")
+    return parseANTLRStreamInner(stream, "unsourcedString")
 }
 
 private class ErrorListener(val documentId: String, val errorsFound: ArrayList<Issue> = ArrayList<Issue>()): ANTLRErrorListener {
@@ -618,28 +605,9 @@ private class ErrorListener(val documentId: String, val errorsFound: ArrayList<I
     }
 }
 
-//private fun parseANTLRStreamInner(stream: ANTLRInputStream): RawContext {
-//    val lexer = Sem1Lexer(stream)
-//    val errorListener = ErrorListener()
-//    lexer.addErrorListener(errorListener)
-//    val tokens = CommonTokenStream(lexer)
-//    val parser = Sem1Parser(tokens)
-//    parser.addErrorListener(errorListener)
-//    val tree: Sem1Parser.FileContext = parser.file()
-//
-//    val extractor = ContextListener()
-//    ParseTreeWalker.DEFAULT.walk(extractor, tree)
-//
-//    if (!errorListener.errorsFound.isEmpty()) {
-//        error("Found errors: " + errorListener.errorsFound)
-//    }
-//
-//    return RawContext(extractor.functions, extractor.structs, extractor.interfaces)
-//}
-
 class LocationAwareParsingException(message: String, val location: Location): Exception(message)
 
-private fun parseANTLRStreamInner2(stream: ANTLRInputStream, documentId: String): ParsingResult {
+private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String): ParsingResult {
     val lexer = Sem1Lexer(stream)
     val errorListener = ErrorListener(documentId)
     lexer.addErrorListener(errorListener)
@@ -652,11 +620,10 @@ private fun parseANTLRStreamInner2(stream: ANTLRInputStream, documentId: String)
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), null, IssueLevel.ERROR)))
+        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), e.location, IssueLevel.ERROR)))
     }
 
     if (!errorListener.errorsFound.isEmpty()) {
-//        error("Found errors: " + errorListener.errorsFound)
         return ParsingResult.Failure(errorListener.errorsFound)
     }
 
