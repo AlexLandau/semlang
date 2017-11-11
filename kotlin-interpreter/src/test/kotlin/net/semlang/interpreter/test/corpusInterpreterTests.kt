@@ -38,5 +38,5 @@ private fun parseAndValidateFile(file: File): ValidatedModule {
     return validateModule(rawContext,
             ModuleId("semlang", "corpusFile", "0.0.1"),
             CURRENT_NATIVE_MODULE_VERSION,
-            listOf())
+            listOf()).assumeSuccess()
 }

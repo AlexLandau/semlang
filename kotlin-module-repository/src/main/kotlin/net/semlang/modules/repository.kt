@@ -53,7 +53,7 @@ class LocalRepository(private val rootDirectory: File) {
             loadModuleInternal(dependencyId, alreadyLoading + dependencyId)
         }
 
-        return validateModule(unvalidatedModule.contents, unvalidatedModule.info.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
+        return validateModule(unvalidatedModule.contents, unvalidatedModule.info.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies).assumeSuccess()
     }
 
     private fun getDirectoryForId(id: ModuleId): File {

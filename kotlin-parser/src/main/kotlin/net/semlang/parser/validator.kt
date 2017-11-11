@@ -18,19 +18,12 @@ private fun fail(text: String): Nothing {
 data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>, val outputType: Type)
 
 /*
- * Quick summary of current problems with this (will need a rewrite):
- * 1) Doesn't report more than one error at a time
- * 2) Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
- *    check (albeit code that can always be run in a vacuum)
- * 3) Someday this should be rewritten in Semlang
+ * Warning: Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
+ *   check (albeit code that can always be run in a vacuum)
  */
-fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidatedModule {
-    val result = validateModule2(context, moduleId, nativeModuleVersion, upstreamModules)
-    if (result is ValidationResult.Success) {
-        return result.module
-    } else {
-        error("There were errors: ${(result as ValidationResult.Failure).errors}")
-    }
+fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
+    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules)
+    return validator.validate(context)
 }
 
 enum class IssueLevel {
@@ -41,13 +34,17 @@ enum class IssueLevel {
 data class Issue(val message: String, val location: Location?, val level: IssueLevel)
 
 sealed class ValidationResult {
-    data class Success(val module: ValidatedModule, val warnings: List<Issue>): ValidationResult()
-    data class Failure(val errors: List<Issue>, val warnings: List<Issue>): ValidationResult()
-}
-
-fun validateModule2(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
-    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules)
-    return validator.validate(context)
+    abstract fun assumeSuccess(): ValidatedModule
+    data class Success(val module: ValidatedModule, val warnings: List<Issue>): ValidationResult() {
+        override fun assumeSuccess(): ValidatedModule {
+            return module
+        }
+    }
+    data class Failure(val errors: List<Issue>, val warnings: List<Issue>): ValidationResult() {
+        override fun assumeSuccess(): ValidatedModule {
+            error("Encountered errors in validation: $errors")
+        }
+    }
 }
 
 private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String, val upstreamModules: List<ValidatedModule>) {

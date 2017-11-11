@@ -56,7 +56,7 @@ class ValidatorPositiveTests(private val file: File) {
         System.out.println(ObjectMapper().writeValueAsString(asJson))
         System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
 }
@@ -108,7 +108,7 @@ private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
 
 private fun parseAndValidateFileOldStyle(file: File): ValidatedModule {
     val context = parseFile(file).assumeSuccess()
-    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 }
 
 private fun parseAndValidateFile(file: File): ValidationResult {
@@ -116,7 +116,7 @@ private fun parseAndValidateFile(file: File): ValidationResult {
     // TODO: This belongs in the API, not test code
     return when (parsingResult) {
         is ParsingResult.Success -> {
-            validateModule2(parsingResult.context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+            validateModule(parsingResult.context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
         }
         is ParsingResult.Failure -> {
             ValidationResult.Failure(parsingResult.errors, listOf())
@@ -127,5 +127,5 @@ private fun parseAndValidateFile(file: File): ValidationResult {
 
 private fun parseAndValidateString(string: String): ValidatedModule {
     val context = parseString(string).assumeSuccess()
-    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 }
