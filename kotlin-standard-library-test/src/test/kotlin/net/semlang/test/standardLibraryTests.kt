@@ -35,7 +35,7 @@ class StandardLibraryTests(private val file: File) {
         fun publishStandardLibrary() {
             val semlangLibrarySources = File("../semlang-library/src/main/semlang")
             val semlangLibraryFiles = semlangLibrarySources.listFiles().toList()
-            val unvalidatedContext = parseFiles(semlangLibraryFiles)
+            val unvalidatedContext = parseFiles(semlangLibraryFiles).assumeSuccess()
 
             val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 

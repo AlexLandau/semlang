@@ -2,14 +2,18 @@ package net.semlang.languageserver
 
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
-import org.eclipse.lsp4j.services.LanguageServer
-import org.eclipse.lsp4j.services.TextDocumentService
-import org.eclipse.lsp4j.services.WorkspaceService
+import org.eclipse.lsp4j.services.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 
-class SemlangLanguageServer: LanguageServer {
-    private val textDocumentService = SemlangTextDocumentService()
-    private val workspaceService = SemlangWorkspaceService()
+interface LanguageClientProvider {
+    fun getLanguageClient(): LanguageClient
+}
+
+class SemlangLanguageServer: LanguageServer, LanguageClientAware, LanguageClientProvider {
+    private val languageClientHolder = CopyOnWriteArrayList<LanguageClient>()
+    private val textDocumentService = SemlangTextDocumentService(this)
+    private val workspaceService = SemlangWorkspaceService(this)
 
     override fun getTextDocumentService(): TextDocumentService {
         return textDocumentService
@@ -22,6 +26,11 @@ class SemlangLanguageServer: LanguageServer {
     override fun initialize(params: InitializeParams?): CompletableFuture<InitializeResult> {
         // TODO: Configure capabilities
         val capabilities = ServerCapabilities()
+
+        val textDocumentSyncOptions = TextDocumentSyncOptions()
+        textDocumentSyncOptions.openClose = true
+        textDocumentSyncOptions.change = TextDocumentSyncKind.Full // TODO: Incremental would be better
+        capabilities.setTextDocumentSync(textDocumentSyncOptions)
 
         val result = InitializeResult(capabilities)
         return CompletableFuture.completedFuture(result)
@@ -36,15 +45,27 @@ class SemlangLanguageServer: LanguageServer {
         return CompletableFuture.completedFuture(null)
     }
 
+    override fun connect(client: LanguageClient) {
+        if (!languageClientHolder.isEmpty()) {
+            error("Expected empty languageClientHolder")
+        }
+        languageClientHolder.add(client)
+    }
+
+    override fun getLanguageClient(): LanguageClient {
+        return languageClientHolder[0]
+    }
 }
 
-class SemlangWorkspaceService: WorkspaceService {
+class SemlangWorkspaceService(private val languageClientProvider: LanguageClientProvider): WorkspaceService {
     override fun didChangeWatchedFiles(params: DidChangeWatchedFilesParams?) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun didChangeConfiguration(params: DidChangeConfigurationParams?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        // TODO: This is the next thing to "implement"
+
+        // If we ever have settings, update them here.
     }
 
     override fun symbol(params: WorkspaceSymbolParams?): CompletableFuture<MutableList<out SymbolInformation>> {
@@ -52,7 +73,9 @@ class SemlangWorkspaceService: WorkspaceService {
     }
 }
 
-class SemlangTextDocumentService: TextDocumentService {
+class SemlangTextDocumentService(private val languageClientProvider: LanguageClientProvider): TextDocumentService {
+    val model = AllModulesModel(languageClientProvider)
+
     override fun resolveCompletionItem(unresolved: CompletionItem?): CompletableFuture<CompletionItem> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -97,8 +120,13 @@ class SemlangTextDocumentService: TextDocumentService {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun didOpen(params: DidOpenTextDocumentParams?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun didOpen(params: DidOpenTextDocumentParams) {
+        // TODO: This is the next one to implement
+
+        val document = params.textDocument
+
+        model.documentWasOpened(document.uri, document.text)
+//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun didSave(params: DidSaveTextDocumentParams?) {
@@ -117,8 +145,11 @@ class SemlangTextDocumentService: TextDocumentService {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun didChange(params: DidChangeTextDocumentParams?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun didChange(params: DidChangeTextDocumentParams) {
+        val document = params.textDocument
+
+        model.documentWasUpdated(document.uri, params.contentChanges[0].text)
+//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun references(params: ReferenceParams?): CompletableFuture<MutableList<out Location>> {

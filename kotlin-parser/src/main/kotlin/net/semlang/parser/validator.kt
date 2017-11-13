@@ -27,8 +27,7 @@ fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion:
     return validator.validate(context)
 }
 
-fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
-    val parsingResult = parseFile(file)
+fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
     return when (parsingResult) {
         is ParsingResult.Success -> {
             validateModule(parsingResult.context, moduleId, nativeModuleVersion, listOf())
@@ -37,6 +36,16 @@ fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: St
             ValidationResult.Failure(parsingResult.errors, listOf())
         }
     }
+}
+
+fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+    val parsingResult = parseFile(file)
+    return validate(parsingResult, moduleId, nativeModuleVersion)
+}
+
+fun parseAndValidateString(text: String, documentUri: String, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+    val parsingResult = parseString(text, documentUri)
+    return validate(parsingResult, moduleId, nativeModuleVersion)
 }
 
 enum class IssueLevel {
@@ -48,16 +57,24 @@ data class Issue(val message: String, val location: Location?, val level: IssueL
 
 sealed class ValidationResult {
     abstract fun assumeSuccess(): ValidatedModule
+    abstract fun getAllIssues(): List<Issue>
     data class Success(val module: ValidatedModule, val warnings: List<Issue>): ValidationResult() {
+        override fun getAllIssues(): List<Issue> {
+            return warnings
+        }
         override fun assumeSuccess(): ValidatedModule {
             return module
         }
     }
     data class Failure(val errors: List<Issue>, val warnings: List<Issue>): ValidationResult() {
+        override fun getAllIssues(): List<Issue> {
+            return errors + warnings
+        }
         override fun assumeSuccess(): ValidatedModule {
             error("Encountered errors in validation: $errors")
         }
     }
+
 }
 
 private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String, val upstreamModules: List<ValidatedModule>) {

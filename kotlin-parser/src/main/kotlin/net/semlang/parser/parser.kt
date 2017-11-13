@@ -546,17 +546,12 @@ sealed class ParsingResult {
     }
 }
 
-fun parseFile(file: File): ParsingResult {
-    return parseFileNamed(file.absolutePath)
-}
-
-fun parseFiles(files: Collection<File>): RawContext {
+fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
     val allInterfaces = ArrayList<UnvalidatedInterface>()
     val allErrors = ArrayList<Issue>()
-    for (file in files) {
-        val parsingResult = parseFileNamed(file.absolutePath)
+    for (parsingResult in results) {
         if (parsingResult is ParsingResult.Success) {
             val rawContext = parsingResult.context
             allFunctions.addAll(rawContext.functions)
@@ -566,7 +561,24 @@ fun parseFiles(files: Collection<File>): RawContext {
             allErrors.addAll(parsingResult.errors)
         }
     }
-    return RawContext(allFunctions, allStructs, allInterfaces)
+    if (allErrors.isEmpty()) {
+        return ParsingResult.Success(RawContext(allFunctions, allStructs, allInterfaces))
+    } else {
+        return ParsingResult.Failure(allErrors)
+    }
+}
+
+fun parseFile(file: File): ParsingResult {
+    return parseFileNamed(file.absolutePath)
+}
+
+fun parseFiles(files: Collection<File>): ParsingResult {
+    val allResults = ArrayList<ParsingResult>()
+    // TODO: This could be parallelized
+    for (file in files) {
+        allResults.add(parseFileNamed(file.absolutePath))
+    }
+    return combineParsingResults(allResults)
 }
 
 fun parseFileNamed(filename: String): ParsingResult {
@@ -574,9 +586,9 @@ fun parseFileNamed(filename: String): ParsingResult {
     return parseANTLRStreamInner(stream, filename)
 }
 
-fun parseString(string: String): ParsingResult {
-    val stream = ANTLRInputStream(string)
-    return parseANTLRStreamInner(stream, "unsourcedString")
+fun parseString(text: String, documentUri: String): ParsingResult {
+    val stream = ANTLRInputStream(text)
+    return parseANTLRStreamInner(stream, documentUri)
 }
 
 private class ErrorListener(val documentId: String, val errorsFound: ArrayList<Issue> = ArrayList<Issue>()): ANTLRErrorListener {
