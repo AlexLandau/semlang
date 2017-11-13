@@ -196,8 +196,8 @@ sealed class AmbiguousExpression {
     data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
     data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
     data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
+    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val varOrNameLocation: Location?): AmbiguousExpression()
+    data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class Literal(val type: Type, val literal: String, override val location: Location): AmbiguousExpression()
     data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val location: Location): AmbiguousExpression()
     data class Follow(val expression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
@@ -208,7 +208,7 @@ sealed class Expression {
     abstract val location: Location?
     data class Variable(val name: String, override val location: Location?): Expression()
     data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location?): Expression()
-    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
+    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?, val functionRefLocation: Location?): Expression()
     //TODO: Make position of chosenParamters consistent with bindings below
     data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
     data class Literal(val type: Type, val literal: String, override val location: Location?): Expression()

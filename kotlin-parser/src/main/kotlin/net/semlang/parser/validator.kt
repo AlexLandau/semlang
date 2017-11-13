@@ -609,7 +609,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
-        val functionResolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("The function $containingFunctionId references a function $functionRef that was not found")
+        val functionResolvedRef = typeInfo.resolver.resolve(functionRef)
+        if (functionResolvedRef == null) {
+            errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
+        }
 
         val arguments = ArrayList<TypedExpression>()
         expression.arguments.forEach { untypedArgument ->

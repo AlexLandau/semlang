@@ -40,7 +40,7 @@ private fun endOf(token: Token): Position {
     val tokenLength = token.stopIndex - token.startIndex
     return Position(
             token.line,
-            token.charPositionInLine + tokenLength,
+            token.charPositionInLine + tokenLength + 1,
             token.stopIndex
     )
 }
@@ -252,7 +252,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                             functionRef = expression.functionIdOrVariable,
                             arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                             chosenParameters = expression.chosenParameters,
-                            location = expression.location)
+                            location = expression.location,
+                            functionRefLocation = expression.varOrNameLocation)
                 }
             }
             is AmbiguousExpression.ExpressionOrNamedFunctionCall -> {
@@ -366,9 +367,9 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
             val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
             if (functionRefOrVar != null) {
-                return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression))
+                return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
             } else {
-                return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
+                return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
             }
         }
 

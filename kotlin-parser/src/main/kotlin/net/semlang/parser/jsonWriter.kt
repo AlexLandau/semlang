@@ -416,7 +416,7 @@ private fun parseExpression(node: JsonNode): Expression {
             val functionRef = parseEntityRef(node["function"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null)
+            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null, functionRefLocation = null)
         }
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
