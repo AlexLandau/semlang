@@ -115,7 +115,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     + "\n block:" + function.block()
             )
         }
-        val arguments: List<Argument> = parseFunctionArguments(function.function_arguments())
+        val arguments: List<UnvalidatedArgument> = parseFunctionArguments(function.function_arguments())
         val returnType: Type = parseType(function.type())
 
         val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
@@ -409,17 +409,17 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 this::parseExpression)
     }
 
-    private fun parseFunctionArguments(function_arguments: Sem1Parser.Function_argumentsContext): List<Argument> {
+    private fun parseFunctionArguments(function_arguments: Sem1Parser.Function_argumentsContext): List<UnvalidatedArgument> {
         return parseLinkedList(function_arguments,
                 Sem1Parser.Function_argumentsContext::function_argument,
                 Sem1Parser.Function_argumentsContext::function_arguments,
                 this::parseFunctionArgument)
     }
 
-    private fun parseFunctionArgument(function_argument: Sem1Parser.Function_argumentContext): Argument {
+    private fun parseFunctionArgument(function_argument: Sem1Parser.Function_argumentContext): UnvalidatedArgument {
         val name = function_argument.ID().text
         val type = parseType(function_argument.type())
-        return Argument(name, type)
+        return UnvalidatedArgument(name, type, locationOf(function_argument))
     }
 
     private fun parseEntityRef(entity_ref: Sem1Parser.Entity_refContext): EntityRef {
@@ -511,14 +511,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return Type.NamedType(EntityRef.of(typeId), parameters)
     }
 
-    private fun parseMethods(methods: Sem1Parser.MethodsContext): List<Method> {
+    private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {
         return parseLinkedList(methods,
                 Sem1Parser.MethodsContext::method,
                 Sem1Parser.MethodsContext::methods,
                 this::parseMethod)
     }
 
-    private fun parseMethod(method: Sem1Parser.MethodContext): Method {
+    private fun parseMethod(method: Sem1Parser.MethodContext): UnvalidatedMethod {
         val name = method.ID().text
         val typeParameters = if (method.GREATER_THAN() != null) {
             parseCommaDelimitedIds(method.cd_ids())
@@ -528,7 +528,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val arguments = parseFunctionArguments(method.function_arguments())
         val returnType = parseType(method.type())
 
-        return Method(name, typeParameters, arguments, returnType)
+        return UnvalidatedMethod(name, typeParameters, arguments, returnType)
     }
 
 }

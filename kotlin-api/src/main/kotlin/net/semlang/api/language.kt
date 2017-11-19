@@ -234,14 +234,15 @@ sealed class TypedExpression {
 data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression, val nameLocation: Location?)
 data class Assignment(val name: String, val type: Type?, val expression: Expression, val nameLocation: Location?)
 data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
+data class UnvalidatedArgument(val name: String, val type: Type, val location: Location?)
 data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location?)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val idLocation: Location?, val returnTypeLocation: Location?) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: Type, val block: Block, override val annotations: List<Annotation>, val idLocation: Location?, val returnTypeLocation: Location?) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
-                arguments.map(Argument::type),
+                arguments.map(UnvalidatedArgument::type),
                 returnType,
                 typeParameters.map { str -> Type.NamedType.forParameter(str) })
     }
@@ -292,10 +293,7 @@ interface TopLevelEntity: HasId {
 }
 data class Member(val name: String, val type: Type)
 
-data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
-    fun getIndexForName(name: String): Int {
-        return methods.indexOfFirst { method -> method.name == name }
-    }
+data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val adapterStruct: UnvalidatedStruct = UnvalidatedStruct(adapterId, listOf(getUnusedTypeParameterName(typeParameters)) + typeParameters,
             methods.map { method -> Member(method.name, method.functionType) }, null, listOf(), idLocation)
@@ -368,6 +366,9 @@ data class Interface(override val id: EntityId, val typeParameters: List<String>
         return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters.map { name -> Type.NamedType.forParameter(name) })
     }
 }
+data class UnvalidatedMethod(val name: String, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: Type) {
+    val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
+}
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
@@ -386,6 +387,15 @@ private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): St
     }
 }
 
+private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: UnvalidatedMethod): Type {
+    val argTypes = ArrayList<Type>()
+    argTypes.add(intrinsicStructType)
+    method.arguments.forEach { argument ->
+        argTypes.add(argument.type)
+    }
+
+    return Type.FunctionType(argTypes, method.returnType)
+}
 private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.NamedType, method: Method): Type {
     val argTypes = ArrayList<Type>()
     argTypes.add(intrinsicStructType)
