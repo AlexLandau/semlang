@@ -2,6 +2,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 // import { workspace, ExtensionContext } from 'vscode';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind, Executable } from 'vscode-languageclient';
@@ -36,9 +37,11 @@ export function activate(context: vscode.ExtensionContext) {
     // The debug options for the server
     // let debugOptions = { execArgv: ["--nolazy", "--debug=6009"] };
 
+    const jarPath = path.join(context.extensionPath, "semlang-language-server.jar");
+    console.log("Expected jar path is: " + jarPath);
     let languageServerExecutable: Executable = {
         command: "java",
-        args: ["-jar", "C:/Users/Alex/code/semlang/kotlin-language-server/build/libs/kotlin-language-server-all.jar"]
+        args: ["-jar", jarPath]
     }
     
     // If the extension is launched in debug mode then the debug server options are used

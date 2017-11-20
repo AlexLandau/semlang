@@ -40,3 +40,11 @@ dependencies {
 }
 
 // tasks.test.inputs.files(fileTree("../semlang-corpus/src/main/semlang"))
+
+tasks.build.doLast {
+  project.copy {
+    from 'build/libs/kotlin-language-server-all.jar'
+    into rootProject.file('semlang-code')
+    rename { 'semlang-language-server.jar' }
+  }
+}
