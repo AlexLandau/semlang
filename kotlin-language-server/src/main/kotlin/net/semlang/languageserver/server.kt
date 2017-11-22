@@ -137,8 +137,10 @@ class SemlangTextDocumentService(private val languageClientProvider: LanguageCli
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun didClose(params: DidCloseTextDocumentParams?) {
+    override fun didClose(params: DidCloseTextDocumentParams) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val document = params.textDocument
+        model.documentWasClosed(document.uri)
     }
 
     override fun formatting(params: DocumentFormattingParams?): CompletableFuture<MutableList<out TextEdit>> {

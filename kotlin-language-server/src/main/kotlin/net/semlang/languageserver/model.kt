@@ -30,6 +30,13 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
             error("Got document update for unknown document $uri")
         }
     }
+
+    fun documentWasClosed(uri: String) {
+        val existingModel = documentsToModelsMap[uri]
+        if (existingModel != null) {
+            existingModel.removeDocument(uri)
+        }
+    }
 }
 
 /*
@@ -38,6 +45,8 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
  *
  * Note that this only handles a single module.
  */
+// TODO: We'll also need to load module specification files and be able to load files off disk based on those
+// TODO: Actually have a format for module specification files...
 class ModuleSourcesModel(private val languageClientProvider: LanguageClientProvider,
                          private val moduleId: ModuleId,
                          private val nativeModuleVersion: String) {
@@ -70,6 +79,12 @@ class ModuleSourcesModel(private val languageClientProvider: LanguageClientProvi
                     workQueue.add(getRecombineTask())
                 })
             }
+        })
+    }
+
+    fun removeDocument(uri: String) {
+        workQueue.add(fun() {
+            documentTextsByUri.remove(uri)
         })
     }
 
