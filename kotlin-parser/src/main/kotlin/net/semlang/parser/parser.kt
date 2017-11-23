@@ -319,71 +319,79 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseExpression(expression: Sem1Parser.ExpressionContext): AmbiguousExpression {
-        if (expression.IF() != null) {
-            val condition = parseExpression(expression.expression())
-            val thenBlock = parseBlock(expression.block(0))
-            val elseBlock = parseBlock(expression.block(1))
-            return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
-        }
-
-        if (expression.LITERAL() != null) {
-            val type = parseTypeGivenParameters(expression.entity_ref(), listOf())
-            val literal = parseLiteral(expression.LITERAL())
-            return AmbiguousExpression.Literal(type, literal, locationOf(expression))
-        }
-
-        if (expression.ARROW() != null) {
-            val inner = parseExpression(expression.expression())
-            val name = expression.ID().text
-            return AmbiguousExpression.Follow(inner, name, locationOf(expression))
-        }
-
-        if (expression.LPAREN() != null) {
-            val innerExpression = if (expression.expression() != null) {
-                parseExpression(expression.expression())
-            } else {
-                null
-            }
-            val functionRefOrVar = if (expression.entity_ref() != null) {
-                parseEntityRef(expression.entity_ref())
-            } else {
-                null
+        try {
+            if (expression.IF() != null) {
+                val condition = parseExpression(expression.expression())
+                val thenBlock = parseBlock(expression.block(0))
+                val elseBlock = parseBlock(expression.block(1))
+                return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
             }
 
-            val chosenParameters = if (expression.LESS_THAN() != null) {
-                parseCommaDelimitedTypes(expression.cd_types())
-            } else {
-                listOf()
+            if (expression.LITERAL() != null) {
+                val type = parseTypeGivenParameters(expression.entity_ref(), listOf())
+                val literal = parseLiteral(expression.LITERAL())
+                return AmbiguousExpression.Literal(type, literal, locationOf(expression))
             }
-            if (expression.PIPE() != null) {
-                val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-                if (functionRefOrVar != null) {
-                    return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, chosenParameters, bindings, locationOf(expression))
+            if (expression.ARROW() != null) {
+                val inner = parseExpression(expression.expression())
+                val name = expression.ID().text
+                return AmbiguousExpression.Follow(inner, name, locationOf(expression))
+            }
+
+            if (expression.LPAREN() != null) {
+                val innerExpression = if (expression.expression() != null) {
+                    parseExpression(expression.expression())
                 } else {
-                    return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, chosenParameters, bindings, locationOf(expression))
+                    null
+                }
+                val functionRefOrVar = if (expression.entity_ref() != null) {
+                    parseEntityRef(expression.entity_ref())
+                } else {
+                    null
+                }
+
+                val chosenParameters = if (expression.LESS_THAN() != null) {
+                    parseCommaDelimitedTypes(expression.cd_types())
+                } else {
+                    listOf()
+                }
+                if (expression.PIPE() != null) {
+                    val bindings = parseBindings(expression.cd_expressions_or_underscores())
+
+                    if (functionRefOrVar != null) {
+                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, chosenParameters, bindings, locationOf(expression))
+                    } else {
+                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, chosenParameters, bindings, locationOf(expression))
+                    }
+                }
+
+                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                if (functionRefOrVar != null) {
+                    return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                } else {
+                    return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
                 }
             }
 
-            val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-            if (functionRefOrVar != null) {
-                return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+            if (expression.LBRACKET() != null) {
+                val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
+                val chosenParameter = parseType(expression.type())
+                return AmbiguousExpression.ListLiteral(contents, chosenParameter, locationOf(expression))
+            }
+
+            if (expression.ID() != null) {
+                return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
+            }
+
+            throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
+        } catch (e: Exception) {
+            if (e is LocationAwareParsingException) {
+                throw e
             } else {
-                return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression), e)
             }
         }
-
-        if (expression.LBRACKET() != null) {
-            val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
-            val chosenParameter = parseType(expression.type())
-            return AmbiguousExpression.ListLiteral(contents, chosenParameter, locationOf(expression))
-        }
-
-        if (expression.ID() != null) {
-            return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
-        }
-
-        throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
     }
 
 
@@ -618,7 +626,7 @@ private class ErrorListener(val documentId: String, val errorsFound: ArrayList<I
     }
 }
 
-class LocationAwareParsingException(message: String, val location: Location): Exception(message)
+class LocationAwareParsingException(message: String, val location: Location, cause: Exception? = null): Exception(message, cause)
 
 private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String): ParsingResult {
     val lexer = Sem1Lexer(stream)
