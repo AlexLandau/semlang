@@ -31,6 +31,7 @@ repositories {
 dependencies {
   compile project(':kotlin-api')
   compile project(':kotlin-parser')
+  compile project(':kotlin-module-repository') // TODO: It may be better to split out the module config from the repo code itself
 
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 

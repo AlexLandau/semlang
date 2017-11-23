@@ -9,7 +9,7 @@ import java.io.File
 import java.io.Writer
 
 // TODO: In theory we could hook these directly to Jackson
-fun parseConfigFile(file: File): ModuleInfo {
+fun parseConfigFile(file: File): ModuleInfoParsingResult {
     return parseConfigFileString(file.readText())
 }
 
@@ -17,18 +17,27 @@ fun writeConfigFile(module: ValidatedModule, writer: Writer) {
     writer.write(writeConfigFileString(module))
 }
 
-fun parseConfigFileString(text: String): ModuleInfo {
-    val mapper = ObjectMapper()
-    val rootNode = mapper.readTree(text)
+sealed class ModuleInfoParsingResult {
+    data class Success(val info: ModuleInfo): ModuleInfoParsingResult()
+    data class Failure(val error: Exception): ModuleInfoParsingResult()
+}
 
-    val group = rootNode.get("group").asText()
-    val module = rootNode.get("module").asText()
-    val version = rootNode.get("version").asText()
-    val id = ModuleId(group, module, version)
+fun parseConfigFileString(text: String): ModuleInfoParsingResult {
+    try {
+        val mapper = ObjectMapper()
+        val rootNode = mapper.readTree(text)
 
-    val dependencies = rootNode.get("dependencies").map(::parseDependencyNode)
+        val group = rootNode.get("group").asText()
+        val module = rootNode.get("module").asText()
+        val version = rootNode.get("version").asText()
+        val id = ModuleId(group, module, version)
 
-    return ModuleInfo(id, dependencies)
+        val dependencies = rootNode.get("dependencies").map(::parseDependencyNode)
+
+        return ModuleInfoParsingResult.Success(ModuleInfo(id, dependencies))
+    } catch(e: Exception) {
+        return ModuleInfoParsingResult.Failure(e)
+    }
 }
 
 fun writeConfigFileString(module: ValidatedModule): String {

@@ -35,7 +35,8 @@ class LocalRepository(private val rootDirectory: File) {
         // TODO: Nice-to-have: filename based on module name/version
         val rawContents = parseFile(File(containingDirectory, "module.sem")).assumeSuccess()
 
-        val moduleInfo = parseConfigFile(File(containingDirectory, "module"))
+        val confParsingResult = parseConfigFile(File(containingDirectory, "module")) as? ModuleInfoParsingResult.Success ?: error("Couldn't parse the module config")
+        val moduleInfo = confParsingResult.info
 
         return UnvalidatedModule(moduleInfo, rawContents)
     }

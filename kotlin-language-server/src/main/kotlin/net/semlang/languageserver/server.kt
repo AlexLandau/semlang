@@ -63,9 +63,7 @@ class SemlangWorkspaceService(private val languageClientProvider: LanguageClient
     }
 
     override fun didChangeConfiguration(params: DidChangeConfigurationParams?) {
-        // TODO: This is the next thing to "implement"
-
-        // If we ever have settings, update them here.
+        // TODO: If we ever have settings, update them here.
     }
 
     override fun symbol(params: WorkspaceSymbolParams?): CompletableFuture<MutableList<out SymbolInformation>> {
@@ -121,12 +119,8 @@ class SemlangTextDocumentService(private val languageClientProvider: LanguageCli
     }
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
-        // TODO: This is the next one to implement
-
         val document = params.textDocument
-
         model.documentWasOpened(document.uri, document.text)
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun didSave(params: DidSaveTextDocumentParams?) {
@@ -138,7 +132,6 @@ class SemlangTextDocumentService(private val languageClientProvider: LanguageCli
     }
 
     override fun didClose(params: DidCloseTextDocumentParams) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
         val document = params.textDocument
         model.documentWasClosed(document.uri)
     }
@@ -149,9 +142,7 @@ class SemlangTextDocumentService(private val languageClientProvider: LanguageCli
 
     override fun didChange(params: DidChangeTextDocumentParams) {
         val document = params.textDocument
-
         model.documentWasUpdated(document.uri, params.contentChanges[0].text)
-//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun references(params: ReferenceParams?): CompletableFuture<MutableList<out Location>> {
