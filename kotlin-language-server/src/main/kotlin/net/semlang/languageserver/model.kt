@@ -12,7 +12,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 // TODO: When client-side file updates work, do all file management/watching through the client. Until then, we'll need
 // something more manual.
@@ -106,6 +108,37 @@ class SourcesFolderModel(private val folderUri: URI,
 
     private val workQueue = LinkedBlockingQueue<() -> Unit>()
 
+    /*
+     * Note: One of the main reasons we have this kind of dedicated thread is so all the handling of the model's internal
+     * state is serialized and therefore easier to reason about. Another approach would be to use a shared thread pool
+     * among models, and use a monitor lock on this model for synchronization.
+     */
+    private val workerThread = Thread(fun() {
+        while (true) {
+            val workItem = workQueue.take()
+            try {
+                workItem()
+            } catch(e: Exception) {
+                e.printStackTrace(System.err)
+            }
+
+            // Wait until there are no more external changes to files coming in, then figure out which tasks to add to
+            // update the model
+            if (workQueue.isEmpty()) {
+                // Figure out needed tasks to update the model, based on the current folderState
+                addNeededModelUpdateTasks()
+            }
+        }
+    })
+
+    init {
+        // TODO: Shut this down at some point...
+        workerThread.start()
+        Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(fun() {
+            workQueue.add(getScanFolderTask())
+        }, 0, 10, TimeUnit.SECONDS)
+    }
+
     private fun getSourcesNeedingReparsing(): Set<String> {
         val folderState = this.folderState
         val sourcesNeedingReparsing = HashSet<String>()
@@ -137,29 +170,6 @@ class SourcesFolderModel(private val folderUri: URI,
         System.err.println("Sources needing reparsing: $sourcesNeedingReparsing")
         return sourcesNeedingReparsing
     }
-
-    /*
-     * Note: One of the main reasons we have this kind of dedicated thread is so all the handling of the model's internal
-     * state is serialized and therefore easier to reason about. Another approach would be to use a shared thread pool
-     * among models, and use a monitor lock on this model for synchronization.
-     */
-    private val workerThread = Thread(fun() {
-        while (true) {
-            val workItem = workQueue.take()
-            try {
-                workItem()
-            } catch(e: Exception) {
-                e.printStackTrace(System.err)
-            }
-
-            // Wait until there are no more external changes to files coming in, then figure out which tasks to add to
-            // update the model
-            if (workQueue.isEmpty()) {
-                // TODO: Figure out needed tasks to update the model, based on the current folderState
-                addNeededModelUpdateTasks()
-            }
-        }
-    })
 
     private fun addNeededModelUpdateTasks() {
         // TODO: Make this more fine-grained at some point in the future
@@ -253,13 +263,6 @@ class SourcesFolderModel(private val folderUri: URI,
     private fun getDocumentUriForFileName(fileName: String): String {
         val documentUri = folderUri.resolve(fileName)
         return documentUri.toASCIIString()
-    }
-
-    init {
-        // TODO: Shut this down at some point...
-        workerThread.start()
-        // TODO: Add periodic scanning (watching) of the folder
-        workQueue.add(getScanFolderTask())
     }
 
     private fun getScanFolderTask(): () -> Unit {

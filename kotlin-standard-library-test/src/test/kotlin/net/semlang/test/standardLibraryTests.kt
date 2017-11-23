@@ -33,8 +33,9 @@ class StandardLibraryTests(private val file: File) {
         @BeforeClass
         @JvmStatic
         fun publishStandardLibrary() {
+            // TODO: Parse from directory using a standard utility function
             val semlangLibrarySources = File("../semlang-library/src/main/semlang")
-            val semlangLibraryFiles = semlangLibrarySources.listFiles().toList()
+            val semlangLibraryFiles = semlangLibrarySources.listFiles{ dir, name -> name.endsWith(".sem") }.toList()
             val unvalidatedContext = parseFiles(semlangLibraryFiles).assumeSuccess()
 
             val standardLibraryModule = validateModule(unvalidatedContext, LIBRARY_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
