@@ -2,9 +2,8 @@ package net.semlang.languageserver
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
-import net.semlang.modules.ModuleInfo
-import net.semlang.modules.ModuleInfoParsingResult
-import net.semlang.modules.parseConfigFileString
+import net.semlang.parser.ModuleInfoParsingResult
+import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
 import org.eclipse.lsp4j.*
 import java.net.URI

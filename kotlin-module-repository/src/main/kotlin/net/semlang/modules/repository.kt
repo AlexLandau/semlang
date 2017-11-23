@@ -1,15 +1,10 @@
 package net.semlang.modules
 
 import net.semlang.api.*
-import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
-import net.semlang.parser.write
+import net.semlang.parser.*
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
-
-// This is meant to incorporate all information that would appear in a module specification file
-data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
 
 data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
 
