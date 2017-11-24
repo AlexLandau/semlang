@@ -22,7 +22,6 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
     private val foldersToModelsMap = HashMap<URI, SourcesFolderModel>()
 
     fun documentWasOpened(uri: String, text: String) {
-        // TODO: Make this less silly
         System.err.println("Handling documentWasOpened for document with URI $uri")
         val uriObject = URI(uri)
         System.err.println("URI object is: $uriObject")
@@ -56,7 +55,6 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
         val uriObject = URI(uri)
         val containingFolder = uriObject.resolve(".")
 
-        // TODO: We'll want to do the closing within the model, vs. closing the model itself
         val existingModel = foldersToModelsMap[containingFolder]
         if (existingModel != null) {
             existingModel.closeDocument(uri)
@@ -92,10 +90,9 @@ sealed class DocumentSource {
  * This will contain our notion of what the current source files are for a given module and manage accepting updates
  * and triggering rebuilds that produce diagnostics.
  *
- * Note that this only handles a single module.
+ * Note that this only handles a single directory (either a module or a directory of unrelated bare source files,
+ * depending on whether a valid module.conf is present).
  */
-// TODO: We'll also need to load module specification files and be able to load files off disk based on those
-// TODO: Actually have a format for module specification files...
 class SourcesFolderModel(private val folderUri: URI,
                          private val languageClientProvider: LanguageClientProvider) {
     @Volatile private var folderState = SourcesFolderState(mapOf(), mapOf())
@@ -200,7 +197,7 @@ class SourcesFolderModel(private val folderUri: URI,
 
                 if (fileName == "module.conf") {
                     if (fileText != null) {
-                        // TODO: Handle invalid configs
+                        // TODO: Report errors more helpfully for invalid configs
                         val configParsingResult = parseConfigFileString(fileText)
                         if (configParsingResult is ModuleInfoParsingResult.Success) {
                             this.moduleInfo = configParsingResult.info
