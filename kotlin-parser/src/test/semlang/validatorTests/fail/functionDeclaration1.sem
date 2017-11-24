@@ -1,0 +1,4 @@
+
+function myFunction(unknownType: UnknownType): Integer {
+  Integer."1"
+}

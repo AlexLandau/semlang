@@ -239,7 +239,7 @@ private fun parseInterface(node: JsonNode): UnvalidatedInterface {
     return UnvalidatedInterface(id, typeParameters, methods, annotations, null)
 }
 
-private fun parseMethods(node: JsonNode): List<Method> {
+private fun parseMethods(node: JsonNode): List<UnvalidatedMethod> {
     if (!node.isArray()) error("Methods should be in an array")
     return node.map { methodNode -> parseMethod(methodNode) }
 }
@@ -253,7 +253,7 @@ private fun addMethod(node: ObjectNode, method: Method) {
     node.set("returnType", toTypeNode(method.returnType))
 }
 
-private fun parseMethod(node: JsonNode): Method {
+private fun parseMethod(node: JsonNode): UnvalidatedMethod {
     if (!node.isObject()) error("Expected a method to be an object")
 
     val name = node["name"]?.textValue() ?: error("Methods must have a 'name' field")
@@ -261,10 +261,10 @@ private fun parseMethod(node: JsonNode): Method {
     val arguments = parseArguments(node["arguments"] ?: error("Methods must have an 'arguments' array"))
     val returnType = parseType(node["returnType"] ?: error("Methods must have a 'returnType' string"))
 
-    return Method(name, typeParameters, arguments, returnType)
+    return UnvalidatedMethod(name, typeParameters, arguments, returnType)
 }
 
-private fun parseArguments(node: JsonNode): List<Argument> {
+private fun parseArguments(node: JsonNode): List<UnvalidatedArgument> {
     if (!node.isArray()) error("Arguments should be in an array")
     return node.map { argumentNode -> parseArgument(argumentNode) }
 }
@@ -416,7 +416,7 @@ private fun parseExpression(node: JsonNode): Expression {
             val functionRef = parseEntityRef(node["function"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null)
+            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null, functionRefLocation = null)
         }
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
@@ -497,11 +497,11 @@ private fun addFunctionArgument(node: ObjectNode, argument: Argument) {
     node.set("type", toTypeNode(argument.type))
 }
 
-private fun parseArgument(node: JsonNode): Argument {
+private fun parseArgument(node: JsonNode): UnvalidatedArgument {
     if (!node.isObject()) error("Arguments should be objects")
     val name = node["name"].textValue() ?: error("Arguments should have a 'name' textual value")
     val type = parseType(node["type"] ?: error("Arguments should have a 'type' value"))
-    return Argument(name, type)
+    return UnvalidatedArgument(name, type, null)
 }
 
 private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {

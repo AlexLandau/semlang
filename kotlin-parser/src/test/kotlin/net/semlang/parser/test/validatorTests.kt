@@ -96,6 +96,6 @@ private fun parseAndValidateFile(file: File): ValidationResult {
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {
-    val context = parseString(string).assumeSuccess()
+    val context = parseString(string, "testDocumentUri").assumeSuccess()
     return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 }

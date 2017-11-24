@@ -1,15 +1,10 @@
 package net.semlang.modules
 
 import net.semlang.api.*
-import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
-import net.semlang.parser.write
+import net.semlang.parser.*
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
-
-// This is meant to incorporate all information that would appear in a module specification file
-data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
 
 data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
 
@@ -35,7 +30,8 @@ class LocalRepository(private val rootDirectory: File) {
         // TODO: Nice-to-have: filename based on module name/version
         val rawContents = parseFile(File(containingDirectory, "module.sem")).assumeSuccess()
 
-        val moduleInfo = parseConfigFile(File(containingDirectory, "module"))
+        val confParsingResult = parseConfigFile(File(containingDirectory, "module")) as? ModuleInfoParsingResult.Success ?: error("Couldn't parse the module config")
+        val moduleInfo = confParsingResult.info
 
         return UnvalidatedModule(moduleInfo, rawContents)
     }
