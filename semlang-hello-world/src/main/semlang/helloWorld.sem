@@ -1,0 +1,6 @@
+
+@Script
+function sayHello(standardOut: ~TextOut): ~TextOut {
+  let standardOut: ~TextOut = TextOut.println(standardOut, Unicode.String."Hello, world!")
+  standardOut
+}

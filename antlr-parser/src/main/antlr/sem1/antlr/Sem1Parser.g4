@@ -39,6 +39,7 @@ tokens {
   PIPE,
   AT,
   HYPHEN,
+  TILDE,
   ID,
   UNDERSCORE
 }
@@ -48,6 +49,7 @@ file : top_level_entities EOF ;
 namespace : ID | ID DOT namespace ;
 entity_id : ID | namespace DOT ID ;
 entity_ref : entity_id | module_ref COLON entity_id ;
+type_ref : entity_id | TILDE entity_id | module_ref COLON entity_id | module_ref COLON TILDE entity_id ;
 module_ref : module_id // Name only
   | module_id COLON module_id // Group and name
   | module_id COLON module_id COLON module_id ; // Group, name, and version
@@ -89,8 +91,8 @@ assignment : LET ID ASSIGN expression
   | LET ID COLON type ASSIGN expression;
 return_statement: expression ;
 
-type : entity_ref
-  | entity_ref LESS_THAN cd_types GREATER_THAN
+type : type_ref
+  | type_ref LESS_THAN cd_types GREATER_THAN
   | LPAREN cd_types RPAREN ARROW type ;
 cd_types : | type | type COMMA | type COMMA cd_types ;
 cd_types_nonempty : type | type COMMA | type COMMA cd_types_nonempty ;

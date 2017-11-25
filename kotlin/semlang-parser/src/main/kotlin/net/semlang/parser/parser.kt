@@ -484,6 +484,25 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return UnvalidatedArgument(name, type, locationOf(function_argument))
     }
 
+    private fun parseTypeRef(type_ref: Sem1Parser.Type_refContext): EntityRef {
+        val module_ref = entity_ref.module_ref()
+        val moduleRef = if (module_ref == null) {
+            null
+        } else {
+            if (module_ref.childCount == 1) {
+                ModuleRef(null, module_ref.module_id(0).text, null)
+            } else if (module_ref.childCount == 3) {
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
+            } else if (module_ref.childCount == 5) {
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, module_ref.module_id(2).text)
+            } else {
+                error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
+            }
+        }
+
+        return EntityRef(moduleRef, parseEntityId(entity_ref.entity_id()))
+    }
+
     private fun parseEntityRef(entity_ref: Sem1Parser.Entity_refContext): EntityRef {
         val module_ref = entity_ref.module_ref()
         val moduleRef = if (module_ref == null) {
@@ -530,11 +549,11 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         if (type.LESS_THAN() != null) {
             val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-            return parseTypeGivenParameters(type.entity_ref(), parameterTypes)
+            return parseTypeGivenParameters(type.type_ref(), parameterTypes)
         }
 
-        if (type.entity_ref() != null) {
-            return parseTypeGivenParameters(type.entity_ref(), listOf())
+        if (type.type_ref() != null) {
+            return parseTypeGivenParameters(type.type_ref(), listOf())
         }
         throw IllegalArgumentException("Unparsed type " + type)
     }
