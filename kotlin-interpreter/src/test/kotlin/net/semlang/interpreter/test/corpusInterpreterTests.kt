@@ -27,6 +27,7 @@ class CorpusInterpreterTests(private val file: File) {
     @Test
     fun test() {
         val validatedModule = parseAndValidateFile(file)
+//        System.out.println("Running test for $file")
         val testsCount = runAnnotationTests(validatedModule)
         if (testsCount == 0) {
             fail("Expected at least one @Test in file $file, but there were none")

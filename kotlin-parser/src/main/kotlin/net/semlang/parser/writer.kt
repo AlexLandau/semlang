@@ -249,6 +249,15 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
             writeBlock(expression.elseBlock, indentationLevel + 1, writer)
             writer.append("}")
         }
+        is TypedExpression.InlineFunction -> {
+            writer.append("function(")
+            writer.append(expression.arguments.joinToString { argument ->
+                argument.name + ": " + argument.type.toString()
+            })
+            writer.appendln(") {")
+            writeBlock(expression.block, indentationLevel + 1, writer)
+            writer.append("}")
+        }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")
     }
 }

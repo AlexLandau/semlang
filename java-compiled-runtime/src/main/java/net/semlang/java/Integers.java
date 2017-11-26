@@ -1,6 +1,7 @@
 package net.semlang.java;
 
 import java.math.BigInteger;
+import java.util.List;
 
 public class Integers {
     private Integers() {
@@ -15,4 +16,7 @@ public class Integers {
         return left.compareTo(right) > 0;
     }
 
+    public static BigInteger sum(List<BigInteger> list) {
+        return list.stream().reduce(BigInteger.ZERO, BigInteger::add);
+    }
 }

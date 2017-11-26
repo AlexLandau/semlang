@@ -23,6 +23,8 @@ import javax.lang.model.element.Modifier
  *
  * - Do we support multiple modules or require flattening to a single module?
  */
+// TODO: It looks like we'll also have to move the declarations of lambda expressions (i.e. inline functions) out to the
+// top level before we can run this =(
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
@@ -441,7 +443,29 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.ExpressionFunctionBinding -> {
                 writeExpressionFunctionBinding(expression)
             }
+            is TypedExpression.InlineFunction -> {
+                writeLambdaExpression(expression)
+            }
         }
+    }
+
+    private fun writeLambdaExpression(expression: TypedExpression.InlineFunction): CodeBlock {
+        val argumentsBuilder = CodeBlock.builder()
+        expression.arguments.forEachIndexed { index, argument ->
+            if (index != 0) {
+                argumentsBuilder.add(", ")
+            }
+            argumentsBuilder.add("\$L", argument.name)
+        }
+        val arguments = argumentsBuilder.build()
+        val block = writeBlock(expression.block, null)
+//        return CodeBlock.of("(\$L) -> { }", arguments, block)
+        val code = CodeBlock.builder()
+        code.beginControlFlow("(\$L) ->", arguments)
+        code.add(block)
+        code.endControlFlow()
+        return code.build()
+//        return CodeBlock.of("null")
     }
 
     private fun writeFollowExpression(expression: TypedExpression.Follow): CodeBlock {
@@ -852,6 +876,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
         map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
         map.put(EntityId.of("List", "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
+        map.put(EntityId.of("List", "map"), StaticFunctionCallStrategy(javaLists, "map"))
 
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
@@ -862,6 +887,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
         map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
+        map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
 
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         // Share implementations with Integer in some cases

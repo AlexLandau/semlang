@@ -123,11 +123,17 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
             TypedExpression.ExpressionFunctionBinding(expression.type, functionExpression, bindings, expression.chosenParameters)
         }
+        is TypedExpression.InlineFunction -> {
+            val arguments = expression.arguments.map { argument -> renameArgument(argument, renamingMap) }
+            val varsToBind = expression.varsToBind.map { varName -> renamingMap[varName] ?: error("Bug in renaming") }
+            val block = renameBlock(expression.block, renamingMap)
+            TypedExpression.InlineFunction(expression.type, arguments, varsToBind, block)
+        }
     }
 }
 
 private fun renameArgument(argument: Argument, renamingMap: Map<String, String>): Argument {
-    return Argument(renamingMap[argument.name] ?: error("Bug in renaming"), argument.type)
+    return Argument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type)
 }
 
 typealias VariableRenamingStrategy = (varName: String, allVarNamesPresent: Set<String>) -> String

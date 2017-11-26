@@ -104,6 +104,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | entity_ref LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | expression LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
   | entity_ref LESS_THAN cd_types GREATER_THAN LPAREN cd_expressions RPAREN
+  | FUNCTION LPAREN function_arguments RPAREN block
   | ID // Variable
   ;
 
