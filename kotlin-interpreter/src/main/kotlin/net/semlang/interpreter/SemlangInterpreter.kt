@@ -262,7 +262,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                             .collect(Collectors.toList())
                     return SemObject.SemList(codePointsList)
                 } else {
-                    throw IllegalStateException("Trying to use -> on a non-struct, non-interface object")
+                    throw IllegalStateException("Trying to use -> on a non-struct, non-interface object $innerResult")
                 }
             }
             is TypedExpression.ExpressionFunctionCall -> {

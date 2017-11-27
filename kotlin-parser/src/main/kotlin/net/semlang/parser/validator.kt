@@ -560,6 +560,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun validateInlineFunction(expression: Expression.InlineFunction, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
+        for (arg in expression.arguments) {
+            if (variableTypes.containsKey(arg.name)) {
+                errors.add(Issue("Argument name ${arg.name} shadows an existing variable name", arg.location, IssueLevel.ERROR))
+            }
+        }
         val validatedArguments = validateArguments(expression.arguments, typeInfo, typeParametersInScope)
 
         val incomingVariableTypes: Map<String, Type> = variableTypes + validatedArguments.asVariableTypesMap()

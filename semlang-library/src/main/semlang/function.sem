@@ -1,9 +1,7 @@
 // This is like "compose", but with the typical order of application reversed
 @Exported
 function Function.doInOrder<A, B, C>(applyFirst: (A) -> B, applyLast: (B) -> C): (A) -> C {
-    Function.doInOrderImpl<A, B, C>|(_, applyFirst, applyLast)
-}
-
-function Function.doInOrderImpl<A, B, C>(input: A, applyFirst: (A) -> B, applyLast: (B) -> C): C {
-    applyLast(applyFirst(input))
+    function(input: A) {
+      applyLast(applyFirst(input))
+    }
 }

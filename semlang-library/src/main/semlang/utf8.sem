@@ -22,7 +22,10 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
       let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->value))
       let remainingBytes = List.drop<Byte>(bytes, Natural."1")
       Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
-        finishStringLambda|(firstChar, _)
+        function(remainingString: Unicode.String) {
+          let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->value)
+          Unicode.String(allChars)
+        }
       )
     } else {
       let 64bit = Byte.BitPosition."6"
@@ -42,7 +45,10 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
         let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
         let remainingBytes = List.drop<Byte>(bytes, Natural."2")
         Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
-          finishStringLambda|(firstChar, _)
+          function(remainingString: Unicode.String) {
+            let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->value)
+            Unicode.String(allChars)
+          }
         )
       } else {
         // TODO: Implement
@@ -50,9 +56,4 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
       }
     }
   }
-}
-
-function finishStringLambda(firstChar: Unicode.CodePoint, remainingString: Unicode.String): Unicode.String {
-  let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->value)
-  Unicode.String(allChars)
 }
