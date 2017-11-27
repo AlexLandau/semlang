@@ -24,8 +24,6 @@ import javax.lang.model.element.Modifier
  *
  * - Do we support multiple modules or require flattening to a single module?
  */
-// TODO: It looks like we'll also have to move the declarations of lambda expressions (i.e. inline functions) out to the
-// top level before we can run this =(
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
@@ -451,6 +449,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
+    // TODO: This currently doesn't work, because JavaPoet seems to reject the types of CodeBlocks generated. It would
+    // be nice to get this working and express inline functions as lambda expressions instead of splitting them out into
+    // explicit functions.
     private fun writeLambdaExpression(expression: TypedExpression.InlineFunction): CodeBlock {
         val argumentsBuilder = CodeBlock.builder()
         expression.arguments.forEachIndexed { index, argument ->
@@ -461,13 +462,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
         val arguments = argumentsBuilder.build()
         val block = writeBlock(expression.block, null)
-//        return CodeBlock.of("(\$L) -> { }", arguments, block)
         val code = CodeBlock.builder()
         code.beginControlFlow("(\$L) ->", arguments)
         code.add(block)
         code.endControlFlow()
         return code.build()
-//        return CodeBlock.of("null")
     }
 
     private fun writeFollowExpression(expression: TypedExpression.Follow): CodeBlock {

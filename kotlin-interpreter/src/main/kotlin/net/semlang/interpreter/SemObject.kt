@@ -39,13 +39,7 @@ sealed class SemObject {
     data class UnicodeString(val contents: String): SemObject()
     // Note: The module here is the module that defines the bound function. It can be used to evaluate the function.
     // Absence of a containing module indicates the native module.
-    // TODO: We'll need a canonical understanding within the interpreter of how to line up implicit variables vs. explicit arguments
-    // (and either could have bindings) -- implicit first or last?
-    data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject() {
-        fun getFunctionRef(): EntityRef {
-            return EntityRef(containingModule?.id?.asRef(), (target as FunctionBindingTarget.Named).functionId)
-        }
-    }
+    data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject()
 }
 
 sealed class FunctionBindingTarget {

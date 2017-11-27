@@ -100,7 +100,6 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             }
             is TypedExpression.InlineFunction -> {
                 // Create a new function
-//                val newFunctionId: EntityId = createNewFunctionId()
                 val newFunction = addNewFunctionFromInlined(expression)
                 val newFunctionId = newFunction.id
 

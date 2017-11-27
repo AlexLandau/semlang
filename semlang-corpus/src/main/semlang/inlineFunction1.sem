@@ -6,10 +6,4 @@ function getSquareOfDistanceFromOrigin(a: Integer, b: Integer): Integer {
   let asList = [a, b]<Integer>
   let squaredList = List.map<Integer, Integer>(asList, function(i: Integer) { Integer.times(i, i) })
   Integer.sum(squaredList)
-
-//  let increment: (Integer) -> Integer = function(val: Integer) {
-//    Integer.plus(val, Integer."1")
-//  }
-//  let incrementRenamed: (Integer) -> Integer = increment|(_)
-//  myCode.applyThreeTimes<Integer>(n, increment)
 }

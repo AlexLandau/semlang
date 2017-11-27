@@ -124,7 +124,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
         val target = functionBinding.target
         return when (target) {
             is FunctionBindingTarget.Named -> {
-                val functionRef = functionBinding.getFunctionRef()
+                val functionRef = EntityRef(functionBinding.containingModule?.id?.asRef(), target.functionId)
                 val containingModule = functionBinding.containingModule
 
                 val argsItr = args.iterator()
@@ -273,24 +273,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     throw IllegalArgumentException("Trying to call the result of ${expression.functionExpression} as a function, but it is not a function")
                 }
 
-//                val argumentsItr = arguments.iterator()
-//                val inputs = function.bindings.map { it ?: argumentsItr.next() }
-//
-//                if (function.target is FunctionBindingTarget.Named) {
-//                    System.out.println("Bound function: " + function.target.functionId)
-//                }
-//                System.out.println("arguments: $arguments")
-//                System.out.println("inputs: $inputs")
-//
-////                return interpret(function.getFunctionRef(), inputs, function.containingModule)
-//                val oldInterpret = interpret(function.getFunctionRef(), inputs, function.containingModule)
-//                System.out.println("old interpret: $oldInterpret")
-
-                // We'd need to rebind before invoking this...
-                val newInterpret = interpretBinding(function, arguments)
-//                System.out.println("new interpret: $newInterpret")
-//                return interpretBinding(function, inputs)
-                return newInterpret
+                return interpretBinding(function, arguments)
             }
             is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments, containingModule) }
@@ -343,7 +326,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 }
 
                 val bindings = explicitBindings + implicitBindings
-//                return SemObject.InlineFunctionBinding(expression, bindings)
                 SemObject.FunctionBinding(FunctionBindingTarget.Inline(expression), containingModule, bindings)
             }
         }
