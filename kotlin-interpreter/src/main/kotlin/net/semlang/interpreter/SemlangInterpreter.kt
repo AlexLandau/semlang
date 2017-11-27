@@ -144,8 +144,8 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 target.functionDef.arguments.zip(explicitArguments).forEach { (argDef, argObj) ->
                     variableAssignments.put(argDef.name, argObj)
                 }
-                target.functionDef.varsToBind.zip(implicitArguments).forEach { (varName, obj) ->
-                    variableAssignments.put(varName, obj)
+                target.functionDef.boundVars.zip(implicitArguments).forEach { (argument, obj) ->
+                    variableAssignments.put(argument.name, obj)
                 }
 
                 return evaluateBlock(target.functionDef.block, variableAssignments, functionBinding.containingModule)
@@ -337,7 +337,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 for (argument in expression.arguments) {
                     explicitBindings.add(null)
                 }
-                val implicitBindings = expression.varsToBind.map { varName ->
+                val implicitBindings = expression.boundVars.map { (varName, varType) ->
                     val varValue = assignments[varName] ?: error("No value for variable-to-bind $varName is available")
                     varValue
                 }

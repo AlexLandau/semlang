@@ -125,7 +125,7 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
         }
         is TypedExpression.InlineFunction -> {
             val arguments = expression.arguments.map { argument -> renameArgument(argument, renamingMap) }
-            val varsToBind = expression.varsToBind.map { varName -> renamingMap[varName] ?: error("Bug in renaming") }
+            val varsToBind = expression.boundVars.map { argument -> renameArgument(argument, renamingMap) }
             val block = renameBlock(expression.block, renamingMap)
             TypedExpression.InlineFunction(expression.type, arguments, varsToBind, block)
         }

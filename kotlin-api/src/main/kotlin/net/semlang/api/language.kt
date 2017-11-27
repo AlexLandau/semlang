@@ -231,7 +231,7 @@ sealed class TypedExpression {
     data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class Follow(override val type: Type, val expression: TypedExpression, val name: String): TypedExpression()
-    data class InlineFunction(override val type: Type, val arguments: List<Argument>, val varsToBind: List<String>, val block: TypedBlock): TypedExpression()
+    data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val block: TypedBlock): TypedExpression()
 }
 
 data class AmbiguousAssignment(val name: String, val type: Type?, val expression: AmbiguousExpression, val nameLocation: Location?)

@@ -173,7 +173,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val block = simplifyBlockExpressions(expression.block, varNamesInScope)
-            val replacementExpression = TypedExpression.InlineFunction(expression.type, expression.arguments, expression.varsToBind, block)
+            val replacementExpression = TypedExpression.InlineFunction(expression.type, expression.arguments, expression.boundVars, block)
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
     }
@@ -345,7 +345,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             val newAssignments = ArrayList<ValidatedAssignment>()
 
             val block = simplifyBlockExpressions(expression.block, varNamesInScope)
-            val newInlineFunction = TypedExpression.InlineFunction(expression.type, expression.arguments, expression.varsToBind, block)
+            val newInlineFunction = TypedExpression.InlineFunction(expression.type, expression.arguments, expression.boundVars, block)
             val replacementName = getNewVarName(varNamesToPreserve)
             newAssignments.add(ValidatedAssignment(replacementName, newInlineFunction.type, newInlineFunction))
             val typedVariable = TypedExpression.Variable(expression.type, replacementName)

@@ -145,7 +145,7 @@ fun replaceLocalFunctionNameReferences(expression: TypedExpression, replacements
         }
         is TypedExpression.InlineFunction -> {
             val block = replaceLocalFunctionNameReferences(expression.block, replacements)
-            TypedExpression.InlineFunction(expression.type, expression.arguments, expression.varsToBind, block)
+            TypedExpression.InlineFunction(expression.type, expression.arguments, expression.boundVars, block)
         }
     }
 }

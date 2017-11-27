@@ -7,6 +7,7 @@ import net.semlang.internal.test.parseTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.transforms.RenamingStrategies
 import net.semlang.transforms.constrainVariableNames
+import net.semlang.transforms.extractInlineFunctions
 import java.io.File
 import java.math.BigInteger
 import java.util.*
@@ -33,7 +34,8 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
         error("The Java package must be non-empty.")
     }
     // Pre-processing steps
-    val module = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val module = extractInlineFunctions(tempModule1)
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }

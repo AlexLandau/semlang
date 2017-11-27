@@ -565,12 +565,14 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val incomingVariableTypes: Map<String, Type> = variableTypes + validatedArguments.asVariableTypesMap()
         val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeInfo, typeParametersInScope, containingFunctionId) ?: return null
 
+        // Note: This is the source of the canonical in-memory ordering
         val varsToBind = ArrayList<String>(variableTypes.keys)
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
+        val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
 
         val functionType = Type.FunctionType(validatedArguments.map(Argument::type), validatedBlock.type)
 
-        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBind, validatedBlock)
+        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, validatedBlock)
     }
 
     private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
