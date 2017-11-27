@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Lists {
     private Lists() {
@@ -33,5 +35,9 @@ public class Lists {
 
     public static <T> BigInteger size(List<T> list) {
         return BigInteger.valueOf(list.size());
+    }
+
+    public static <T, U> List<U> map(List<T> list, Function<T, U> function) {
+        return list.stream().map(function).collect(Collectors.toList());
     }
 }

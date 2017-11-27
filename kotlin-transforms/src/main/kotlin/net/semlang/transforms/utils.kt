@@ -23,10 +23,44 @@ private fun addAllDeclaredVarNames(block: TypedBlock, varNames: HashSet<String>)
 }
 
 private fun addAllDeclaredVarNames(expression: TypedExpression, varNames: HashSet<String>) {
-    when (expression) {
+    val unused: Unit = when (expression) {
         is TypedExpression.IfThen -> {
             addAllDeclaredVarNames(expression.thenBlock, varNames)
             addAllDeclaredVarNames(expression.elseBlock, varNames)
+        }
+        is TypedExpression.InlineFunction -> {
+            expression.arguments.forEach { varNames.add(it.name) }
+            addAllDeclaredVarNames(expression.block, varNames)
+        }
+        is TypedExpression.Variable -> {}
+        is TypedExpression.NamedFunctionCall -> {
+            expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
+        }
+        is TypedExpression.ExpressionFunctionCall -> {
+            addAllDeclaredVarNames(expression.functionExpression, varNames)
+            expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
+        }
+        is TypedExpression.Literal -> {}
+        is TypedExpression.ListLiteral -> {
+            expression.contents.forEach { addAllDeclaredVarNames(it, varNames) }
+        }
+        is TypedExpression.NamedFunctionBinding -> {
+            expression.bindings.forEach { binding ->
+                if (binding != null) {
+                    addAllDeclaredVarNames(binding, varNames)
+                }
+            }
+        }
+        is TypedExpression.ExpressionFunctionBinding -> {
+            addAllDeclaredVarNames(expression.functionExpression, varNames)
+            expression.bindings.forEach { binding ->
+                if (binding != null) {
+                    addAllDeclaredVarNames(binding, varNames)
+                }
+            }
+        }
+        is TypedExpression.Follow -> {
+            addAllDeclaredVarNames(expression.expression, varNames)
         }
     }
 }
@@ -108,6 +142,10 @@ fun replaceLocalFunctionNameReferences(expression: TypedExpression, replacements
                 }
             }
             TypedExpression.ExpressionFunctionBinding(expression.type, functionExpression, bindings, expression.chosenParameters)
+        }
+        is TypedExpression.InlineFunction -> {
+            val block = replaceLocalFunctionNameReferences(expression.block, replacements)
+            TypedExpression.InlineFunction(expression.type, expression.arguments, expression.boundVars, block)
         }
     }
 }

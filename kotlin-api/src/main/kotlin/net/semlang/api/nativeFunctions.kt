@@ -93,6 +93,9 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     // Integer.greaterThan
     definitions.add(TypeSignature(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
 
+    // TODO: Should be in library instead of here, once we can use the library more easily
+    definitions.add(TypeSignature(EntityId.of("Integer", "sum"), listOf(Type.List(Type.INTEGER)), Type.INTEGER))
+
     // Integer.fromNatural
     definitions.add(TypeSignature(EntityId.of("Integer", "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
 }

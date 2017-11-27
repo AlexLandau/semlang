@@ -129,6 +129,16 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         val natural = args[0] as? SemObject.Natural ?: typeError()
         SemObject.Integer(natural.value)
     }))
+
+    // Integer.sum
+    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val sum = list.contents.foldRight(BigInteger.ZERO, { semObj, sumSoFar ->
+            val int = semObj as? SemObject.Integer ?: typeError()
+            sumSoFar + int.value
+        })
+        SemObject.Integer(sum)
+    }))
 }
 
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
@@ -495,8 +505,8 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
 
         // But now we need to turn that into an interface...
         SemObject.Instance(NativeInterface.SEQUENCE, struct, listOf(
-                SemObject.FunctionBinding(basicSequenceDot("get"), null, listOf(struct, null)),
-                SemObject.FunctionBinding(basicSequenceDot("first"), null, listOf(struct, null))
+                SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("get")), null, listOf(struct, null)),
+                SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("first")), null, listOf(struct, null))
         ))
     }))
 

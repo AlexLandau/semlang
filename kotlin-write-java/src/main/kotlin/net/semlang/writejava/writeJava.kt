@@ -7,6 +7,7 @@ import net.semlang.internal.test.parseTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.transforms.RenamingStrategies
 import net.semlang.transforms.constrainVariableNames
+import net.semlang.transforms.extractInlineFunctions
 import java.io.File
 import java.math.BigInteger
 import java.util.*
@@ -31,7 +32,8 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
         error("The Java package must be non-empty.")
     }
     // Pre-processing steps
-    val module = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val module = extractInlineFunctions(tempModule1)
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
@@ -441,7 +443,30 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.ExpressionFunctionBinding -> {
                 writeExpressionFunctionBinding(expression)
             }
+            is TypedExpression.InlineFunction -> {
+                writeLambdaExpression(expression)
+            }
         }
+    }
+
+    // TODO: This currently doesn't work, because JavaPoet seems to reject the types of CodeBlocks generated. It would
+    // be nice to get this working and express inline functions as lambda expressions instead of splitting them out into
+    // explicit functions.
+    private fun writeLambdaExpression(expression: TypedExpression.InlineFunction): CodeBlock {
+        val argumentsBuilder = CodeBlock.builder()
+        expression.arguments.forEachIndexed { index, argument ->
+            if (index != 0) {
+                argumentsBuilder.add(", ")
+            }
+            argumentsBuilder.add("\$L", argument.name)
+        }
+        val arguments = argumentsBuilder.build()
+        val block = writeBlock(expression.block, null)
+        val code = CodeBlock.builder()
+        code.beginControlFlow("(\$L) ->", arguments)
+        code.add(block)
+        code.endControlFlow()
+        return code.build()
     }
 
     private fun writeFollowExpression(expression: TypedExpression.Follow): CodeBlock {
@@ -852,6 +877,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
         map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
         map.put(EntityId.of("List", "size"), wrapInBigint(MethodFunctionCallStrategy("size")))
+        map.put(EntityId.of("List", "map"), StaticFunctionCallStrategy(javaLists, "map"))
 
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
@@ -862,6 +888,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
         map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
+        map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
 
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         // Share implementations with Integer in some cases

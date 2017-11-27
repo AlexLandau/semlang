@@ -1,8 +1,6 @@
 package net.semlang.interpreter
 
-import net.semlang.api.EntityId
-import net.semlang.api.EntityRef
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import java.math.BigInteger
 
 // These are Semlang objects that are stored and handled by the interpreter.
@@ -41,9 +39,10 @@ sealed class SemObject {
     data class UnicodeString(val contents: String): SemObject()
     // Note: The module here is the module that defines the bound function. It can be used to evaluate the function.
     // Absence of a containing module indicates the native module.
-    data class FunctionBinding(val functionId: EntityId, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject() {
-        fun getFunctionRef(): EntityRef {
-            return EntityRef(containingModule?.id?.asRef(), functionId)
-        }
-    }
+    data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject()
+}
+
+sealed class FunctionBindingTarget {
+    data class Named(val functionId: EntityId): FunctionBindingTarget()
+    data class Inline(val functionDef: TypedExpression.InlineFunction): FunctionBindingTarget()
 }

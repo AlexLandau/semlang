@@ -121,13 +121,36 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
     private fun interpretBinding(functionBinding: SemObject.FunctionBinding, args: List<SemObject>): SemObject {
         // TODO: Ideally this would be a ResolvedEntityRef, which would then give us the module?
         // (I guess ResolvedEntityRef needs to deal with the possibility of the native module)
-        val functionRef = functionBinding.getFunctionRef()
-        val containingModule = functionBinding.containingModule
+        val target = functionBinding.target
+        return when (target) {
+            is FunctionBindingTarget.Named -> {
+                val functionRef = EntityRef(functionBinding.containingModule?.id?.asRef(), target.functionId)
+                val containingModule = functionBinding.containingModule
 
-        val argsItr = args.iterator()
-        val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
+                val argsItr = args.iterator()
+                val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
 
-        return interpret(functionRef, fullArguments, containingModule)
+                return interpret(functionRef, fullArguments, containingModule)
+            }
+            is FunctionBindingTarget.Inline -> {
+                val argsItr = args.iterator()
+                val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
+
+                val numExplicitArguments = target.functionDef.arguments.size
+                val explicitArguments = fullArguments.take(numExplicitArguments)
+                val implicitArguments = fullArguments.drop(numExplicitArguments)
+
+                val variableAssignments = HashMap<String, SemObject>()
+                target.functionDef.arguments.zip(explicitArguments).forEach { (argDef, argObj) ->
+                    variableAssignments.put(argDef.name, argObj)
+                }
+                target.functionDef.boundVars.zip(implicitArguments).forEach { (argument, obj) ->
+                    variableAssignments.put(argument.name, obj)
+                }
+
+                return evaluateBlock(target.functionDef.block, variableAssignments, functionBinding.containingModule)
+            }
+        }
     }
 
     private fun evaluateStructConstructor(struct: Struct, arguments: List<SemObject>, structModule: ValidatedModule?): SemObject {
@@ -249,10 +272,8 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to call the result of ${expression.functionExpression} as a function, but it is not a function")
                 }
-                val argumentsItr = arguments.iterator()
-                val inputs = function.bindings.map { it ?: argumentsItr.next() }
 
-                return interpret(function.getFunctionRef(), inputs, function.containingModule)
+                return interpretBinding(function, arguments)
             }
             is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments, containingModule) }
@@ -271,11 +292,11 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 return if (containingModule != null) {
                     val resolved = containingModule.resolve(functionRef) ?: error("Invalid function reference: $functionRef")
                     val module = getModule(resolved.entityRef.module, containingModule)
-                    return SemObject.FunctionBinding(functionRef.id, module, bindings)
+                    return SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef.id), module, bindings)
                 } else {
                     // TODO: Use a resolver for natives so this can also handle constructors
                     EntityResolution(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, functionRef.id), FunctionLikeType.NATIVE_FUNCTION)
-                    SemObject.FunctionBinding(functionRef.id, null, bindings)
+                    SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef.id), null, bindings)
                 }
             }
             is TypedExpression.ExpressionFunctionBinding -> {
@@ -284,6 +305,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 if (function !is SemObject.FunctionBinding) {
                     throw IllegalArgumentException("Trying to reference ${expression.functionExpression} as a function for binding, but it is not a function")
                 }
+
                 val earlierBindings = function.bindings
                 val laterBindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }
 
@@ -291,7 +313,20 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 val laterBindingsItr = laterBindings.iterator()
                 val newBindings = earlierBindings.map { it ?: laterBindingsItr.next() }
 
-                return SemObject.FunctionBinding(function.functionId, function.containingModule, newBindings)
+                return SemObject.FunctionBinding(function.target, function.containingModule, newBindings)
+            }
+            is TypedExpression.InlineFunction -> {
+                val explicitBindings = ArrayList<SemObject?>()
+                for (argument in expression.arguments) {
+                    explicitBindings.add(null)
+                }
+                val implicitBindings = expression.boundVars.map { (varName, varType) ->
+                    val varValue = assignments[varName] ?: error("No value for variable-to-bind $varName is available")
+                    varValue
+                }
+
+                val bindings = explicitBindings + implicitBindings
+                SemObject.FunctionBinding(FunctionBindingTarget.Inline(expression), containingModule, bindings)
             }
         }
     }
