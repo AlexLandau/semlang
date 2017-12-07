@@ -1,1 +1,30 @@
-// This file is needed to make CircleCI recognize this as a Gradle-based project.
+buildscript {
+    ext.kotlin_version = '1.2.0'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+// Configure the Kotlin-based subprojects
+project(":kotlin").subprojects {
+    apply plugin: 'kotlin'
+    apply plugin: 'java'
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        // Kotlin library
+        compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+        testCompile 'junit:junit:4.12'
+    }
+}
