@@ -3,7 +3,7 @@ dependencies {
   compile project(':kotlin:semlang-transforms')
   compile project(':kotlin:semlang-test-utils')
 
-  testCompile project(':java-compiled-runtime')
+  testCompile project(':java:semlang-java-runtime')
 
   compile 'com.squareup:javapoet:1.9.0'
 }
