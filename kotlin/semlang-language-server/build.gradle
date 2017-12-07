@@ -26,7 +26,7 @@ dependencies {
 tasks.build.doLast {
   project.copy {
     from 'build/libs/kotlin-language-server-all.jar'
-    into rootProject.file('semlang-code')
+    into rootProject.file('typescript/semlang-code')
     rename { 'semlang-language-server.jar' }
   }
 }
