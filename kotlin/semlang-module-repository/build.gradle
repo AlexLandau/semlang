@@ -20,16 +20,13 @@ repositories {
 }
 
 dependencies {
-  compile project(':kotlin:kotlin-parser')
-  compile project(':kotlin:kotlin-transforms')
-  compile project(':kotlin:kotlin-test-utils')
-  testCompile project(':java-compiled-runtime')
+  compile project(':kotlin:semlang-api')
+  compile project(':kotlin:semlang-parser')
+
+  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
 
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-  compile 'com.squareup:javapoet:1.9.0'
 
   testCompile 'junit:junit:4.12'
 }
-
-tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))

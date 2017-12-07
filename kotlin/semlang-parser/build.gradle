@@ -20,12 +20,19 @@ repositories {
 }
 
 dependencies {
-  compile project(':kotlin:kotlin-parser')
+  compile project(':antlr-parser')
+  compile project(':kotlin:semlang-api')
+  compile "org.antlr:antlr4:4.5"
 
-  testCompile project(':kotlin:kotlin-test-utils')
+  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
 
   // Kotlin library
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
+  testCompile project(':kotlin:semlang-test-utils')
+
   testCompile 'junit:junit:4.12'
 }
+
+tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
+tasks.test.inputs.files(fileTree("src/test/semlang"))

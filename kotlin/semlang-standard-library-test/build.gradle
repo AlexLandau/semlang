@@ -20,13 +20,14 @@ repositories {
 }
 
 dependencies {
-  compile project(':kotlin:kotlin-api')
-  testCompile project(':kotlin:kotlin-parser')
-  testCompile project(':kotlin:kotlin-test-utils')
+  testCompile project(":kotlin:semlang-module-repository")
+  testCompile project(":kotlin:semlang-interpreter")
+  testCompile project(":kotlin:semlang-test-utils")
 
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
   testCompile 'junit:junit:4.12'
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
+tasks.test.inputs.files(fileTree("../../semlang-library/src/main/semlang"))
+tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))

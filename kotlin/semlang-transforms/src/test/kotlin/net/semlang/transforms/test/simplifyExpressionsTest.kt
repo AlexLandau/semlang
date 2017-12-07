@@ -19,7 +19,7 @@ class SimplifyExpressionsTest(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val compilerTestsFolder = File("../kotlin-parser/src/test/semlang/validatorTests/pass")
+            val compilerTestsFolder = File("../semlang-parser/src/test/semlang/validatorTests/pass")
             val corpusFolder = File("../../semlang-corpus/src/main/semlang")
             val allFiles = compilerTestsFolder.listFiles() + corpusFolder.listFiles()
             return allFiles.map { file ->
