@@ -1,12 +1,15 @@
 Major near-term projects:
 - Threaded types, console-out support, and application functions
-- Lambda expressions
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
-- IDE support (probably requiring a rewrite of the validator)
+- Finish converting the validator to use fine-grained errors
 - Sem1 vs. sem0 separation and Try notation
 - JavaScript-environment interpreter and/or transpiler
 
+Intended near-term refactors and changes:
+- Turn Natural into a "restruct" of Integer
+  - I need a better, or at least, consistent name for these that isn't as corny as "restruct"...
+- In "restructs", use the referenced type name instead of just "value"
 
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
