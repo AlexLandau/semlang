@@ -712,7 +712,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeInfo, typeParametersInScope, containingFunctionId) ?: return null
 
-        val functionType = functionExpression.type as? Type.FunctionType ?: fail("The function $containingFunctionId tries to call $functionExpression like a function, but it has a non-function type ${functionExpression.type}")
+        val functionType = functionExpression.type as? Type.FunctionType
+        if (functionType == null) {
+            errors.add(Issue("The expression $functionExpression is called like a function, but it has a non-function type ${functionExpression.type}", expression.functionExpression.location, IssueLevel.ERROR))
+            return null
+        }
 
         val arguments = ArrayList<TypedExpression>()
         expression.arguments.forEach { untypedArgument ->
