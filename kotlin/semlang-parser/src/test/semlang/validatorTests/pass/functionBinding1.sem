@@ -1,0 +1,4 @@
+function myStuff.myFunction(): () -> Integer {
+  let mySuccessor = Integer.plus|(_, Integer."1")
+  mySuccessor|(Integer."3")
+}

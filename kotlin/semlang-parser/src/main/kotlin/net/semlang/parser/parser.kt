@@ -366,7 +366,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 }
 
                 val chosenParameters = if (expression.LESS_THAN() != null) {
-                    parseCommaDelimitedTypes(expression.cd_types())
+                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
                 } else {
                     listOf()
                 }
@@ -503,6 +503,13 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_typesContext::type,
                 Sem1Parser.Cd_typesContext::cd_types,
+                this::parseType)
+    }
+
+    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_types_nonemptyContext): List<Type> {
+        return parseLinkedList(cd_types,
+                Sem1Parser.Cd_types_nonemptyContext::type,
+                Sem1Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
     }
 
