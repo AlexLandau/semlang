@@ -742,7 +742,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val argumentTypes = arguments.map(TypedExpression::type)
 
         if (argumentTypes != functionType.argTypes) {
-            fail("The function $containingFunctionId tries to call the result of $functionExpression with argument types $argumentTypes, but the function expects argument types ${functionType.argTypes}")
+            errors.add(Issue("The bound function $functionExpression expects argument types ${functionType.argTypes}, but we give it types $argumentTypes", expression.location, IssueLevel.ERROR))
+            return null
         }
 
         return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, expression.chosenParameters)
