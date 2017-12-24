@@ -544,6 +544,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 || INVALID_VARIABLE_NAMES.contains(name)
     }
 
+    // TODO: Remove containingFunctionId argument when no longer needed
     private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
         return when (expression) {
             is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
@@ -622,7 +623,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, expression.chosenParameters)
     }
 
-    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression {
+    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
 
         val resolvedRef = typeInfo.resolver.resolve(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
@@ -641,7 +642,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val preBindingArgumentTypes = signature.argumentTypes.map { type -> type.replacingParameters(parameterMap) }
 
         if (preBindingArgumentTypes.size != expression.bindings.size) {
-            fail("In function $containingFunctionId, tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments")
+            errors.add(Issue("Tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments", expression.location, IssueLevel.ERROR))
+            return null
         }
 
         val bindings = expression.bindings.map { binding ->

@@ -1,0 +1,4 @@
+function myStuff.myFunction(): () -> Integer {
+  // Too few arguments
+  Integer.plus|(Integer."1")
+}

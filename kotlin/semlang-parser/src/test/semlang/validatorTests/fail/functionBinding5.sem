@@ -1,0 +1,4 @@
+function myStuff.myFunction(): (Integer, Integer, Integer) -> Integer {
+  // Too many arguments
+  Integer.plus|(_, _, _)
+}
