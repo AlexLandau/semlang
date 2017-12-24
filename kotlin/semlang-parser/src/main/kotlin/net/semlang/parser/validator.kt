@@ -682,7 +682,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             return null
         }
 
-        val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref) ?: error("In function $containingFunctionId, we try to dereference an expression $innerExpression of unrecognized type ${innerExpression.type}")
+        val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref)
+        if (resolvedParentType == null) {
+            errors.add(Issue("Cannot dereference an expression $innerExpression of unrecognized type ${innerExpression.type}", expression.location, IssueLevel.ERROR))
+            return null
+        }
         val parentTypeInfo = typeInfo.getTypeInfo(resolvedParentType.entityRef) ?: error("No type info for ${resolvedParentType.entityRef}")
 
         return when (parentTypeInfo) {
