@@ -676,7 +676,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
         val innerExpression = validateExpression(expression.expression, variableTypes, typeInfo, typeParametersInScope, containingFunctionId) ?: return null
 
-        val parentNamedType = innerExpression.type as? Type.NamedType ?: fail("In function $containingFunctionId, we try to dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}")
+        val parentNamedType = innerExpression.type as? Type.NamedType
+        if (parentNamedType == null) {
+            errors.add(Issue("Cannot dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}", expression.location, IssueLevel.ERROR))
+            return null
+        }
 
         val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref) ?: error("In function $containingFunctionId, we try to dereference an expression $innerExpression of unrecognized type ${innerExpression.type}")
         val parentTypeInfo = typeInfo.getTypeInfo(resolvedParentType.entityRef) ?: error("No type info for ${resolvedParentType.entityRef}")
