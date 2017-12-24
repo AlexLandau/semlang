@@ -689,7 +689,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             is TypeInfo.Struct -> {
                 val member = parentTypeInfo.members[expression.name]
                 if (member == null) {
-                    fail("In function $containingFunctionId, we try to dereference a non-existent member '${expression.name}' of the struct type $parentNamedType")
+                    errors.add(Issue("Struct type $parentNamedType does not have a member named '${expression.name}'", expression.location, IssueLevel.ERROR))
+                    return null
                 }
 
                 // Type parameters come from the struct definition itself
@@ -707,7 +708,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val interfaceType = parentNamedType
                 val methodType = interfac.methodTypes[expression.name]
                 if (methodType == null) {
-                    fail("In function $containingFunctionId, we try to reference a non-existent method '${expression.name}' of the interface type $interfaceType")
+                    errors.add(Issue("Interface type $parentNamedType does not have a method named '${expression.name}'", expression.location, IssueLevel.ERROR))
+                    return null
                 }
 
                 val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
