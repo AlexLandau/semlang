@@ -1,6 +1,5 @@
 dependencies {
   compile project(':kotlin:semlang-parser')
   compile project(':kotlin:semlang-interpreter')
-
-  testCompile project(':kotlin:semlang-test-utils')
+  compile 'junit:junit:4.12'
 }

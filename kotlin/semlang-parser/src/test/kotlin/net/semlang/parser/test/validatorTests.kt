@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
+import net.semlang.internal.test.assertModulesEqual
 import net.semlang.parser.*
 import org.junit.Assert
 import org.junit.Test
@@ -54,15 +55,6 @@ class ValidatorPositiveTests(private val file: File) {
         val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
-}
-
-fun assertModulesEqual(expected: ValidatedModule, actual: ValidatedModule) {
-    // TODO: Check the upstream contexts
-
-    Assert.assertEquals(expected.ownFunctions, actual.ownFunctions)
-    Assert.assertEquals(expected.ownStructs, actual.ownStructs)
-    Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
-    // TODO: Maybe check more?
 }
 
 @RunWith(Parameterized::class)
