@@ -5,16 +5,12 @@ import net.semlang.api.ModuleId
 import net.semlang.api.RawContext
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
-import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
-import net.semlang.parser.writeToString
-import net.semlang.transforms.devalidate
-import net.semlang.transforms.simplifyExpressions
+import net.semlang.transforms.invalidate
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -33,15 +29,15 @@ class DevalidationTest(private val file: File) {
     }
 
     @Test
-    fun testDevalidateRevalidateRoundTripEquality() {
+    fun testinvalidateRevalidateRoundTripEquality() {
         val validate = fun(context: RawContext): ValidatedModule {
             return validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         }
         val initialRawContext = parseFile(file).assumeSuccess()
         val initialModule = validate(initialRawContext)//validateModule(initialRawContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
-        val devalidated = devalidate(initialModule)
-        val revalidated = validate(devalidated)
+        val invalidated = invalidate(initialModule)
+        val revalidated = validate(invalidated)
 
         assertModulesEqual(initialModule, revalidated)
     }
