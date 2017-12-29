@@ -17,7 +17,7 @@ fun runAnnotationTests(module: ValidatedModule): Int {
     module.ownFunctions.values.forEach { function ->
         function.annotations.forEach { annotation ->
             if (annotation.name == "Test") {
-                doTest(function, module, annotation.value ?: throw AssertionError("Tests can't have null values"))
+                doTest(function, module, annotation.value ?: throw AssertionError("Test annotations shouldn't be empty"))
                 testCount++
             }
         }

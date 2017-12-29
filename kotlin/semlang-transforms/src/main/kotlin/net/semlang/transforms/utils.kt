@@ -1,6 +1,7 @@
 package net.semlang.transforms
 
 import net.semlang.api.*
+import net.semlang.api.Function
 
 fun getAllDeclaredVarNames(function: ValidatedFunction): Set<String> {
     val varNames = LinkedHashSet<String>()
@@ -70,82 +71,103 @@ private fun addAllDeclaredVarNames(assignment: ValidatedAssignment, varNames: Ha
     addAllDeclaredVarNames(assignment.expression, varNames)
 }
 
-fun replaceLocalFunctionNameReferences(function: ValidatedFunction, replacements: Map<EntityId, EntityId>): ValidatedFunction {
+fun replaceLocalFunctionNameReferences(function: Function, replacements: Map<EntityId, EntityId>): Function {
     return function.copy(
             block = replaceLocalFunctionNameReferences(function.block, replacements)
     )
 }
 
-fun replaceLocalFunctionNameReferences(block: TypedBlock, replacements: Map<EntityId, EntityId>): TypedBlock {
-    return TypedBlock(block.type, block.assignments.map { assignment ->
-        ValidatedAssignment(assignment.name, assignment.type, replaceLocalFunctionNameReferences(assignment.expression, replacements))
-    }, replaceLocalFunctionNameReferences(block.returnedExpression, replacements))
+fun replaceLocalFunctionNameReferences(block: Block, replacements: Map<EntityId, EntityId>): Block {
+    return replaceSomeExpressionsPostvisit(block, fun(expression: Expression): Expression? {
+        if (expression is Expression.NamedFunctionCall) {
+            // TODO: Do we need something subtler around the reference as a whole?
+            val oldName = expression.functionRef.id
+            val replacement = replacements[oldName]
+            if (replacement != null) {
+                return expression.copy(functionRef = replacement.asRef())
+            }
+        } else if (expression is Expression.NamedFunctionBinding) {
+            // TODO: Do we need something subtler around the reference as a whole?
+            val oldName = expression.functionRef.id
+            val replacement = replacements[oldName]
+            if (replacement != null) {
+                return expression.copy(functionRef = replacement.asRef())
+            }
+        }
+        return null
+    })
 }
 
-// TODO: There should be a more generalizable version of this
-fun replaceLocalFunctionNameReferences(expression: TypedExpression, replacements: Map<EntityId, EntityId>): TypedExpression {
-    return when (expression) {
-        is TypedExpression.Variable -> expression
-        is TypedExpression.IfThen -> {
-            val condition = replaceLocalFunctionNameReferences(expression.condition, replacements)
-            val thenBlock = replaceLocalFunctionNameReferences(expression.thenBlock, replacements)
-            val elseBlock = replaceLocalFunctionNameReferences(expression.elseBlock, replacements)
-            TypedExpression.IfThen(expression.type, condition, thenBlock, elseBlock)
-        }
-        is TypedExpression.NamedFunctionCall -> {
-            // TODO: Do we need something subtler around the reference as a whole?
-            val oldName = expression.functionRef.id
-            val newName = replacements[oldName]?.asRef() ?: expression.functionRef
-            val arguments = expression.arguments.map { argument ->
-                replaceLocalFunctionNameReferences(argument, replacements)
+/**
+ * Given a function from Expression to Expression?, replaces expressions for which the function
+ * returns a non-null value with the value returned.
+ *
+ * As indicated by "postvisit", subexpressions and subblocks of the expression will be replaced
+ * *before* the function is applied to the expression itself.
+ */
+fun replaceSomeExpressionsPostvisit(block: Block, transformation: (Expression) -> Expression?): Block {
+    return PostvisitExpressionReplacer(transformation).apply(block)
+
+}
+
+private class PostvisitExpressionReplacer(val transformation: (Expression) -> Expression?) {
+    fun apply(block: Block): Block {
+        val assignments = block.assignments.map(this::apply)
+        val returnedExpression = apply(block.returnedExpression)
+        return Block(assignments, returnedExpression, block.location)
+    }
+
+    private fun apply(expression: Expression): Expression {
+        val withInnerTransformations = when (expression) {
+            is Expression.Variable -> expression
+            is Expression.IfThen -> {
+                val condition = apply(expression.condition)
+                val thenBlock = apply(expression.thenBlock)
+                val elseBlock = apply(expression.elseBlock)
+                Expression.IfThen(condition, thenBlock, elseBlock, expression.location)
             }
-            TypedExpression.NamedFunctionCall(expression.type, newName, arguments, expression.chosenParameters)
-        }
-        is TypedExpression.ExpressionFunctionCall -> {
-            val functionExpression = replaceLocalFunctionNameReferences(expression.functionExpression, replacements)
-            val arguments = expression.arguments.map { argument ->
-                replaceLocalFunctionNameReferences(argument, replacements)
+            is Expression.NamedFunctionCall -> {
+                val arguments = expression.arguments.map(this::apply)
+                Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters, expression.location, expression.functionRefLocation)
             }
-            TypedExpression.ExpressionFunctionCall(expression.type, functionExpression, arguments, expression.chosenParameters)
-        }
-        is TypedExpression.Literal -> expression
-        is TypedExpression.ListLiteral -> {
-            val contents = expression.contents.map { item ->
-                replaceLocalFunctionNameReferences(item, replacements)
+            is Expression.ExpressionFunctionCall -> {
+                val functionExpression = apply(expression.functionExpression)
+                val arguments = expression.arguments.map(this::apply)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, expression.location)
             }
-            TypedExpression.ListLiteral(expression.type, contents, expression.chosenParameter)
-        }
-        is TypedExpression.Follow -> {
-            val innerExpression = replaceLocalFunctionNameReferences(expression.expression, replacements)
-            TypedExpression.Follow(expression.type, innerExpression, expression.name)
-        }
-        is TypedExpression.NamedFunctionBinding -> {
-            // TODO: Do we need something subtler around the reference as a whole?
-            val oldName = expression.functionRef.id
-            val newName = replacements[oldName]?.asRef() ?: expression.functionRef
-            val bindings = expression.bindings.map { binding ->
-                if (binding != null) {
-                    replaceLocalFunctionNameReferences(binding, replacements)
-                } else {
-                    null
-                }
+            is Expression.Literal -> expression
+            is Expression.ListLiteral -> {
+                val contents = expression.contents.map(this::apply)
+                Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
             }
-            TypedExpression.NamedFunctionBinding(expression.type, newName, bindings, expression.chosenParameters)
-        }
-        is TypedExpression.ExpressionFunctionBinding -> {
-            val functionExpression = replaceLocalFunctionNameReferences(expression.functionExpression, replacements)
-            val bindings = expression.bindings.map { binding ->
-                if (binding != null) {
-                    replaceLocalFunctionNameReferences(binding, replacements)
-                } else {
-                    null
-                }
+            is Expression.NamedFunctionBinding -> {
+                val bindings = expression.bindings.map { if (it == null) null else apply(it) }
+                Expression.NamedFunctionBinding(expression.functionRef, expression.chosenParameters, bindings, expression.location)
             }
-            TypedExpression.ExpressionFunctionBinding(expression.type, functionExpression, bindings, expression.chosenParameters)
+            is Expression.ExpressionFunctionBinding -> {
+                val functionExpression = apply(expression.functionExpression)
+                val bindings = expression.bindings.map { if (it == null) null else apply(it) }
+                Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, expression.location)
+            }
+            is Expression.Follow -> {
+                val structure = apply(expression.expression)
+                Expression.Follow(structure, expression.name, expression.location)
+            }
+            is Expression.InlineFunction -> {
+                val block = apply(expression.block)
+                Expression.InlineFunction(expression.arguments, block, expression.location)
+            }
         }
-        is TypedExpression.InlineFunction -> {
-            val block = replaceLocalFunctionNameReferences(expression.block, replacements)
-            TypedExpression.InlineFunction(expression.type, expression.arguments, expression.boundVars, block)
+        val transformationOutput = transformation(withInnerTransformations)
+        if (transformationOutput != null) {
+            return transformationOutput
+        } else {
+            return withInnerTransformations
         }
+    }
+
+    private fun apply(assignment: Assignment): Assignment {
+        val expression = apply(assignment.expression)
+        return Assignment(assignment.name, assignment.type, expression, assignment.nameLocation)
     }
 }

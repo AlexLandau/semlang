@@ -14,7 +14,7 @@ import net.semlang.transforms.invalidate
 import java.io.File
 
 @RunWith(Parameterized::class)
-class DevalidationTest(private val file: File) {
+class InvalidationTest(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
@@ -29,12 +29,12 @@ class DevalidationTest(private val file: File) {
     }
 
     @Test
-    fun testinvalidateRevalidateRoundTripEquality() {
+    fun testInvalidateRevalidateRoundTripEquality() {
         val validate = fun(context: RawContext): ValidatedModule {
             return validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         }
         val initialRawContext = parseFile(file).assumeSuccess()
-        val initialModule = validate(initialRawContext)//validateModule(initialRawContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val initialModule = validate(initialRawContext)
 
         val invalidated = invalidate(initialModule)
         val revalidated = validate(invalidated)

@@ -5,6 +5,7 @@ import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
+import net.semlang.internal.test.assertRawContextsEqual
 import net.semlang.parser.*
 import org.junit.Assert
 import org.junit.Test
@@ -34,23 +35,34 @@ class ValidatorPositiveTests(private val file: File) {
     }
 
     @Test
-    fun testParseWriteParseEquality() {
+    fun testValidateWriteValidateEquality() {
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
-        System.out.println("Rewritten contents for file $file:")
-        System.out.println(writtenToString)
-        System.out.println("(End contents)")
+//        System.out.println("Rewritten contents for file $file:")
+//        System.out.println(writtenToString)
+//        System.out.println("(End contents)")
         val reparsed = parseAndValidateString(writtenToString)
         assertModulesEqual(initiallyParsed, reparsed)
+    }
+
+    @Test
+    fun testParseWriteParseEquality() {
+        val initiallyParsed = parseFile(file).assumeSuccess()
+        val writtenToString = writeToString(initiallyParsed)
+//        System.out.println("Rewritten contents for file $file:")
+//        System.out.println(writtenToString)
+//        System.out.println("(End contents)")
+        val reparsed = parseString(writtenToString, "").assumeSuccess()
+        assertRawContextsEqual(initiallyParsed, reparsed)
     }
 
     @Test
     fun testJsonWriteParseEquality() {
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val asJson = toJson(initiallyParsed)
-        System.out.println("Contents for file $file as JSON:")
-        System.out.println(ObjectMapper().writeValueAsString(asJson))
-        System.out.println("(End contents)")
+//        System.out.println("Contents for file $file as JSON:")
+//        System.out.println(ObjectMapper().writeValueAsString(asJson))
+//        System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
         val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         assertModulesEqual(initiallyParsed, fromJsonValidated)

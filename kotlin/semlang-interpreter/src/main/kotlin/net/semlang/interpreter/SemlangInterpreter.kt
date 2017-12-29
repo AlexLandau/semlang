@@ -192,7 +192,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
         if (arguments.size != interfaceDef.methods.size) {
             throw IllegalArgumentException("Wrong number of arguments for adapter constructor " + interfaceDef.adapterId)
         }
-        return SemObject.Struct(interfaceDef.adapterStruct, arguments)
+        return SemObject.Struct(interfaceDef.getAdapterStruct(), arguments)
     }
 
     private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {

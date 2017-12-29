@@ -200,6 +200,7 @@ sealed class AmbiguousExpression {
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class Literal(val type: Type, val literal: String, override val location: Location): AmbiguousExpression()
     data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val location: Location): AmbiguousExpression()
+    // TODO: Rename "expression" here
     data class Follow(val expression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
 }
@@ -216,6 +217,7 @@ sealed class Expression {
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val location: Location?): Expression()
     data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
     data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
+    // TODO: Rename "expression" here
     data class Follow(val expression: Expression, val name: String, override val location: Location?): Expression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val block: Block, override val location: Location?): Expression()
 }
@@ -230,6 +232,7 @@ sealed class TypedExpression {
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
     data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
+    // TODO: Rename "expression" here
     data class Follow(override val type: Type, val expression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val block: TypedBlock): TypedExpression()
 }
@@ -298,12 +301,20 @@ data class Member(val name: String, val type: Type)
 
 data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val adapterStruct: UnvalidatedStruct = UnvalidatedStruct(adapterId, listOf(getUnusedTypeParameterName(typeParameters)) + typeParameters,
-            methods.map { method -> Member(method.name, method.functionType) }, null, listOf(), idLocation)
+    val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
+    val dataType = Type.NamedType.forParameter(dataTypeParameter)
+    fun getAdapterStruct(): UnvalidatedStruct {
+        val members = methods.map { method ->
+            val methodType = method.functionType
+            Member(method.name, Type.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
+        }
+        return UnvalidatedStruct(adapterId, listOf(dataTypeParameter) + typeParameters,
+                members, null, listOf(), idLocation)
+    }
 
     fun getInstanceConstructorSignature(): TypeSignature {
         val explicitTypeParameters = this.typeParameters
-        val allTypeParameters = this.adapterStruct.typeParameters
+        val allTypeParameters = this.getAdapterStruct().typeParameters
         val dataTypeParameter = allTypeParameters[0]
 
         val argumentTypes = ArrayList<Type>()
@@ -318,7 +329,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
     }
     fun getAdapterConstructorSignature(): TypeSignature {
-        val adapterTypeParameters = this.adapterStruct.typeParameters
+        val adapterTypeParameters = this.getAdapterStruct().typeParameters
         val dataStructType = Type.NamedType.forParameter(adapterTypeParameters[0])
 
         val argumentTypes = ArrayList<Type>()
@@ -336,12 +347,20 @@ data class Interface(override val id: EntityId, val typeParameters: List<String>
         return methods.indexOfFirst { method -> method.name == name }
     }
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val adapterStruct: Struct = Struct(adapterId, listOf(getUnusedTypeParameterName(typeParameters)) + typeParameters,
-            methods.map { method -> Member(method.name, method.functionType) }, null, listOf())
+    val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
+    val dataType = Type.NamedType.forParameter(dataTypeParameter)
+    fun getAdapterStruct(): Struct {
+        val members = methods.map { method ->
+            val methodType = method.functionType
+            Member(method.name, Type.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
+        }
+        return Struct(adapterId, listOf(dataTypeParameter) + typeParameters,
+                members, null, listOf())
+    }
 
     fun getInstanceConstructorSignature(): TypeSignature {
         val explicitTypeParameters = this.typeParameters
-        val allTypeParameters = this.adapterStruct.typeParameters
+        val allTypeParameters = this.getAdapterStruct().typeParameters
         val dataTypeParameter = allTypeParameters[0]
 
         val argumentTypes = ArrayList<Type>()
@@ -356,7 +375,7 @@ data class Interface(override val id: EntityId, val typeParameters: List<String>
         return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters.map { name -> Type.NamedType.forParameter(name) })
     }
     fun getAdapterConstructorSignature(): TypeSignature {
-        val adapterTypeParameters = this.adapterStruct.typeParameters
+        val adapterTypeParameters = this.getAdapterStruct().typeParameters
         val dataStructType = Type.NamedType.forParameter(adapterTypeParameters[0])
 
         val argumentTypes = ArrayList<Type>()

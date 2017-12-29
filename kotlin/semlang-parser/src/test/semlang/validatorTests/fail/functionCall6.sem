@@ -1,0 +1,5 @@
+function myStuff.myFunction(): List<Integer> {
+  let empty: List<Integer> = []<Integer>
+  // Call with too few type parameters
+  List.append(empty, Integer."1")
+}

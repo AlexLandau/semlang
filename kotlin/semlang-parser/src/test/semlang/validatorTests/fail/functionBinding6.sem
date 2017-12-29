@@ -1,0 +1,5 @@
+function myStuff.myFunction(): () -> Integer {
+  let increment = Integer.plus|(_, Integer."1")
+  // Too few arguments
+  increment|()
+}

@@ -3,9 +3,11 @@ package net.semlang.transforms.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.internal.test.runAnnotationTests
+import net.semlang.parser.ValidationResult
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
+import net.semlang.transforms.invalidate
 import net.semlang.transforms.transformInterfacesToStructs
 import org.junit.Assert
 import org.junit.Test
@@ -30,24 +32,33 @@ class InterfacesToStructsTest(private val file: File) {
 
     @Test
     fun testSimplification() {
-        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val originalContext = parseFile(file).assumeSuccess()
 
-        val withoutInterfaces = transformInterfacesToStructs(module)
+        val context = transformInterfacesToStructs(originalContext)
+        Assert.assertEquals(0, context.interfaces.size)
 
-        Assert.assertEquals(0, withoutInterfaces.ownInterfaces.size)
-        Assert.assertEquals(0, withoutInterfaces.exportedInterfaces.size)
+        val validatedMaybe = validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf())
+        if (validatedMaybe is ValidationResult.Failure) {
+            System.out.println("Transformed sources for $file:")
+            System.out.println(writeToString(context))
+            Assert.fail("Transformed output did not pass validation; validation errors: " + validatedMaybe.errors)
+        }
+        val validated = (validatedMaybe as ValidationResult.Success).module
+
+        Assert.assertEquals(0, validated.ownInterfaces.size)
+        Assert.assertEquals(0, validated.exportedInterfaces.size)
 
         try {
             try {
-                val testsRun = runAnnotationTests(withoutInterfaces)
+                val testsRun = runAnnotationTests(validated)
                 if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
                     Assert.fail("Found no @Test annotations in corpus file $file")
                 }
             } catch (e: AssertionError) {
-                throw AssertionError("Simplified context was:\n" + writeToString(withoutInterfaces), e)
+                throw AssertionError("Simplified context was:\n" + writeToString(validated), e)
             }
         } catch (e: RuntimeException) {
-            throw RuntimeException("Simplified context was:\n" + writeToString(withoutInterfaces), e)
+            throw RuntimeException("Simplified context was:\n" + writeToString(validated), e)
         }
 
         // TODO: Test sem0 output and parsing round-trip

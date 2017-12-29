@@ -218,7 +218,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idLocation))
             }
             if (!duplicateLocalTypeIds.contains(interfac.adapterId)) {
-                localTypes.put(interfac.adapterId, getTypeInfo(interfac.adapterStruct))
+                localTypes.put(interfac.adapterId, getTypeInfo(interfac.getAdapterStruct()))
             }
             if (!duplicateLocalFunctionIds.contains(interfac.adapterId)) {
                 localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterConstructorSignature(), interfac.idLocation))
@@ -288,7 +288,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamTypes.put(ref, getTypeInfo(interfac, null))
             val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
-            upstreamTypes.put(adapterRef, getTypeInfo(interfac.adapterStruct, null))
+            upstreamTypes.put(adapterRef, getTypeInfo(interfac.getAdapterStruct(), null))
         }
 
         upstreamModules.forEach { module ->
@@ -300,7 +300,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val ref = ResolvedEntityRef(module.id, interfac.id)
                 upstreamTypes.put(ref, getTypeInfo(interfac, null))
                 val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
-                upstreamTypes.put(adapterRef, getTypeInfo(interfac.adapterStruct, null))
+                upstreamTypes.put(adapterRef, getTypeInfo(interfac.getAdapterStruct(), null))
             }
         }
         return upstreamTypes
@@ -593,7 +593,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val preBindingArgumentTypes = functionType.argTypes
 
         if (preBindingArgumentTypes.size != expression.bindings.size) {
-            fail("In function $containingFunctionId, tried to bind $functionExpression with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments")
+            errors.add(Issue("Tried to re-bind $functionExpression with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments", expression.location, IssueLevel.ERROR))
+            return null
         }
 
         val bindings = expression.bindings.map { binding ->
@@ -638,7 +639,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
         val typeParameters = signature.typeParameters
 
-        val parameterMap = makeParameterMap(typeParameters, chosenParameters, resolvedRef.entityRef.id)
+        val parameterMap = makeParameterMap(typeParameters, chosenParameters, resolvedRef.entityRef.id, expression.location) ?: return null
         val preBindingArgumentTypes = signature.argumentTypes.map { type -> type.replacingParameters(parameterMap) }
 
         if (preBindingArgumentTypes.size != expression.bindings.size) {
@@ -701,7 +702,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 // Chosen types come from the struct type known for the variable
                 val typeParameters = parentTypeInfo.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
                 val chosenTypes = parentNamedType.getParameterizedTypes()
-                val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
+                val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
                 //TODO: Ground this if needed
 
                 return TypedExpression.Follow(type, innerExpression, expression.name)
@@ -718,7 +719,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
                 val typeParameters = interfac.typeParameters.map { paramName -> Type.NamedType.forParameter(paramName) }
                 val chosenTypes = interfaceType.getParameterizedTypes()
-                val type = parameterizeType(methodType, typeParameters, chosenTypes, resolvedParentType.entityRef.id)
+                val type = parameterizeType(methodType, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
 
                 return TypedExpression.Follow(type, innerExpression, expression.name)
             }
@@ -771,7 +772,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //TODO: Maybe compare argument size before grounding?
 
         //Ground the signature
-        val groundSignature = ground(signature, expression.chosenParameters, functionRef.id)
+        val groundSignature = ground(signature, expression.chosenParameters, functionRef.id, expression.functionRefLocation) ?: return null
         if (argumentTypes != groundSignature.argumentTypes) {
             errors.add(Issue("The function $functionRef expects argument types ${groundSignature.argumentTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
         }
@@ -779,16 +780,17 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionRef, arguments, expression.chosenParameters)
     }
 
-    private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: EntityId): GroundedTypeSignature {
-        val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes, functionId) }
-        val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes, functionId)
+    private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: EntityId, location: Location?): GroundedTypeSignature? {
+        val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes, functionId, location) ?: return null }
+        val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes, functionId, location) ?: return null
         return GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType)
     }
 
     // TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
-    private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId): Map<Type, Type> {
+    private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Map<Type, Type>? {
         if (parameters.size != chosenTypes.size) {
-            fail("Disagreement in type parameter list lengths for function $functionId; ${parameters.size} required, but ${chosenTypes.size} provided")
+            errors.add(Issue("Wrong number of type parameters for function $functionId; ${parameters.size} required, but ${chosenTypes.size} provided", location, IssueLevel.ERROR))
+            return null
         }
         val map: MutableMap<Type, Type> = HashMap()
 
@@ -805,8 +807,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         return map
     }
 
-    private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId): Type {
-        val parameterMap = makeParameterMap(typeParameters, chosenTypes, functionId)
+    private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Type? {
+        val parameterMap = makeParameterMap(typeParameters, chosenTypes, functionId, location) ?: return null
         return typeWithWrongParameters.replacingParameters(parameterMap)
     }
 

@@ -1,12 +1,12 @@
 package net.semlang.transforms
 
 import net.semlang.api.*
+import net.semlang.api.Function
 
 // Note: Only converts new interfaces in the module itself
-// TODO: I really shouldn't be returning ValidatedModules in these...
 // TODO: Prevent certain name collisions
 // TODO: This probably also has subtle errors around names shared by multiple modules
-fun transformInterfacesToStructs(module: ValidatedModule): ValidatedModule {
+fun transformInterfacesToStructs(module: RawContext): RawContext {
     val converter = InterfaceToStructConverter(module)
 
     return converter.convert()
@@ -45,22 +45,18 @@ fun transformInterfacesToStructs(module: ValidatedModule): ValidatedModule {
  *   )
  * }
  */
-private class InterfaceToStructConverter(private val module: ValidatedModule) {
+private class InterfaceToStructConverter(private val context: RawContext) {
     private val functionReplacementsToMake = HashMap<EntityId, EntityId>()
-    private val newFunctions = ArrayList<ValidatedFunction>()
-    private val newStructs = ArrayList<Struct>()
-    fun convert(): ValidatedModule {
+    private val newFunctions = ArrayList<Function>()
+    private val newStructs = ArrayList<UnvalidatedStruct>()
+    fun convert(): RawContext {
         generateReplacementEntities()
 
-        return ValidatedModule.create(module.id, module.nativeModuleVersion,
-                getFunctions(),
-                getStructs(),
-                mapOf(),
-                module.upstreamModules.values)
+        return RawContext(getFunctions(), getStructs(), listOf())
     }
 
-    private fun getStructs(): Map<EntityId, Struct> {
-        val transformedOldStructs = module.ownStructs.mapValues { (_, oldStruct) ->
+    private fun getStructs(): List<UnvalidatedStruct> {
+        val transformedOldStructs = context.structs.map { oldStruct ->
             val requires = oldStruct.requires
             if (requires != null) {
                 oldStruct.copy(requires = replaceLocalFunctionNameReferences(requires, functionReplacementsToMake))
@@ -69,72 +65,74 @@ private class InterfaceToStructConverter(private val module: ValidatedModule) {
             }
         }
         // TODO: Check for conflicts?
-        return transformedOldStructs + newStructs.associateBy(Struct::id)
+        return transformedOldStructs + newStructs
     }
 
-    private fun getFunctions(): Map<EntityId, ValidatedFunction> {
-        val transformedOldFunctions = module.ownFunctions.mapValues { (_, oldFunction) ->
+    private fun getFunctions(): List<Function> {
+        val transformedOldFunctions = context.functions.map { oldFunction ->
             replaceLocalFunctionNameReferences(oldFunction, functionReplacementsToMake)
         }
         // TODO: Check for conflicts?
-        return transformedOldFunctions + newFunctions.associateBy(ValidatedFunction::id)
+        return transformedOldFunctions + newFunctions
     }
 
     private fun generateReplacementEntities() {
-        module.ownInterfaces.values.forEach { interfac ->
+        context.interfaces.forEach { interfac ->
             generateInstanceStruct(interfac)
             generateAdapterStruct(interfac)
             generateAdaptFunction(interfac)
         }
     }
 
-    private fun generateAdaptFunction(interfac: Interface) {
+    private fun generateAdaptFunction(interfac: UnvalidatedInterface) {
         val adaptFunctionId = EntityId(interfac.id.namespacedName + "adapt")
-        val dataParameterType = Type.NamedType.forParameter(interfac.adapterStruct.typeParameters[0])
-        val adapterType = Type.NamedType(interfac.adapterId.asRef(), interfac.adapterStruct.typeParameters.map { param -> Type.NamedType.forParameter(param) })
+        val dataParameterType = Type.NamedType.forParameter(interfac.getAdapterStruct().typeParameters[0])
+        val adapterType = Type.NamedType(interfac.adapterId.asRef(), interfac.getAdapterStruct().typeParameters.map { param -> Type.NamedType.forParameter(param) })
         val arguments = listOf(
-            Argument("data", dataParameterType),
-            Argument("adapter", adapterType)
+            UnvalidatedArgument("data", dataParameterType, null),
+            UnvalidatedArgument("adapter", adapterType, null)
         )
         val instanceType = Type.NamedType(interfac.id.asRef(), interfac.typeParameters.map { param -> Type.NamedType.forParameter(param) })
-        val block = TypedBlock(instanceType, listOf(),
-                TypedExpression.NamedFunctionCall(
-                        instanceType,
+        val block = Block(listOf(),
+                Expression.NamedFunctionCall(
                         interfac.id.asRef(),
                         interfac.methods.map { method ->
                             val adapterFunctionType = Type.FunctionType(listOf(dataParameterType) + method.functionType.argTypes,
                                     method.returnType)
-                            TypedExpression.ExpressionFunctionBinding(
-                                    method.functionType,
-                                    TypedExpression.Follow(
-                                            adapterFunctionType,
-                                            TypedExpression.Variable(adapterType, "adapter"),
-                                            method.name
+                            Expression.ExpressionFunctionBinding(
+                                    Expression.Follow(
+                                            Expression.Variable("adapter", null),
+                                            method.name,
+                                            null
                                     ),
-                                    listOf(TypedExpression.Variable(dataParameterType, "data"))
+                                    listOf(),
+                                    listOf(Expression.Variable("data", null))
                                     + method.arguments.map { argument -> null },
-                                    listOf()
+                                    null
                             )
                         },
-                        listOf()
-                )
+                        instanceType.parameters,
+                        null,
+                        null
+                ),
+                null
         )
-        val function = ValidatedFunction(adaptFunctionId, interfac.adapterStruct.typeParameters, arguments,
-                instanceType, block, listOf())
+        val function = Function(adaptFunctionId, interfac.getAdapterStruct().typeParameters, arguments,
+                instanceType, block, listOf(), null, null)
         newFunctions.add(function)
         functionReplacementsToMake[interfac.id] = adaptFunctionId
     }
 
-    private fun generateAdapterStruct(interfac: Interface) {
-        newStructs.add(interfac.adapterStruct)
+    private fun generateAdapterStruct(interfac: UnvalidatedInterface) {
+        newStructs.add(interfac.getAdapterStruct())
     }
 
-    private fun generateInstanceStruct(interfac: Interface) {
+    private fun generateInstanceStruct(interfac: UnvalidatedInterface) {
         val members = interfac.methods.map { method ->
             Member(method.name, method.functionType)
         }
-        val struct = Struct(interfac.id, interfac.typeParameters,
-                members, null, interfac.annotations)
+        val struct = UnvalidatedStruct(interfac.id, interfac.typeParameters,
+                members, null, interfac.annotations, null)
         newStructs.add(struct)
     }
 }
