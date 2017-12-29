@@ -15,12 +15,12 @@ fun devalidate(interfac: Interface): UnvalidatedInterface {
     return UnvalidatedInterface(interfac.id, interfac.typeParameters, methods, interfac.annotations, null)
 }
 
-fun devalidateMethod(method: Method): UnvalidatedMethod {
+private fun devalidateMethod(method: Method): UnvalidatedMethod {
     val arguments = method.arguments.map(::devalidateArgument)
     return UnvalidatedMethod(method.name, method.typeParameters, arguments, method.returnType)
 }
 
-fun devalidateArgument(argument: Argument): UnvalidatedArgument {
+private fun devalidateArgument(argument: Argument): UnvalidatedArgument {
     return UnvalidatedArgument(argument.name, argument.type, null)
 }
 
@@ -29,13 +29,13 @@ fun devalidate(struct: Struct): UnvalidatedStruct {
     return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations, null)
 }
 
-fun devalidateBlock(block: TypedBlock): Block {
+private fun devalidateBlock(block: TypedBlock): Block {
     val assignments = block.assignments.map(::devalidateAssignment)
     val returnedExpression = devalidateExpression(block.returnedExpression)
     return Block(assignments, returnedExpression, null)
 }
 
-fun devalidateExpression(expression: TypedExpression): Expression {
+private fun devalidateExpression(expression: TypedExpression): Expression {
     return when (expression) {
         is TypedExpression.Variable -> {
             Expression.Variable(expression.name, null)
@@ -83,7 +83,7 @@ fun devalidateExpression(expression: TypedExpression): Expression {
     }
 }
 
-fun devalidateAssignment(assignment: ValidatedAssignment): Assignment {
+private fun devalidateAssignment(assignment: ValidatedAssignment): Assignment {
     val expression = devalidateExpression(assignment.expression)
     return Assignment(assignment.name, assignment.type, expression, null)
 }
