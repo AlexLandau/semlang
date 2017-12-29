@@ -38,3 +38,15 @@ function stringLiteral7(): Unicode.String {
 function stringLiteral8(): Unicode.String {
     Unicode.String."\\"
 }
+
+@Test("['1']: '1'")
+@Test("['Hello, world!']: '13'")
+@Test("['']: '0'")
+@Test("['🙂']: '1'")
+@Test("[' ']: '1'")
+@Test("['\"']: '1'")
+@Test("['\'']: '1'")
+@Test("['\\']: '1'")
+function stringLiteralLength(string: Unicode.String): Natural {
+    List.size<Unicode.CodePoint>(string->value)
+}

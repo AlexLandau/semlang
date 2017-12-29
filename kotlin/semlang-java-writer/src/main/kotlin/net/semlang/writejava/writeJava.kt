@@ -642,7 +642,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 val resolvedStructureType = module.resolve(structureExpressionType.ref)
                 // TODO: I don't think this handles native interfaces?
                 if (resolvedStructureType != null && resolvedStructureType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
-//                    val followedInterface = module.getInternalInterface(resolvedFollowedType.entityRef) // ?: getNativeInterfaces()[followedExpressionType.ref]
                     return object : FunctionCallStrategy {
                         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
                             return CodeBlock.of("\$L.\$L(\$L)", writeExpression(structureExpression), expression.name, getArgumentsBlock(arguments))
