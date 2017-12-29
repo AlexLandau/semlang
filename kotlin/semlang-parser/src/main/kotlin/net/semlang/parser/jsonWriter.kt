@@ -376,7 +376,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         }
         is TypedExpression.Follow -> {
             node.put("type", "follow")
-            addExpression(node.putObject("expression"), expression.expression)
+            addExpression(node.putObject("expression"), expression.structureExpression)
             node.put("name", expression.name)
             return
         }

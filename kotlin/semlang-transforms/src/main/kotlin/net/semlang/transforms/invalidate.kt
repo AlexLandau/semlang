@@ -72,8 +72,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
             Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, null)
         }
         is TypedExpression.Follow -> {
-            val structure = invalidateExpression(expression.expression)
-            Expression.Follow(structure, expression.name, null)
+            val structureExpression = invalidateExpression(expression.structureExpression)
+            Expression.Follow(structureExpression, expression.name, null)
         }
         is TypedExpression.InlineFunction -> {
             val arguments = expression.arguments.map(::invalidateArgument)

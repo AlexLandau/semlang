@@ -200,8 +200,7 @@ sealed class AmbiguousExpression {
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class Literal(val type: Type, val literal: String, override val location: Location): AmbiguousExpression()
     data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: Type, override val location: Location): AmbiguousExpression()
-    // TODO: Rename "expression" here
-    data class Follow(val expression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
+    data class Follow(val structureExpression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
 }
 
@@ -217,8 +216,7 @@ sealed class Expression {
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val location: Location?): Expression()
     data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
     data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
-    // TODO: Rename "expression" here
-    data class Follow(val expression: Expression, val name: String, override val location: Location?): Expression()
+    data class Follow(val structureExpression: Expression, val name: String, override val location: Location?): Expression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val block: Block, override val location: Location?): Expression()
 }
 // Post-type-analysis
@@ -232,8 +230,7 @@ sealed class TypedExpression {
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
     data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
-    // TODO: Rename "expression" here
-    data class Follow(override val type: Type, val expression: TypedExpression, val name: String): TypedExpression()
+    data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val block: TypedBlock): TypedExpression()
 }
 

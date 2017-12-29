@@ -675,17 +675,17 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
-        val innerExpression = validateExpression(expression.expression, variableTypes, typeInfo, typeParametersInScope, containingFunctionId) ?: return null
+        val structureExpression = validateExpression(expression.structureExpression, variableTypes, typeInfo, typeParametersInScope, containingFunctionId) ?: return null
 
-        val parentNamedType = innerExpression.type as? Type.NamedType
+        val parentNamedType = structureExpression.type as? Type.NamedType
         if (parentNamedType == null) {
-            errors.add(Issue("Cannot dereference an expression $innerExpression of non-struct, non-interface type ${innerExpression.type}", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("Cannot dereference an expression $structureExpression of non-struct, non-interface type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
             return null
         }
 
         val resolvedParentType = typeInfo.resolver.resolve(parentNamedType.ref)
         if (resolvedParentType == null) {
-            errors.add(Issue("Cannot dereference an expression $innerExpression of unrecognized type ${innerExpression.type}", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("Cannot dereference an expression $structureExpression of unrecognized type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
             return null
         }
         val parentTypeInfo = typeInfo.getTypeInfo(resolvedParentType.entityRef) ?: error("No type info for ${resolvedParentType.entityRef}")
@@ -705,7 +705,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val type = parameterizeType(member.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
                 //TODO: Ground this if needed
 
-                return TypedExpression.Follow(type, innerExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression, expression.name)
 
             }
             is TypeInfo.Interface -> {
@@ -721,7 +721,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val chosenTypes = interfaceType.getParameterizedTypes()
                 val type = parameterizeType(methodType, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
 
-                return TypedExpression.Follow(type, innerExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression, expression.name)
             }
         }
     }

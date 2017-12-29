@@ -243,7 +243,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 }
             }
             is TypedExpression.Follow -> {
-                val innerResult = evaluateExpression(expression.expression, assignments, containingModule)
+                val innerResult = evaluateExpression(expression.structureExpression, assignments, containingModule)
                 val name = expression.name
                 if (innerResult is SemObject.Struct) {
                     val index = innerResult.struct.getIndexForName(name)

@@ -75,8 +75,8 @@ private fun stripLocations(expression: Expression): Expression {
             Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, null)
         }
         is Expression.Follow -> {
-            val structure = stripLocations(expression.expression)
-            Expression.Follow(structure, expression.name, null)
+            val structureExpression = stripLocations(expression.structureExpression)
+            Expression.Follow(structureExpression, expression.name, null)
         }
         is Expression.InlineFunction -> {
             val arguments = expression.arguments.map(::stripLocations)

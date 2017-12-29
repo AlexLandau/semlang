@@ -267,7 +267,7 @@ private fun writeExpression(expression: TypedExpression, indentationLevel: Int, 
                     .append(">")
         }
         is TypedExpression.Follow -> {
-            writeExpression(expression.expression, indentationLevel, writer)
+            writeExpression(expression.structureExpression, indentationLevel, writer)
             writer.append("->")
                     .append(expression.name)
         }
@@ -401,7 +401,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                     .append(">")
         }
         is Expression.Follow -> {
-            writeExpression(expression.expression, indentationLevel, writer)
+            writeExpression(expression.structureExpression, indentationLevel, writer)
             writer.append("->")
                     .append(expression.name)
         }

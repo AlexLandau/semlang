@@ -59,7 +59,7 @@ fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpr
             }
         }
         is TypedExpression.Follow -> {
-            collectVars(varsReferenced, expression.expression)
+            collectVars(varsReferenced, expression.structureExpression)
         }
         is TypedExpression.InlineFunction -> {
             collectVars(varsReferenced, expression.block)

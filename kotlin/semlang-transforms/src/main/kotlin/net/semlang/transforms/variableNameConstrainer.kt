@@ -111,8 +111,8 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
             TypedExpression.ListLiteral(expression.type, contents, expression.chosenParameter)
         }
         is TypedExpression.Follow -> {
-            val innerExpression = renameWithinExpression(expression.expression, renamingMap)
-            TypedExpression.Follow(expression.type, innerExpression, expression.name)
+            val structureExpression = renameWithinExpression(expression.structureExpression, renamingMap)
+            TypedExpression.Follow(expression.type, structureExpression, expression.name)
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }

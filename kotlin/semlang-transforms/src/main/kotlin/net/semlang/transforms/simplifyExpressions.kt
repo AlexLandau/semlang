@@ -91,7 +91,7 @@ private fun trySplitting(expression: TypedExpression, varNamesToPreserve: Mutabl
             ExpressionMultisplitResult(replacementExpression, newAssignments)
         }
         is TypedExpression.Follow -> {
-            val result = tryMakingIntoVar(expression.expression, varNamesToPreserve, varNamesInScope)
+            val result = tryMakingIntoVar(expression.structureExpression, varNamesToPreserve, varNamesInScope)
             val replacementExpression = TypedExpression.Follow(expression.type, result.variable, expression.name)
             ExpressionMultisplitResult(replacementExpression, result.newAssignments)
         }
@@ -190,7 +190,7 @@ private fun tryMakingIntoVar(expression: TypedExpression, varNamesToPreserve: Mu
             MakeIntoVarResult(expression, listOf())
         }
         is TypedExpression.Follow -> {
-            val subresult = tryMakingIntoVar(expression.expression, varNamesToPreserve, varNamesInScope)
+            val subresult = tryMakingIntoVar(expression.structureExpression, varNamesToPreserve, varNamesInScope)
 
             val newFollow = TypedExpression.Follow(expression.type, subresult.variable, expression.name)
             val replacementName = getNewVarName(varNamesToPreserve)

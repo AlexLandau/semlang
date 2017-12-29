@@ -197,7 +197,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): Expression {
         return when (expression) {
             is AmbiguousExpression.Follow -> Expression.Follow(
-                    scopeExpression(varIds, expression.expression),
+                    scopeExpression(varIds, expression.structureExpression),
                     expression.name,
                     expression.location)
             is AmbiguousExpression.VarOrNamedFunctionBinding -> {

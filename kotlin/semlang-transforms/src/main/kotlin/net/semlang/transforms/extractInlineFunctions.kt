@@ -95,7 +95,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                 TypedExpression.ExpressionFunctionBinding(expression.type, functionExpression, bindings, expression.chosenParameters)
             }
             is TypedExpression.Follow -> {
-                val followedExpression = transformExpression(expression.expression)
+                val followedExpression = transformExpression(expression.structureExpression)
                 TypedExpression.Follow(expression.type, followedExpression, expression.name)
             }
             is TypedExpression.InlineFunction -> {

@@ -61,7 +61,7 @@ private fun addAllDeclaredVarNames(expression: TypedExpression, varNames: HashSe
             }
         }
         is TypedExpression.Follow -> {
-            addAllDeclaredVarNames(expression.expression, varNames)
+            addAllDeclaredVarNames(expression.structureExpression, varNames)
         }
     }
 }
@@ -150,8 +150,8 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
                 Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, expression.location)
             }
             is Expression.Follow -> {
-                val structure = apply(expression.expression)
-                Expression.Follow(structure, expression.name, expression.location)
+                val structureExpression = apply(expression.structureExpression)
+                Expression.Follow(structureExpression, expression.name, expression.location)
             }
             is Expression.InlineFunction -> {
                 val block = apply(expression.block)
