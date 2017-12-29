@@ -471,7 +471,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun writeFollowExpression(expression: TypedExpression.Follow): CodeBlock {
         // Special sauce...
-        val type = expression.expression.type
+        val type = expression.structureExpression.type
         if (type is Type.NamedType) {
             if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 if (expression.name != "value") {
@@ -479,17 +479,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }
                 // Special handling
                 val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
-                return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.expression))
+                return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.structureExpression))
             } else if (type.ref.id == NativeStruct.UNICODE_CODE_POINT.id) {
                 if (expression.name != "value") {
                     error("...")
                 }
                 // Convert to a BigInteger for now...
-                return CodeBlock.of("BigInteger.valueOf(\$L)", writeExpression(expression.expression))
+                return CodeBlock.of("BigInteger.valueOf(\$L)", writeExpression(expression.structureExpression))
             }
         }
 
-        return CodeBlock.of("\$L.\$L", writeExpression(expression.expression), expression.name)
+        return CodeBlock.of("\$L.\$L", writeExpression(expression.structureExpression), expression.name)
     }
 
     private fun writeExpressionFunctionBinding(expression: TypedExpression.ExpressionFunctionBinding): CodeBlock {
@@ -636,16 +636,16 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         // Is it an interface follow?
         if (expression is TypedExpression.Follow) {
-            val followedExpression = expression.expression
-            val followedExpressionType = followedExpression.type
-            if (followedExpressionType is Type.NamedType) {
-                val resolvedFollowedType = module.resolve(followedExpressionType.ref)
+            val structureExpression = expression.structureExpression
+            val structureExpressionType = structureExpression.type
+            if (structureExpressionType is Type.NamedType) {
+                val resolvedStructureType = module.resolve(structureExpressionType.ref)
                 // TODO: I don't think this handles native interfaces?
-                if (resolvedFollowedType != null && resolvedFollowedType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
+                if (resolvedStructureType != null && resolvedStructureType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
 //                    val followedInterface = module.getInternalInterface(resolvedFollowedType.entityRef) // ?: getNativeInterfaces()[followedExpressionType.ref]
                     return object : FunctionCallStrategy {
                         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-                            return CodeBlock.of("\$L.\$L(\$L)", writeExpression(followedExpression), expression.name, getArgumentsBlock(arguments))
+                            return CodeBlock.of("\$L.\$L(\$L)", writeExpression(structureExpression), expression.name, getArgumentsBlock(arguments))
                         }
                     }
                 }
@@ -654,7 +654,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         return object: FunctionCallStrategy {
             override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-                return CodeBlock.of("\$L.apply(\$L)", writeExpression(expression), getArgumentsBlock(arguments))
+                val functionName = if (arguments.size == 0) "get" else "apply"
+                return CodeBlock.of("\$L.\$L(\$L)", writeExpression(expression), functionName, getArgumentsBlock(arguments))
             }
         }
     }
