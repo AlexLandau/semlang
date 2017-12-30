@@ -287,14 +287,13 @@ object NativeStruct {
             EntityId.of("Unicode", "CodePoint"),
             listOf(),
             listOf(
-                    // TODO: Restrict to the maximum possible code point value
-                    Member("value", Type.NATURAL)
+                    Member("natural", Type.NATURAL)
             ),
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
                     EntityRef.of("Natural", "lessThan"),
-                    listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                    listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                             TypedExpression.Literal(Type.NATURAL, "1114112")),
                     listOf()
             )),
@@ -304,7 +303,7 @@ object NativeStruct {
             EntityId.of("Unicode", "String"),
             listOf(),
             listOf(
-                    Member("value", Type.List(Type.NamedType(UNICODE_CODE_POINT.id.asRef())))
+                    Member("codePoints", Type.List(Type.NamedType(UNICODE_CODE_POINT.id.asRef())))
             ),
             null,
             listOf()
@@ -313,7 +312,7 @@ object NativeStruct {
             EntityId.of("Bit"),
             listOf(),
             listOf(
-                    Member("value", Type.NATURAL)
+                    Member("natural", Type.NATURAL)
             ),
             // requires: value = 0 or value = 1
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
@@ -322,13 +321,13 @@ object NativeStruct {
                     listOf(TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                                     TypedExpression.Literal(Type.NATURAL, "0")),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "value"),
+                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                                     TypedExpression.Literal(Type.NATURAL, "1")),
                             listOf()
                         )
@@ -341,7 +340,7 @@ object NativeStruct {
             EntityId.of("BitsBigEndian"),
             listOf(),
             listOf(
-                    Member("value", Type.List(Type.NamedType(BIT.id.asRef())))
+                    Member("bits", Type.List(Type.NamedType(BIT.id.asRef())))
             ),
             null,
             listOf()

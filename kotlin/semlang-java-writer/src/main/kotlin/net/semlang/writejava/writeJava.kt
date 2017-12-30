@@ -476,14 +476,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val type = expression.structureExpression.type
         if (type is Type.NamedType) {
             if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
-                if (expression.name != "value") {
+                if (expression.name != "codePoints") {
                     error("...")
                 }
                 // Special handling
                 val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
                 return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.structureExpression))
             } else if (type.ref.id == NativeStruct.UNICODE_CODE_POINT.id) {
-                if (expression.name != "value") {
+                if (expression.name != "natural") {
                     error("...")
                 }
                 // Convert to a BigInteger for now...

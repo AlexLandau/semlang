@@ -8,5 +8,5 @@ function createCodePoint(value: Natural): Try<Natural> {
 }
 
 function getCodePointValue(codePoint: Unicode.CodePoint): Natural {
-  codePoint->value
+  codePoint->natural
 }

@@ -253,8 +253,8 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     val functionBinding = innerResult.methods[index]
                     return functionBinding
                 } else if (innerResult is SemObject.UnicodeString) {
-                    if (name != "value") {
-                        error("The only valid member in a Unicode.String is 'value'")
+                    if (name != "codePoints") {
+                        error("The only valid member in a Unicode.String is 'codePoints'")
                     }
                     // TODO: Cache this, or otherwise make it more efficient
                     val codePointsList = innerResult.contents.codePoints().mapToObj { value -> SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(

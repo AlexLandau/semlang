@@ -27,7 +27,6 @@ fun runAnnotationTests(module: ValidatedModule): Int {
 
 
 private object Patterns {
-    // TODO: Allow the ' character in strings via escaping
     val QP /* "quoted pattern" */: String = "'(([^'\\\\]|\\\\.)*)'" // A literal string in single quotes, with \ for escaping
     val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[($QP)?((, *$QP)*)\\]: *$QP$")
     val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *$QP")

@@ -9,7 +9,6 @@ Major near-term projects:
 Intended near-term refactors and changes:
 - Turn Natural into a "restruct" of Integer
   - I need a better, or at least, consistent name for these that isn't as corny as "restruct"...
-- In "restructs", use the referenced type name instead of just "value"
 
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be

@@ -8,10 +8,10 @@ public final class Bit {
     private static final Optional<Bit> ZERO_OPT = Optional.of(ZERO);
     public static final Bit ONE = new Bit(BigInteger.ONE);
     private static final Optional<Bit> ONE_OPT = Optional.of(ONE);
-    public final BigInteger value;
+    public final BigInteger natural;
 
-    private Bit(BigInteger value) {
-        this.value = value;
+    private Bit(BigInteger natural) {
+        this.natural = natural;
     }
 
     public static Optional<Bit> create(BigInteger value) {

@@ -2,13 +2,13 @@
 // Represents a non-negative hex value
 @Exported
 struct HexString {
-  value: Unicode.String
+  string: Unicode.String
   requires {
     Boolean.and(
-      Boolean.not(List.isEmpty<Unicode.CodePoint>(value->value)),
+      Boolean.not(List.isEmpty<Unicode.CodePoint>(string->codePoints)),
       Boolean.all(
         List.map<Unicode.CodePoint, Boolean>(
-          value->value,
+          string->codePoints,
           isValidHexCodePoint|(_)
         )
       )
@@ -17,13 +17,13 @@ struct HexString {
 }
 
 function getHexCodePointValue(codePoint: Unicode.CodePoint): Try<Natural> {
-  if (Natural.isBetweenInclusive(codePoint->value, Natural."48", Natural."57")) {
+  if (Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57")) {
     // Note: In these cases, absoluteDifference() should act as minus().
     // Not sure if this is the right permanent solution.
-    Try.success<Natural>(Natural.absoluteDifference(codePoint->value, Natural."48"))
+    Try.success<Natural>(Natural.absoluteDifference(codePoint->natural, Natural."48"))
   } else {
-    if (Natural.isBetweenInclusive(codePoint->value, Natural."97", Natural."102")) {
-      Try.success<Natural>(Natural.absoluteDifference(codePoint->value, Natural."87"))
+    if (Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")) {
+      Try.success<Natural>(Natural.absoluteDifference(codePoint->natural, Natural."87"))
     } else {
       Try.failure<Natural>()
     }
@@ -34,16 +34,16 @@ function isValidHexCodePoint(codePoint: Unicode.CodePoint): Boolean {
   Try.isSuccess<Natural>(getHexCodePointValue(codePoint))
 //  Boolean.or(
 //    // Number case: 0-9
-//    Natural.isBetweenInclusive(codePoint->value, Natural."48", Natural."57"),
+//    Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57"),
 //    // Letter case: a-f (lowercase only)
-//    Natural.isBetweenInclusive(codePoint->value, Natural."97", Natural."102")
+//    Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")
 //  )
 }
 
 @Exported
 function HexString.toValue(hexString: HexString): Natural {
   List.reduce<Unicode.CodePoint, Natural>(
-    hexString->value->value,
+    hexString->string->codePoints,
     Natural."0",
     hexStringReduction|(_, _)
   )

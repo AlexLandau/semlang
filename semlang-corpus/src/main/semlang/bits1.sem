@@ -6,5 +6,5 @@
 @Test("['0']: '0'")
 function getFirstBitOfNatural(n: Natural): Bit {
   let bits: BitsBigEndian = Natural.toBits(n)
-  Try.assume<Bit>(List.get<Bit>(bits->value, Natural."0"))
+  Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."0"))
 }

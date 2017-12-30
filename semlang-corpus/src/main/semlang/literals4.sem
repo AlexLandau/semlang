@@ -48,5 +48,5 @@ function stringLiteral8(): Unicode.String {
 @Test("['\'']: '1'")
 @Test("['\\']: '1'")
 function stringLiteralLength(string: Unicode.String): Natural {
-    List.size<Unicode.CodePoint>(string->value)
+    List.size<Unicode.CodePoint>(string->codePoints)
 }
