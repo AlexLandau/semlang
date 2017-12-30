@@ -214,6 +214,7 @@ sealed class Expression {
     data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
     data class Literal(val type: Type, val literal: String, override val location: Location?): Expression()
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val location: Location?): Expression()
+    // TODO: Ordering of chosenParameters/bindings switches between here and TypedExpression, fix that
     data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
     data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
     data class Follow(val structureExpression: Expression, val name: String, override val location: Location?): Expression()

@@ -34,12 +34,13 @@ class ExtractInlineFunctionsTest(private val file: File) {
         val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
         val withoutInlineFunctions = extractInlineFunctions(module)
+        val validated = validateModule(withoutInlineFunctions, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
         // TODO: Visit the expressions and verify no InlineFunction expressions remain
 
         try {
             try {
-                val testsRun = runAnnotationTests(withoutInlineFunctions)
+                val testsRun = runAnnotationTests(validated)
                 if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
                     Assert.fail("Found no @Test annotations in corpus file $file")
                 }

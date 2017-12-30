@@ -13,6 +13,7 @@ import net.semlang.parser.validateModule
 import net.semlang.transforms.invalidate
 import java.io.File
 
+// TODO: Move this to where invalidation is?
 @RunWith(Parameterized::class)
 class InvalidationTest(private val file: File) {
     companion object ParametersSource {

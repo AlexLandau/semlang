@@ -3,6 +3,7 @@ package net.semlang.transforms
 import net.semlang.api.*
 import net.semlang.api.Function
 
+// TODO: These might be better as functions (or even extension functions) on the API elements
 fun invalidate(module: ValidatedModule): RawContext {
     val functions = module.ownFunctions.values.map(::invalidate)
     val structs = module.ownStructs.values.map(::invalidate)
@@ -16,20 +17,20 @@ fun invalidate(interfac: Interface): UnvalidatedInterface {
 }
 
 private fun invalidateMethod(method: Method): UnvalidatedMethod {
-    val arguments = method.arguments.map(::invalidateArgument)
+    val arguments = method.arguments.map(::invalidate)
     return UnvalidatedMethod(method.name, method.typeParameters, arguments, method.returnType)
 }
 
-private fun invalidateArgument(argument: Argument): UnvalidatedArgument {
+fun invalidate(argument: Argument): UnvalidatedArgument {
     return UnvalidatedArgument(argument.name, argument.type, null)
 }
 
 fun invalidate(struct: Struct): UnvalidatedStruct {
-    val requires = struct.requires?.let { invalidateBlock(it) }
+    val requires = struct.requires?.let { invalidate(it) }
     return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations, null)
 }
 
-private fun invalidateBlock(block: TypedBlock): Block {
+fun invalidate(block: TypedBlock): Block {
     val assignments = block.assignments.map(::invalidateAssignment)
     val returnedExpression = invalidateExpression(block.returnedExpression)
     return Block(assignments, returnedExpression, null)
@@ -42,8 +43,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.IfThen -> {
             val condition = invalidateExpression(expression.condition)
-            val thenBlock = invalidateBlock(expression.thenBlock)
-            val elseBlock = invalidateBlock(expression.elseBlock)
+            val thenBlock = invalidate(expression.thenBlock)
+            val elseBlock = invalidate(expression.elseBlock)
             Expression.IfThen(condition, thenBlock, elseBlock, null)
         }
         is TypedExpression.NamedFunctionCall -> {
@@ -76,8 +77,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
             Expression.Follow(structureExpression, expression.name, null)
         }
         is TypedExpression.InlineFunction -> {
-            val arguments = expression.arguments.map(::invalidateArgument)
-            val block = invalidateBlock(expression.block)
+            val arguments = expression.arguments.map(::invalidate)
+            val block = invalidate(expression.block)
             Expression.InlineFunction(arguments, block, null)
         }
     }
@@ -89,8 +90,8 @@ private fun invalidateAssignment(assignment: ValidatedAssignment): Assignment {
 }
 
 fun invalidate(function: ValidatedFunction): Function {
-    val arguments = function.arguments.map(::invalidateArgument)
-    val block = invalidateBlock(function.block)
+    val arguments = function.arguments.map(::invalidate)
+    val block = invalidate(function.block)
     return Function(function.id, function.typeParameters, arguments, function.returnType, block,
             function.annotations, null, null)
 }

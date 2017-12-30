@@ -5,6 +5,7 @@ import net.semlang.api.*
 import net.semlang.internal.test.TestAnnotationContents
 import net.semlang.internal.test.parseTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
+import net.semlang.parser.validateModule
 import net.semlang.transforms.RenamingStrategies
 import net.semlang.transforms.constrainVariableNames
 import net.semlang.transforms.extractInlineFunctions
@@ -33,7 +34,8 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     }
     // Pre-processing steps
     val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
-    val module = extractInlineFunctions(tempModule1)
+    val withoutInlineFunctions = extractInlineFunctions(tempModule1)
+    val module = validateModule(withoutInlineFunctions, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
