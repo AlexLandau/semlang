@@ -65,12 +65,12 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.NamedFunctionBinding(expression.functionRef, expression.chosenParameters, bindings, null)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, null)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
         }
         is TypedExpression.Follow -> {
             val structureExpression = invalidateExpression(expression.structureExpression)

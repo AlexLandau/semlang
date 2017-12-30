@@ -193,8 +193,8 @@ data class Annotation(val name: String, val value: String?)
 sealed class AmbiguousExpression {
     abstract val location: Location
     data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val chosenParameters: List<Type>, val bindings: List<AmbiguousExpression?>, override val location: Location): AmbiguousExpression()
+    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
+    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<Type>, override val location: Location): AmbiguousExpression()
     data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
     data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val varOrNameLocation: Location?): AmbiguousExpression()
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
@@ -214,9 +214,8 @@ sealed class Expression {
     data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<Type>, override val location: Location?): Expression()
     data class Literal(val type: Type, val literal: String, override val location: Location?): Expression()
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: Type, override val location: Location?): Expression()
-    // TODO: Ordering of chosenParameters/bindings switches between here and TypedExpression, fix that
-    data class NamedFunctionBinding(val functionRef: EntityRef, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val chosenParameters: List<Type>, val bindings: List<Expression?>, override val location: Location?): Expression()
+    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<Type>, override val location: Location?): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<Type>, override val location: Location?): Expression()
     data class Follow(val structureExpression: Expression, val name: String, override val location: Location?): Expression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val block: Block, override val location: Location?): Expression()
 }

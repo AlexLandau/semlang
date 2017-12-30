@@ -142,12 +142,12 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
             }
             is Expression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                Expression.NamedFunctionBinding(expression.functionRef, expression.chosenParameters, bindings, expression.location)
+                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, expression.location)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val functionExpression = apply(expression.functionExpression)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, expression.location)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, expression.location)
             }
             is Expression.Follow -> {
                 val structureExpression = apply(expression.structureExpression)

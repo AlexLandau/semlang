@@ -105,9 +105,9 @@ private class InterfaceToStructConverter(private val context: RawContext) {
                                             method.name,
                                             null
                                     ),
-                                    listOf(),
                                     listOf(Expression.Variable("data", null))
-                                    + method.arguments.map { argument -> null },
+                                            + method.arguments.map { argument -> null },
+                                    listOf(),
                                     null
                             )
                         },

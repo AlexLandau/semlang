@@ -85,12 +85,12 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
-                Expression.NamedFunctionBinding(expression.functionRef, expression.chosenParameters, bindings, null)
+                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
-                Expression.ExpressionFunctionBinding(functionExpression, expression.chosenParameters, bindings, null)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = transformExpression(expression.structureExpression)
@@ -113,7 +113,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                     bindings.add(Expression.Variable(name, null))
                 }
 
-                Expression.NamedFunctionBinding(newFunctionId.asRef(), chosenParameters, bindings, null)
+                Expression.NamedFunctionBinding(newFunctionId.asRef(), bindings, chosenParameters, null)
             }
         }
     }

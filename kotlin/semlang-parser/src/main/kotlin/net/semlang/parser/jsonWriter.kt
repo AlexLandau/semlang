@@ -449,13 +449,13 @@ private fun parseExpression(node: JsonNode): Expression {
             val functionRef = parseEntityRef(node["function"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionBinding(functionRef, chosenParameters, bindings, location = null)
+            return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, location = null)
         }
         "expressionBinding" -> {
             val functionExpression = parseExpression(node["expression"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.ExpressionFunctionBinding(functionExpression, chosenParameters, bindings, location = null)
+            return Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, location = null)
         }
         "inlineFunction" -> {
             val arguments = parseArguments(node["arguments"])

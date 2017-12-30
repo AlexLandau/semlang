@@ -213,8 +213,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 } else {
 
                     return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
-                            expression.chosenParameters,
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 }
             }
@@ -374,9 +374,9 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
                     if (functionRefOrVar != null) {
-                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, chosenParameters, bindings, locationOf(expression))
+                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression))
                     } else {
-                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, chosenParameters, bindings, locationOf(expression))
+                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                     }
                 }
 
