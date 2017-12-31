@@ -31,3 +31,11 @@ node {
     // Set the work directory where node_modules should be located
 //    nodeModulesDir = file("${project.projectDir}")
 }
+
+tasks.yarn_build.dependsOn yarn
+task assemble {
+    dependsOn yarn_build
+}
+task build {
+    dependsOn assemble
+}
