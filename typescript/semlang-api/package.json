@@ -1,0 +1,14 @@
+{
+  "name": "semlang-api",
+  "version": "0.0.1",
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "build": "tsc -p ./"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "typescript": "~2.5.3"
+  }
+}

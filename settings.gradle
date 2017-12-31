@@ -10,4 +10,6 @@ include 'kotlin:semlang-standard-library-test'
 include 'kotlin:semlang-test-utils'
 include 'kotlin:semlang-transforms'
 include 'kotlin:semlang-project-euler'
+include 'typescript:semlang-api'
+// Note: The semlang-code project is not currently integrated with Gradle
 rootProject.name = 'semlang'
