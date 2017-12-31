@@ -1,4 +1,4 @@
 
 export interface Struct {
-    name: String;
+    name: string;
 }
