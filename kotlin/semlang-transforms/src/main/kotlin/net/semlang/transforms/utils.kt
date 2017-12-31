@@ -8,51 +8,51 @@ fun getAllDeclaredVarNames(function: ValidatedFunction): Set<String> {
     function.arguments.forEach { argument ->
         varNames.add(argument.name)
     }
-    addAllDeclaredVarNames(function.block, varNames)
+    addAllDeclaredVarNames(invalidate(function.block), varNames)
     return varNames
 }
 
-fun getAllDeclaredVarNames(block: TypedBlock): Set<String> {
+fun getAllDeclaredVarNames(block: Block): Set<String> {
     val varNames = LinkedHashSet<String>()
     addAllDeclaredVarNames(block, varNames)
     return varNames
 }
 
-private fun addAllDeclaredVarNames(block: TypedBlock, varNames: HashSet<String>) {
+private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
     block.assignments.forEach { addAllDeclaredVarNames(it, varNames) }
     addAllDeclaredVarNames(block.returnedExpression, varNames)
 }
 
-private fun addAllDeclaredVarNames(expression: TypedExpression, varNames: HashSet<String>) {
+private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<String>) {
     val unused: Unit = when (expression) {
-        is TypedExpression.IfThen -> {
+        is Expression.IfThen -> {
             addAllDeclaredVarNames(expression.thenBlock, varNames)
             addAllDeclaredVarNames(expression.elseBlock, varNames)
         }
-        is TypedExpression.InlineFunction -> {
+        is Expression.InlineFunction -> {
             expression.arguments.forEach { varNames.add(it.name) }
             addAllDeclaredVarNames(expression.block, varNames)
         }
-        is TypedExpression.Variable -> {}
-        is TypedExpression.NamedFunctionCall -> {
+        is Expression.Variable -> {}
+        is Expression.NamedFunctionCall -> {
             expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
         }
-        is TypedExpression.ExpressionFunctionCall -> {
+        is Expression.ExpressionFunctionCall -> {
             addAllDeclaredVarNames(expression.functionExpression, varNames)
             expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
         }
-        is TypedExpression.Literal -> {}
-        is TypedExpression.ListLiteral -> {
+        is Expression.Literal -> {}
+        is Expression.ListLiteral -> {
             expression.contents.forEach { addAllDeclaredVarNames(it, varNames) }
         }
-        is TypedExpression.NamedFunctionBinding -> {
+        is Expression.NamedFunctionBinding -> {
             expression.bindings.forEach { binding ->
                 if (binding != null) {
                     addAllDeclaredVarNames(binding, varNames)
                 }
             }
         }
-        is TypedExpression.ExpressionFunctionBinding -> {
+        is Expression.ExpressionFunctionBinding -> {
             addAllDeclaredVarNames(expression.functionExpression, varNames)
             expression.bindings.forEach { binding ->
                 if (binding != null) {
@@ -60,13 +60,13 @@ private fun addAllDeclaredVarNames(expression: TypedExpression, varNames: HashSe
                 }
             }
         }
-        is TypedExpression.Follow -> {
+        is Expression.Follow -> {
             addAllDeclaredVarNames(expression.structureExpression, varNames)
         }
     }
 }
 
-private fun addAllDeclaredVarNames(assignment: ValidatedAssignment, varNames: HashSet<String>) {
+private fun addAllDeclaredVarNames(assignment: Assignment, varNames: HashSet<String>) {
     varNames.add(assignment.name)
     addAllDeclaredVarNames(assignment.expression, varNames)
 }

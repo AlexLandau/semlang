@@ -10,11 +10,12 @@ import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
+import net.semlang.transforms.convertToSem0
 import net.semlang.transforms.simplifyExpressions
 import java.io.File
 
 @RunWith(Parameterized::class)
-class SimplifyExpressionsTest(private val file: File) {
+class ToSem0Test(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
@@ -29,23 +30,24 @@ class SimplifyExpressionsTest(private val file: File) {
     }
 
     @Test
-    fun testSimplification() {
-        val originalContext = parseFile(file).assumeSuccess()
-        val simplifiedContext = simplifyExpressions(originalContext)
-        val simplifiedModule = validateModule(simplifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+    fun testSem0Conversion() {
+        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val converted = convertToSem0(module)
 
-        try {
-            try {
-                val testsRun = runAnnotationTests(simplifiedModule)
-                if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
-                    fail("Found no @Test annotations in corpus file $file")
-                }
-            } catch (e: AssertionError) {
-                throw AssertionError("Simplified context was:\n" + writeToString(simplifiedContext), e)
-            }
-        } catch (e: RuntimeException) {
-            throw RuntimeException("Simplified context was:\n" + writeToString(simplifiedContext), e)
-        }
+        // TODO: Do something with the converted module
+
+//        try {
+//            try {
+//                val testsRun = runAnnotationTests(simplifiedModule)
+//                if (testsRun == 0 && file.name.contains("/semlang-corpus/")) {
+//                    fail("Found no @Test annotations in corpus file $file")
+//                }
+//            } catch (e: AssertionError) {
+//                throw AssertionError("Simplified context was:\n" + writeToString(simplifiedContext), e)
+//            }
+//        } catch (e: RuntimeException) {
+//            throw RuntimeException("Simplified context was:\n" + writeToString(simplifiedContext), e)
+//        }
 
         // TODO: Test sem0 output and parsing round-trip
     }
