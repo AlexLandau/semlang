@@ -13,10 +13,10 @@ fun convertToSem0(module: ValidatedModule): S0Context {
     val v3 = transformInterfacesToStructs(v2)
     val v4 = simplifyExpressions(v3)
 
-    return Sem0Converter(v4).apply()
+    return Sem1To0Converter(v4).apply()
 }
 
-private class Sem0Converter(val input: RawContext) {
+private class Sem1To0Converter(val input: RawContext) {
     fun apply(): S0Context {
         if (input.interfaces.isNotEmpty()) {
             error("Interfaces should have been removed")
