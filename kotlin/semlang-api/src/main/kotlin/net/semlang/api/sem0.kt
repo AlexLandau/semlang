@@ -32,7 +32,11 @@ data class S0Function(val id: String, val typeParameters: List<String>, val argu
 
 data class S0Argument(val name: String, val type: S0Type)
 
-data class S0Annotation(val name: String, val value: String?)
+data class S0Annotation(val name: String, val values: List<S0AnnotationArg>)
+sealed class S0AnnotationArg {
+    data class Literal(val value: String): S0AnnotationArg()
+    data class List(val values: kotlin.collections.List<S0AnnotationArg>): S0AnnotationArg()
+}
 
 data class S0Block(val assignments: List<S0Assignment>, val returnedExpression: S0Expression)
 

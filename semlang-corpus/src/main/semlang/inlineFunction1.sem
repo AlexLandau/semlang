@@ -1,7 +1,7 @@
-@Test("['0', '0']: '0'")
-@Test("['2', '1']: '5'")
-@Test("['3', '3']: '18'")
-@Test("['6', '8']: '100'")
+@Test(["0", "0"], "0")
+@Test(["2", "1"], "5")
+@Test(["3", "3"], "18")
+@Test(["6", "8"], "100")
 function getSquareOfDistanceFromOrigin(a: Integer, b: Integer): Integer {
   let asList = [a, b]<Integer>
   let squaredList = List.map<Integer, Integer>(asList, function(i: Integer) { Integer.times(i, i) })

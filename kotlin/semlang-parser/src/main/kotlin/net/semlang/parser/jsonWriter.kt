@@ -203,8 +203,23 @@ private fun parseType(node: JsonNode): Type {
 
 private fun addAnnotation(node: ObjectNode, annotation: Annotation) {
     node.put("name", annotation.name)
-    if (annotation.value != null) {
-        node.put("value", annotation.value)
+    if (annotation.values.isNotEmpty()) {
+        val valuesArray = node.putArray("values")
+        addAnnotationItems(valuesArray, annotation.values)
+    }
+}
+
+fun addAnnotationItems(array: ArrayNode, values: List<AnnotationArgument>) {
+    for (arg in values) {
+        val unused: Any = when (arg) {
+            is AnnotationArgument.Literal -> {
+                array.add(arg.value)
+            }
+            is AnnotationArgument.List -> {
+                val list = array.addArray()
+                addAnnotationItems(list, arg.values)
+            }
+        }
     }
 }
 
@@ -212,9 +227,22 @@ private fun parseAnnotation(node: JsonNode): Annotation {
     if (!node.isObject()) error("Expected an annotation to be an object")
 
     val name = node["name"]?.textValue() ?: error("Annotations must have names that are text")
-    val value: String? = node["value"]?.textValue()
+    val values = node["values"]?.let(::parseAnnotationArgs) ?: listOf()
 
-    return Annotation(name, value)
+    return Annotation(name, values)
+}
+
+private fun parseAnnotationArgs(node: JsonNode): List<AnnotationArgument> {
+    return node.map(::parseAnnotationArg)
+}
+
+private fun parseAnnotationArg(node: JsonNode): AnnotationArgument {
+    if (node.isTextual) {
+        return AnnotationArgument.Literal(node.textValue())
+    } else if (node.isArray) {
+        return AnnotationArgument.List(parseAnnotationArgs(node))
+    }
+    error("Unrecognized annotation arg type: ${node}")
 }
 
 private fun addInterface(node: ObjectNode, interfac: Interface) {

@@ -1,7 +1,7 @@
-@Test("['Hello']: 'success(72)'")
-@Test("['hello']: 'success(104)'")
-@Test("['']: 'failure'")
-@Test("['🙂']: 'success(128578)'")
+@Test(["Hello"], "success(72)")
+@Test(["hello"], "success(104)")
+@Test([""], "failure")
+@Test(["🙂"], "success(128578)")
 function getFirstCharacter(str: Unicode.String): Try<Natural> {
     Try.map<Unicode.CodePoint, Natural>(List.get<Unicode.CodePoint>(str->codePoints, Natural."0"), getValue|(_))
 }

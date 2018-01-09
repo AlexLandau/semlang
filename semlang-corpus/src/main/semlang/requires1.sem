@@ -5,9 +5,9 @@ struct WholeNumber {
   }
 }
 
-@Test("['1']: 'success(1)'")
-@Test("['123']: 'success(123)'")
-@Test("['0']: 'failure'")
+@Test(["1"], "success(1)")
+@Test(["123"], "success(123)")
+@Test(["0"], "failure")
 function testWholeNumber(input: Natural): Try<Natural> {
   let wholeNumber: Try<WholeNumber> = WholeNumber(input)
   Try.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))

@@ -4,9 +4,9 @@ struct myStuff.Operator {
   apply: (Integer, Integer) -> Integer
 }
 
-@Test("['0']: '1'")
-@Test("['1']: '2'")
-@Test("['11']: '12'")
+@Test(["0"], "1")
+@Test(["1"], "2")
+@Test(["11"], "12")
 function myStuff.myFunction(input: Integer): Integer {
   let 1: Integer = Integer."1"
   let plusOperator: myStuff.Operator = myStuff.Operator(Integer."0", Integer.plus|(_,_))

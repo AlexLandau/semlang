@@ -3,7 +3,7 @@ package net.semlang.writejava
 import com.squareup.javapoet.*
 import net.semlang.api.*
 import net.semlang.internal.test.TestAnnotationContents
-import net.semlang.internal.test.parseTestAnnotationContents
+import net.semlang.internal.test.verifyTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.parser.validateModule
 import net.semlang.transforms.RenamingStrategies
@@ -84,7 +84,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             // Write unit tests for @Test annotations
             function.annotations.forEach { annotation ->
                 if (annotation.name == "Test") {
-                    val testContents = parseTestAnnotationContents(annotation.value ?: error("@Test annotations must have values!"), function)
+                    val testContents = verifyTestAnnotationContents(annotation.values, function)
 
                     prepareJUnitTest(function, testContents)
                 }

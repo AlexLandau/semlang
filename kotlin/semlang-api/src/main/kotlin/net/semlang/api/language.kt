@@ -187,7 +187,11 @@ data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
 data class Range(val start: Position, val end: Position)
 data class Location(val documentUri: String, val range: Range)
 
-data class Annotation(val name: String, val value: String?)
+data class Annotation(val name: String, val values: List<AnnotationArgument>)
+sealed class AnnotationArgument {
+    data class Literal(val value: String): AnnotationArgument()
+    data class List(val values: kotlin.collections.List<AnnotationArgument>): AnnotationArgument()
+}
 
 // Pre-scoping
 sealed class AmbiguousExpression {

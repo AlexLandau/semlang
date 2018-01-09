@@ -6,13 +6,13 @@ interface SupplierFactory {
     getFactory(): Supplier
 }
 
-@Test("[]: '1'")
+@Test([], "1")
 function myCode.getNumberOne(): Natural {
     let supplierFactory: SupplierFactory = getSupplierFactory(Natural."1")
     supplierFactory->getFactory()->getValue()
 }
 
-@Test("[]: '2'")
+@Test([], "2")
 function myCode.getNumberTwo(): Natural {
     let supplierFactory: SupplierFactory = getSupplierFactory(Natural."2")
     supplierFactory->getFactory()->getValue()

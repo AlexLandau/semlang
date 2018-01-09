@@ -1,5 +1,5 @@
-@Test("['true']: 'false'")
-@Test("['false']: 'true'")
+@Test(["true"], "false")
+@Test(["false"], "true")
 function testNot(a: Boolean): Boolean {
     Boolean.not(a)
 }

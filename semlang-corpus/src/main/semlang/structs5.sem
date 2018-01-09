@@ -8,10 +8,10 @@ function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
   Integer."1"
 }
 
-@Test("['0']: '2'")
-@Test("['1']: '6'")
-@Test("['2']: '12'")
-@Test("['3']: '20'")
+@Test(["0"], "2")
+@Test(["1"], "6")
+@Test(["2"], "12")
+@Test(["3"], "20")
 function myStuff.myFunction(input: Natural): Integer {
   let 1: Natural = Natural."1"
   let newX: Natural = Natural.plus(input, 1)

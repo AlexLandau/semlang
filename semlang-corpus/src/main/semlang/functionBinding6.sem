@@ -1,4 +1,4 @@
-@Test("[]: '4'")
+@Test([], "4")
 function myStuff.myFunction(): Integer {
   let mySuccessor: (Integer) -> Integer = Integer.plus|(_, Integer."1")
   let myGetter: () -> Integer = mySuccessor|(Integer."3")

@@ -1,15 +1,15 @@
 
-@Test("[]: '3'")
+@Test([], "3")
 function myCode.listLiteralSize(): Natural {
   let list = [Integer."1", Integer."10", Integer."50"]<Integer>
   List.size<Integer>(list)
 }
 
-@Test("['0']: 'success(23)'")
-@Test("['1']: 'success(17)'")
-@Test("['2']: 'success(42)'")
-@Test("['3']: 'failure'")
-@Test("['4']: 'failure'")
+@Test(["0"], "success(23)")
+@Test(["1"], "success(17)")
+@Test(["2"], "success(42)")
+@Test(["3"], "failure")
+@Test(["4"], "failure")
 function myCode.listGet(index: Natural): Try<Natural> {
   let list = [Natural."23", Natural."17", Natural."42"]<Natural>
   List.get<Natural>(list, index)

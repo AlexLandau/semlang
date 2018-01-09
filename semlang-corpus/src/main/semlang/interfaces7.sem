@@ -6,7 +6,7 @@ interface SupplierFactory<T> {
     getFactory(): Supplier<T>
 }
 
-@Test("[]: '1'")
+@Test([], "1")
 function myCode.getNumberOne(): Natural {
     let supplierFactory: SupplierFactory<Natural> = SupplierFactory<Natural, Natural>(Natural."1", SupplierFactory.Adapter<Natural, Natural>(getSupplier<Natural>|(_)))
     supplierFactory->getFactory()->getValue()

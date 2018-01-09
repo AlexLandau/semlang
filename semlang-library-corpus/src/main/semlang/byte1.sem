@@ -1,59 +1,59 @@
 
-@Test("['0']: 'success(0)'")
-@Test("['255']: 'success(255)'")
-@Test("['256']: 'failure'")
-@Test("['511']: 'failure'")
+@Test(["0"], "success(0)")
+@Test(["255"], "success(255)")
+@Test(["256"], "failure")
+@Test(["511"], "failure")
 function byteTest(i: Natural): Try<Natural> {
     let byte: Try<Byte> = Byte(i)
     Try.map<Byte, Natural>(byte, function(validByte: Byte) { validByte->natural })
 }
 
-@Test("[]: '0'")
+@Test([], "0")
 function byteLiteralTest1(): Byte {
     Byte."0"
 }
 
-@Test("[]: '25'")
+@Test([], "25")
 function byteLiteralTest2(): Byte {
     Byte."25"
 }
 
-@Test("[]: '255'")
+@Test([], "255")
 function byteLiteralTest3(): Byte {
     Byte."255"
 }
 
-@Test("['0']: '0'")
-@Test("['1']: '0'")
-@Test("['127']: '0'")
-@Test("['128']: '1'")
-@Test("['129']: '1'")
-@Test("['254']: '1'")
-@Test("['255']: '1'")
+@Test(["0"], "0")
+@Test(["1"], "0")
+@Test(["127"], "0")
+@Test(["128"], "1")
+@Test(["129"], "1")
+@Test(["254"], "1")
+@Test(["255"], "1")
 function Byte.toBitsTest1(byte: Byte): Bit {
   let bits = Byte.toBits(byte)->bitsBigEndian
   Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."0"))
 }
 
-@Test("['0']: '0'")
-@Test("['1']: '1'")
-@Test("['127']: '1'")
-@Test("['128']: '0'")
-@Test("['129']: '1'")
-@Test("['254']: '0'")
-@Test("['255']: '1'")
+@Test(["0"], "0")
+@Test(["1"], "1")
+@Test(["127"], "1")
+@Test(["128"], "0")
+@Test(["129"], "1")
+@Test(["254"], "0")
+@Test(["255"], "1")
 function Byte.toBitsTest2(byte: Byte): Bit {
   let bits = Byte.toBits(byte)->bitsBigEndian
   Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."7"))
 }
 
-@Test("['0']: '0'")
-@Test("['1']: '0'")
-@Test("['127']: '0'")
-@Test("['128']: '1'")
-@Test("['129']: '1'")
-@Test("['254']: '1'")
-@Test("['255']: '1'")
+@Test(["0"], "0")
+@Test(["1"], "0")
+@Test(["127"], "0")
+@Test(["128"], "1")
+@Test(["129"], "1")
+@Test(["254"], "1")
+@Test(["255"], "1")
 function Byte.toBitsTest3(byte: Byte): Bit {
   let bits = Byte.toBits(byte)
   ByteBits.get(bits, Byte.BitPosition."0")

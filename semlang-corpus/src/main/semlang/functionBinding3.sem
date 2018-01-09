@@ -2,8 +2,8 @@ function myCode.applyThreeTimes<T>(input: T, f: (T) -> T): T {
   f(f(f(input)))
 }
 
-@Test("['-1']: '2'")
-@Test("['2']: '5'")
+@Test(["-1"], "2")
+@Test(["2"], "5")
 function myCode.addThreeV1(n: Integer): Integer {
   let increment: (Integer) -> Integer = plusMyStuff|(_, Integer."1")
   let incrementRenamed: (Integer) -> Integer = increment|(_)

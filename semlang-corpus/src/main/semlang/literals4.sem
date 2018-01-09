@@ -1,52 +1,52 @@
 
-@Test("[]: '1'")
+@Test([], "1")
 function stringLiteral1(): Unicode.String {
     Unicode.String."1"
 }
 
-@Test("[]: 'Hello, world!'")
+@Test([], "Hello, world!")
 function stringLiteral2(): Unicode.String {
     Unicode.String."Hello, world!"
 }
 
-@Test("[]: ''")
+@Test([], "")
 function stringLiteral3(): Unicode.String {
     Unicode.String.""
 }
 
-@Test("[]: '🙂'")
+@Test([], "🙂")
 function stringLiteral4(): Unicode.String {
     Unicode.String."🙂"
 }
 
-@Test("[]: ' '")
+@Test([], " ")
 function stringLiteral5(): Unicode.String {
     Unicode.String." "
 }
 
-@Test("[]: '\"'")
+@Test([], "\"")
 function stringLiteral6(): Unicode.String {
     Unicode.String."\""
 }
 
-@Test("[]: '\''")
+@Test([], "\'")
 function stringLiteral7(): Unicode.String {
     Unicode.String."'"
 }
 
-@Test("[]: '\\'")
+@Test([], "\\")
 function stringLiteral8(): Unicode.String {
     Unicode.String."\\"
 }
 
-@Test("['1']: '1'")
-@Test("['Hello, world!']: '13'")
-@Test("['']: '0'")
-@Test("['🙂']: '1'")
-@Test("[' ']: '1'")
-@Test("['\"']: '1'")
-@Test("['\'']: '1'")
-@Test("['\\']: '1'")
+@Test(["1"], "1")
+@Test(["Hello, world!"], "13")
+@Test([""], "0")
+@Test(["🙂"], "1")
+@Test([" "], "1")
+@Test(["\""], "1")
+@Test(["\'"], "1")
+@Test(["\\"], "1")
 function stringLiteralLength(string: Unicode.String): Natural {
     List.size<Unicode.CodePoint>(string->codePoints)
 }

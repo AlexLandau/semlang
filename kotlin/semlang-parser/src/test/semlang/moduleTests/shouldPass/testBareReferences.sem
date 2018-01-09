@@ -1,10 +1,10 @@
 
-@Test("[]: '2'")
+@Test([], "2")
 function testExportedBy1(): Integer {
     exportedBy1()
 }
 
-@Test("[]: '7'")
+@Test([], "7")
 function testExportedBy2(): Integer {
     exportedBy2()
 }

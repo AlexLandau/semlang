@@ -4,10 +4,10 @@ struct myStuff.Point {
   y: Integer
 }
 
-@Test("['0']: '-1'")
-@Test("['1']: '0'")
-@Test("['2']: '3'")
-@Test("['3']: '8'")
+@Test(["0"], "-1")
+@Test(["1"], "0")
+@Test(["2"], "3")
+@Test(["3"], "8")
 function myStuff.myFunction(input: Integer): Integer {
   let 1: Integer = Integer."1"
   let newX: Integer = Integer.plus(input, 1)

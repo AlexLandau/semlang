@@ -1,20 +1,20 @@
 
-@Test("[]: '1'")
+@Test([], "1")
 function testExportedByBoth1(): Integer {
     semlang-test:testModule1:devTest:exportedByBoth()
 }
 
-@Test("[]: '5'")
+@Test([], "5")
 function testExportedByBoth2(): Integer {
     semlang-test:testModule2:devTest:exportedByBoth()
 }
 
-@Test("[]: '2'")
+@Test([], "2")
 function testExportedBy1(): Integer {
     semlang-test:testModule1:devTest:exportedBy1()
 }
 
-@Test("[]: '7'")
+@Test([], "7")
 function testExportedBy2(): Integer {
     semlang-test:testModule2:devTest:exportedBy2()
 }

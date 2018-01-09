@@ -1,5 +1,5 @@
-@Test("['hello']: 'hello'")
-@Test("['']: ''")
+@Test(["hello"], "hello")
+@Test([""], "")
 function stringIdentity(str: Unicode.String): Unicode.String {
     str
 }
