@@ -33,17 +33,23 @@ node {
 }
 
 tasks.yarn_build.dependsOn yarn
-task assemble {
-    dependsOn yarn_build
-}
-task build {
-    dependsOn assemble
-}
 tasks.yarn_build {
     inputs.file 'package.json'
     inputs.file 'tsconfig.json'
     inputs.dir 'src'
     outputs.dir 'lib'
+}
+task assemble {
+    dependsOn yarn_build
+}
+tasks.yarn_test.dependsOn assemble
+tasks.yarn_test.dependsOn ':kotlin:typescript-interpreter-test:translateCorpusToJson'
+task test {
+    dependsOn yarn_test
+}
+task build {
+    dependsOn assemble
+    dependsOn test
 }
 
 // Note: We currently assume this will be run by a limited number of other places, which already

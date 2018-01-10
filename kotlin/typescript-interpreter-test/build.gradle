@@ -1,6 +1,12 @@
 dependencies {
-  testCompile project(':kotlin:semlang-parser')
+  compile project(':kotlin:semlang-parser')
 }
 
 // TODO: Need to run tests after appropriate stuff happens in :typescript:semlang-api
 tasks.test.dependsOn ':typescript:semlang-api:build'
+
+// TODO: Let's rename this project to "typescript-support" or something
+task translateCorpusToJson(type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  main = 'JsonCorpusKt'
+}

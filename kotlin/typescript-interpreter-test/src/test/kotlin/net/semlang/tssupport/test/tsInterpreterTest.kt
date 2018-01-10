@@ -7,10 +7,12 @@ import org.junit.runners.Parameterized
 import net.semlang.api.*
 import net.semlang.parser.parseAndValidateFile
 import net.semlang.parser.toJsonText
+import org.junit.Ignore
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 // Until we have proper parsing in JS, this is the easiest way to run these tests
+@Ignore // TODO: Remove this once the replacement is in place
 @RunWith(Parameterized::class)
 class TypescriptInterpreterTests(private val file: File) {
     companion object ParametersSource {

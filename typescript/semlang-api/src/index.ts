@@ -1,3 +1,3 @@
 
 export { toModule } from './interpreter/module';
-export { runTests } from './interpreter/test';
+export { runTests } from './interpreter/testRunner';
