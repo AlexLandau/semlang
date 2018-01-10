@@ -1,0 +1,6 @@
+dependencies {
+  testCompile project(':kotlin:semlang-parser')
+}
+
+// TODO: Need to run tests after appropriate stuff happens in :typescript:semlang-api
+tasks.test.dependsOn ':typescript:semlang-api:build'

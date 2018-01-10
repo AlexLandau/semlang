@@ -16,7 +16,17 @@ import net.semlang.api.Function
 val LANGUAGE = "sem1"
 val FORMAT_VERSION = "0.1.0"
 
-fun toJson(context: ValidatedModule): JsonNode {
+fun toJsonText(module: ValidatedModule): String {
+    return toJsonText(toJson(module))
+}
+
+private fun toJsonText(node: JsonNode): String {
+    val mapper: ObjectMapper = ObjectMapper()
+    val writer = mapper.writer()
+    return writer.writeValueAsString(node)
+}
+
+fun toJson(module: ValidatedModule): JsonNode {
     val mapper: ObjectMapper = ObjectMapper()
     val node = mapper.createObjectNode()
 
@@ -26,9 +36,9 @@ fun toJson(context: ValidatedModule): JsonNode {
     // TODO: Put information about upstream contexts
     // TODO: Maybe put identity information about this context?
 
-    addArray(node, "functions", context.ownFunctions.values, ::addFunction)
-    addArray(node, "structs", context.ownStructs.values, ::addStruct)
-    addArray(node, "interfaces", context.ownInterfaces.values, ::addInterface)
+    addArray(node, "functions", module.ownFunctions.values, ::addFunction)
+    addArray(node, "structs", module.ownStructs.values, ::addStruct)
+    addArray(node, "interfaces", module.ownInterfaces.values, ::addInterface)
     return node
 }
 
@@ -350,14 +360,14 @@ private fun parseBlock(node: JsonNode): Block {
 
 private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {
     node.put("let", assignment.name)
-    addExpression(node.putObject("="), assignment.expression)
+    addExpression(node.putObject("be"), assignment.expression)
 }
 
 private fun parseAssignment(node: JsonNode): Assignment {
     if (!node.isObject()) error("Expected an assignment to be an object")
 
     val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
-    val expression = parseExpression(node["="] ?: error("Assignments should have a '=' field indicating the expression"))
+    val expression = parseExpression(node["be"] ?: error("Assignments should have a '=' field indicating the expression"))
 
     return Assignment(name, null, expression, null)
 }
@@ -413,6 +423,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             node.put("function", expression.functionRef.toString())
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addArray(node, "bindings", expression.bindings, ::addBinding)
+            addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
         is TypedExpression.ExpressionFunctionBinding -> {
@@ -427,6 +438,16 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             addArray(node, "arguments", expression.arguments, ::addFunctionArgument)
             addBlock(node.putArray("body"), expression.block)
             return
+        }
+    }
+}
+
+fun addBindings(bindingsArray: ArrayNode, bindings: List<TypedExpression?>) {
+    bindings.forEach { binding ->
+        if (binding != null) {
+            addBinding(bindingsArray.addObject(), binding)
+        } else {
+            bindingsArray.addNull()
         }
     }
 }

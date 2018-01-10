@@ -1,4 +1,3 @@
 
-export interface Struct {
-    name: string;
-}
+export { toModule } from './interpreter/module';
+export { runTests } from './interpreter/test';

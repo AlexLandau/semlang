@@ -13,6 +13,7 @@ export interface Module {
     functions: { [id: string]: Function }
     structs: { [id: string]: Struct }
     interfaces: { [id: string]: Interface }
+    interfacesByAdapterId: { [adapterId: string]: Interface }
 }
 
 export interface Function {
@@ -60,15 +61,23 @@ export type Block = BlockElement[];
 
 export interface Annotation {
     name: string;
-    value?: string;
+    values: AnnotationArgument[];
 }
+
+// The following is disallowed, so I need to cheat a little...
+// export type AnnotationArgument = string | AnnotationArgument[];
+export type AnnotationArgument = string | (string | any[])[];
 
 // TODO: Maybe reconsider these two and Block?
 export type BlockElement = Assignment | { return: Expression };
 
+export function isAssignment(blockElement: BlockElement): blockElement is Assignment {
+    return "let" in blockElement;
+}
+
 export interface Assignment {
     let: string;
-    "=": Expression;
+    be: Expression;
 }
 
 export type Expression = Expression.Variable
@@ -141,7 +150,26 @@ export namespace Expression {
     }
 }
 
-// TODO: This should probably have undefined in place of {}
-export type Binding = Expression | {};
+export type Binding = Expression | null;
 
+export type Type = "Integer"
+ | "Natural"
+ | "Boolean"
+ | { List: Type }
+ | { Try: Type }
+ | Type.FunctionType
+ | Type.NamedType;
+export namespace Type {
+    export interface FunctionType {
+        from: Type[];
+        to: Type;
+    }
+    export interface NamedType {
+        name: string;
+        params?: Type[];
+    }
+}
 
+export function isNamedType(type: Type): type is Type.NamedType {
+    return typeof type === "object" && "name" in type;
+}
