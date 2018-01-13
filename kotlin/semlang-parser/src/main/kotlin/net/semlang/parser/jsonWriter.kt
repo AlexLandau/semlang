@@ -422,7 +422,6 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             node.put("type", "namedBinding")
             node.put("function", expression.functionRef.toString())
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
-            addArray(node, "bindings", expression.bindings, ::addBinding)
             addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
@@ -430,7 +429,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             node.put("type", "expressionBinding")
             addExpression(node.putObject("expression"), expression.functionExpression)
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
-            addArray(node, "bindings", expression.bindings, ::addBinding)
+            addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
         is TypedExpression.InlineFunction -> {

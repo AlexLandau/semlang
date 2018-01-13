@@ -173,8 +173,7 @@ class InterpreterContext {
         } else if (expression.type === "inlineFunction") {
             throw new Error("TODO: implement inline functions")
         } else {
-            throw new Error(`Expected an expression, but was: ${JSON.stringify(expression)}`);
-            // assertNever(expression);
+            throw assertNever(expression);
         }
     }
 
