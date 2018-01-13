@@ -1,5 +1,5 @@
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType } from "../api/language";
-import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject } from "./SemObject";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType } from "../api/language";
+import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject } from "./SemObject";
 import { NativeFunctions } from "./nativeFunctions";
 
 export function evaluateLiteral(module: Module, type: Type, value: string): SemObject {
@@ -167,8 +167,8 @@ class InterpreterContext {
         } else if (expression.type === "inlineFunction") {
             throw new Error("TODO: implement inline functions")
         } else {
-            assertNever(expression);
             throw new Error(`Expected an expression, but was: ${JSON.stringify(expression)}`);
+            // assertNever(expression);
         }
     }
 
@@ -187,10 +187,24 @@ class InterpreterContext {
         } else if (type === "Natural") {
             const jsNumber = Number(value);
             return naturalObject(jsNumber);
+        } else if (isTryType(type)) {
+            // Note: This is currently only intended for @Test cases
+            if (value === "failure") {
+                return failureObject();
+            } else {
+                if (value.substr(0, 8) !== "success(" || value.charAt(value.length - 1) !== ")") {
+                    throw new Error(`Try literal format error; was ${value}`);
+                }
+                const innerType = type.Try;
+                const innerValue = value.substr(8, value.length - 9);
+                const innerObject = this.evaluateLiteral(innerType, innerValue);
+                return successObject(innerObject);
+            }
         } else {
             // Remainder of cases should be named types
             if (isNamedType(type)) {
                 const name = type.name;
+
                 // TODO: Handle strings
             }
             throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);

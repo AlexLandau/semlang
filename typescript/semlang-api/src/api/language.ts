@@ -170,6 +170,10 @@ export namespace Type {
     }
 }
 
+export function isTryType(type: Type): type is { Try: Type } {
+    return typeof type === "object" && "Try" in type;
+}
+
 export function isNamedType(type: Type): type is Type.NamedType {
     return typeof type === "object" && "name" in type;
 }
