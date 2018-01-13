@@ -14,10 +14,7 @@ const filenames = fs.readdirSync(translationsDir);
 
 for (const filename of filenames) {
     const file = translationsDir + "/" + filename;
-    test('This is sample test ' + file, () => {
-        // expect(1 + 2).toBe(3);
-        // fs.readFileSync(file);
-
+    test('Interpreter test for ' + file, () => {
         const jsonString = fs.readFileSync(file, 'utf8');
         const context = JSON.parse(jsonString);
         // Unfortunately, "module" is already a thing...

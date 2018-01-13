@@ -1,6 +1,7 @@
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType } from "../api/language";
-import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject } from "./SemObject";
+import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject } from "./SemObject";
 import { NativeFunctions } from "./nativeFunctions";
+import { findIndex, assertNever } from "./util";
 
 export function evaluateLiteral(module: Module, type: Type, value: string): SemObject {
     const context = new InterpreterContext(module);
@@ -41,7 +42,11 @@ class InterpreterContext {
 
         const theStruct = this.module.structs[functionName];
         if (theStruct !== undefined) {
-            throw new Error(`TODO: Implement struct constructors`);
+            if (theStruct.requires !== undefined) {
+                throw new Error(`TODO: Implement struct constructors with requires`);
+            } else {
+                return structObject(theStruct, args);
+            }
         }
 
         const theInterface = this.module.interfaces[functionName];
@@ -131,9 +136,10 @@ class InterpreterContext {
                 if (index === -1) {
                     throw new Error(`Struct of type ${structDef.id} doesn't have member named ${followName}`);
                 }
+                return members[index];
             }
             // TODO: If we need to do interfaces separately, do that
-            throw new Error(`Object wasn't a structure`);
+            throw new Error(`Object wasn't a structure; was: ${JSON.stringify(structureObject)}`);
         } else if (expression.type === "namedBinding") {
             const functionId = expression.function;
             const bindingExpressions = expression.bindings;

@@ -14,6 +14,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.equals": (left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
         return booleanObject(left.value === right.value);
     },
+    "Integer.fromNatural": (natural: SemObject.Natural): SemObject.Integer => {
+        return integerObject(natural.value);
+    },
     "Integer.minus": (left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value - right.value);
     },

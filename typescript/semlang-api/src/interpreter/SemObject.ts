@@ -95,6 +95,14 @@ export function failureObject(): SemObject.Try.Failure {
     return FAILURE;
 }
 
+export function structObject(struct: StructDef, members: SemObject[]): SemObject.Struct {
+    return {
+        type: "struct",
+        struct,
+        members,
+    }
+}
+
 export function bindingObject(functionId: string, bindings: Array<SemObject | undefined>): SemObject.FunctionBinding {
     return {
         type: "binding",
