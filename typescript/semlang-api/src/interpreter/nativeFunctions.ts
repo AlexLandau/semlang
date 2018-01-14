@@ -1,5 +1,27 @@
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject } from "./SemObject";
+import { Struct } from "../api/language";
 
+
+// TODO: Would be nice to simplify further by offering these as parseable, or linked into sem0...
+export const NativeStructs: { [structName: string]: Struct } = {
+    "Unicode.CodePoint": {
+        id: "Unicode.CodePoint",
+        members: [{ name: "natural", type: "Natural" }],
+        requires: [
+            {
+                return: {
+                    type: "namedCall",
+                    function: "Natural.lessThan",
+                    chosenParameters: [],
+                    arguments: [
+                        { type: "var", var: "natural" },
+                        { type: "literal", literalType: "Natural", value: "1114112" }
+                    ],
+                }
+            }
+        ],
+    },
+};
 
 export const NativeFunctions: { [functionName: string]: Function } = {
     "Boolean.and": (a: SemObject.Boolean, b: SemObject.Boolean): SemObject.Boolean => {

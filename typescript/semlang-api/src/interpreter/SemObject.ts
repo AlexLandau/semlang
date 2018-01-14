@@ -5,6 +5,7 @@ export type SemObject = SemObject.Integer
  | SemObject.Boolean
  | SemObject.List
  | SemObject.Try
+ | SemObject.String
  | SemObject.Struct
  | SemObject.FunctionBinding;
 export namespace SemObject {
@@ -35,6 +36,10 @@ export namespace SemObject {
             type: "Try";
             tryType: "failure";
         }
+    }
+    export interface String {
+        type: "String";
+        value: string;
     }
     export interface Struct {
         type: "struct";
@@ -93,6 +98,13 @@ const FAILURE: SemObject.Try.Failure = {
 };
 export function failureObject(): SemObject.Try.Failure {
     return FAILURE;
+}
+
+export function stringObject(value: string): SemObject.String {
+    return {
+        type: "String",
+        value,
+    }
 }
 
 export function structObject(struct: StructDef, members: SemObject[]): SemObject.Struct {

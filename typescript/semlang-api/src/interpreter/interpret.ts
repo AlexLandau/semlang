@@ -1,6 +1,6 @@
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType } from "../api/language";
-import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject } from "./SemObject";
-import { NativeFunctions } from "./nativeFunctions";
+import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject } from "./SemObject";
+import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 
 export function evaluateLiteral(module: Module, type: Type, value: string): SemObject {
@@ -137,6 +137,17 @@ class InterpreterContext {
                     throw new Error(`Struct of type ${structDef.id} doesn't have member named ${followName}`);
                 }
                 return members[index];
+            } else if (structureObject.type === "String") {
+                const stringLiteral = structureObject.value;
+
+                const charCodeObjects: SemObject.Struct[] = [];
+                for (let i = 0; i < stringLiteral.length; i++) {
+                    const charCode = stringLiteral.charCodeAt(i);
+                    const charCodeNatural = naturalObject(charCode);
+                    const charCodeObject = structObject(NativeStructs["Unicode.CodePoint"], [charCodeNatural]);
+                    charCodeObjects.push(charCodeObject);
+                }
+                return listObject(charCodeObjects);
             }
             // TODO: If we need to do interfaces separately, do that
             throw new Error(`Object wasn't a structure; was: ${JSON.stringify(structureObject)}`);
@@ -211,6 +222,9 @@ class InterpreterContext {
                 const name = type.name;
 
                 // TODO: Handle strings
+                if (name === "Unicode.String") {
+                    return stringObject(value);
+                }
             }
             throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
         }

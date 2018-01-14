@@ -400,22 +400,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
 }
 
 fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {
-    val sb = StringBuilder()
-    var i = 0
-    while (i < literal.length) {
-        val c = literal[i]
-        if (c == '\\') {
-            if (i + 1 >= literal.length) {
-                error("Something went wrong with string literal evaluation")
-            }
-            sb.append(literal[i + 1])
-            i += 2
-        } else {
-            sb.append(c)
-            i++
-        }
-    }
-    return SemObject.UnicodeString(sb.toString())
+    return SemObject.UnicodeString(literal)
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {

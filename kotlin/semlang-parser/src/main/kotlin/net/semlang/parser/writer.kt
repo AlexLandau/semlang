@@ -134,7 +134,7 @@ private fun writeAnnotationArguments(annotationArgs: List<AnnotationArgument>, w
         val unused = when (arg) {
             is AnnotationArgument.Literal -> {
                 writer.append("\"")
-                        .append(arg.value)
+                        .append(escapeLiteralContents(arg.value))
                         .append("\"")
             }
             is AnnotationArgument.List -> {
@@ -174,7 +174,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         is Expression.Literal -> {
             writer.append(expression.type.toString())
                     .append(".\"")
-                    .append(expression.literal) // TODO: Might need escaping here?
+                    .append(escapeLiteralContents(expression.literal)) // TODO: Might need escaping here?
                     .append("\"")
         }
         is Expression.ListLiteral -> {
@@ -298,4 +298,18 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")
     }
+}
+
+fun escapeLiteralContents(literal: String): String {
+    val sb = StringBuilder()
+    var i = 0
+    while (i < literal.length) {
+        val c = literal[i]
+        if (c == '\\' || c == '\"') {
+            sb.append('\\')
+        }
+        sb.append(c)
+        i++
+    }
+    return sb.toString()
 }

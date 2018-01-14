@@ -14,7 +14,25 @@ import net.semlang.api.Annotation
 import java.io.File
 import java.util.*
 
-private fun parseLiteral(literalFromParser: TerminalNode) = literalFromParser.text.drop(1).dropLast(1)
+private fun parseLiteral(literalFromParser: TerminalNode): String {
+    val innerString = literalFromParser.text.drop(1).dropLast(1)
+    val sb = StringBuilder()
+    var i = 0
+    while (i < innerString.length) {
+        val c = innerString[i]
+        if (c == '\\') {
+            if (i + 1 >= innerString.length) {
+                error("Something went wrong with string literal evaluation")
+            }
+            sb.append(innerString[i + 1])
+            i += 2
+        } else {
+            sb.append(c)
+            i++
+        }
+    }
+    return sb.toString()
+}
 
 private fun rangeOf(context: ParserRuleContext): Range {
     return Range(
