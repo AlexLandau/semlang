@@ -40,10 +40,25 @@ class InterpreterContext {
             return this.evaluateBlock(theFunction.block, boundArguments);
         }
 
-        const theStruct = this.module.structs[functionName];
+        const theStruct = NativeStructs[functionName] || this.module.structs[functionName];
         if (theStruct !== undefined) {
             if (theStruct.requires !== undefined) {
-                throw new Error(`TODO: Implement struct constructors with requires`);
+                const proposedValues: BoundVars = {};
+                theStruct.members.forEach((member, index) => {
+                    const inputForArg = args[index];
+                    // TODO: Might want to do some type checking here
+                    proposedValues[member.name] = inputForArg;
+                });
+                const requiresValue = this.evaluateBlock(theStruct.requires, proposedValues);
+                if (requiresValue.type !== "Boolean") {
+                    throw new Error(`Non-boolean value returned from a 'requires' block`);
+                }
+                const isSatisfied = requiresValue.value;
+                if (isSatisfied) {
+                    return successObject(structObject(theStruct, args));
+                } else {
+                    return failureObject();
+                }
             } else {
                 return structObject(theStruct, args);
             }

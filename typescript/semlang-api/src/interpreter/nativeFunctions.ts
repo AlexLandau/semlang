@@ -39,6 +39,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.fromNatural": (natural: SemObject.Natural): SemObject.Integer => {
         return integerObject(natural.value);
     },
+    "Integer.greaterThan": (left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
+        return booleanObject(left.value > right.value);
+    },
     "Integer.minus": (left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value - right.value);
     },
@@ -65,6 +68,12 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Natural.equals": (left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
         return booleanObject(left.value === right.value);
     },
+    "Natural.greaterThan": (left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
+        return booleanObject(left.value > right.value);
+    },
+    "Natural.lessThan": (left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
+        return booleanObject(left.value < right.value);
+    },
     "Natural.plus": (left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
         return naturalObject(left.value + right.value);
     },
@@ -72,7 +81,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         return naturalObject(left.value * right.value);
     },
     "Try.assume": (theTry: SemObject.Try): SemObject => {
-        if (theTry.tryType === "success") {
+        if (theTry.type === "Try.Success") {
             return theTry.value;
         } else {
             throw new Error(`A Try.assume() call failed`);
@@ -80,5 +89,16 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
     "Try.failure": (): SemObject.Try.Failure => {
         return failureObject();
+    },
+    // "Try.map": (theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
+    //     if (theTry.type === "Try.Success") {
+    //         const value = theTry.value;
+    //         // TODO: Need to be able to reach back in to call here...
+    //     } else {
+    //         return theTry;
+    //     }
+    // },
+    "Unicode.String.length": (string: SemObject.String): SemObject.Natural => {
+        return naturalObject(string.value.length);
     },
 }

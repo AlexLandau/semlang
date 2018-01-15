@@ -28,13 +28,11 @@ export namespace SemObject {
     export type Try = Try.Success | Try.Failure;
     export namespace Try {
         export interface Success {
-            type: "Try";
-            tryType: "success";
+            type: "Try.Success";
             value: SemObject;
         }
         export interface Failure {
-            type: "Try";
-            tryType: "failure";
+            type: "Try.Failure";
         }
     }
     export interface String {
@@ -86,15 +84,13 @@ export function listObject(contents: SemObject[]): SemObject.List {
 
 export function successObject(innerValue: SemObject): SemObject.Try.Success {
     return {
-        type: "Try",
-        tryType: "success",
+        type: "Try.Success",
         value: innerValue,
     }
 }
 
 const FAILURE: SemObject.Try.Failure = {
-    type: "Try",
-    tryType: "failure",
+    type: "Try.Failure",
 };
 export function failureObject(): SemObject.Try.Failure {
     return FAILURE;
