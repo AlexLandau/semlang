@@ -1,4 +1,4 @@
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType } from "../api/language";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct } from "../api/language";
 import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -71,8 +71,8 @@ class InterpreterContext {
 
         const theAdaptedInterface = this.module.interfacesByAdapterId[functionName];
         if (theAdaptedInterface !== undefined) {
-            throw new Error(`TODO: Implement interface adapter constructors`);
-            
+            const adapterStruct = getAdapterStruct(theAdaptedInterface);
+            return structObject(adapterStruct, args);
         }
 
         throw new Error(`Couldn't find the function ${functionName}`);

@@ -177,3 +177,49 @@ export function isTryType(type: Type): type is { Try: Type } {
 export function isNamedType(type: Type): type is Type.NamedType {
     return typeof type === "object" && "name" in type;
 }
+
+export function getAdapterStruct(interfac: Interface): Struct {
+    const dataTypeName = getDataTypeName(interfac.typeParameters);
+    const members = interfac.methods.map((method) => 
+        ({
+            name: method.name,
+            type: addDataTypeArg(getFunctionType(method), dataTypeName),
+        })
+    );
+    return {
+        id: interfac.id + ".Adapter",
+        members,
+        typeParameters: [dataTypeName].concat(interfac.typeParameters || []),
+    };
+}
+
+function addDataTypeArg(type: Type.FunctionType, dataTypeName: string): Type.FunctionType {
+    return {
+        from: [{name: dataTypeName} as Type].concat(type.from),
+        to: type.to,
+    };
+}
+
+function getFunctionType(method: Method): Type.FunctionType {
+    return {
+        from: method.arguments.map((argument) => argument.type),
+        to: method.returnType,
+    };
+}
+
+function getDataTypeName(existingTypeParameters: string[] | undefined): string {
+    if (existingTypeParameters === undefined) {
+        return "A";
+    }
+    if (existingTypeParameters.indexOf("A") < 0) {
+        return "A";
+    }
+    let index = 2
+    while (true) {
+        const name = "A" + index
+        if (existingTypeParameters.indexOf(name) < 0) {
+            return name
+        }
+        index++
+    }
+}
