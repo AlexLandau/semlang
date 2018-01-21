@@ -16,7 +16,7 @@ export function interpret(module: Module, functionName: string, args: SemObject[
 
 type BoundVars = { [varName: string]: SemObject };
 
-class InterpreterContext {
+export class InterpreterContext {
     module: Module;
     constructor(module: Module) {
         this.module = module;
@@ -26,7 +26,7 @@ class InterpreterContext {
         // Note: This currently isn't going to do nearly enough checks
         if (functionName in NativeFunctions) {
             const theFunction = NativeFunctions[functionName];
-            return theFunction(...args);
+            return theFunction(this, ...args);
         }
 
         // Find the function
@@ -114,7 +114,7 @@ class InterpreterContext {
         return this.evaluateFunctionCall(functionId, fullArgs);
     }
 
-    evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
+    private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
         for (const blockElement of block) {
             if (isAssignment(blockElement)) {
                 const varName = blockElement.let;
@@ -129,7 +129,7 @@ class InterpreterContext {
         throw new Error(`Malformed block: ${JSON.stringify(block)}`);
     }
     
-    evaluateExpression(expression: Expression, alreadyBoundVars: BoundVars): SemObject {
+    private evaluateExpression(expression: Expression, alreadyBoundVars: BoundVars): SemObject {
         if (expression.type === "var") {
             const varName = expression.var;
             const value = alreadyBoundVars[varName];
