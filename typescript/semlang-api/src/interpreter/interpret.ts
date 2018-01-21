@@ -1,3 +1,4 @@
+import * as UtfString from "utfstring";
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct } from "../api/language";
 import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
@@ -191,14 +192,13 @@ class InterpreterContext {
             } else if (structureObject.type === "String") {
                 const stringLiteral = structureObject.value;
 
-                const charCodeObjects: SemObject.Struct[] = [];
-                for (let i = 0; i < stringLiteral.length; i++) {
-                    const charCode = stringLiteral.charCodeAt(i);
-                    const charCodeNatural = naturalObject(charCode);
+                const codePoints = UtfString.stringToCodePoints(stringLiteral);
+                const codePointObjects = codePoints.map((codePoint: number) => {
+                    const charCodeNatural = naturalObject(codePoint);
                     const charCodeObject = structObject(NativeStructs["Unicode.CodePoint"], [charCodeNatural]);
-                    charCodeObjects.push(charCodeObject);
-                }
-                return listObject(charCodeObjects);
+                    return charCodeObject;
+                });
+                return listObject(codePointObjects);
             }
             // TODO: If we need to do interfaces separately, do that
             throw new Error(`Object wasn't a structure; was: ${JSON.stringify(structureObject)}`);

@@ -1,3 +1,4 @@
+import * as UtfString from "utfstring";
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject } from "./SemObject";
 import { Struct } from "../api/language";
 
@@ -99,6 +100,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     //     }
     // },
     "Unicode.String.length": (string: SemObject.String): SemObject.Natural => {
-        return naturalObject(string.value.length);
+        const length = UtfString.length(string.value);
+        return naturalObject(length);
     },
 }
+
+
