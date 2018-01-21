@@ -504,7 +504,7 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         val struct = SemObject.Struct(NativeStruct.BASIC_SEQUENCE, listOf(base, successor))
 
         // But now we need to turn that into an interface...
-        SemObject.Instance(NativeInterface.SEQUENCE, struct, listOf(
+        SemObject.Instance(NativeInterface.SEQUENCE, listOf(
                 SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("get")), null, listOf(struct, null)),
                 SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("first")), null, listOf(struct, null))
         ))

@@ -1,4 +1,4 @@
-import { Struct as StructDef } from "../api/language";
+import { Struct as StructDef, Interface } from "../api/language";
 
 export type SemObject = SemObject.Integer
  | SemObject.Natural
@@ -7,6 +7,7 @@ export type SemObject = SemObject.Integer
  | SemObject.Try
  | SemObject.String
  | SemObject.Struct
+ | SemObject.Instance
  | SemObject.FunctionBinding;
 export namespace SemObject {
     export interface Integer {
@@ -43,6 +44,11 @@ export namespace SemObject {
         type: "struct";
         struct: StructDef;
         members: SemObject[];
+    }
+    export interface Instance {
+        type: "instance";
+        interface: Interface;
+        methods: SemObject.FunctionBinding[];
     }
     export interface FunctionBinding {
         type: "binding";
@@ -109,6 +115,14 @@ export function structObject(struct: StructDef, members: SemObject[]): SemObject
         struct,
         members,
     }
+}
+
+export function instanceObject(interfaceDef: Interface, methods: SemObject.FunctionBinding[]): SemObject.Instance {
+    return {
+        type: "instance",
+        interface: interfaceDef,
+        methods,
+    };
 }
 
 export function bindingObject(functionId: string, bindings: Array<SemObject | undefined>): SemObject.FunctionBinding {

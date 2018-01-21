@@ -28,6 +28,6 @@ for (const filename of filenames) {
                 console.log(message);
             });
         }
-        expect(errorMessages.length).toBe(0);
+        expect(errorMessages).toHaveLength(0);
     });
 }

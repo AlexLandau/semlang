@@ -1,5 +1,5 @@
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct } from "../api/language";
-import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject } from "./SemObject";
+import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 
@@ -66,7 +66,35 @@ class InterpreterContext {
 
         const theInterface = this.module.interfaces[functionName];
         if (theInterface !== undefined) {
-            throw new Error(`TODO: Implement interface constructors`);
+            if (args.length !== 2) {
+                throw new Error(`Expected two arguments to an interface constructor`);
+            }
+            const dataObject = args[0];
+            const adapterObject = args[1];
+            if (adapterObject.type !== "struct") {
+                throw new Error(`Was expecting an adapter struct`);
+            }
+            const adapterMembers = adapterObject.members;
+            if (adapterMembers.length !== theInterface.methods.length) {
+                throw new Error(`Adapter members length doesn't match interface methods length`);
+            }
+            const reboundMethods = [] as SemObject.FunctionBinding[];
+            for (let i = 0; i < adapterMembers.length; i++) {
+                const adapterMember = adapterMembers[i];
+                const method = theInterface.methods[i];
+                if (adapterMember.type !== "binding") {
+                    throw new Error(`Adapter member was a non-binding type`);
+                }
+                const fixedBindings = adapterMember.bindings.slice();
+                if (fixedBindings[0] !== undefined) {
+                    throw new Error(`Expected an undefined binding for the 0th element`);
+                }
+                fixedBindings[0] = dataObject;
+                const reboundMethod = bindingObject(adapterMember.functionId, fixedBindings);
+                reboundMethods.push(reboundMethod);
+            }
+
+            return instanceObject(theInterface, reboundMethods);
         }
 
         const theAdaptedInterface = this.module.interfacesByAdapterId[functionName];
@@ -152,6 +180,14 @@ class InterpreterContext {
                     throw new Error(`Struct of type ${structDef.id} doesn't have member named ${followName}`);
                 }
                 return members[index];
+            } else if (structureObject.type === "instance") {
+                const interfaceDef = structureObject.interface;
+                const methods = structureObject.methods;
+                const index = findIndex(interfaceDef.methods, (method) => method.name === followName);
+                if (index === -1) {
+                    throw new Error(`Interface of type ${interfaceDef.id} doesn't have method named ${followName}`);
+                }
+                return methods[index];
             } else if (structureObject.type === "String") {
                 const stringLiteral = structureObject.value;
 

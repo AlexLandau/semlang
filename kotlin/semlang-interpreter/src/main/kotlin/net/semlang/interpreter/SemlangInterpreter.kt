@@ -212,7 +212,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     }
                 }
                 .collect(Collectors.toList())
-        return SemObject.Instance(interfaceDef, arguments[0], fixedBindings)
+        return SemObject.Instance(interfaceDef, fixedBindings)
     }
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
@@ -250,8 +250,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     return innerResult.objects[index]
                 } else if (innerResult is SemObject.Instance) {
                     val index = innerResult.interfaceDef.getIndexForName(name)
-                    val functionBinding = innerResult.methods[index]
-                    return functionBinding
+                    return innerResult.methods[index]
                 } else if (innerResult is SemObject.UnicodeString) {
                     if (name != "codePoints") {
                         error("The only valid member in a Unicode.String is 'codePoints'")
