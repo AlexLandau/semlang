@@ -31,7 +31,7 @@ export function runTests(module: Module): string[] {
 
                     const outputIsCorrect = isEqual(expectedOutput, actualOutput);
                     if (!outputIsCorrect) {
-                        errorMessages.push(`Expected ${functionName}(${argLiterals}) to be ${outputLiteral}, but was ${JSON.stringify(actualOutput)}`);
+                        errorMessages.push(`Expected ${functionName}(${argLiterals}) to be ${JSON.stringify(expectedOutput)}, but was ${JSON.stringify(actualOutput)}`);
                     }
                 }
             }

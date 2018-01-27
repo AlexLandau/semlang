@@ -207,6 +207,21 @@ function getFunctionType(method: Method): Type.FunctionType {
     };
 }
 
+function getNamedType(id: string, params: Type[] | undefined): Type.NamedType {
+    return {
+        name: id,
+        params
+    }
+}
+
+export function getStructType(struct: Struct): Type.NamedType {
+    return {
+        name: struct.id,
+        params: struct.typeParameters === undefined ? undefined :
+                struct.typeParameters.map((paramName) => getNamedType(paramName, undefined)),
+    }
+}
+
 function getDataTypeName(existingTypeParameters: string[] | undefined): string {
     if (existingTypeParameters === undefined) {
         return "A";

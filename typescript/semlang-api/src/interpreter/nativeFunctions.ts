@@ -7,6 +7,43 @@ import { InterpreterContext } from "./interpret";
 // TODO: Would be nice to simplify further by offering these as parseable, or linked into sem0...
 const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
+    "Bit": {
+        id: "Bit",
+        members: [{name: "natural", type: "Natural"}],
+        requires: [
+            {
+                return: {
+                    type: "namedCall",
+                    function: "Boolean.or",
+                    chosenParameters: [],
+                    arguments: [
+                        {
+                            type: "namedCall",
+                            function: "Natural.equals",
+                            chosenParameters: [],
+                            arguments: [
+                                { type: "var", var: "natural" },
+                                { type: "literal", literalType: "Natural", value: "0" }
+                            ],
+                        },
+                        {
+                            type: "namedCall",
+                            function: "Natural.equals",
+                            chosenParameters: [],
+                            arguments: [
+                                { type: "var", var: "natural" },
+                                { type: "literal", literalType: "Natural", value: "1" }
+                            ],
+                        },
+                    ],
+                }
+            }
+        ],
+    },
+    "BitsBigEndian": {
+        id: "BitsBigEndian",
+        members: [{name: "bits", type: {List: {name: "Bit"}}}],
+    },
     "Unicode.CodePoint": {
         id: "Unicode.CodePoint",
         members: [{ name: "natural", type: "Natural" }],
@@ -142,6 +179,20 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Natural.times": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
         return naturalObject(left.value * right.value);
     },
+    "Natural.toBits": (context: InterpreterContext, natural: SemObject.Natural): SemObject.Struct => {
+        let value = natural.value;
+        const bits = [] as SemObject.Struct[];
+        if (value === 0) {
+            bits.push(bit(0));
+        } else {
+            while (value > 0) {
+                bits.push(bit(value & 1));
+                value = value >> 1;
+            }
+        }
+        const bitsList = listObject(bits.reverse());
+        return structObject(NativeStructs["BitsBigEndian"], [bitsList]);
+    },
     "Sequence.create": (context: InterpreterContext, base: SemObject, successor: SemObject.FunctionBinding): SemObject => {
         const sequenceInterface = NativeInterfaces["Sequence"];
         const dataObject = structObject(NativeStructs["BasicSequence"], [
@@ -182,4 +233,10 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
 }
 
-
+function bit(value: number): SemObject.Struct {
+    if (value !== 0 && value !== 1) {
+        throw new Error(`Unexpected bit value: ${value}`);
+    }
+    const natural = naturalObject(value);
+    return structObject(NativeStructs["Bit"], [natural]);
+}

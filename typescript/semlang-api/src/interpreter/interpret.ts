@@ -1,5 +1,5 @@
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct } from "../api/language";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType } from "../api/language";
 import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -41,7 +41,7 @@ export class InterpreterContext {
             return this.evaluateBlock(theFunction.block, boundArguments);
         }
 
-        const theStruct = NativeStructs[functionName] || this.module.structs[functionName];
+        const theStruct = this.getStructByName(functionName);
         if (theStruct !== undefined) {
             if (theStruct.requires !== undefined) {
                 const proposedValues: BoundVars = {};
@@ -272,14 +272,95 @@ export class InterpreterContext {
             if (isNamedType(type)) {
                 const name = type.name;
 
-                // TODO: Handle strings
+                // Handle strings
                 if (name === "Unicode.String") {
                     return stringObject(value);
+                }
+
+                // Struct with only one element? Try that
+                const literalTypeChain = this.getStructSingleElementChain(name);
+                if (literalTypeChain !== undefined) {
+                    // Get the literal from the basic type
+                    const literalType = literalTypeChain.literalType;
+                    let curValue = this.evaluateLiteral(literalType, value);
+                    for (const structToApply of literalTypeChain.structChain) {
+                        const wrapped = structObject(structToApply, [curValue]);
+                        // We don't yet have checks for this at compile-time, so check at runtime instead
+                        if (structToApply.requires !== undefined) {
+                            const proposedValues: BoundVars = {};
+                            proposedValues[structToApply.members[0].name] = curValue;
+                            const requiresValue = this.evaluateBlock(structToApply.requires, proposedValues);
+                            if (requiresValue.type !== "Boolean") {
+                                throw new Error(`Non-boolean value returned from a 'requires' block`);
+                            }
+                            const isSatisfied = requiresValue.value;
+                            if (!isSatisfied) {
+                                throw new Error(`Invalid literal value ${value} for struct type ${type} with literal type ${literalType}`);
+                            }
+                        }
+                        curValue = wrapped;
+                    }
+                    return curValue;
                 }
             }
             throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
         }
     }
+
+    private getStructSingleElementChain(structName: string): LiteralTypeChain | undefined {
+        // TODO: Avoid arms-length recursion here
+        const initialStruct = this.getStructByName(structName);
+        if (initialStruct === undefined) {
+            return undefined;
+        }
+        const typesSeen = [] as Struct[];
+        let curStruct = initialStruct;
+        while (true) {
+            typesSeen.push(curStruct);
+            if (curStruct.members.length !== 1) {
+                return undefined;
+            }
+            const theMember = curStruct.members[0];
+            const innerType = theMember.type;
+            if (isNativeLiteralType(innerType)) {
+                return {
+                    literalType: innerType,
+                    structChain: typesSeen.reverse()
+                };
+            } else if (isNamedType(innerType)) {
+                const innerTypeStruct = this.getStructByName(innerType.name);
+                if (innerTypeStruct === undefined) {
+                    return undefined;
+                }
+                curStruct = innerTypeStruct;
+            } else {
+                return undefined;
+            }
+        }
+    }
+
+    private getStructByName(structName: string): Struct | undefined {
+        return NativeStructs[structName] || this.module.structs[structName];
+    }
+}
+
+interface LiteralTypeChain {
+    literalType: Type;
+    // Note: The innermost struct (the one that contains the literal type directly) is first in the list.
+    // The type we will end up creating is last in the list.
+    structChain: Struct[];
+}
+
+function isNativeLiteralType(type: Type) {
+    if (type === "Integer" || type === "Natural" || type === "Boolean") {
+        return true;
+    }
+    if (isNamedType(type)) {
+        if (type.name === "Unicode.String") {
+            return true;
+        }
+    }
+    return false;
 }
 
 function combineBindings(originalBinding: SemObject.FunctionBinding, explicitBinding: Array<SemObject | undefined>): SemObject.FunctionBinding {
