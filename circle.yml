@@ -1,0 +1,3 @@
+test:
+  override:
+    - ./gradlew test -Dorg.gradle.parallel=false
