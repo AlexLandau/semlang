@@ -1,3 +1,5 @@
+import { BigInteger } from "big-integer";
+import * as bigInt from "big-integer";
 import { Struct as StructDef, Interface, Block, Argument } from "../api/language";
 
 export type SemObject = SemObject.Integer
@@ -12,11 +14,11 @@ export type SemObject = SemObject.Integer
 export namespace SemObject {
     export interface Integer {
         type: "Integer";
-        value: number; // TODO: Fix this
+        value: BigInteger;
     }
     export interface Natural {
         type: "Natural";
-        value: number; // TODO: Fix this
+        value: BigInteger;
     }
     export interface Boolean {
         type: "Boolean";
@@ -64,15 +66,15 @@ export namespace SemObject {
     export type FunctionBinding = NamedFunctionBinding | InlineFunctionBinding;
 }
 
-export function integerObject(value: number): SemObject.Integer {
+export function integerObject(value: BigInteger): SemObject.Integer {
     return {
         type: "Integer",
         value
     };
 }
 
-export function naturalObject(value: number): SemObject.Natural {
-    if (value < 0) {
+export function naturalObject(value: BigInteger): SemObject.Natural {
+    if (value.isNegative()) {
         throw new Error(`Invalid natural value ${value}`);
     }
     return {

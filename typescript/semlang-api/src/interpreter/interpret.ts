@@ -1,3 +1,4 @@
+import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject } from "./SemObject";
@@ -215,7 +216,7 @@ export class InterpreterContext {
 
                 const codePoints = UtfString.stringToCodePoints(stringLiteral);
                 const codePointObjects = codePoints.map((codePoint: number) => {
-                    const charCodeNatural = naturalObject(codePoint);
+                    const charCodeNatural = naturalObject(bigInt(codePoint));
                     const charCodeObject = structObject(NativeStructs["Unicode.CodePoint"], [charCodeNatural]);
                     return charCodeObject;
                 });
@@ -295,12 +296,9 @@ export class InterpreterContext {
             }
             throw new Error(`Unexpected Boolean literal ${value}`);
         } else if (type === "Integer") {
-            // TODO: Will need to fix for large integer support
-            const jsNumber = Number(value);
-            return integerObject(jsNumber);
+            return integerObject(bigInt(value));
         } else if (type === "Natural") {
-            const jsNumber = Number(value);
-            return naturalObject(jsNumber);
+            return naturalObject(bigInt(value));
         } else if (isTryType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
