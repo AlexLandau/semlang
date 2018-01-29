@@ -1,5 +1,5 @@
 import * as UtfString from "utfstring";
-import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, bindingObject } from "./SemObject";
+import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject } from "./SemObject";
 import { Struct, Type, Interface } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
@@ -86,7 +86,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "BasicSequence.first": (context: InterpreterContext, basicSequence: SemObject.Struct, predicate: SemObject.FunctionBinding): SemObject => {
         const base = basicSequence.members[0];
         const successor = basicSequence.members[1];
-        if (successor.type !== "binding") {
+        if (!isFunctionBinding(successor)) {
             throw new Error(`Expected a BasicSequence successor to be a function binding`);
         }
         let curValue: SemObject = base;
@@ -105,7 +105,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "BasicSequence.get": (context: InterpreterContext, basicSequence: SemObject.Struct, index: SemObject.Natural): SemObject => {
         const base = basicSequence.members[0];
         const successor = basicSequence.members[1];
-        if (successor.type !== "binding") {
+        if (!isFunctionBinding(successor)) {
             throw new Error(`Expected a BasicSequence successor to be a function binding`);
         }
         let curValue: SemObject = base;
@@ -138,6 +138,16 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.plus": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value + right.value);
     },
+    "Integer.sum": (context: InterpreterContext, list: SemObject.List): SemObject.Integer => {
+        let sum = 0;
+        for (const intObject of list.contents) {
+            if (intObject.type !== "Integer") {
+                throw new Error(`List not of integers passed to Integer.sum`);
+            }
+            sum += intObject.value;
+        }
+        return integerObject(sum);
+    },
     "Integer.times": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value * right.value);
     },
@@ -151,6 +161,17 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         } else {
             return failureObject();
         }
+    },
+    "List.map": (context: InterpreterContext, list: SemObject.List, fn: SemObject.FunctionBinding): SemObject.List => {
+        const mapped = list.contents.map(item => context.evaluateBoundFunction(fn, [item]));
+        return listObject(mapped);
+    },
+    "List.reduce": (context: InterpreterContext, list: SemObject.List, initialValue: SemObject, reducer: SemObject.FunctionBinding): SemObject => {
+        let value = initialValue;
+        for (const item of list.contents) {
+            value = context.evaluateBoundFunction(reducer, [value, item]);
+        }
+        return value;
     },
     "List.size": (context: InterpreterContext, list: SemObject.List): SemObject.Natural => {
         return naturalObject(list.contents.length);
@@ -201,8 +222,8 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         ]);
 
         const boundMethods = [
-            bindingObject("BasicSequence.get", [dataObject, undefined]),
-            bindingObject("BasicSequence.first", [dataObject, undefined]),
+            namedBindingObject("BasicSequence.get", [dataObject, undefined]),
+            namedBindingObject("BasicSequence.first", [dataObject, undefined]),
         ];
 
         return instanceObject(sequenceInterface, boundMethods);

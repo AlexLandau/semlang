@@ -1,4 +1,4 @@
-import { Struct as StructDef, Interface } from "../api/language";
+import { Struct as StructDef, Interface, Block, Argument } from "../api/language";
 
 export type SemObject = SemObject.Integer
  | SemObject.Natural
@@ -50,11 +50,18 @@ export namespace SemObject {
         interface: Interface;
         methods: SemObject.FunctionBinding[];
     }
-    export interface FunctionBinding {
-        type: "binding";
+    export interface NamedFunctionBinding {
+        type: "namedBinding";
         functionId: string;
         bindings: Array<SemObject | undefined>;
     }
+    export interface InlineFunctionBinding {
+        type: "inlineBinding";
+        argumentNames: string[];
+        block: Block;
+        bindings: Array<SemObject | undefined>;
+    }
+    export type FunctionBinding = NamedFunctionBinding | InlineFunctionBinding;
 }
 
 export function integerObject(value: number): SemObject.Integer {
@@ -125,10 +132,23 @@ export function instanceObject(interfaceDef: Interface, methods: SemObject.Funct
     };
 }
 
-export function bindingObject(functionId: string, bindings: Array<SemObject | undefined>): SemObject.FunctionBinding {
+export function namedBindingObject(functionId: string, bindings: Array<SemObject | undefined>): SemObject.NamedFunctionBinding {
     return {
-        type: "binding",
+        type: "namedBinding",
         functionId,
         bindings
     }
+}
+
+export function inlineBindingObject(argumentNames: string[], bindings: Array<SemObject | undefined>, block: Block): SemObject.InlineFunctionBinding {
+    return {
+        type: "inlineBinding",
+        argumentNames,
+        bindings,
+        block
+    }
+}
+
+export function isFunctionBinding(object: SemObject): object is SemObject.FunctionBinding {
+    return object.type === "namedBinding" || object.type === "inlineBinding";
 }

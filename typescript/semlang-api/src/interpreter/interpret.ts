@@ -1,6 +1,6 @@
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType } from "../api/language";
-import { SemObject, listObject, bindingObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject } from "./SemObject";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument } from "../api/language";
+import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 
@@ -15,6 +15,16 @@ export function interpret(module: Module, functionName: string, args: SemObject[
 }
 
 type BoundVars = { [varName: string]: SemObject };
+
+function getBoundVarsForArgs(argumentNames: string[], inputs: SemObject[]): BoundVars {
+    const boundArguments: BoundVars = {};
+    argumentNames.forEach((argumentName, index) => {
+        const inputForArg = inputs[index];
+        // TODO: Might want to do some type checking here
+        boundArguments[argumentName] = inputForArg;
+    });
+    return boundArguments;
+}
 
 export class InterpreterContext {
     module: Module;
@@ -32,12 +42,8 @@ export class InterpreterContext {
         // Find the function
         const theFunction = this.module.functions[functionName];
         if (theFunction !== undefined) {
-            const boundArguments: BoundVars = {};
-            theFunction.arguments.forEach((argument, index) => {
-                const inputForArg = args[index];
-                // TODO: Might want to do some type checking here
-                boundArguments[argument.name] = inputForArg;
-            });
+            const argumentNames = theFunction.arguments.map(argument => argument.name);
+            const boundArguments = getBoundVarsForArgs(argumentNames, args);
             return this.evaluateBlock(theFunction.block, boundArguments);
         }
 
@@ -83,7 +89,7 @@ export class InterpreterContext {
             for (let i = 0; i < adapterMembers.length; i++) {
                 const adapterMember = adapterMembers[i];
                 const method = theInterface.methods[i];
-                if (adapterMember.type !== "binding") {
+                if (!isFunctionBinding(adapterMember)) {
                     throw new Error(`Adapter member was a non-binding type`);
                 }
                 const fixedBindings = adapterMember.bindings.slice();
@@ -91,7 +97,7 @@ export class InterpreterContext {
                     throw new Error(`Expected an undefined binding for the 0th element`);
                 }
                 fixedBindings[0] = dataObject;
-                const reboundMethod = bindingObject(adapterMember.functionId, fixedBindings);
+                const reboundMethod = {...adapterMember, bindings: fixedBindings};
                 reboundMethods.push(reboundMethod);
             }
 
@@ -108,10 +114,25 @@ export class InterpreterContext {
     }
 
     evaluateBoundFunction(functionBinding: SemObject.FunctionBinding, args: SemObject[]): SemObject {
-        const fullyBoundBinding = combineBindings(functionBinding, args);
-        const functionId = fullyBoundBinding.functionId;
-        const fullArgs = fullyBoundBinding.bindings as SemObject[]; // These should all be defined by now
-        return this.evaluateFunctionCall(functionId, fullArgs);
+        if (functionBinding.type === "namedBinding") {
+            return this.evaluateNamedBinding(functionBinding, args);
+        } else if (functionBinding.type === "inlineBinding") {
+            return this.evaluateInlineBinding(functionBinding, args);
+        } else {
+            throw assertNever(functionBinding);
+        }
+    }
+    
+    private evaluateNamedBinding(functionBinding: SemObject.NamedFunctionBinding, args: SemObject[]): SemObject {
+        const fullyBoundArguments = combineBindings(functionBinding, args) as SemObject[]; // These should all be defined by now
+        const functionId = functionBinding.functionId;
+        return this.evaluateFunctionCall(functionId, fullyBoundArguments);
+    }
+
+    private evaluateInlineBinding(functionBinding: SemObject.InlineFunctionBinding, args: SemObject[]): SemObject {
+        const fullyBoundArguments = combineBindings(functionBinding, args) as SemObject[]; // These should all be defined by now
+        const boundVars = getBoundVarsForArgs(functionBinding.argumentNames, args);
+        return this.evaluateBlock(functionBinding.block, boundVars);
     }
 
     private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
@@ -156,7 +177,7 @@ export class InterpreterContext {
         } else if (expression.type === "expressionCall") {
             const functionExpression = expression.expression;
             const functionBinding = this.evaluateExpression(functionExpression, alreadyBoundVars);
-            if (functionBinding.type !== "binding") {
+            if (!isFunctionBinding(functionBinding)) {
                 throw new Error(`Expected a function binding`);
             }
             const argumentExpressions = expression.arguments;
@@ -214,11 +235,11 @@ export class InterpreterContext {
                 }
             });
 
-            return bindingObject(functionId, bindings);
+            return namedBindingObject(functionId, bindings);
         } else if (expression.type === "expressionBinding") {
             const functionExpression = expression.expression;
             const functionBinding = this.evaluateExpression(functionExpression, alreadyBoundVars);
-            if (functionBinding.type !== "binding") {
+            if (!isFunctionBinding(functionBinding)) {
                 throw new Error(`Expected a function binding`);
             }
             const bindingExpressions = expression.bindings;
@@ -231,12 +252,38 @@ export class InterpreterContext {
                 }
             });
 
-            return combineBindings(functionBinding, explicitBindings);
+            const newBindings = combineBindings(functionBinding, explicitBindings);
+            return {...functionBinding, bindings: newBindings};
         } else if (expression.type === "inlineFunction") {
-            throw new Error("TODO: implement inline functions")
+            return this.evaluateInlineFunctionExpression(expression, alreadyBoundVars);
         } else {
             throw assertNever(expression);
         }
+    }
+
+    private evaluateInlineFunctionExpression(expression: Expression.InlineFunction, alreadyBoundVars: BoundVars): SemObject {
+        const block: Block = expression.body;
+
+        const explicitArguments = expression.arguments.map(argument => argument.name);
+        // Note: This includes explicit arguments, implicitly bound variables, and variables introduced by assignments within the block
+        const varNamesReferencedInBlock = getVarNamesReferencedInBlock(block);
+
+        const implicitArguments = varNamesReferencedInBlock.filter((varName) => varName in alreadyBoundVars);
+        
+        const args = explicitArguments.concat(implicitArguments);
+
+        const bindings = [] as Array<SemObject | undefined>;
+        // First, add the explicit arguments
+        for (const explicitArgument of explicitArguments) {
+            bindings.push(undefined);
+        }
+        // Then the implicit arguments
+        for (const implicitArgument of implicitArguments) {
+            const value = alreadyBoundVars[implicitArgument];
+            bindings.push(value);
+        }
+
+        return inlineBindingObject(args, bindings, block);
     }
 
     evaluateLiteral(type: Type, value: string): SemObject {
@@ -344,6 +391,67 @@ export class InterpreterContext {
     }
 }
 
+type DumbStringSet = { [varName: string]: boolean };
+
+// Note: I don't guarantee consistent results from this method.
+function getVarNamesReferencedInBlock(block: Block): string[] {
+    // We use this as a set for quick duplicate checking
+    const varNamesSet: DumbStringSet = {};
+
+    addVarNamesReferencedInBlock(block, varNamesSet);
+
+    const array = [] as string[];
+    for (const varName in varNamesSet) {
+        array.push(varName);
+    }
+    return array;
+}
+
+function addVarNamesReferencedInBlock(block: Block, varNamesSet: DumbStringSet) {
+    for (const blockEntry of block) {
+        if (isAssignment(blockEntry)) {
+            addVarNamesReferencedInExpression(blockEntry.be, varNamesSet);
+        } else {
+            addVarNamesReferencedInExpression(blockEntry.return, varNamesSet);
+        }
+    }
+}
+
+function addVarNamesReferencedInExpression(expression: Expression, varNamesSet: DumbStringSet) {
+    if (expression.type === "var") {
+        varNamesSet[expression.var] = true;
+    } else if (expression.type === "expressionBinding") {
+        addVarNamesReferencedInExpression(expression.expression, varNamesSet);
+        for (const binding of expression.bindings) {
+            if (binding !== null) {
+                addVarNamesReferencedInExpression(binding, varNamesSet);
+            }
+        }
+    } else if (expression.type === "expressionCall") {
+        throw new Error(`TODO: Implement`);
+    } else if (expression.type === "follow") {
+        addVarNamesReferencedInExpression(expression.expression, varNamesSet);
+    } else if (expression.type === "ifThen") {
+        throw new Error(`TODO: Implement`);
+    } else if (expression.type === "inlineFunction") {
+        throw new Error(`TODO: Implement`);
+    } else if (expression.type === "list") {
+        for (const item of expression.contents) {
+            addVarNamesReferencedInExpression(item, varNamesSet);
+        }
+    } else if (expression.type === "literal") {
+        // Do nothing
+    } else if (expression.type === "namedBinding") {
+        throw new Error(`TODO: Implement`);
+    } else if (expression.type === "namedCall") {
+        for (const argument of expression.arguments) {
+            addVarNamesReferencedInExpression(argument, varNamesSet);
+        }
+    } else {
+        throw assertNever(expression);
+    }
+}
+
 interface LiteralTypeChain {
     literalType: Type;
     // Note: The innermost struct (the one that contains the literal type directly) is first in the list.
@@ -363,7 +471,7 @@ function isNativeLiteralType(type: Type) {
     return false;
 }
 
-function combineBindings(originalBinding: SemObject.FunctionBinding, explicitBinding: Array<SemObject | undefined>): SemObject.FunctionBinding {
+function combineBindings(originalBinding: SemObject.FunctionBinding, explicitBinding: Array<SemObject | undefined>): Array<SemObject | undefined> {
     const combinedBindings = [] as Array<SemObject | undefined>;
     let explicitBindingIndex = 0;
     originalBinding.bindings.forEach((binding) => {
@@ -378,5 +486,5 @@ function combineBindings(originalBinding: SemObject.FunctionBinding, explicitBin
     if (explicitBindingIndex !== explicitBinding.length) {
         throw new Error(`Binding length mismatch`);
     }
-    return bindingObject(originalBinding.functionId, combinedBindings);
+    return combinedBindings;
 }
