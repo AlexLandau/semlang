@@ -244,7 +244,6 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Try.map": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
         if (theTry.type === "Try.Success") {
             const value = theTry.value;
-            // TODO: Need to be able to reach back in to call here...
             const result = context.evaluateBoundFunction(fn, [value]);
             return successObject(result);
         } else {

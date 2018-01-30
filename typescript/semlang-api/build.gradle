@@ -51,13 +51,3 @@ task build {
     dependsOn assemble
     dependsOn test
 }
-
-// Note: We currently assume this will be run by a limited number of other places, which already
-// have their own assurances that the build task in this project has been run, which is a
-// prerequisite for running this.
-task runInterpreterTests(type: NodeTask) {
-    script = file('scripts/runInterpreterTests.js')
-    doFirst {
-        args = [argument] // The caller should use e.g. -Pargument=the/filename.js
-    }
-}
