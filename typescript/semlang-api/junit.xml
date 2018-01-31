@@ -1,0 +1,110 @@
+<testsuites name="jest tests">
+  <testsuite name="undefined" errors="0" failures="0" skipped="0" timestamp="2018-01-31T07:01:52" time="1.064" tests="53">
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/bits1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/bits1.sem" time="0.021">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/bits2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/bits2.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans1.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans2.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/booleans3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/codePoints1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/codePoints1.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding1.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding2.sem" time="0.013">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding4.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding5.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding5.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding6.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionBinding6.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef1.sem" time="0.012">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef2.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/functionRef4.sem" time="0.006">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/inlineFunction1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/inlineFunction1.sem" time="0.004">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/inlineFunction2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/inlineFunction2.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/integers1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/integers1.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/integers2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/integers2.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces1.sem" time="0.004">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces2.sem" time="0.009">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces3.sem" time="0.005">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces4.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces5.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces5.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces6.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces6.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces7.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/interfaces7.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/listliterals1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/listliterals1.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/lists1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/lists1.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/lists2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/lists2.sem" time="0.004">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/literals1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/literals1.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/literals2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/literals2.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/literals3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/literals3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/literals4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/literals4.sem" time="0.006">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple1.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple2.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple3.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/pythagoreanTriple4.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/requires1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/requires1.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/sequences1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/sequences1.sem" time="0.007">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/sequences2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/sequences2.sem" time="0.011">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/strings1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/strings1.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/strings2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/strings2.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/strings3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/strings3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs1.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs2.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs2.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs3.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs3.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs4.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs4.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs5.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs5.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs6.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs6.sem" time="0.001">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs7.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs7.sem" time="0.002">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/structs8.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/structs8.sem" time="0.003">
+    </testcase>
+    <testcase classname=" Interpreter test for ../../semlang-corpus/build/translations/json/try1.sem" name=" Interpreter test for ../../semlang-corpus/build/translations/json/try1.sem" time="0.001">
+    </testcase>
+  </testsuite>
+</testsuites>

@@ -44,6 +44,13 @@ task assemble {
 }
 tasks.yarn_test.dependsOn assemble
 tasks.yarn_test.dependsOn ':kotlin:typescript-support:translateCorpusToJson'
+tasks.yarn_test {
+    inputs.file 'package.json'
+    inputs.file 'jest.config.js'
+    inputs.dir 'src'
+    inputs.dir '../../semlang-corpus/build/translations/json'
+    outputs.file 'build/test-results/jest/semlang-api.xml'
+}
 task test {
     dependsOn yarn_test
 }
