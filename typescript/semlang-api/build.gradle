@@ -43,7 +43,7 @@ task assemble {
     dependsOn yarn_build
 }
 tasks.yarn_test.dependsOn assemble
-tasks.yarn_test.dependsOn ':kotlin:typescript-interpreter-test:translateCorpusToJson'
+tasks.yarn_test.dependsOn ':kotlin:typescript-support:translateCorpusToJson'
 task test {
     dependsOn yarn_test
 }

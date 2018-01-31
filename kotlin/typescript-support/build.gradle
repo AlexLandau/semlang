@@ -2,7 +2,6 @@ dependencies {
   compile project(':kotlin:semlang-parser')
 }
 
-// TODO: Let's rename this project to "typescript-support" or something
 task translateCorpusToJson(type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   main = 'JsonCorpusKt'

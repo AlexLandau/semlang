@@ -1,6 +1,6 @@
 
-// Strictly speaking, this could be a struct, but it"s a good first test
-// (Situtations where it"s really necessary can get kind of hairy)
+// Strictly speaking, this could be a struct, but it's a good first test
+// (Situtations where it's really necessary can get kind of hairy)
 
 interface myCode.Operator<T> {
     getIdentity(): T

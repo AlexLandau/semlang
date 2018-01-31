@@ -5,8 +5,6 @@ import { SemObject, integerObject, booleanObject, naturalObject, listObject, fai
 import { Struct, Type, Interface } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
-
-// TODO: Would be nice to simplify further by offering these as parseable, or linked into sem0...
 const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
     "Bit": {
