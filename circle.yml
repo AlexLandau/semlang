@@ -1,3 +1,8 @@
 test:
   override:
     - ./gradlew test -Dorg.gradle.parallel=false
+  post:
+    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
+    - find . -type f -regex ".*/build/test-results/test/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;
+    - mkdir -p $CIRCLE_TEST_REPORTS/jest/
+    - find . -type f -regex ".*/build/test-results/jest/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/jest/ \;
