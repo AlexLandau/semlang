@@ -2,15 +2,15 @@ function myCode.applyThreeTimes(n: Integer, f: (Integer) -> Integer): Integer {
   f(f(f(n)))
 }
 
-@Test("['-1']: '2'")
-@Test("['2']: '5'")
+@Test(["-1"], "2")
+@Test(["2"], "5")
 function myCode.addThreeV1(n: Integer): Integer {
   let increment: (Integer) -> Integer = Integer.plus|(_, Integer."1")
   myCode.applyThreeTimes(n, increment)
 }
 
-@Test("['-1']: '2'")
-@Test("['2']: '5'")
+@Test(["-1"], "2")
+@Test(["2"], "5")
 function myCode.addThreeV2(n: Integer): Integer {
   let increment: (Integer) -> Integer = Integer.plus|(Integer."1", _)
   myCode.applyThreeTimes(n, increment)

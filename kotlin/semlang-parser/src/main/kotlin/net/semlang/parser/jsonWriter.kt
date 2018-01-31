@@ -16,7 +16,17 @@ import net.semlang.api.Function
 val LANGUAGE = "sem1"
 val FORMAT_VERSION = "0.1.0"
 
-fun toJson(context: ValidatedModule): JsonNode {
+fun toJsonText(module: ValidatedModule): String {
+    return toJsonText(toJson(module))
+}
+
+private fun toJsonText(node: JsonNode): String {
+    val mapper: ObjectMapper = ObjectMapper()
+    val writer = mapper.writer()
+    return writer.writeValueAsString(node)
+}
+
+fun toJson(module: ValidatedModule): JsonNode {
     val mapper: ObjectMapper = ObjectMapper()
     val node = mapper.createObjectNode()
 
@@ -26,9 +36,9 @@ fun toJson(context: ValidatedModule): JsonNode {
     // TODO: Put information about upstream contexts
     // TODO: Maybe put identity information about this context?
 
-    addArray(node, "functions", context.ownFunctions.values, ::addFunction)
-    addArray(node, "structs", context.ownStructs.values, ::addStruct)
-    addArray(node, "interfaces", context.ownInterfaces.values, ::addInterface)
+    addArray(node, "functions", module.ownFunctions.values, ::addFunction)
+    addArray(node, "structs", module.ownStructs.values, ::addStruct)
+    addArray(node, "interfaces", module.ownInterfaces.values, ::addInterface)
     return node
 }
 
@@ -203,8 +213,23 @@ private fun parseType(node: JsonNode): Type {
 
 private fun addAnnotation(node: ObjectNode, annotation: Annotation) {
     node.put("name", annotation.name)
-    if (annotation.value != null) {
-        node.put("value", annotation.value)
+    if (annotation.values.isNotEmpty()) {
+        val valuesArray = node.putArray("values")
+        addAnnotationItems(valuesArray, annotation.values)
+    }
+}
+
+fun addAnnotationItems(array: ArrayNode, values: List<AnnotationArgument>) {
+    for (arg in values) {
+        val unused: Any = when (arg) {
+            is AnnotationArgument.Literal -> {
+                array.add(arg.value)
+            }
+            is AnnotationArgument.List -> {
+                val list = array.addArray()
+                addAnnotationItems(list, arg.values)
+            }
+        }
     }
 }
 
@@ -212,9 +237,22 @@ private fun parseAnnotation(node: JsonNode): Annotation {
     if (!node.isObject()) error("Expected an annotation to be an object")
 
     val name = node["name"]?.textValue() ?: error("Annotations must have names that are text")
-    val value: String? = node["value"]?.textValue()
+    val values = node["values"]?.let(::parseAnnotationArgs) ?: listOf()
 
-    return Annotation(name, value)
+    return Annotation(name, values)
+}
+
+private fun parseAnnotationArgs(node: JsonNode): List<AnnotationArgument> {
+    return node.map(::parseAnnotationArg)
+}
+
+private fun parseAnnotationArg(node: JsonNode): AnnotationArgument {
+    if (node.isTextual) {
+        return AnnotationArgument.Literal(node.textValue())
+    } else if (node.isArray) {
+        return AnnotationArgument.List(parseAnnotationArgs(node))
+    }
+    error("Unrecognized annotation arg type: ${node}")
 }
 
 private fun addInterface(node: ObjectNode, interfac: Interface) {
@@ -322,14 +360,14 @@ private fun parseBlock(node: JsonNode): Block {
 
 private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {
     node.put("let", assignment.name)
-    addExpression(node.putObject("="), assignment.expression)
+    addExpression(node.putObject("be"), assignment.expression)
 }
 
 private fun parseAssignment(node: JsonNode): Assignment {
     if (!node.isObject()) error("Expected an assignment to be an object")
 
     val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
-    val expression = parseExpression(node["="] ?: error("Assignments should have a '=' field indicating the expression"))
+    val expression = parseExpression(node["be"] ?: error("Assignments should have a '=' field indicating the expression"))
 
     return Assignment(name, null, expression, null)
 }
@@ -384,14 +422,14 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             node.put("type", "namedBinding")
             node.put("function", expression.functionRef.toString())
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
-            addArray(node, "bindings", expression.bindings, ::addBinding)
+            addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             node.put("type", "expressionBinding")
             addExpression(node.putObject("expression"), expression.functionExpression)
             addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
-            addArray(node, "bindings", expression.bindings, ::addBinding)
+            addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
         is TypedExpression.InlineFunction -> {
@@ -399,6 +437,16 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
             addArray(node, "arguments", expression.arguments, ::addFunctionArgument)
             addBlock(node.putArray("body"), expression.block)
             return
+        }
+    }
+}
+
+fun addBindings(bindingsArray: ArrayNode, bindings: List<TypedExpression?>) {
+    bindings.forEach { binding ->
+        if (binding != null) {
+            addBinding(bindingsArray.addObject(), binding)
+        } else {
+            bindingsArray.addNull()
         }
     }
 }

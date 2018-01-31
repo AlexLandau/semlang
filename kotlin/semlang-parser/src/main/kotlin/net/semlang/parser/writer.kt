@@ -115,12 +115,34 @@ private fun writeAnnotations(annotations: List<Annotation>, writer: Writer) {
     for (annotation in annotations) {
         writer.append("@")
                 .append(annotation.name)
-        if (annotation.value != null) {
-            writer.append("(\"")
-                    .append(annotation.value) // TODO: Will want to escape this
-                    .append("\")")
+        if (annotation.values.isNotEmpty()) {
+            writer.append("(")
+            writeAnnotationArguments(annotation.values, writer)
+            writer.append(")")
         }
         writer.appendln()
+    }
+}
+
+private fun writeAnnotationArguments(annotationArgs: List<AnnotationArgument>, writer: Writer) {
+    var isFirst = true
+    for (arg in annotationArgs) {
+        if (!isFirst) {
+            writer.append(", ")
+        }
+        isFirst = false
+        val unused = when (arg) {
+            is AnnotationArgument.Literal -> {
+                writer.append("\"")
+                        .append(escapeLiteralContents(arg.value))
+                        .append("\"")
+            }
+            is AnnotationArgument.List -> {
+                writer.append("[")
+                writeAnnotationArguments(arg.values, writer)
+                writer.append("]")
+            }
+        }
     }
 }
 
@@ -152,7 +174,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         is Expression.Literal -> {
             writer.append(expression.type.toString())
                     .append(".\"")
-                    .append(expression.literal) // TODO: Might need escaping here?
+                    .append(escapeLiteralContents(expression.literal)) // TODO: Might need escaping here?
                     .append("\"")
         }
         is Expression.ListLiteral -> {
@@ -276,4 +298,18 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")
     }
+}
+
+fun escapeLiteralContents(literal: String): String {
+    val sb = StringBuilder()
+    var i = 0
+    while (i < literal.length) {
+        val c = literal[i]
+        if (c == '\\' || c == '\"') {
+            sb.append('\\')
+        }
+        sb.append(c)
+        i++
+    }
+    return sb.toString()
 }

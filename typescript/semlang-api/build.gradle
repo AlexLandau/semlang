@@ -1,0 +1,53 @@
+plugins {
+    id "com.moowork.node" version "1.2.0"
+}
+
+node {
+    // Version of node to use.
+    version = '8.9.3'
+
+    // Version of npm to use.
+    npmVersion = '5.4.2'
+
+    // Version of Yarn to use.
+    yarnVersion = '1.3.2'
+
+    // Base URL for fetching node distributions (change if you have a mirror).
+    distBaseUrl = 'https://nodejs.org/dist'
+
+    // If true, it will download node using above parameters.
+    // If false, it will try to use globally installed node.
+    download = true
+
+    // Set the work directory for unpacking node
+//    workDir = file("${project.buildDir}/nodejs")
+
+    // Set the work directory for NPM
+//    npmWorkDir = file("${project.buildDir}/npm")
+
+    // Set the work directory for Yarn
+//    yarnWorkDir = file("${project.buildDir}/yarn")
+
+    // Set the work directory where node_modules should be located
+//    nodeModulesDir = file("${project.projectDir}")
+}
+
+tasks.yarn_build.dependsOn yarn
+tasks.yarn_build {
+    inputs.file 'package.json'
+    inputs.file 'tsconfig.json'
+    inputs.dir 'src'
+    outputs.dir 'lib'
+}
+task assemble {
+    dependsOn yarn_build
+}
+tasks.yarn_test.dependsOn assemble
+tasks.yarn_test.dependsOn ':kotlin:typescript-support:translateCorpusToJson'
+task test {
+    dependsOn yarn_test
+}
+task build {
+    dependsOn assemble
+    dependsOn test
+}

@@ -58,7 +58,18 @@ private class Sem1To0Converter(val input: RawContext) {
     }
 
     private fun apply(annotation: Annotation): S0Annotation {
-        return S0Annotation(annotation.name, annotation.value)
+        return S0Annotation(annotation.name, annotation.values.map(this::apply))
+    }
+
+    private fun apply(annotationArg: AnnotationArgument): S0AnnotationArg {
+        return when (annotationArg) {
+            is AnnotationArgument.Literal -> {
+                S0AnnotationArg.Literal(annotationArg.value)
+            }
+            is AnnotationArgument.List -> {
+                S0AnnotationArg.List(annotationArg.values.map(this::apply))
+            }
+        }
     }
 
     private fun apply(type: Type): S0Type {

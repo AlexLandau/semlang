@@ -1,11 +1,11 @@
 package net.semlang.internal.test
 
+import net.semlang.api.AnnotationArgument
 import net.semlang.api.Argument
 import net.semlang.api.ValidatedFunction
 import net.semlang.api.ValidatedModule
 import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
-import java.util.regex.Pattern
 
 /**
  * Returns the number of annotation tests that were found and run.
@@ -17,7 +17,7 @@ fun runAnnotationTests(module: ValidatedModule): Int {
     module.ownFunctions.values.forEach { function ->
         function.annotations.forEach { annotation ->
             if (annotation.name == "Test") {
-                doTest(function, module, annotation.value ?: throw AssertionError("Test annotations shouldn't be empty"))
+                doTest(function, module, annotation.values)
                 testCount++
             }
         }
@@ -25,35 +25,30 @@ fun runAnnotationTests(module: ValidatedModule): Int {
     return testCount
 }
 
-
-private object Patterns {
-    val QP /* "quoted pattern" */: String = "'(([^'\\\\]|\\\\.)*)'" // A literal string in single quotes, with \ for escaping
-    val TEST_ANNOTATION_VALUE_PATTERN: Pattern = Pattern.compile("^\\[($QP)?((, *$QP)*)\\]: *$QP$")
-    val ADDITIONAL_ARGUMENT_PATTERN: Pattern = Pattern.compile(", *$QP")
-}
-
 data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
 
-private fun doTest(function: ValidatedFunction, module: ValidatedModule, value: String) {
-    val contents = parseTestAnnotationContents(value, function)
+private fun doTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>) {
+    val contents = verifyTestAnnotationContents(values, function)
 
     runTest(function, contents, module)
 }
 
-fun parseTestAnnotationContents(value: String, function: ValidatedFunction): TestAnnotationContents {
-    val matcher = Patterns.TEST_ANNOTATION_VALUE_PATTERN.matcher(value)
-    if (!matcher.matches()) {
-        fail("Value \"$value\" didn't match pattern")
+fun verifyTestAnnotationContents(inputs: List<AnnotationArgument>, function: ValidatedFunction): TestAnnotationContents {
+    if (inputs.size != 2) {
+        fail("Expected 2 arguments to a @Test annotation (arguments list and result literal)")
+    }
+    val firstInput = inputs[0]
+    val secondInput = inputs[1]
+    if (firstInput !is AnnotationArgument.List) {
+        fail("Expected first input to @Test to be a list of arguments")
+    }
+    if (secondInput !is AnnotationArgument.Literal) {
+        fail("Expected second input to @Test to be a literal")
     }
 
-    val firstArgument: String? = matcher.group(2)
-    val additionalArguments = parseAdditionalArguments(matcher.group(4))
-    val output = matcher.group(8)
-    val allArguments = if (firstArgument == null) {
-        listOf()
-    } else {
-        listOf(firstArgument) + additionalArguments
-    }
+    val allArguments = firstInput.values.map { argInput: AnnotationArgument -> (argInput as AnnotationArgument.Literal).value }
+    val output = secondInput.value
+
     if (allArguments.size != function.arguments.size) {
         fail("Expected ${function.arguments.size} arguments for ${function.id}, but received ${allArguments.size}: $allArguments")
     }
@@ -75,18 +70,6 @@ private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals
     return argumentSpecs.zip(argumentLiterals).map { (spec, literal) ->
         interpreter.evaluateLiteral(spec.type, literal)
     }
-}
-
-private fun parseAdditionalArguments(group: String?): List<String> {
-    if (group == null) {
-        return listOf()
-    }
-    val matcher = Patterns.ADDITIONAL_ARGUMENT_PATTERN.matcher(group)
-    val arguments = ArrayList<String>()
-    while (matcher.find()) {
-        arguments.add(matcher.group(1))
-    }
-    return arguments
 }
 
 private fun fail(text: String): Nothing {

@@ -7,11 +7,11 @@ interface myCode.Operator<T> {
     apply(left: T, right: T): T
 }
 
-@Test("['1', '1']: '2'")
-@Test("['3', '6']: '45'")
-@Test("['9', '0']: '81'")
-@Test("['6', '8']: '100'")
-@Test("['2', '5']: '29'")
+@Test(["1", "1"], "2")
+@Test(["3", "6"], "45")
+@Test(["9", "0"], "81")
+@Test(["6", "8"], "100")
+@Test(["2", "5"], "29")
 function myCode.squareDistance(a: Natural, b: Natural): Natural {
     let plusOperator: myCode.Operator<Natural> = getPlusOperator()
     let timesOperator: myCode.Operator<Natural> = getTimesOperator()

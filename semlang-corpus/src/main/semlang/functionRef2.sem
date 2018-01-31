@@ -7,8 +7,8 @@ function myCode.cube(n: Integer): Integer {
   Integer.times(n, Integer.times(n, n))
 }
 
-@Test("['1', '2', '3']: 'false'")
-@Test("['3', '4', '5']: 'true'")
+@Test(["1", "2", "3"], "false")
+@Test(["3", "4", "5"], "true")
 function pythagoreanTripleCheck(a: Integer, b: Integer, c: Integer): Boolean {
   generalFermatCheck(a, b, c, myCode.square|(_))
 }

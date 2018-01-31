@@ -42,7 +42,18 @@ private class Sem0To1Converter(val input: S0Context) {
     }
 
     private fun apply(annotation: S0Annotation): Annotation {
-        return Annotation(annotation.name, annotation.value)
+        return Annotation(annotation.name, annotation.values.map(this::apply))
+    }
+
+    private fun apply(annotationArg: S0AnnotationArg): AnnotationArgument {
+        return when (annotationArg) {
+            is S0AnnotationArg.Literal -> {
+                AnnotationArgument.Literal(annotationArg.value)
+            }
+            is S0AnnotationArg.List -> {
+                AnnotationArgument.List(annotationArg.values.map(this::apply))
+            }
+        }
     }
 
     private fun apply(block: S0Block): Block {

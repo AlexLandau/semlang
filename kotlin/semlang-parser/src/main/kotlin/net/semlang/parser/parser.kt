@@ -14,7 +14,25 @@ import net.semlang.api.Annotation
 import java.io.File
 import java.util.*
 
-private fun parseLiteral(literalFromParser: TerminalNode) = literalFromParser.text.drop(1).dropLast(1)
+private fun parseLiteral(literalFromParser: TerminalNode): String {
+    val innerString = literalFromParser.text.drop(1).dropLast(1)
+    val sb = StringBuilder()
+    var i = 0
+    while (i < innerString.length) {
+        val c = innerString[i]
+        if (c == '\\') {
+            if (i + 1 >= innerString.length) {
+                error("Something went wrong with string literal evaluation")
+            }
+            sb.append(innerString[i + 1])
+            i += 2
+        } else {
+            sb.append(c)
+            i++
+        }
+    }
+    return sb.toString()
+}
 
 private fun rangeOf(context: ParserRuleContext): Range {
     return Range(
@@ -175,9 +193,28 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     private fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
         val name = annotation.annotation_name().ID().text
-        val value = annotation.LITERAL()?.let(::parseLiteral)
+        val args = if (annotation.annotation_contents_list() != null) {
+            parseAnnotationArgumentsList(annotation.annotation_contents_list())
+        } else {
+            listOf()
+        }
 
-        return Annotation(name, value)
+        return Annotation(name, args)
+    }
+
+    private fun parseAnnotationArgumentsList(list: Sem1Parser.Annotation_contents_listContext): List<AnnotationArgument> {
+        return parseLinkedList(list,
+                Sem1Parser.Annotation_contents_listContext::annotation_item,
+                Sem1Parser.Annotation_contents_listContext::annotation_contents_list,
+                this::parseAnnotationArgument)
+    }
+
+    private fun parseAnnotationArgument(annotationArg: Sem1Parser.Annotation_itemContext): AnnotationArgument {
+        if (annotationArg.LBRACKET() != null) {
+            val contents = parseAnnotationArgumentsList(annotationArg.annotation_contents_list())
+            return AnnotationArgument.List(contents)
+        }
+        return AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
     }
 
     private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): Block {

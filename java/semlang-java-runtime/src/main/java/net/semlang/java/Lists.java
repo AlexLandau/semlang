@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -39,5 +40,13 @@ public class Lists {
 
     public static <T, U> List<U> map(List<T> list, Function<T, U> function) {
         return list.stream().map(function).collect(Collectors.toList());
+    }
+
+    public static <T, U> U reduce(List<T> list, U initialValue, BiFunction<U, T, U> reducer) {
+        U curValue = initialValue;
+        for (T element : list) {
+            curValue = reducer.apply(curValue, element);
+        }
+        return curValue;
     }
 }

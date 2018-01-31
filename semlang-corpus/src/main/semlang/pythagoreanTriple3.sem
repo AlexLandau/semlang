@@ -3,8 +3,8 @@ function myCode.square(n: Natural): Natural {
   Natural.times(n, n)
 }
 
-@Test("['1', '2', '3']: 'false'")
-@Test("['3', '4', '5']: 'true'")
+@Test(["1", "2", "3"], "false")
+@Test(["3", "4", "5"], "true")
 function pythagoreanTripleCheck(a: Natural, b: Natural, c: Natural): Boolean {
   let aSquared: Natural = myCode.square(a)
   let bSquared: Natural = myCode.square(b)

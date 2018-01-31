@@ -1,0 +1,21 @@
+{
+  "name": "semlang-api",
+  "version": "0.0.1",
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "build": "rm -rf lib/ && tsc -p ./",
+    "test": "jest"
+  },
+  "dependencies": {
+    "big-integer": "1.6.26",
+    "lodash": "4.17.4",
+    "utfstring": "2.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "22.0.1",
+    "@types/lodash": "4.14.92",
+    "jest": "22.0.5",
+    "typescript": "~2.5.3"
+  }
+}

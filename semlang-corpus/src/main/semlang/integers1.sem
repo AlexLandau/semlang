@@ -1,0 +1,6 @@
+@Test(["0", "0"], "0")
+@Test(["10", "-11"], "-1")
+@Test(["123456781234567812345678", "876543218765432187654321"], "999999999999999999999999")
+function testPlus(left: Integer, right: Integer): Integer {
+  Integer.plus(left, right)
+}

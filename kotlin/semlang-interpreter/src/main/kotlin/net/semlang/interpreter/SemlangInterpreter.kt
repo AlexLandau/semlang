@@ -212,7 +212,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     }
                 }
                 .collect(Collectors.toList())
-        return SemObject.Instance(interfaceDef, arguments[0], fixedBindings)
+        return SemObject.Instance(interfaceDef, fixedBindings)
     }
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
@@ -250,8 +250,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     return innerResult.objects[index]
                 } else if (innerResult is SemObject.Instance) {
                     val index = innerResult.interfaceDef.getIndexForName(name)
-                    val functionBinding = innerResult.methods[index]
-                    return functionBinding
+                    return innerResult.methods[index]
                 } else if (innerResult is SemObject.UnicodeString) {
                     if (name != "codePoints") {
                         error("The only valid member in a Unicode.String is 'codePoints'")
@@ -400,22 +399,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
 }
 
 fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {
-    val sb = StringBuilder()
-    var i = 0
-    while (i < literal.length) {
-        val c = literal[i]
-        if (c == '\\') {
-            if (i + 1 >= literal.length) {
-                error("Something went wrong with string literal evaluation")
-            }
-            sb.append(literal[i + 1])
-            i += 2
-        } else {
-            sb.append(c)
-            i++
-        }
-    }
-    return SemObject.UnicodeString(sb.toString())
+    return SemObject.UnicodeString(literal)
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {

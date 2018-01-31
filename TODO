@@ -15,6 +15,9 @@ Intended near-term refactors and changes:
   - Turn NativeFunctions into library code written in semlang where possible
     - It would also be nice to have this in some .class form in a produced .jar, maybe?
   - Use a code coverage tool for the Kotlin tests
+  - Apply Kotlin style guide, and maybe add linting?
+  - Add tslint?
+- Sem0: Link native types (structs, perhaps some library functions) into sem0 code
 - Thoughts on code corpus:
   - These are groups of code that include annotations or comments with their intended output for given inputs
   - Thus, any implementation can use them as a test of that implementation
