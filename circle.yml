@@ -2,6 +2,11 @@ machine:
   environment:
     TERM: dumb
 
+dependencies:
+  override:
+    - ./gradlew downloadDependencies
+    - ./gradlew yarn_install
+
 test:
   override:
     - ./gradlew test -Dorg.gradle.parallel=false

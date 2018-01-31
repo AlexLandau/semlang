@@ -28,3 +28,21 @@ project(":kotlin").subprojects {
         testCompile 'junit:junit:4.12'
     }
 }
+
+// Make CircleCI's caching of dependencies actually work
+task downloadDependencies {
+    doLast {
+        subprojects {
+//            println("I'm in project ${project}")
+            for (configuration in configurations) {
+                // Certain dependencies can't be touched directly, so we need to whitelist the good ones
+                if (['antlr', 'compile', 'testCompile'].contains(configuration.name)) {
+//                    println("Configuration is ${configuration}")
+//                    println "Dependencies are: ${configuration.files}"
+                    // Force iteration over all the files to ensure the dependencies get downloaded
+                    configuration.files.iterator().collect()
+                }
+            }
+        }
+    }
+}
