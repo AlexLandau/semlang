@@ -1,0 +1,6 @@
+dependencies {
+  compile project(':kotlin:semlang-api')
+  compile project(':kotlin:semlang-module-repository')
+  compile project(':kotlin:semlang-transforms')
+  testCompile project(":kotlin:semlang-test-utils")
+}
