@@ -343,6 +343,10 @@ class ValidatedModule private constructor(val id: ModuleId,
         return resolver.resolve(ref)
     }
 
+    fun resolve(ref: ResolvedEntityRef): EntityResolution? {
+        return resolver.resolve(EntityRef(ref.module.asRef(), ref.id))
+    }
+
 }
 
 enum class FunctionLikeType {

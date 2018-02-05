@@ -494,7 +494,7 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
 private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
     val sequenceDot = fun(name: String) = EntityId.of("Sequence", name)
 
-    val basicSequenceDot = fun(name: String) = EntityId.of("BasicSequence", name)
+    val basicSequenceDot = fun(name: String) = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("BasicSequence", name))
 
     // Sequence.create
     list.add(NativeFunction(sequenceDot("create"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -511,7 +511,7 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
     }))
 
     // BasicSequence.get(BasicSequence, index)
-    list.add(NativeFunction(basicSequenceDot("get"), { args: List<SemObject>, apply: InterpreterCallback ->
+    list.add(NativeFunction(EntityId.of("BasicSequence", "get"), { args: List<SemObject>, apply: InterpreterCallback ->
         val sequence = args[0] as? SemObject.Struct ?: typeError()
         val index = args[1] as? SemObject.Natural ?: typeError()
         if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
@@ -528,7 +528,7 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
     }))
 
     // BasicSequence.first
-    list.add(NativeFunction(basicSequenceDot("first"), BasicSequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
+    list.add(NativeFunction(EntityId.of("BasicSequence", "first"), BasicSequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
         val sequence = args[0] as? SemObject.Struct ?: typeError()
         val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
         if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
