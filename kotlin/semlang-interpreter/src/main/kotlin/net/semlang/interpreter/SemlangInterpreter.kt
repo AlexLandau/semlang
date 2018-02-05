@@ -343,11 +343,12 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             is Type.Try -> evaluateTryLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
+            is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
         }
     }
 
     private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
-        if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
             // TODO: Check for errors related to string encodings
             return evaluateStringLiteral(literal)
         }

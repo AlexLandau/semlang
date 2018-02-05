@@ -2,6 +2,7 @@ package net.semlang.parser
 
 import net.semlang.api.NativeStruct
 import net.semlang.api.Type
+import net.semlang.api.isNativeModule
 
 sealed class LiteralValidator {
     abstract fun validate(literal: String): Boolean
@@ -47,13 +48,13 @@ fun getTypeValidatorFor(type: Type): LiteralValidator? {
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> null
         is Type.NamedType -> {
-            // TODO: Bug; support :lang:Unicode.String."Foo"
-            if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
+            if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 return LiteralValidator.UNICODE_STRING
             }
             null
         }
         is Type.FunctionType -> null
         is Type.Try -> null
+        is Type.ParameterType -> null
     }
 }

@@ -60,36 +60,37 @@ class ContextTests {
                 { module, id -> module.getExportedInterface(id)?.interfac })
     }
 
-    fun <T> testEntityVisibility(createEntity: (id: EntityId, uniqueAspect: Int, exported: Boolean) -> T,
+    fun <T> testEntityVisibility(createEntity: (id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean) -> T,
                                  createModule: (moduleId: ModuleId, entities: Map<EntityId, T>, upstreamModules: List<ValidatedModule>) -> ValidatedModule,
                                  getInternalEntity: (module: ValidatedModule, id: EntityId) -> T?,
                                  getExportedEntity: (module: ValidatedModule, id: EntityId) -> T?) {
+        val upstreamModuleId = ModuleId("example", "upstream", "0.1")
+        val downstreamModuleId = ModuleId("example", "downstream", "0.1")
+
         val coincidentallySharedInternalId = EntityId.of("coincidentallySharedInternal")
-        val upstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, 1, false)
-        val downstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, 2, false)
+        val upstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, upstreamModuleId, 1, false)
+        val downstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, downstreamModuleId, 2, false)
 
         val upstreamInternalId = EntityId.of("upstreamInternal")
-        val upstreamInternalEntity = createEntity(upstreamInternalId, 3, false)
+        val upstreamInternalEntity = createEntity(upstreamInternalId, upstreamModuleId, 3, false)
 
         val upstreamExportedId = EntityId.of("upstreamExported")
-        val upstreamExportedEntity = createEntity(upstreamExportedId, 4, true)
+        val upstreamExportedEntity = createEntity(upstreamExportedId, upstreamModuleId, 4, true)
 
         val upstreamEntities = mapOf(upstreamInternalId to upstreamInternalEntity,
                 upstreamExportedId to upstreamExportedEntity,
                 coincidentallySharedInternalId to upstreamEntityWithSharedId)
 
         val downstreamInternalId = EntityId.of("downstreamInternal")
-        val downstreamInternalEntity = createEntity(downstreamInternalId, 5, false)
+        val downstreamInternalEntity = createEntity(downstreamInternalId, downstreamModuleId, 5, false)
 
         val downstreamExportedId = EntityId.of("downstreamExported")
-        val downstreamExportedEntity = createEntity(downstreamExportedId, 6, true)
+        val downstreamExportedEntity = createEntity(downstreamExportedId, downstreamModuleId, 6, true)
 
         val downstreamEntities = mapOf(downstreamInternalId to downstreamInternalEntity,
                 downstreamExportedId to downstreamExportedEntity,
                 coincidentallySharedInternalId to downstreamEntityWithSharedId)
 
-        val upstreamModuleId = ModuleId("example", "upstream", "0.1")
-        val downstreamModuleId = ModuleId("example", "downstream", "0.1")
         val upstreamContext = createModule(upstreamModuleId, upstreamEntities, listOf())
         val downstreamContext = createModule(downstreamModuleId, downstreamEntities, listOf(upstreamContext))
 
@@ -118,7 +119,7 @@ class ContextTests {
     }
 }
 
-private fun createFunctionWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
+private fun createFunctionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
     val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, uniqueAspect.toString()))
     val annotations = if (exported) {
         listOf(Annotation("Exported", listOf()))
@@ -128,22 +129,22 @@ private fun createFunctionWithId(id: EntityId, uniqueAspect: Int, exported: Bool
     return ValidatedFunction(id, listOf(), listOf(), Type.INTEGER, block, annotations)
 }
 
-private fun createStructWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): Struct {
+private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Struct {
     val member = Member(uniqueAspect.toString(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation("Exported", listOf()))
     } else {
         listOf()
     }
-    return Struct(id, listOf(), listOf(member), null, annotations)
+    return Struct(id, moduleId, listOf(), listOf(member), null, annotations)
 }
 
-private fun createInterfaceWithId(id: EntityId, uniqueAspect: Int, exported: Boolean): Interface {
+private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Interface {
     val method = Method(uniqueAspect.toString(), listOf(), listOf(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation("Exported", listOf()))
     } else {
         listOf()
     }
-    return Interface(id, listOf(), listOf(method), annotations)
+    return Interface(id, moduleId, listOf(), listOf(method), annotations)
 }

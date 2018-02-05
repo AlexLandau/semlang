@@ -125,7 +125,7 @@ private fun parseEntityId(text: String): EntityId {
     return EntityId(parts)
 }
 
-private fun parseMembers(node: JsonNode): List<Member> {
+private fun parseMembers(node: JsonNode): List<UnvalidatedMember> {
     if (!node.isArray()) error("Members should be in an array")
     return node.map { memberNode -> parseMember(memberNode) }
 }
@@ -167,21 +167,27 @@ private fun toTypeNode(type: Type): JsonNode {
             }
             node
         }
+        is Type.ParameterType -> {
+            // Note: We currently treat this the same as named types
+            val node = ObjectNode(factory)
+            node.put("name", type.name)
+            node
+        }
     }
 }
 
-private fun parseMember(node: JsonNode): Member {
+private fun parseMember(node: JsonNode): UnvalidatedMember {
     val name = node["name"].textValue() ?: error("Member names should be strings")
     val type = parseType(node["type"] ?: error("Members must have types"))
-    return Member(name, type)
+    return UnvalidatedMember(name, type)
 }
 
-private fun parseType(node: JsonNode): Type {
+private fun parseType(node: JsonNode): UnvalidatedType {
     if (node.isTextual()) {
         return when (node.textValue()) {
-            "Integer" -> Type.INTEGER
-            "Boolean" -> Type.BOOLEAN
-            "Natural" -> Type.NATURAL
+            "Integer" -> UnvalidatedType.INTEGER
+            "Boolean" -> UnvalidatedType.BOOLEAN
+            "Natural" -> UnvalidatedType.NATURAL
             else -> error("Unrecognized type string: ${node.textValue()}")
         }
     }
@@ -198,15 +204,15 @@ private fun parseType(node: JsonNode): Type {
         } else {
             listOf()
         }
-        return Type.NamedType(id, parameters)
+        return UnvalidatedType.NamedType(id, parameters)
     } else if (node.has("from")) {
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])
-        return Type.FunctionType(argTypes, outputType)
+        return UnvalidatedType.FunctionType(argTypes, outputType)
     } else if (node.has("Try")) {
-        return Type.Try(parseType(node["Try"]))
+        return UnvalidatedType.Try(parseType(node["Try"]))
     } else if (node.has("List")) {
-        return Type.List(parseType(node["List"]))
+        return UnvalidatedType.List(parseType(node["List"]))
     }
     error("Unrecognized type: $node")
 }
@@ -516,7 +522,7 @@ private fun parseExpression(node: JsonNode): Expression {
     }
 }
 
-private fun parseChosenParameters(node: JsonNode): List<Type> {
+private fun parseChosenParameters(node: JsonNode): List<UnvalidatedType> {
     if (!node.isArray()) error("Expected an array of expressions")
     return node.map { typeNode -> parseType(typeNode) }
 }

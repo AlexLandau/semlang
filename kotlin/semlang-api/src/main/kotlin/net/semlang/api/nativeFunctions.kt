@@ -132,11 +132,11 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.bitwiseAnd
     definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
     // Natural.toBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef())))
+    definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), NativeStruct.BITS_BIG_ENDIAN.getType()))
     // Natural.toNBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "toNBits"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef()))))
+    definitions.add(TypeSignature(EntityId.of("Natural", "toNBits"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(NativeStruct.BITS_BIG_ENDIAN.getType())))
     // Natural.fromBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(Type.NamedType(NativeStruct.BITS_BIG_ENDIAN.id.asRef())), Type.NATURAL))
+    definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(NativeStruct.BITS_BIG_ENDIAN.getType()), Type.NATURAL))
 
     // Natural.max
     definitions.add(TypeSignature(EntityId.of("Natural", "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
@@ -151,110 +151,111 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.NamedType.forParameter("T")
-    val paramU = Type.NamedType.forParameter("U")
+    val paramT = Type.ParameterType("T")
+    val paramU = Type.ParameterType("U")
 
     // List.append
-    definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), paramT),
             outputType = Type.List(paramT)))
 
     // List.appendFront
-    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf("T"),
             argumentTypes = listOf(paramT, Type.List(paramT)),
             outputType = Type.List(paramT)))
 
     // List.concatenate
-    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.List(paramT)),
             outputType = Type.List(paramT)))
 
     // List.drop
-    definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.List(paramT)))
 
     // TODO: Semantics of this are arguably different from last()... but I kind of like it that way
     // List.lastN
-    definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.List(paramT)))
 
     // List.map
-    definitions.add(TypeSignature(EntityId.of("List", "map"), typeParameters = listOf(paramT, paramU),
+    definitions.add(TypeSignature(EntityId.of("List", "map"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), paramU)),
             outputType = Type.List(paramU)))
 
     // List.filter
-    definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
             outputType = Type.List(paramT)))
 
     // List.reduce
-    definitions.add(TypeSignature(EntityId.of("List", "reduce"), typeParameters = listOf(paramT, paramU),
+    definitions.add(TypeSignature(EntityId.of("List", "reduce"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.List(paramT), paramU, Type.FunctionType(listOf(paramU, paramT), paramU)),
             outputType = paramU))
 
     // List.size
-    definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT)),
             outputType = Type.NATURAL))
 
     // List.get
-    definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.Try(paramT)))
 
     // List.first TODO: To library
-    definitions.add(TypeSignature(EntityId.of("List", "first"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "first"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT)),
             outputType = Type.Try(paramT)))
 
     // List.last TODO: To library
-    definitions.add(TypeSignature(EntityId.of("List", "last"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("List", "last"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT)),
             outputType = Type.Try(paramT)))
 }
 
 private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.NamedType.forParameter("T")
-    val paramU = Type.NamedType.forParameter("U")
+    val paramT = Type.ParameterType("T")
+    val paramU = Type.ParameterType("U")
 
     // Try.success
-    definitions.add(TypeSignature(EntityId.of("Try", "success"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("Try", "success"), typeParameters = listOf("T"),
             argumentTypes = listOf(paramT),
             outputType = Type.Try(paramT)))
 
     // Try.failure
-    definitions.add(TypeSignature(EntityId.of("Try", "failure"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("Try", "failure"), typeParameters = listOf("T"),
             argumentTypes = listOf(),
             outputType = Type.Try(paramT)))
 
     // Try.assume
-    definitions.add(TypeSignature(EntityId.of("Try", "assume"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("Try", "assume"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.Try(paramT)),
             outputType = paramT))
 
 
     // Try.isSuccess
-    definitions.add(TypeSignature(EntityId.of("Try", "isSuccess"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("Try", "isSuccess"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.Try(paramT)),
             outputType = Type.BOOLEAN))
 
     // Try.map
-    definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf(paramT, paramU),
+    definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), paramU)),
             outputType = Type.Try(paramU)))
 }
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.NamedType.forParameter("T")
+    val paramT = Type.ParameterType("T")
 
-    val sequenceT = Type.NamedType(EntityRef.of("Sequence"), listOf(paramT))
+    val sequenceT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Sequence")), EntityRef.of("Sequence"), listOf(paramT))
+//    val sequenceT = Type.NamedType(NativeInterface.SEQUENCE.resolvedRef, listOf(paramT))
 
     // Sequence.create
     // TODO: This should be library code in semlang in most cases, not native
-    definitions.add(TypeSignature(EntityId.of("Sequence", "create"), typeParameters = listOf(paramT),
+    definitions.add(TypeSignature(EntityId.of("Sequence", "create"), typeParameters = listOf("T"),
             argumentTypes = listOf(paramT, Type.FunctionType(listOf(paramT), paramT)),
             outputType = sequenceT))
 
@@ -262,7 +263,7 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 private fun addStringFunctions(definitions: ArrayList<TypeSignature>) {
-    val stringType = Type.NamedType(EntityRef.of("Unicode", "String"))
+    val stringType = NativeStruct.UNICODE_STRING.getType()
 
     // Unicode.String.length
     // TODO: Limit output to 32-bit type
@@ -272,10 +273,11 @@ private fun addStringFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 object NativeStruct {
-    private val typeT = Type.NamedType.forParameter("T")
-    private val typeU = Type.NamedType.forParameter("U")
+    private val typeT = Type.ParameterType("T")
+    private val typeU = Type.ParameterType("U")
     val BASIC_SEQUENCE = Struct(
             EntityId.of("BasicSequence"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
                     Member("base", typeT),
@@ -286,6 +288,7 @@ object NativeStruct {
     )
     val UNICODE_CODE_POINT = Struct(
             EntityId.of("Unicode", "CodePoint"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
                     Member("natural", Type.NATURAL)
@@ -303,15 +306,17 @@ object NativeStruct {
     )
     val UNICODE_STRING = Struct(
             EntityId.of("Unicode", "String"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("codePoints", Type.List(Type.NamedType(UNICODE_CODE_POINT.id.asRef())))
+                    Member("codePoints", Type.List(UNICODE_CODE_POINT.getType()))
             ),
             null,
             listOf()
     )
     val BIT = Struct(
             EntityId.of("Bit"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
                     Member("natural", Type.NATURAL)
@@ -343,9 +348,10 @@ object NativeStruct {
     )
     val BITS_BIG_ENDIAN = Struct(
             EntityId.of("BitsBigEndian"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("bits", Type.List(Type.NamedType(BIT.id.asRef())))
+                    Member("bits", Type.List(BIT.getType()))
             ),
             null,
             listOf()
@@ -365,9 +371,10 @@ fun getNativeStructs(): Map<EntityId, Struct> {
 }
 
 object NativeInterface {
-    private val typeT = Type.NamedType.forParameter("T")
+    private val typeT = Type.ParameterType("T")
     val SEQUENCE = Interface(
             EntityId.of("Sequence"),
+            CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
                     Method("get", listOf(), listOf(Argument("index", Type.NATURAL)), typeT),

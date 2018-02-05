@@ -134,7 +134,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             )
         }
         val arguments: List<UnvalidatedArgument> = parseFunctionArguments(function.function_arguments())
-        val returnType: Type = parseType(function.type())
+        val returnType: UnvalidatedType = parseType(function.type())
 
         val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
         val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
@@ -154,7 +154,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             listOf()
         }
 
-        val members: List<Member> = parseMembers(ctx.struct_members())
+        val members: List<UnvalidatedMember> = parseMembers(ctx.struct_members())
         val requires: Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             scopeBlock(externalVarIds, parseBlock(it))
@@ -330,17 +330,17 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 TerminalNode::getText)
     }
 
-    private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<Member> {
+    private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<UnvalidatedMember> {
         return parseLinkedList(members,
                 Sem1Parser.Struct_membersContext::struct_member,
                 Sem1Parser.Struct_membersContext::struct_members,
                 this::parseMember)
     }
 
-    private fun parseMember(member: Sem1Parser.Struct_memberContext): Member {
+    private fun parseMember(member: Sem1Parser.Struct_memberContext): UnvalidatedMember {
         val name = member.ID().text
         val type = parseType(member.type())
-        return Member(name, type)
+        return UnvalidatedMember(name, type)
     }
 
     private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
@@ -517,12 +517,12 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 TerminalNode::getText)
     }
 
-    private fun parseType(type: Sem1Parser.TypeContext): Type {
+    private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedType {
         if (type.ARROW() != null) {
             //Function type
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return Type.FunctionType(argumentTypes, outputType)
+            return UnvalidatedType.FunctionType(argumentTypes, outputType)
         }
 
         if (type.LESS_THAN() != null) {
@@ -536,45 +536,45 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         throw IllegalArgumentException("Unparsed type " + type)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<Type> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<UnvalidatedType> {
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_typesContext::type,
                 Sem1Parser.Cd_typesContext::cd_types,
                 this::parseType)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_types_nonemptyContext): List<Type> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_types_nonemptyContext): List<UnvalidatedType> {
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_types_nonemptyContext::type,
                 Sem1Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
     }
 
-    private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<Type>): Type {
+    private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
         if (entity_ref.module_ref() != null || entity_ref.entity_id().namespace() != null) {
-            return Type.NamedType(parseEntityRef(entity_ref), parameters)
+            return UnvalidatedType.NamedType(parseEntityRef(entity_ref), parameters)
         }
 
         val typeId = entity_ref.entity_id().ID().text
         if (typeId == "Natural") {
-            return Type.NATURAL
+            return UnvalidatedType.NATURAL
         } else if (typeId == "Integer") {
-            return Type.INTEGER
+            return UnvalidatedType.INTEGER
         } else if (typeId == "Boolean") {
-            return Type.BOOLEAN
+            return UnvalidatedType.BOOLEAN
         } else if (typeId == "List") {
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
-            return Type.List(parameters[0])
+            return UnvalidatedType.List(parameters[0])
         } else if (typeId == "Try") {
             if (parameters.size != 1) {
                 error("Try should only accept a single parameter; parameters were: $parameters")
             }
-            return Type.Try(parameters[0])
+            return UnvalidatedType.Try(parameters[0])
         }
 
-        return Type.NamedType(EntityRef.of(typeId), parameters)
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), parameters)
     }
 
     private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {

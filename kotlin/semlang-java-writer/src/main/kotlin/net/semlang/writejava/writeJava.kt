@@ -189,7 +189,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
 
-            val typeReplacements = interfac.typeParameters.map{s -> Type.NamedType.forParameter(s) as Type}.zip(interfaceParameters).toMap()
+            val typeReplacements = interfac.typeParameters.map{s -> Type.ParameterType(s) as Type}.zip(interfaceParameters).toMap()
             val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
             methodBuilder.addAnnotation(Override::class.java)
 
@@ -610,6 +610,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     // This gets populated early on in the write() method.
     val namedFunctionCallStrategies = HashMap<EntityId, FunctionCallStrategy>()
 
+    private fun getNamedFunctionCallStrategy(functionRef: ResolvedEntityRef): FunctionCallStrategy {
+        // TODO: Currently we pretend other modules don't exist
+        return getNamedFunctionCallStrategy(functionRef.id)
+    }
     private fun getNamedFunctionCallStrategy(functionRef: EntityRef): FunctionCallStrategy {
         // TODO: Currently we pretend other modules don't exist
         return getNamedFunctionCallStrategy(functionRef.id)
@@ -718,6 +722,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
                 error("Literals not supported for type $resolvedType")
             }
+            is Type.ParameterType -> {
+                error("Literals not supported for parameter type $type")
+            }
         }
     }
 
@@ -734,6 +741,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
+            is Type.ParameterType -> TypeVariableName.get(semlangType.name)
         }
     }
 
@@ -745,7 +753,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
         if (isInTypeParameterScope(semlangType)) {
-            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
+//            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
+            // TODO: Get rid of support for this
+            error("We should be able to get rid of this now")
         }
 
         //TODO: Resolve beforehand, not after (part of multi-module support (?))

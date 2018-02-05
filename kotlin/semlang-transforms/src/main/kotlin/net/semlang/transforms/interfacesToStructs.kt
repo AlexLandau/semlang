@@ -86,18 +86,18 @@ private class InterfaceToStructConverter(private val context: RawContext) {
 
     private fun generateAdaptFunction(interfac: UnvalidatedInterface) {
         val adaptFunctionId = EntityId(interfac.id.namespacedName + "adapt")
-        val dataParameterType = Type.NamedType.forParameter(interfac.getAdapterStruct().typeParameters[0])
-        val adapterType = Type.NamedType(interfac.adapterId.asRef(), interfac.getAdapterStruct().typeParameters.map { param -> Type.NamedType.forParameter(param) })
+        val dataParameterType = UnvalidatedType.NamedType.forParameter(interfac.getAdapterStruct().typeParameters[0])
+        val adapterType = UnvalidatedType.NamedType(interfac.adapterId.asRef(), interfac.getAdapterStruct().typeParameters.map { param -> UnvalidatedType.NamedType.forParameter(param) })
         val arguments = listOf(
             UnvalidatedArgument("data", dataParameterType, null),
             UnvalidatedArgument("adapter", adapterType, null)
         )
-        val instanceType = Type.NamedType(interfac.id.asRef(), interfac.typeParameters.map { param -> Type.NamedType.forParameter(param) })
+        val instanceType = UnvalidatedType.NamedType(interfac.id.asRef(), interfac.typeParameters.map { param -> UnvalidatedType.NamedType.forParameter(param) })
         val block = Block(listOf(),
                 Expression.NamedFunctionCall(
                         interfac.id.asRef(),
                         interfac.methods.map { method ->
-                            val adapterFunctionType = Type.FunctionType(listOf(dataParameterType) + method.functionType.argTypes,
+                            val adapterFunctionType = UnvalidatedType.FunctionType(listOf(dataParameterType) + method.functionType.argTypes,
                                     method.returnType)
                             Expression.ExpressionFunctionBinding(
                                     Expression.Follow(
@@ -129,7 +129,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
 
     private fun generateInstanceStruct(interfac: UnvalidatedInterface) {
         val members = interfac.methods.map { method ->
-            Member(method.name, method.functionType)
+            UnvalidatedMember(method.name, method.functionType)
         }
         val struct = UnvalidatedStruct(interfac.id, interfac.typeParameters,
                 members, null, interfac.annotations, null)

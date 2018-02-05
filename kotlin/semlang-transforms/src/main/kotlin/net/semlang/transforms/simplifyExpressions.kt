@@ -19,7 +19,7 @@ private fun simplifyRequiresBlocks(oldStructs: List<UnvalidatedStruct>): List<Un
         oldStruct.copy(requires = if (requires == null) {
             null
         } else {
-            simplifyBlockExpressions(requires, oldStruct.members.map(Member::name))
+            simplifyBlockExpressions(requires, oldStruct.members.map(UnvalidatedMember::name))
         })
     }
 }
