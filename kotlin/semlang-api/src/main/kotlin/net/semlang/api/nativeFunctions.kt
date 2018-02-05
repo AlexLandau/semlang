@@ -294,6 +294,7 @@ object NativeStruct {
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
                     EntityRef.of("Natural", "lessThan"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "lessThan")),
                     listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                             TypedExpression.Literal(Type.NATURAL, "1114112")),
                     listOf()
@@ -319,15 +320,18 @@ object NativeStruct {
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
                     EntityRef.of("Boolean", "or"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Boolean", "or")),
                     listOf(TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
                             listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                                     TypedExpression.Literal(Type.NATURAL, "0")),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
                             listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
                                     TypedExpression.Literal(Type.NATURAL, "1")),
                             listOf()

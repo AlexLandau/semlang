@@ -671,7 +671,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 postBindingArgumentTypes,
                 signature.outputType.replacingParameters(parameterMap))
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, bindings, chosenParameters)
+        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, resolvedRef.entityRef, bindings, chosenParameters)
     }
 
     private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -777,7 +777,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("The function $functionRef expects argument types ${groundSignature.argumentTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
         }
 
-        return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionRef, arguments, expression.chosenParameters)
+        return TypedExpression.NamedFunctionCall(groundSignature.outputType, functionRef, functionResolvedRef.entityRef, arguments, expression.chosenParameters)
     }
 
     private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: EntityId, location: Location?): GroundedTypeSignature? {

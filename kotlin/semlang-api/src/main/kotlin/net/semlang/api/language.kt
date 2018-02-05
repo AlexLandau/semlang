@@ -53,15 +53,138 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
 }
 
 // TODO: Are these actually useful?
-interface ParameterizableType {
-    fun getParameterizedTypes(): List<Type>
-}
+//interface ParameterizableType {
+//    fun getParameterizedTypes(): List<Type>
+//}
+
+//private fun replaceParametersUnvalidated(parameters: List<UnvalidatedType>, parameterMap: Map<UnvalidatedType, UnvalidatedType>): List<UnvalidatedType> {
+//    return parameters.map { type ->
+//        parameterMap.getOrElse(type, fun (): UnvalidatedType {return type})
+//    }
+//}
 
 private fun replaceParameters(parameters: List<Type>, parameterMap: Map<Type, Type>): List<Type> {
     return parameters.map { type ->
         parameterMap.getOrElse(type, fun (): Type {return type})
     }
 }
+
+//sealed class UnvalidatedType {
+//    abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
+//    abstract protected fun getTypeString(): String
+//    override fun toString(): String {
+//        return getTypeString()
+//    }
+//
+//    object INTEGER : UnvalidatedType() {
+//        override fun getTypeString(): String {
+//            return "Integer"
+//        }
+//
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return this
+//        }
+//    }
+//    object NATURAL : UnvalidatedType() {
+//        override fun getTypeString(): String {
+//            return "Natural"
+//        }
+//
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return this
+//        }
+//    }
+//    object BOOLEAN : UnvalidatedType() {
+//        override fun getTypeString(): String {
+//            return "Boolean"
+//        }
+//
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return this
+//        }
+//    }
+//
+//    data class List(val parameter: UnvalidatedType): UnvalidatedType() {
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return List(parameter.replacingParameters(parameterMap))
+//        }
+//
+//        override fun getTypeString(): String {
+//            return "List<$parameter>"
+//        }
+//
+//        override fun toString(): String {
+//            return getTypeString()
+//        }
+//    }
+//
+//    data class Try(val parameter: UnvalidatedType): UnvalidatedType() {
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return Try(parameter.replacingParameters(parameterMap))
+//        }
+//
+//        override fun getTypeString(): String {
+//            return "Try<$parameter>"
+//        }
+//
+//        override fun toString(): String {
+//            return getTypeString()
+//        }
+//    }
+//
+//    data class FunctionType(val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType): UnvalidatedType() {
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
+//                    outputType.replacingParameters(parameterMap))
+//        }
+//
+//        override fun getTypeString(): String {
+//            return "(" +
+//                    argTypes.joinToString(", ") +
+//                    ") -> " +
+//                    outputType.toString()
+//        }
+//
+//        override fun toString(): String {
+//            return getTypeString()
+//        }
+//    }
+//
+//    //TODO: In the validator, validate that it does not share a name with a default type
+//    data class NamedType(val ref: EntityRef, val parameters: kotlin.collections.List<UnvalidatedType> = listOf()): UnvalidatedType() {
+//        companion object {
+//            fun forParameter(name: String): NamedType {
+//                return NamedType(EntityRef(null, EntityId(listOf(name))), listOf())
+//            }
+//        }
+//        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+//            val replacement = parameterMap[this]
+//            if (replacement != null) {
+//                // TODO: Should this have replaceParameters applied to it?
+//                return replacement
+//            }
+//            return NamedType(ref,
+//                    replaceParametersUnvalidated(parameters, parameterMap))
+//        }
+//
+//        fun getParameterizedTypes(): kotlin.collections.List<UnvalidatedType> {
+//            return parameters
+//        }
+//
+//        override fun getTypeString(): String {
+//            return ref.toString() +
+//                if (parameters.isEmpty()) {
+//                    ""
+//                } else {
+//                    "<" + parameters.joinToString(", ") + ">"
+//                }
+//        }
+//
+//        override fun toString(): String {
+//            return super.toString()
+//        }
+//    }
+//}
 
 sealed class Type {
     abstract fun replacingParameters(parameterMap: Map<Type, Type>): Type
@@ -145,7 +268,7 @@ sealed class Type {
     }
 
     //TODO: In the validator, validate that it does not share a name with a default type
-    data class NamedType(val ref: EntityRef, val parameters: kotlin.collections.List<Type> = listOf()): Type(), ParameterizableType {
+    data class NamedType(val ref: EntityRef, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
         companion object {
             fun forParameter(name: String): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(name))), listOf())
@@ -161,17 +284,17 @@ sealed class Type {
                     replaceParameters(parameters, parameterMap))
         }
 
-        override fun getParameterizedTypes(): kotlin.collections.List<Type> {
+        fun getParameterizedTypes(): kotlin.collections.List<Type> {
             return parameters
         }
 
         override fun getTypeString(): String {
             return ref.toString() +
-                if (parameters.isEmpty()) {
-                    ""
-                } else {
-                    "<" + parameters.joinToString(", ") + ">"
-                }
+                    if (parameters.isEmpty()) {
+                        ""
+                    } else {
+                        "<" + parameters.joinToString(", ") + ">"
+                    }
         }
 
         override fun toString(): String {
@@ -228,11 +351,11 @@ sealed class TypedExpression {
     abstract val type: Type
     data class Variable(override val type: Type, val name: String): TypedExpression()
     data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class Literal(override val type: Type, val literal: String): TypedExpression()
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
     data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val block: TypedBlock): TypedExpression()
