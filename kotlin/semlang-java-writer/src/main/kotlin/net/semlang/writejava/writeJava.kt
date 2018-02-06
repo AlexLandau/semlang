@@ -565,7 +565,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 unboundArgumentNames.add(argumentName)
 
                 val unparameterizedArgType = signature.argumentTypes[index]
-                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
+                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
             } else {
                 arguments.add(binding)
@@ -759,7 +759,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
-        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.ref)
+        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
         if (interfaceRef != null) {
             val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
 //            val interfac = module.getInternalInterface(module.resolve(interfaceRef)?.entityRef ?: error("error"))
@@ -775,7 +775,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
         }
 
-        val predefinedClassName: ClassName? = when (semlangType.ref.id.namespacedName) {
+        val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
@@ -788,7 +788,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.ref.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.originalRef.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
