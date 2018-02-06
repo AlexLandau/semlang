@@ -5,6 +5,7 @@ import net.semlang.api.*
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
  */
+// TODO: Return an unvalidated module, and if possible, use an unvalidated module as input
 fun constrainVariableNames(module: ValidatedModule, renamingStrategy: VariableRenamingStrategy): ValidatedModule {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
     return ValidatedModule.create(module.id, module.nativeModuleVersion, renameWithinFunctions(module.ownFunctions, validatingStrategy), module.ownStructs,
@@ -96,7 +97,7 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
         }
         is TypedExpression.NamedFunctionCall -> {
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, arguments, expression.chosenParameters)
+            TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, expression.resolvedFunctionRef, arguments, expression.chosenParameters)
         }
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
@@ -116,7 +117,7 @@ private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, bindings, expression.chosenParameters)
+            TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, expression.resolvedFunctionRef, bindings, expression.chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)

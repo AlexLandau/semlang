@@ -47,7 +47,7 @@ private class Sem1To0Converter(val input: RawContext) {
         return S0Struct(id, struct.typeParameters, members, requires, annotations)
     }
 
-    private fun apply(member: Member): S0Member {
+    private fun apply(member: UnvalidatedMember): S0Member {
         val type = apply(member.type)
         return S0Member(member.name, type)
     }
@@ -72,19 +72,19 @@ private class Sem1To0Converter(val input: RawContext) {
         }
     }
 
-    private fun apply(type: Type): S0Type {
+    private fun apply(type: UnvalidatedType): S0Type {
         return when (type) {
-            Type.INTEGER -> S0Type.Integer
-            Type.NATURAL -> S0Type.Natural
-            Type.BOOLEAN -> S0Type.Boolean
-            is Type.List -> S0Type.List(apply(type.parameter))
-            is Type.Try -> S0Type.Try(apply(type.parameter))
-            is Type.FunctionType -> {
+            UnvalidatedType.INTEGER -> S0Type.Integer
+            UnvalidatedType.NATURAL -> S0Type.Natural
+            UnvalidatedType.BOOLEAN -> S0Type.Boolean
+            is UnvalidatedType.List -> S0Type.List(apply(type.parameter))
+            is UnvalidatedType.Try -> S0Type.Try(apply(type.parameter))
+            is UnvalidatedType.FunctionType -> {
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)
                 S0Type.FunctionType(argTypes, outputType)
             }
-            is Type.NamedType -> {
+            is UnvalidatedType.NamedType -> {
                 val id = convertRef(type.ref)
                 val parameters = type.parameters.map(this::apply)
                 S0Type.NamedType(id, parameters)

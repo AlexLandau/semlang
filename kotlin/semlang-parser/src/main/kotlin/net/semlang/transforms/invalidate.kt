@@ -18,22 +18,60 @@ fun invalidate(interfac: Interface): UnvalidatedInterface {
 
 private fun invalidateMethod(method: Method): UnvalidatedMethod {
     val arguments = method.arguments.map(::invalidate)
-    return UnvalidatedMethod(method.name, method.typeParameters, arguments, method.returnType)
+    return UnvalidatedMethod(method.name, method.typeParameters, arguments, invalidate(method.returnType))
 }
 
 fun invalidate(argument: Argument): UnvalidatedArgument {
-    return UnvalidatedArgument(argument.name, argument.type, null)
+    return UnvalidatedArgument(argument.name, invalidate(argument.type), null)
 }
 
 fun invalidate(struct: Struct): UnvalidatedStruct {
     val requires = struct.requires?.let { invalidate(it) }
-    return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations, null)
+    val members = struct.members.map(::invalidate)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations, null)
 }
 
 fun invalidate(block: TypedBlock): Block {
     val assignments = block.assignments.map(::invalidateAssignment)
     val returnedExpression = invalidateExpression(block.returnedExpression)
     return Block(assignments, returnedExpression, null)
+}
+
+fun invalidate(type: Type): UnvalidatedType {
+    return when (type) {
+        Type.INTEGER -> UnvalidatedType.INTEGER
+        Type.NATURAL -> UnvalidatedType.NATURAL
+        Type.BOOLEAN -> UnvalidatedType.BOOLEAN
+        is Type.List -> {
+            UnvalidatedType.List(invalidate(type.parameter))
+        }
+        is Type.Try -> {
+            UnvalidatedType.Try(invalidate(type.parameter))
+        }
+        is Type.FunctionType -> {
+            val argTypes = type.argTypes.map(::invalidate)
+            val outputType = invalidate(type.outputType)
+            UnvalidatedType.FunctionType(argTypes, outputType)
+        }
+        is Type.ParameterType -> {
+            UnvalidatedType.NamedType(EntityRef.of(type.name))
+        }
+        is Type.NamedType -> {
+            val parameters = type.parameters.map(::invalidate)
+            UnvalidatedType.NamedType(type.originalRef, parameters)
+        }
+    }
+}
+
+fun invalidate(typeSignature: TypeSignature): UnvalidatedTypeSignature {
+    val argTypes = typeSignature.argumentTypes.map(::invalidate)
+    val outputType = invalidate(typeSignature.outputType)
+    return UnvalidatedTypeSignature(typeSignature.id, argTypes, outputType, typeSignature.typeParameters)
+}
+
+fun invalidate(member: Member): UnvalidatedMember {
+    val type = invalidate(member.type)
+    return UnvalidatedMember(member.name, type)
 }
 
 private fun invalidateExpression(expression: TypedExpression): Expression {
@@ -49,28 +87,34 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionCall -> {
             val arguments = expression.arguments.map(::invalidateExpression)
-            Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters, null, null)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters, null, null)
         }
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val arguments = expression.arguments.map(::invalidateExpression)
-            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, null)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
         }
         is TypedExpression.Literal -> {
-            Expression.Literal(expression.type, expression.literal, null)
+            val type = invalidate(expression.type)
+            Expression.Literal(type, expression.literal, null)
         }
         is TypedExpression.ListLiteral -> {
             val contents = expression.contents.map(::invalidateExpression)
-            Expression.ListLiteral(contents, expression.chosenParameter, null)
+            val chosenParameter = invalidate(expression.chosenParameter)
+            Expression.ListLiteral(contents, chosenParameter, null)
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters, null)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
         }
         is TypedExpression.Follow -> {
             val structureExpression = invalidateExpression(expression.structureExpression)
@@ -86,12 +130,13 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
 
 private fun invalidateAssignment(assignment: ValidatedAssignment): Assignment {
     val expression = invalidateExpression(assignment.expression)
-    return Assignment(assignment.name, assignment.type, expression, null)
+    return Assignment(assignment.name, invalidate(assignment.type), expression, null)
 }
 
 fun invalidate(function: ValidatedFunction): Function {
     val arguments = function.arguments.map(::invalidate)
     val block = invalidate(function.block)
-    return Function(function.id, function.typeParameters, arguments, function.returnType, block,
+    val returnType = invalidate(function.returnType)
+    return Function(function.id, function.typeParameters, arguments, returnType, block,
             function.annotations, null, null)
 }
