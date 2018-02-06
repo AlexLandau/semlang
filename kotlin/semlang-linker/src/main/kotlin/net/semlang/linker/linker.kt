@@ -1,6 +1,7 @@
 package net.semlang.linker
 
 import net.semlang.api.*
+import net.semlang.api.Annotation
 import net.semlang.api.Function
 import net.semlang.api.RawContext
 import net.semlang.api.ResolvedEntityRef
@@ -32,16 +33,12 @@ private class Linker(val rootModule: ValidatedModule) {
         // Get the subset of entities in all referenced modules that could be referenced by calling code from the root
         // module.
         val relevantEntities = RelevantEntitiesFinder(rootModule).compute()
-        val nameAssignment = NameAssigner(rootModule.id, relevantEntities).assignNames()
-//        val transformedFunctions = applyRenaming(relevantEntities.functions)
-        val transformedFunctions = relevantEntities.functions.map(nameAssignment::applyToFunction)
-//        relevantEntities.functions.map { (ref, function) ->
-//            function.id
-//            Function(newId, function.typeParameters, arguments, returnType, block, function.annotations, null, null)
-//        }
-        val transformedStructs = applyRenaming(relevantEntities.structs)
-        val transformedInterfaces = applyRenaming(relevantEntities.interfaces)
 
+        val nameAssignment = NameAssigner(rootModule.id, relevantEntities).assignNames()
+
+        val transformedFunctions = relevantEntities.functions.map { (ref, function) -> nameAssignment.applyToFunction(ref, function) }
+        val transformedStructs = relevantEntities.structs.values.map(nameAssignment::applyToStruct)
+        val transformedInterfaces = relevantEntities.interfaces.values.map(nameAssignment::applyToInterface)
 
         val moduleInfo = ModuleInfo(rootModule.id, listOf())
         val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces)
@@ -56,38 +53,163 @@ private data class RelevantEntities(
         val interfaces: Map<ResolvedEntityRef, Interface>
 )
 
-private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>) {
-    fun applyToFunction(ref: ResolvedEntityRef, functionWithModule: FunctionWithModule): Function {
-        val function = functionWithModule.function
-        val containingModule = functionWithModule.module
+private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleId) {
+    private val EXPORTED_ANNOTATION = Annotation("Exported", listOf())
 
+    private fun translateRef(ref: ResolvedEntityRef): EntityRef {
+        if (isNativeModule(ref.module)) {
+            // TODO: This will need collision protection against redefined names, but adding a full moduleRef to everything
+            // would be totally obnoxious
+            return EntityRef(null, ref.id)
+        } else {
+            return EntityRef(null, newNames[ref]!!)
+        }
+    }
+
+    fun applyToFunction(ref: ResolvedEntityRef, function: ValidatedFunction): Function {
         val newId = newNames[ref]!!
         val arguments = function.arguments.map(this::apply)
+        val returnType = apply(function.returnType)
+        val block = apply(function.block)
+        val annotations = handleAnnotations(function.annotations, ref.module)
 
-        return Function(newId, function.typeParameters, arguments, returnType, block, function.annotations, null, null)
+        return Function(newId, function.typeParameters, arguments, returnType, block, annotations, null, null)
+    }
+
+    // Remove the "Exported" annotation from entities not in the root module
+    private fun handleAnnotations(annotations: List<Annotation>, entityModule: ModuleId): List<Annotation> {
+        if (entityModule == rootModuleId) {
+            return annotations
+        }
+        return annotations - listOf(EXPORTED_ANNOTATION)
+    }
+
+    private fun apply(block: TypedBlock): Block {
+        val assignments = block.assignments.map(this::apply)
+        val returnedExpression = apply(block.returnedExpression)
+        return Block(assignments, returnedExpression, null)
+    }
+
+    private fun apply(assignment: ValidatedAssignment): Assignment {
+        val expression = apply(assignment.expression)
+        return Assignment(assignment.name, null, expression, null)
+    }
+
+    private fun apply(expression: TypedExpression): Expression {
+        return when (expression) {
+            is TypedExpression.Variable -> {
+                Expression.Variable(expression.name, null)
+            }
+            is TypedExpression.IfThen -> {
+                val condition = apply(expression.condition)
+                val thenBlock = apply(expression.thenBlock)
+                val elseBlock = apply(expression.elseBlock)
+                Expression.IfThen(condition, thenBlock, elseBlock, null)
+            }
+            is TypedExpression.NamedFunctionCall -> {
+//                DEBUG
+//                if (!newNames.containsKey(expression.resolvedFunctionRef)) {
+//                    error("Ref is: ${expression.resolvedFunctionRef}")
+//                }
+
+                val functionRef = translateRef(expression.resolvedFunctionRef)//EntityRef(null, newNames[expression.resolvedFunctionRef]!!)
+                val arguments = expression.arguments.map(this::apply)
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, null, null)
+            }
+            is TypedExpression.ExpressionFunctionCall -> {
+                val functionExpression = apply(expression.functionExpression)
+                val arguments = expression.arguments.map(this::apply)
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
+            }
+            is TypedExpression.Literal -> {
+                val type = apply(expression.type)
+                Expression.Literal(type, expression.literal, null)
+            }
+            is TypedExpression.ListLiteral -> {
+                val contents = expression.contents.map(this::apply)
+                val chosenParameter = apply(expression.chosenParameter)
+                Expression.ListLiteral(contents, chosenParameter, null)
+            }
+            is TypedExpression.NamedFunctionBinding -> {
+                val functionRef = translateRef(expression.resolvedFunctionRef)//EntityRef(null, newNames[expression.resolvedFunctionRef]!!)
+                val bindings = expression.bindings.map { if (it == null) null else apply(it) }
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, null)
+            }
+            is TypedExpression.ExpressionFunctionBinding -> {
+                val functionExpression = apply(expression.functionExpression)
+                val bindings = expression.bindings.map { if (it == null) null else apply(it) }
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
+            }
+            is TypedExpression.Follow -> {
+                val structureExpression = apply(expression.structureExpression)
+                Expression.Follow(structureExpression, expression.name, null)
+            }
+            is TypedExpression.InlineFunction -> {
+                val arguments = expression.arguments.map(this::apply)
+                val block = apply(expression.block)
+                Expression.InlineFunction(arguments, block, null)
+            }
+        }
     }
 
     private fun apply(argument: Argument): UnvalidatedArgument {
         return UnvalidatedArgument(argument.name, apply(argument.type), null)
     }
 
-    private fun apply(type: Type): Type {
+    private fun apply(type: Type): UnvalidatedType {
         return when (type) {
-            Type.INTEGER -> Type.INTEGER
-            Type.NATURAL -> Type.NATURAL
-            Type.BOOLEAN -> Type.BOOLEAN
-            is Type.List -> Type.List(apply(type.parameter))
-            is Type.Try -> Type.Try(apply(type.parameter))
+            Type.INTEGER -> UnvalidatedType.INTEGER
+            Type.NATURAL -> UnvalidatedType.NATURAL
+            Type.BOOLEAN -> UnvalidatedType.BOOLEAN
+            is Type.List -> UnvalidatedType.List(apply(type.parameter))
+            is Type.Try -> UnvalidatedType.Try(apply(type.parameter))
             is Type.FunctionType -> {
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)
-                Type.FunctionType(argTypes, outputType)
+                UnvalidatedType.FunctionType(argTypes, outputType)
             }
             is Type.NamedType -> {
+                val newRef = translateRef(type.ref)//EntityRef(null, newNames[type.ref]!!)
                 val parameters = type.parameters.map(this::apply)
-                Type.NamedType(newRef, parameters)
+                UnvalidatedType.NamedType(newRef, parameters)
+            }
+            is Type.ParameterType -> {
+                val newRef = EntityRef.of(type.name)
+                UnvalidatedType.NamedType(newRef)
             }
         }
+    }
+
+    fun applyToStruct(struct: Struct): UnvalidatedStruct {
+        val newId = newNames[struct.resolvedRef]!!
+        val members = struct.members.map(this::apply)
+        val requires = struct.requires?.let(this::apply)
+        val annotations = handleAnnotations(struct.annotations, struct.moduleId)
+
+        return UnvalidatedStruct(newId, struct.typeParameters, members, requires, annotations, null)
+    }
+
+    private fun apply(member: Member): UnvalidatedMember {
+        val type = apply(member.type)
+        return UnvalidatedMember(member.name, type)
+    }
+
+    fun applyToInterface(interfac: Interface): UnvalidatedInterface {
+        val newId = newNames[interfac.resolvedRef]!!
+        val methods = interfac.methods.map(this::apply)
+        val annotations = handleAnnotations(interfac.annotations, interfac.moduleId)
+
+        return UnvalidatedInterface(newId, interfac.typeParameters, methods, annotations, null)
+    }
+
+    private fun apply(method: Method): UnvalidatedMethod {
+        val arguments = method.arguments.map(this::apply)
+        val returnType = apply(method.returnType)
+        return UnvalidatedMethod(method.name, method.typeParameters, arguments, returnType)
     }
 }
 
@@ -123,7 +245,7 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
             newNameMap.put(ref, finalName)
             allNewNames.add(finalName)
         }
-        return NameAssignment(newNameMap)
+        return NameAssignment(newNameMap, rootModuleId)
     }
 
     private fun assignModulePrefixes(): Map<ModuleId, List<String>> {
@@ -210,6 +332,10 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             // The interface has already been added; skip it
             return
         }
+        if (isNativeModule(interfaceRef.module)) {
+            return
+        }
+
         val containingModule = allModules[interfaceRef.module]!!
         val interfac = containingModule.getInternalInterface(interfaceRef).interfac
 
@@ -225,6 +351,10 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             // The struct has already been added; skip it
             return
         }
+        if (isNativeModule(structRef.module)) {
+            return
+        }
+
         val containingModule = allModules[structRef.module]!!
         val struct = containingModule.getInternalStruct(structRef).struct
 
@@ -277,7 +407,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 enqueueBlock(expression.elseBlock, containingModule)
             }
             is TypedExpression.NamedFunctionCall -> {
-                enqueueFunctionRef(expression.functionRef, containingModule)
+                enqueueFunctionRef(expression.resolvedFunctionRef, containingModule)
                 for (type in expression.chosenParameters) {
                     enqueueType(type, containingModule)
                 }
@@ -303,7 +433,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 }
             }
             is TypedExpression.NamedFunctionBinding -> {
-                enqueueFunctionRef(expression.functionRef, containingModule)
+                enqueueFunctionRef(expression.resolvedFunctionRef, containingModule)
                 for (type in expression.chosenParameters) {
                     enqueueType(type, containingModule)
                 }
@@ -336,7 +466,8 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
         }
     }
 
-    private fun enqueueFunctionRef(functionRef: EntityRef, containingModule: ValidatedModule) {
+    private fun enqueueFunctionRef(functionRef: ResolvedEntityRef, containingModule: ValidatedModule) {
+        // TODO: This is another place where it would help to either store the EntityResolution or have another map in the resolver
         val resolved = containingModule.resolve(functionRef)!!
         when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
@@ -381,20 +512,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 enqueueType(type.outputType, containingModule)
             }
             is Type.NamedType -> {
-                // TODO: Check for type parameter names
                 enqueueFunctionRef(type.ref, containingModule)
-//                val resolvedRef = containingModule.resolve(type.ref)!!
-//                if (resolvedRef.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
-//                    structsQueue.add(resolvedRef.entityRef)
-//                } else if (resolvedRef.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
-//                    interfacesQueue.add(resolvedRef.entityRef)
-//                } else if (resolvedRef.type == FunctionLikeType.ADAPTER_CONSTRUCTOR) {
-//                    // TODO: This is probably wrong
-//                    interfacesQueue.add(resolvedRef.entityRef)
-//                } else {
-//                    throw Error("Resolved ref was $resolvedRef")
-//                }
             }
+            is Type.ParameterType -> { /* Do nothing */ }
         }
     }
 
