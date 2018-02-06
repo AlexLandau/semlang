@@ -13,7 +13,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
     private val nativeFunctions: Map<EntityId, NativeFunction> = getNativeFunctions()
 
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
-        return interpret(EntityRef(mainModule.id.asRef(), functionId), arguments, mainModule)
+        return interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)
     }
 
     /**
@@ -21,13 +21,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
      * actually evaluated, we'll need to use the "containing module", i.e. the module where that code
      * was written.
      */
-    private fun interpret(functionRef: EntityRef, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
+    private fun interpret(functionRef: ResolvedEntityRef, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
         try {
             if (referringModule == null) {
                 return interpretNative(functionRef, arguments)
             }
 
             // TODO: Have one of these for native stuff, as well
+            // TODO: We already have the reference here but not the FunctionLikeType. Should we store that in language objects as well?
             val entityResolution = referringModule.resolve(functionRef) ?: error("The function $functionRef isn't recognized")
 
             when (entityResolution.type) {
@@ -80,7 +81,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
         error("I don't know what to do with the module $id from the referring module $referringModule")
     }
 
-    private fun interpretNative(ref: EntityRef, arguments: List<SemObject>): SemObject {
+    private fun interpretNative(ref: ResolvedEntityRef, arguments: List<SemObject>): SemObject {
         // TODO: Better approach to figuring out the type of thing here (i.e. a TypeResolver just for native stuff)
         assertModuleRefConsistentWithNative(ref)
 
@@ -108,29 +109,23 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
         error("Unrecognized entity $ref")
     }
 
-    private fun assertModuleRefConsistentWithNative(entityRef: EntityRef) {
-        val moduleRef = entityRef.moduleRef
-        if (moduleRef != null) {
-            if (moduleRef.module != NATIVE_MODULE_NAME
-                    || (moduleRef.group != null && moduleRef.group != NATIVE_MODULE_GROUP)) {
-                error("We're trying to evaluate ${entityRef} like a native entity, but its module ref is not consistent with the native package")
-            }
+    private fun assertModuleRefConsistentWithNative(entityRef: ResolvedEntityRef) {
+        val moduleId = entityRef.module
+        if (!isNativeModule(moduleId)) {
+            error("We're trying to evaluate ${entityRef} like a native entity, but its module ref is not consistent with the native package")
         }
     }
 
     private fun interpretBinding(functionBinding: SemObject.FunctionBinding, args: List<SemObject>): SemObject {
-        // TODO: Ideally this would be a ResolvedEntityRef, which would then give us the module?
-        // (I guess ResolvedEntityRef needs to deal with the possibility of the native module)
         val target = functionBinding.target
         return when (target) {
             is FunctionBindingTarget.Named -> {
-                val functionRef = EntityRef(functionBinding.containingModule?.id?.asRef(), target.functionId)
                 val containingModule = functionBinding.containingModule
 
                 val argsItr = args.iterator()
                 val fullArguments = functionBinding.bindings.map { it ?: argsItr.next() }
 
-                return interpret(functionRef, fullArguments, containingModule)
+                return interpret(target.functionRef, fullArguments, containingModule)
             }
             is FunctionBindingTarget.Inline -> {
                 val argsItr = args.iterator()
@@ -276,7 +271,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             }
             is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { argExpr -> evaluateExpression(argExpr, assignments, containingModule) }
-                return interpret(expression.functionRef, arguments, containingModule)
+                return interpret(expression.resolvedFunctionRef, arguments, containingModule)
             }
             is TypedExpression.Literal -> {
                 return evaluateLiteral(expression.type, expression.literal)
@@ -286,16 +281,15 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 return SemObject.SemList(contents)
             }
             is TypedExpression.NamedFunctionBinding -> {
-                val functionRef = expression.functionRef
+                val functionRef = expression.resolvedFunctionRef
                 val bindings = expression.bindings.map { expr -> if (expr != null) evaluateExpression(expr, assignments, containingModule) else null }
                 return if (containingModule != null) {
-                    val resolved = containingModule.resolve(functionRef) ?: error("Invalid function reference: $functionRef")
-                    val module = getModule(resolved.entityRef.module, containingModule)
-                    return SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef.id), module, bindings)
+                    val module = getModule(functionRef.module, containingModule)
+                    return SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef), module, bindings)
                 } else {
                     // TODO: Use a resolver for natives so this can also handle constructors
                     EntityResolution(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, functionRef.id), FunctionLikeType.NATIVE_FUNCTION)
-                    SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef.id), null, bindings)
+                    SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef), null, bindings)
                 }
             }
             is TypedExpression.ExpressionFunctionBinding -> {
@@ -349,11 +343,12 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             is Type.Try -> evaluateTryLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
+            is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
         }
     }
 
     private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
-        if (type.ref.moduleRef == null && type.ref.id == NativeStruct.UNICODE_STRING.id) {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
             // TODO: Check for errors related to string encodings
             return evaluateStringLiteral(literal)
         }

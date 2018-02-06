@@ -189,7 +189,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
 
-            val typeReplacements = interfac.typeParameters.map{s -> Type.NamedType.forParameter(s) as Type}.zip(interfaceParameters).toMap()
+            val typeReplacements = interfac.typeParameters.map{s -> Type.ParameterType(s) as Type}.zip(interfaceParameters).toMap()
             val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
             methodBuilder.addAnnotation(Override::class.java)
 
@@ -242,7 +242,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (struct.typeParameters.isNotEmpty()) {
             builder.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
         }
-        addToTypeVariableScope(struct.typeParameters)
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
         struct.members.forEach { member ->
@@ -279,8 +278,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
         builder.addMethod(createMethod.build())
 
-        removeFromTypeVariableScope(struct.typeParameters)
-
         return builder
     }
 
@@ -292,13 +289,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val builder = TypeSpec.interfaceBuilder(className).addModifiers(Modifier.PUBLIC)
 
         builder.addTypeVariables(interfac.typeParameters.map { name -> TypeVariableName.get(name) })
-        addToTypeVariableScope(interfac.typeParameters)
 
         interfac.methods.forEach { method ->
             builder.addMethod(writeInterfaceMethod(method).build())
         }
-
-        removeFromTypeVariableScope(interfac.typeParameters)
 
         return builder
     }
@@ -329,7 +323,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         for (typeParameter in function.typeParameters) {
             builder.addTypeVariable(TypeVariableName.get(typeParameter))
         }
-        addToTypeVariableScope(function.typeParameters)
 
         function.arguments.forEach { argument ->
             builder.addParameter(getType(argument.type), argument.name)
@@ -341,43 +334,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // TODO: Add block here
         builder.addCode(writeBlock(function.block, null))
 
-        removeFromTypeVariableScope(function.typeParameters)
         removeFromVariableScope(function.arguments.map(Argument::name))
 
         return builder.build()
-    }
-
-    // TODO: Multiset
-    val typeVariablesCount = HashMap<String, Int>()
-
-    private fun addToTypeVariableScope(typeParameters: List<String>) {
-        typeParameters.forEach(this::addToTypeVariableScope)
-    }
-
-    private fun addToTypeVariableScope(typeParameter: String) {
-        val existingCount = typeVariablesCount[typeParameter]
-        if (existingCount != null) {
-            typeVariablesCount[typeParameter] = existingCount + 1
-        } else {
-            typeVariablesCount[typeParameter] = 1
-        }
-    }
-
-    private fun removeFromTypeVariableScope(typeParameters: List<String>) {
-        typeParameters.forEach(this::removeFromTypeVariableScope)
-    }
-
-    private fun removeFromTypeVariableScope(typeParameter: String) {
-        val existingCount = typeVariablesCount[typeParameter] ?: error("Error in type parameter count tracking for $typeParameter")
-        typeVariablesCount[typeParameter] = existingCount - 1
-    }
-
-    private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
-        if (semlangType.ref.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
-            val count = typeVariablesCount[semlangType.ref.id.namespacedName.last()]
-            return count != null && count > 0
-        }
-        return false
     }
 
     /**
@@ -565,7 +524,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 unboundArgumentNames.add(argumentName)
 
                 val unparameterizedArgType = signature.argumentTypes[index]
-                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.zip(expression.chosenParameters).toMap())
+                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
             } else {
                 arguments.add(binding)
@@ -610,6 +569,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     // This gets populated early on in the write() method.
     val namedFunctionCallStrategies = HashMap<EntityId, FunctionCallStrategy>()
 
+    private fun getNamedFunctionCallStrategy(functionRef: ResolvedEntityRef): FunctionCallStrategy {
+        // TODO: Currently we pretend other modules don't exist
+        return getNamedFunctionCallStrategy(functionRef.id)
+    }
     private fun getNamedFunctionCallStrategy(functionRef: EntityRef): FunctionCallStrategy {
         // TODO: Currently we pretend other modules don't exist
         return getNamedFunctionCallStrategy(functionRef.id)
@@ -718,6 +681,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
                 error("Literals not supported for type $resolvedType")
             }
+            is Type.ParameterType -> {
+                error("Literals not supported for parameter type $type")
+            }
         }
     }
 
@@ -734,6 +700,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
+            is Type.ParameterType -> TypeVariableName.get(semlangType.name)
         }
     }
 
@@ -744,15 +711,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
-        if (isInTypeParameterScope(semlangType)) {
-            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
-        }
 
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
-        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.ref)
+        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
         if (interfaceRef != null) {
             val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
-//            val interfac = module.getInternalInterface(module.resolve(interfaceRef)?.entityRef ?: error("error"))
             val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
             val dataTypeParameter = getType(semlangType.parameters[0])
             val otherParameters = semlangType.parameters.drop(1).map { t -> getType(t) }
@@ -765,7 +728,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
         }
 
-        val predefinedClassName: ClassName? = when (semlangType.ref.id.namespacedName) {
+        val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
@@ -778,7 +741,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.ref.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.originalRef.toString())
 
         if (semlangType.parameters.isEmpty()) {
             return className
