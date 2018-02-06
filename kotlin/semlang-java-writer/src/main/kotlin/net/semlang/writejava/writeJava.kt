@@ -242,7 +242,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (struct.typeParameters.isNotEmpty()) {
             builder.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
         }
-        addToTypeVariableScope(struct.typeParameters)
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
         struct.members.forEach { member ->
@@ -279,8 +278,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
         builder.addMethod(createMethod.build())
 
-        removeFromTypeVariableScope(struct.typeParameters)
-
         return builder
     }
 
@@ -292,13 +289,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val builder = TypeSpec.interfaceBuilder(className).addModifiers(Modifier.PUBLIC)
 
         builder.addTypeVariables(interfac.typeParameters.map { name -> TypeVariableName.get(name) })
-        addToTypeVariableScope(interfac.typeParameters)
 
         interfac.methods.forEach { method ->
             builder.addMethod(writeInterfaceMethod(method).build())
         }
-
-        removeFromTypeVariableScope(interfac.typeParameters)
 
         return builder
     }
@@ -329,7 +323,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         for (typeParameter in function.typeParameters) {
             builder.addTypeVariable(TypeVariableName.get(typeParameter))
         }
-        addToTypeVariableScope(function.typeParameters)
 
         function.arguments.forEach { argument ->
             builder.addParameter(getType(argument.type), argument.name)
@@ -341,43 +334,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // TODO: Add block here
         builder.addCode(writeBlock(function.block, null))
 
-        removeFromTypeVariableScope(function.typeParameters)
         removeFromVariableScope(function.arguments.map(Argument::name))
 
         return builder.build()
-    }
-
-    // TODO: Multiset
-    val typeVariablesCount = HashMap<String, Int>()
-
-    private fun addToTypeVariableScope(typeParameters: List<String>) {
-        typeParameters.forEach(this::addToTypeVariableScope)
-    }
-
-    private fun addToTypeVariableScope(typeParameter: String) {
-        val existingCount = typeVariablesCount[typeParameter]
-        if (existingCount != null) {
-            typeVariablesCount[typeParameter] = existingCount + 1
-        } else {
-            typeVariablesCount[typeParameter] = 1
-        }
-    }
-
-    private fun removeFromTypeVariableScope(typeParameters: List<String>) {
-        typeParameters.forEach(this::removeFromTypeVariableScope)
-    }
-
-    private fun removeFromTypeVariableScope(typeParameter: String) {
-        val existingCount = typeVariablesCount[typeParameter] ?: error("Error in type parameter count tracking for $typeParameter")
-        typeVariablesCount[typeParameter] = existingCount - 1
-    }
-
-    private fun isInTypeParameterScope(semlangType: Type.NamedType): Boolean {
-        if (semlangType.ref.id.namespacedName.size == 1 && semlangType.parameters.isEmpty()) {
-            val count = typeVariablesCount[semlangType.ref.id.namespacedName.last()]
-            return count != null && count > 0
-        }
-        return false
     }
 
     /**
@@ -752,17 +711,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
-        if (isInTypeParameterScope(semlangType)) {
-//            return TypeVariableName.get(semlangType.ref.id.namespacedName.last())
-            // TODO: Get rid of support for this
-            error("We should be able to get rid of this now")
-        }
 
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
         val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
         if (interfaceRef != null) {
             val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
-//            val interfac = module.getInternalInterface(module.resolve(interfaceRef)?.entityRef ?: error("error"))
             val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
             val dataTypeParameter = getType(semlangType.parameters[0])
             val otherParameters = semlangType.parameters.drop(1).map { t -> getType(t) }
