@@ -1,7 +1,6 @@
 package net.semlang.api
 
-import java.util.*
-
+import java.util.Objects
 
 // An EntityId uniquely identifies an entity within a module. An EntityRef refers to an entity that may be in this
 // module or another, and may or may not have hints pointing to a particular module.
@@ -51,18 +50,6 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
         return "${module.group}:${module.module}:${module.version}:$id"
     }
 }
-
-private fun replaceParametersUnvalidated(parameters: List<UnvalidatedType>, parameterMap: Map<UnvalidatedType, UnvalidatedType>): List<UnvalidatedType> {
-    return parameters.map { type ->
-        parameterMap.getOrElse(type, fun (): UnvalidatedType {return type})
-    }
-}
-
-//private fun replaceParameters(parameters: List<Type>, parameterMap: Map<out Type, Type>): List<Type> {
-//    return parameters.map { type ->
-//        parameterMap.getOrElse(type, fun (): Type {return type})
-//    }
-//}
 
 sealed class UnvalidatedType {
     abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
@@ -158,11 +145,8 @@ sealed class UnvalidatedType {
                 return replacement
             }
             return NamedType(ref,
-                    replaceParametersUnvalidated(parameters, parameterMap))
-        }
-
-        fun getParameterizedTypes(): kotlin.collections.List<UnvalidatedType> {
-            return parameters
+                    parameters.map { it.replacingParameters(parameterMap) }
+            )
         }
 
         override fun getTypeString(): String {
@@ -175,7 +159,7 @@ sealed class UnvalidatedType {
         }
 
         override fun toString(): String {
-            return super.toString()
+            return getTypeString()
         }
     }
 }
@@ -320,7 +304,7 @@ sealed class Type {
         }
 
         /**
-         * Ignores the value of __.
+         * Ignores the value of [originalRef].
          */
         override fun equals(other: Any?): Boolean {
             if (this === other) {
@@ -335,19 +319,21 @@ sealed class Type {
             return Objects.equals(ref, other.ref) && Objects.equals(parameters, other.parameters)
         }
 
+        /**
+         * Ignores the value of [originalRef].
+         */
         override fun hashCode(): Int {
             return Objects.hash(ref, parameters)
         }
     }
 }
 
-// TODO: Maybe rename FunctionSignature?
+// TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<String> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(argumentTypes, outputType)
     }
 }
-
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<String> = listOf()): HasId
 
 data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
@@ -517,9 +503,15 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
     }
 }
 data class Interface(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
+    val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
     }
+
+    fun getType(): Type.NamedType {
+        return Type.NamedType(resolvedRef, id.asRef(), typeParameters.map(Type::ParameterType))
+    }
+
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
     val dataType = Type.ParameterType(dataTypeParameter)

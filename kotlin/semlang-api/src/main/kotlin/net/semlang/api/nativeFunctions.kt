@@ -250,8 +250,7 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val paramT = Type.ParameterType("T")
 
-    val sequenceT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Sequence")), EntityRef.of("Sequence"), listOf(paramT))
-//    val sequenceT = Type.NamedType(NativeInterface.SEQUENCE.resolvedRef, listOf(paramT))
+    val sequenceT = NativeInterface.SEQUENCE.getType()
 
     // Sequence.create
     // TODO: This should be library code in semlang in most cases, not native

@@ -17,8 +17,6 @@ private fun fail(text: String): Nothing {
     error(fullMessage)
 }
 
-data class GroundedTypeSignature(val id: EntityId, val argumentTypes: List<Type>, val outputType: Type)
-
 /*
  * Warning: Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
  *   check (albeit code that can always be run in a vacuum)
@@ -420,55 +418,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val validatedArguments = ArrayList<Argument>()
         for (argument in arguments) {
             val type = validateType(argument.type, typeInfo, typeParametersInScope) ?: return null
-//            if (typeNotRecognized(type, typeInfo, typeParametersInScope)) {
-//                errors.add(Issue("Unrecognized type $type", argument.location, IssueLevel.ERROR))
-//            }
             validatedArguments.add(Argument(argument.name, type))
         }
         return validatedArguments
     }
-
-//    private fun typeNotRecognized(type: Type, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Boolean {
-//        return !typeRecognized(type, typeInfo, typeParametersInScope)
-//    }
-//
-//    private fun typeRecognized(type: Type, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Boolean {
-//        return when (type) {
-//            Type.INTEGER -> true
-//            Type.NATURAL -> true
-//            Type.BOOLEAN -> true
-//            is Type.List -> typeRecognized(type.parameter, typeInfo, typeParametersInScope)
-//            is Type.Try -> typeRecognized(type.parameter, typeInfo, typeParametersInScope)
-//            is Type.FunctionType -> {
-//                typeRecognized(type.outputType, typeInfo, typeParametersInScope) && type.argTypes.all { typeRecognized(it, typeInfo, typeParametersInScope) }
-//            }
-//            is Type.NamedType -> {
-//                val typeNameRecognized = typeNameRecognized(type.ref, typeInfo, typeParametersInScope)
-//                val resolution = typeInfo.resolver.resolve(type.ref)
-//                if (!typeNameRecognized) {
-//                    false
-//                } else {
-//                    type.parameters.all { typeRecognized(it, typeInfo, typeParametersInScope) }
-//                }
-//            }
-//        }
-//    }
-
-//    private fun typeNameRecognized(ref: EntityRef, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Boolean {
-//        val resolution = typeInfo.resolver.resolve(ref)
-//        if (resolution != null) {
-//            return true
-//        }
-//        // Check the type parameters
-//        if (ref.moduleRef == null) {
-//            val namespacedName = ref.id.namespacedName
-//            val onlyOne = namespacedName.singleOrNull()
-//            if (onlyOne != null) {
-//                return typeParametersInScope.contains(onlyOne)
-//            }
-//        }
-//        return false
-//    }
 
     private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
         return arguments.associate { argument -> Pair(argument.name, argument.type) }
@@ -702,12 +655,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         if (chosenParameters.size != signature.typeParameters.size) {
             fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
         }
-//        val typeParameters = signature.typeParameters
 
         val expectedFunctionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
-
-//        val parameterMap = makeParameterMap(typeParameters, chosenParameters, resolvedRef.entityRef.id, expression.location) ?: return null
-//        val preBindingArgumentTypes = signature.argumentTypes.map { type -> type.replacingParameters(parameterMap) }
 
         if (expectedFunctionType.argTypes.size != expression.bindings.size) {
             errors.add(Issue("Tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${expectedFunctionType.argTypes.size} arguments", expression.location, IssueLevel.ERROR))
@@ -769,7 +718,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 // Chosen types come from the struct type known for the variable
                 val typeParameters = parentTypeInfo.typeParameters
                 val chosenTypes = parentNamedType.getParameterizedTypes()
-//                val type = parameterizeType(memberType.type, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
                 val type = parameterizeAndValidateType(memberType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
@@ -787,7 +735,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
                 val typeParameters = interfac.typeParameters
                 val chosenTypes = interfaceType.getParameterizedTypes()
-//                val type = parameterizeType(methodType, typeParameters, chosenTypes, resolvedParentType.entityRef.id, expression.location) ?: return null
                 val type = parameterizeAndValidateType(methodType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
 
                 return TypedExpression.Follow(type, structureExpression, expression.name)
@@ -854,7 +801,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         //Ground the signature
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-//        val groundSignature = ground(signature, chosenParameters, functionRef.id, expression.functionRefLocation) ?: return null
         if (signature.typeParameters.size != chosenParameters.size) {
             errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
             return null
@@ -875,12 +821,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             throw RuntimeException("Signature being parameterized is $signature", e)
         }
     }
-
-//    private fun ground(signature: TypeSignature, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Type.FunctionType? {
-//        val groundedArgumentTypes = signature.argumentTypes.map { t -> parameterizeType(t, signature.typeParameters, chosenTypes, functionId, location) ?: return null }
-//        val groundedOutputType = parameterizeType(signature.outputType, signature.typeParameters, chosenTypes, functionId, location) ?: return null
-//        return GroundedTypeSignature(signature.id, groundedArgumentTypes, groundedOutputType)
-//    }
 
     // TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
     private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Map<Type, Type>? {
