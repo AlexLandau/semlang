@@ -17,6 +17,11 @@ Intended near-term refactors and changes:
   - Use a code coverage tool for the Kotlin tests
   - Apply Kotlin style guide, and maybe add linting?
   - Add tslint?
+- Have more tests run against the standard library and its corpus, using the linker where necessary
+- Fix the mess of locations on unvalidated code objects
+- Sort out the distinction between native functions, the standard library, and "in-between"
+  - There are methods we'll want in the standard library that we'll want native implementations of anyway, when they are
+    used.
 - Sem0: Link native types (structs, perhaps some library functions) into sem0 code
 - Thoughts on code corpus:
   - These are groups of code that include annotations or comments with their intended output for given inputs
@@ -31,6 +36,7 @@ Intended near-term refactors and changes:
   - Should probably find a more pleasant-sounding word than "corpus"
 - Validation-time "requires" checking for extended literals
 - Lambda expressions
+- Add ability for modules to re-export their imports (probably just specified in the config file for now)
 - Have a list somewhere of the exposed methods that are intentionally "API"-ish
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
