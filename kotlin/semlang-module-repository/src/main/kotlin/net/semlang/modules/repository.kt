@@ -6,8 +6,6 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 
-data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
-
 /*
  * Larger design question: Do we treat the contents of the repository as validated or unvalidated?
  * For now, will treat as unvalidated for safety's sake (and because we'll catch more bugs that way)

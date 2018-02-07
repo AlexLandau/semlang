@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import net.semlang.api.ModuleId
+import net.semlang.api.RawContext
 import net.semlang.api.ValidatedModule
 import java.io.File
 import java.io.Writer
 
 // This is meant to incorporate all information that would appear in a module specification file
 data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
+data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
 
 // TODO: In theory we could hook these directly to Jackson
 fun parseConfigFile(file: File): ModuleInfoParsingResult {

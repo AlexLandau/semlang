@@ -7,8 +7,8 @@ import net.semlang.api.RawContext
 import net.semlang.api.ResolvedEntityRef
 import net.semlang.api.ValidatedFunction
 import net.semlang.api.ValidatedModule
-import net.semlang.modules.UnvalidatedModule
 import net.semlang.parser.ModuleInfo
+import net.semlang.parser.UnvalidatedModule
 import java.util.*
 
 /**
@@ -107,12 +107,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
                 Expression.IfThen(condition, thenBlock, elseBlock, null)
             }
             is TypedExpression.NamedFunctionCall -> {
-//                DEBUG
-//                if (!newNames.containsKey(expression.resolvedFunctionRef)) {
-//                    error("Ref is: ${expression.resolvedFunctionRef}")
-//                }
-
-                val functionRef = translateRef(expression.resolvedFunctionRef)//EntityRef(null, newNames[expression.resolvedFunctionRef]!!)
+                val functionRef = translateRef(expression.resolvedFunctionRef)
                 val arguments = expression.arguments.map(this::apply)
                 val chosenParameters = expression.chosenParameters.map(this::apply)
                 Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, null, null)
@@ -133,7 +128,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
                 Expression.ListLiteral(contents, chosenParameter, null)
             }
             is TypedExpression.NamedFunctionBinding -> {
-                val functionRef = translateRef(expression.resolvedFunctionRef)//EntityRef(null, newNames[expression.resolvedFunctionRef]!!)
+                val functionRef = translateRef(expression.resolvedFunctionRef)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
                 val chosenParameters = expression.chosenParameters.map(this::apply)
                 Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, null)
@@ -173,7 +168,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
                 UnvalidatedType.FunctionType(argTypes, outputType)
             }
             is Type.NamedType -> {
-                val newRef = translateRef(type.ref)//EntityRef(null, newNames[type.ref]!!)
+                val newRef = translateRef(type.ref)
                 val parameters = type.parameters.map(this::apply)
                 UnvalidatedType.NamedType(newRef, parameters)
             }
