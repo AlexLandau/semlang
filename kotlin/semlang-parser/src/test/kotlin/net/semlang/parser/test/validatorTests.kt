@@ -6,6 +6,7 @@ import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.assertRawContextsEqual
+import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.parser.*
 import org.junit.Assert
 import org.junit.Test
@@ -19,12 +20,7 @@ class ValidatorPositiveTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val compilerTestFolder = File("src/test/semlang/validatorTests/pass")
-            val corpusFolder = File("../../semlang-corpus/src/main/semlang")
-            val allFiles = compilerTestFolder.listFiles() + corpusFolder.listFiles()
-            return allFiles.map { file ->
-                arrayOf(file as Any?)
-            }
+            return getAllStandaloneCompilableFiles()
         }
     }
 

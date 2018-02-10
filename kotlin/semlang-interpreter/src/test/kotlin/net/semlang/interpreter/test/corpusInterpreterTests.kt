@@ -5,6 +5,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.api.*
+import net.semlang.internal.test.getSemlangNativeCorpusFiles
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.internal.test.runAnnotationTests
@@ -17,10 +18,7 @@ class CorpusInterpreterTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("../../semlang-corpus/src/main/semlang")
-            return folder.listFiles().map { file ->
-                arrayOf(file as Any?)
-            }
+            return getSemlangNativeCorpusFiles()
         }
     }
 

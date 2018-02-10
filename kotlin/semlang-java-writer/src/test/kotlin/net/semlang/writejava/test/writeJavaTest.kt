@@ -2,6 +2,7 @@ package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
+import net.semlang.internal.test.getSemlangNativeCorpusFiles
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -24,11 +25,7 @@ class WriteJavaTest(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val corpusFolder = File("../../semlang-corpus/src/main/semlang")
-            val allFiles = corpusFolder.listFiles()
-            return allFiles.map { file ->
-                arrayOf(file as Any?)
-            }
+            return getSemlangNativeCorpusFiles()
         }
     }
 

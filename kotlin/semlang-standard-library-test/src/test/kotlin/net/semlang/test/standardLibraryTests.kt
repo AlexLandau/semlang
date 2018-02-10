@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
+import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
@@ -22,10 +23,7 @@ class StandardLibraryTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("../../semlang-library-corpus/src/main/semlang")
-            return folder.listFiles().map { file ->
-                arrayOf(file as Any?)
-            }
+            return getSemlangStandardLibraryCorpusFiles()
         }
 
         var libraryModuleId: ModuleId? = null

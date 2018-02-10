@@ -2,6 +2,7 @@ package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
+import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.ValidationResult
 import net.semlang.parser.parseFile
@@ -21,12 +22,7 @@ class InterfacesToStructsTest(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val compilerTestsFolder = File("../semlang-parser/src/test/semlang/validatorTests/pass")
-            val corpusFolder = File("../../semlang-corpus/src/main/semlang")
-            val allFiles = compilerTestsFolder.listFiles() + corpusFolder.listFiles()
-            return allFiles.map { file ->
-                arrayOf(file as Any?)
-            }
+            return getAllStandaloneCompilableFiles()
         }
     }
 
