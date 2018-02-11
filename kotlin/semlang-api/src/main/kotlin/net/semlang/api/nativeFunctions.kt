@@ -97,11 +97,16 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     // TODO: Should be in library instead of here, once we can use the library more easily
     definitions.add(TypeSignature(EntityId.of("Integer", "sum"), listOf(Type.List(Type.INTEGER)), Type.INTEGER))
 
+    // TODO: Will remove when Natural becomes a struct
     // Integer.fromNatural
     definitions.add(TypeSignature(EntityId.of("Integer", "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
 }
 
 private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
+
+    // TODO: Will remove when Natural becomes a struct
+    // Natural.fromInteger
+    definitions.add(TypeSignature(EntityId.of("Natural", "fromInteger"), listOf(Type.INTEGER), Type.Try(Type.NATURAL)))
 
     // Natural.times
     definitions.add(TypeSignature(EntityId.of("Natural", "times"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
@@ -204,16 +209,6 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
             outputType = Type.Try(paramT)))
-
-    // List.first TODO: To library
-    definitions.add(TypeSignature(EntityId.of("List", "first"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT)),
-            outputType = Type.Try(paramT)))
-
-    // List.last TODO: To library
-    definitions.add(TypeSignature(EntityId.of("List", "last"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT)),
-            outputType = Type.Try(paramT)))
 }
 
 private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
@@ -244,6 +239,11 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     // Try.map
     definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), paramU)),
+            outputType = Type.Try(paramU)))
+
+    // Try.flatMap
+    definitions.add(TypeSignature(EntityId.of("Try", "flatMap"), typeParameters = listOf("T", "U"),
+            argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), Type.Try(paramU))),
             outputType = Type.Try(paramU)))
 }
 

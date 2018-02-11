@@ -3,3 +3,17 @@
 function List.isEmpty<T>(list: List<T>): Boolean {
   Natural.equals(List.size<T>(list), Natural."0")
 }
+
+@Exported
+function List.first<T>(list: List<T>): Try<T> {
+  List.get<T>(list, Natural."0")
+}
+
+@Exported
+function List.last<T>(list: List<T>): Try<T> {
+  let size = List.size<T>(list)
+  let lastIndexMaybe: Try<Natural> = Natural.minus(size, Natural."1")
+  Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural) {
+    List.get<T>(list, lastIndex)
+  })
+}

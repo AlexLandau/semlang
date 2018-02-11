@@ -144,6 +144,16 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
     val naturalDot = fun(name: String) = EntityId.of("Natural", name)
 
+    // Natural.fromInteger
+    list.add(NativeFunction(naturalDot("fromInteger"), { args: List<SemObject>, _: InterpreterCallback ->
+        val integer = args[0] as? SemObject.Integer ?: typeError()
+        if (integer.value >= BigInteger.ZERO) {
+            SemObject.Try.Success(SemObject.Natural(integer.value))
+        } else {
+            SemObject.Try.Failure
+        }
+    }))
+
     // Natural.times
     list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
@@ -431,24 +441,25 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
-    // List.first
-    list.add(NativeFunction(listDot("first"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        if (list.contents.isEmpty()) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(list.contents[0])
-        }
-    }))
-    // List.last
-    list.add(NativeFunction(listDot("last"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        if (list.contents.isEmpty()) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(list.contents.last())
-        }
-    }))
+    // TODO: Find a way to keep in implementations for standard library functions
+//    // List.first
+//    list.add(NativeFunction(listDot("first"), { args: List<SemObject>, _: InterpreterCallback ->
+//        val list = args[0] as? SemObject.SemList ?: typeError()
+//        if (list.contents.isEmpty()) {
+//            SemObject.Try.Failure
+//        } else {
+//            SemObject.Try.Success(list.contents[0])
+//        }
+//    }))
+//    // List.last
+//    list.add(NativeFunction(listDot("last"), { args: List<SemObject>, _: InterpreterCallback ->
+//        val list = args[0] as? SemObject.SemList ?: typeError()
+//        if (list.contents.isEmpty()) {
+//            SemObject.Try.Failure
+//        } else {
+//            SemObject.Try.Success(list.contents.last())
+//        }
+//    }))
 
 }
 
@@ -485,6 +496,18 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
         when (theTry) {
             is SemObject.Try.Success -> {
                 SemObject.Try.Success(apply(theFunction, listOf(theTry.contents)))
+            }
+            is SemObject.Try.Failure -> theTry
+        }
+    }))
+
+    // Try.flatMap
+    list.add(NativeFunction(tryDot("flatMap"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        val theFunction = args[1] as? SemObject.FunctionBinding ?: typeError()
+        when (theTry) {
+            is SemObject.Try.Success -> {
+                apply(theFunction, listOf(theTry.contents))
             }
             is SemObject.Try.Failure -> theTry
         }
