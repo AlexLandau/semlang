@@ -130,15 +130,16 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         SemObject.Integer(natural.value)
     }))
 
-    // Integer.sum
-    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        val sum = list.contents.foldRight(BigInteger.ZERO, { semObj, sumSoFar ->
-            val int = semObj as? SemObject.Integer ?: typeError()
-            sumSoFar + int.value
-        })
-        SemObject.Integer(sum)
-    }))
+    // TODO: Future native library optimization
+//    // Integer.sum
+//    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
+//        val list = args[0] as? SemObject.SemList ?: typeError()
+//        val sum = list.contents.foldRight(BigInteger.ZERO, { semObj, sumSoFar ->
+//            val int = semObj as? SemObject.Integer ?: typeError()
+//            sumSoFar + int.value
+//        })
+//        SemObject.Integer(sum)
+//    }))
 }
 
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
