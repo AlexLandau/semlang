@@ -27,4 +27,12 @@ public class UnicodeStrings {
             return Optional.empty();
         }
     }
+
+    public static String create(List<Integer> codePoints) {
+        StringBuilder sb = new StringBuilder();
+        for (int codePoint : codePoints) {
+            sb.appendCodePoint(codePoint);
+        }
+        return sb.toString();
+    }
 }

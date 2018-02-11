@@ -225,7 +225,7 @@ class SourcesFolderModel(private val folderUri: URI,
                 // Treat each file as its own module
                 parsingResultsByDocumentName.forEach { fileName, parsingResult ->
                     val fakeModuleId = ModuleId("non-module", fileName.split(".")[0], "dev")
-                    val validationResult = validate(parsingResult, fakeModuleId, CURRENT_NATIVE_MODULE_VERSION)
+                    val validationResult = validate(parsingResult, fakeModuleId, CURRENT_NATIVE_MODULE_VERSION, listOf())
 
                     val diagnostics = collectDiagnostics(validationResult.getAllIssues(), listOf(getDocumentUriForFileName(fileName)))
 
@@ -240,7 +240,7 @@ class SourcesFolderModel(private val folderUri: URI,
             } else {
                 // We have a single module with a valid config
                 val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
-                val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION)
+                val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION, listOf())
 
                 val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
                 val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)

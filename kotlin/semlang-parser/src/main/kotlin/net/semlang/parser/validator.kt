@@ -26,10 +26,10 @@ fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion:
     return validator.validate(context)
 }
 
-fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
     return when (parsingResult) {
         is ParsingResult.Success -> {
-            validateModule(parsingResult.context, moduleId, nativeModuleVersion, listOf())
+            validateModule(parsingResult.context, moduleId, nativeModuleVersion, upstreamModules)
         }
         is ParsingResult.Failure -> {
             ValidationResult.Failure(parsingResult.errors, listOf())
@@ -37,14 +37,14 @@ fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersi
     }
 }
 
-fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule> = listOf()): ValidationResult {
     val parsingResult = parseFile(file)
-    return validate(parsingResult, moduleId, nativeModuleVersion)
+    return validate(parsingResult, moduleId, nativeModuleVersion, upstreamModules)
 }
 
 fun parseAndValidateString(text: String, documentUri: String, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
     val parsingResult = parseString(text, documentUri)
-    return validate(parsingResult, moduleId, nativeModuleVersion)
+    return validate(parsingResult, moduleId, nativeModuleVersion, listOf())
 }
 
 fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String): ValidationResult {
@@ -61,7 +61,7 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
             val combinedParsingResult = combineParsingResults(parsingResults)
 
             // TODO: Dependencies should figure in here at some point...
-            validate(combinedParsingResult, parsedConfig.info.id, nativeModuleVersion)
+            validate(combinedParsingResult, parsedConfig.info.id, nativeModuleVersion, listOf())
         }
     }
 }

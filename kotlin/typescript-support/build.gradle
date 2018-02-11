@@ -1,4 +1,5 @@
 dependencies {
+  compile project(':kotlin:semlang-linker')
   compile project(':kotlin:semlang-parser')
 }
 

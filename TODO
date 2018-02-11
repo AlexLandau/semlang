@@ -19,6 +19,8 @@ Intended near-term refactors and changes:
   - Add tslint?
 - Have more tests run against the standard library and its corpus, using the linker where necessary
 - Fix the mess of locations on unvalidated code objects
+- Compiler test: Check for incorrect parameters on follow calls/instance calls
+  - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
 - Sort out the distinction between native functions, the standard library, and "in-between"
   - There are methods we'll want in the standard library that we'll want native implementations of anyway, when they are
     used.

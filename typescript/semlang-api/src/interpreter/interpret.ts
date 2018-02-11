@@ -19,9 +19,15 @@ type BoundVars = { [varName: string]: SemObject };
 
 function getBoundVarsForArgs(argumentNames: string[], inputs: SemObject[]): BoundVars {
     const boundArguments: BoundVars = {};
+    if (argumentNames.length !== inputs.length) {
+        throw new Error(`Mismatch between argument names ${argumentNames} and inputs ${inputs}`);
+    }
     argumentNames.forEach((argumentName, index) => {
         const inputForArg = inputs[index];
         // TODO: Might want to do some type checking here
+        if (inputForArg == undefined) {
+            throw new Error(`Undefined input`);
+        }
         boundArguments[argumentName] = inputForArg;
     });
     return boundArguments;
@@ -132,7 +138,12 @@ export class InterpreterContext {
 
     private evaluateInlineBinding(functionBinding: SemObject.InlineFunctionBinding, args: SemObject[]): SemObject {
         const fullyBoundArguments = combineBindings(functionBinding, args) as SemObject[]; // These should all be defined by now
-        const boundVars = getBoundVarsForArgs(functionBinding.argumentNames, args);
+        for (const argument of fullyBoundArguments) {
+            if (argument == null) {
+                throw new Error(`We should have fully bound arguments going into this inline binding, but we didn't`);
+            }
+        }
+        const boundVars = getBoundVarsForArgs(functionBinding.argumentNames, fullyBoundArguments);
         return this.evaluateBlock(functionBinding.block, boundVars);
     }
 
@@ -142,7 +153,11 @@ export class InterpreterContext {
                 const varName = blockElement.let;
                 const expression = blockElement.be;
     
-                alreadyBoundVars[varName] = this.evaluateExpression(expression, alreadyBoundVars);
+                const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
+                if (evaluatedExpression == undefined) {
+                    throw new Error(`Evaluated expression was undefined; expression was: ${expression}`);
+                }
+                alreadyBoundVars[varName] = evaluatedExpression;
             } else {
                 const expression = blockElement.return;
                 return this.evaluateExpression(expression, alreadyBoundVars);
@@ -156,7 +171,7 @@ export class InterpreterContext {
             const varName = expression.var;
             const value = alreadyBoundVars[varName];
             if (value === undefined) {
-                throw new Error(`Undefined variable ${varName}`);
+                throw new Error(`Undefined variable ${varName}; alreadyBoundVar keys are: ${Object.keys(alreadyBoundVars)}`);
             }
             return value;
         } else if (expression.type === "ifThen") {

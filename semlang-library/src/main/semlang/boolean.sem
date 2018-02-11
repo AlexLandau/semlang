@@ -1,0 +1,9 @@
+@Exported
+function Boolean.all(values: List<Boolean>): Boolean {
+  List.reduce<Boolean, Boolean>(values, Boolean."true", Boolean.and|(_, _))
+}
+
+@Exported
+function Boolean.any(values: List<Boolean>): Boolean {
+  List.reduce<Boolean, Boolean>(values, Boolean."false", Boolean.or|(_, _))
+}

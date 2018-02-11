@@ -17,3 +17,9 @@ function List.last<T>(list: List<T>): Try<T> {
     List.get<T>(list, lastIndex)
   })
 }
+
+@Exported
+function List.nCopies<T>(n: Natural, value: T): List<T> {
+  let sequence = Sequence.create<List<T>>([]<T>, List.append<T>|(_, value))
+  sequence->get(n)
+}

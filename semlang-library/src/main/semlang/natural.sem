@@ -24,3 +24,36 @@ function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upper
 function Natural.minus(left: Natural, right: Natural): Try<Natural> {
   Natural.fromInteger(Integer.minus(Integer.fromNatural(left), Integer.fromNatural(right)))
 }
+
+@Exported
+function Natural.lessThanOrEqualTo(left: Natural, right: Natural): Boolean {
+  if (Natural.lessThan(left, right)) {
+    Boolean."true"
+  } else {
+    Natural.equals(left, right)
+  }
+}
+
+@Exported
+function Natural.greaterThanOrEqualTo(left: Natural, right: Natural): Boolean {
+  if (Natural.greaterThan(left, right)) {
+    Boolean."true"
+  } else {
+    Natural.equals(left, right)
+  }
+}
+
+@Exported
+function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
+  let allBits = if (Natural.equals(value, Natural."0")) {
+    []<Bit>
+  } else {
+    Natural.toBits(value)->bits
+  }
+  let actualNumBits = List.size<Bit>(allBits)
+  let paddingNeededMaybe = Natural.minus(numBits, actualNumBits)
+  Try.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural) {
+    let padding = List.nCopies<Bit>(paddingNeeded, Bit."0")
+    BitsBigEndian(List.concatenate<Bit>(padding, allBits))
+  })
+}

@@ -2,18 +2,27 @@ import "jest";
 import * as fs from "fs";
 import { runTests, toModule } from "../index";
 
-const corpusRoot = "../../semlang-corpus";
-if (!fs.existsSync(corpusRoot)) {
+const allFiles = [] as string[];
+
+const nativeCorpusRoot = "../../semlang-corpus";
+if (!fs.existsSync(nativeCorpusRoot)) {
     throw new Error(`Couldn't find semlang-corpus in the expected spot; probably running from the wrong directory, cwd is: ${fs.realpathSync(".")}`);
 }
-const translationsDir = corpusRoot + "/build/translations/json";
-if (!fs.existsSync(translationsDir)) {
-    throw new Error(`The JSON translations directory doesn't exist yet`);
+const libraryCorpusRoot = "../../semlang-library-corpus";
+if (!fs.existsSync(libraryCorpusRoot)) {
+    throw new Error(`Couldn't find semlang-library-corpus in the expected spot; probably running from the wrong directory, cwd is: ${fs.realpathSync(".")}`);
 }
-const filenames = fs.readdirSync(translationsDir);
 
-for (const filename of filenames) {
-    const file = translationsDir + "/" + filename;
+for (const rootDir of [nativeCorpusRoot, libraryCorpusRoot]) {
+    const translationsDir = rootDir + "/build/translations/json";
+    if (!fs.existsSync(translationsDir)) {
+        throw new Error(`The JSON translations directory ${translationsDir} doesn't exist yet`);
+    }
+    const nativeCorpusFilenames = fs.readdirSync(translationsDir);
+    allFiles.push(...nativeCorpusFilenames.map(filename => translationsDir + "/" + filename));
+}
+
+for (const file of allFiles) {
     test('Interpreter test for ' + file, () => {
         const jsonString = fs.readFileSync(file, 'utf8');
         const context = JSON.parse(jsonString);

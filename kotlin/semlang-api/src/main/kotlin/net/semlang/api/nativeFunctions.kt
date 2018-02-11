@@ -68,10 +68,6 @@ private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
     // Boolean.or
     definitions.add(TypeSignature(EntityId.of("Boolean", "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 
-    // Boolean.any
-    definitions.add(TypeSignature(EntityId.of("Boolean", "any"), listOf(Type.List(Type.BOOLEAN)), Type.BOOLEAN))
-    // Boolean.all
-    definitions.add(TypeSignature(EntityId.of("Boolean", "all"), listOf(Type.List(Type.BOOLEAN)), Type.BOOLEAN))
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
@@ -124,17 +120,11 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Natural", "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.greaterThan
     definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.lessThanOrEqualTo
-    definitions.add(TypeSignature(EntityId.of("Natural", "lessThanOrEqualTo"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.greaterThanOrEqualTo
-    definitions.add(TypeSignature(EntityId.of("Natural", "greaterThanOrEqualTo"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 
     // Natural.bitwiseAnd
     definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
     // Natural.toBits
     definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), NativeStruct.BITS_BIG_ENDIAN.getType()))
-    // Natural.toNBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "toNBits"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(NativeStruct.BITS_BIG_ENDIAN.getType())))
     // Natural.fromBits
     definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(NativeStruct.BITS_BIG_ENDIAN.getType()), Type.NATURAL))
 

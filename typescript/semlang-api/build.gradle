@@ -49,6 +49,8 @@ tasks.yarn_test {
     inputs.file 'jest.config.js'
     inputs.dir 'src'
     inputs.dir '../../semlang-corpus/build/translations/json'
+    inputs.dir '../../semlang-library/build/translations/json'
+    inputs.dir '../../semlang-library-corpus/src/main/semlang'
     outputs.file 'build/test-results/jest/semlang-api.xml'
 }
 task test {

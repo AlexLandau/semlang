@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
-import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject } from "./SemObject";
+import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject } from "./SemObject";
 import { Struct, Type, Interface } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
@@ -154,6 +154,15 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.append": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject(list.contents.concat(newElem));
     },
+    "List.appendFront": (context: InterpreterContext, newElem: SemObject, list: SemObject.List): SemObject.List => {
+        return listObject([newElem].concat(list.contents));
+    },
+    "List.concatenate": (context: InterpreterContext, left: SemObject.List, right: SemObject.List): SemObject.List => {
+        return listObject(left.contents.concat(right.contents));
+    },
+    "List.drop": (context: InterpreterContext, list: SemObject.List, n: SemObject.Natural): SemObject.List => {
+        return listObject(list.contents.slice(n.value.toJSNumber()));
+    },
     "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Try => {
         const i = index.value;
         if (i.lt(list.contents.length)) {
@@ -162,6 +171,10 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         } else {
             return failureObject();
         }
+    },
+    "List.lastN": (context: InterpreterContext, list: SemObject.List, n: SemObject.Natural): SemObject.List => {
+        const startIndex = list.contents.length - n.value.toJSNumber();
+        return listObject(list.contents.slice(startIndex));
     },
     "List.map": (context: InterpreterContext, list: SemObject.List, fn: SemObject.FunctionBinding): SemObject.List => {
         const mapped = list.contents.map(item => context.evaluateBoundFunction(fn, [item]));
@@ -183,6 +196,25 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
     "Natural.equals": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
         return booleanObject(left.value.equals(right.value));
+    },
+    "Natural.fromBits": (context: InterpreterContext, bitsStruct: SemObject.Struct): SemObject.Natural => {
+        const bitsListObject = bitsStruct.members[0] as SemObject.List;
+        const bitStructsList = bitsListObject.contents as SemObject.Struct[];
+        let intValue = bigInt.zero;
+        for (const bitStruct of bitStructsList) {
+            const bitNatural = bitStruct.members[0] as SemObject.Natural;
+            intValue = intValue.times(2);
+            intValue = intValue.plus(bitNatural.value);
+        }
+        return naturalObject(intValue);
+    },
+    "Natural.fromInteger": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
+        const intValue = integer.value
+        if (intValue.isNegative()) {
+            return failureObject()
+        } else {
+            return successObject(naturalObject(intValue));
+        }
     },
     "Natural.greaterThan": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
         return booleanObject(left.value > right.value);
@@ -239,6 +271,10 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Try.failure": (context: InterpreterContext): SemObject.Try.Failure => {
         return failureObject();
     },
+    "Try.isSuccess": (context: InterpreterContext, theTry: SemObject.Try): SemObject.Boolean => {
+        const isSuccess = theTry.type === "Try.Success"
+        return booleanObject(isSuccess);
+    },
     "Try.map": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
         if (theTry.type === "Try.Success") {
             const value = theTry.value;
@@ -247,6 +283,17 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         } else {
             return theTry;
         }
+    },
+    "Try.success": (context: InterpreterContext, object: SemObject): SemObject.Try.Success => {
+        return successObject(object);
+    },
+    "Unicode.String": (context: InterpreterContext, codePointObjects: SemObject.List): SemObject.String => {
+        const codePoints = codePointObjects.contents.map(codePointStruct => {
+            const codePointNatural = (codePointStruct as SemObject.Struct).members[0] as SemObject.Natural
+            return codePointNatural.value.toJSNumber()
+        });
+        const string = UtfString.codePointsToString(codePoints)
+        return stringObject(string);
     },
     "Unicode.String.length": (context: InterpreterContext, string: SemObject.String): SemObject.Natural => {
         const length = UtfString.length(string.value);
