@@ -2,7 +2,9 @@ package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getAllStandaloneCompilableFiles
+import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,12 +17,12 @@ import net.semlang.transforms.simplifyExpressions
 import java.io.File
 
 @RunWith(Parameterized::class)
-class SimplifyExpressionsTest(private val file: File) {
+class SimplifyExpressionsTest(private val file: File, private val libraries: List<ValidatedModule>) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            return getAllStandaloneCompilableFiles()
+            return getCompilableFilesWithAssociatedLibraries()
         }
     }
 
@@ -28,7 +30,7 @@ class SimplifyExpressionsTest(private val file: File) {
     fun testSimplification() {
         val originalContext = parseFile(file).assumeSuccess()
         val simplifiedContext = simplifyExpressions(originalContext)
-        val simplifiedModule = validateModule(simplifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val simplifiedModule = validateModule(simplifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
         try {
             try {

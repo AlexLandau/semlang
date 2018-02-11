@@ -2,7 +2,9 @@ package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
+import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getAllStandaloneCompilableFiles
+import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,23 +19,24 @@ import net.semlang.transforms.simplifyExpressions
 import java.io.File
 
 @RunWith(Parameterized::class)
-class ToSem0Test(private val file: File) {
+class ToSem0Test(private val file: File, private val libraries: List<ValidatedModule>) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            return getAllStandaloneCompilableFiles()
+            return getCompilableFilesWithAssociatedLibraries()
         }
     }
 
     @Test
     fun testSem0Conversion() {
-        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         val converted = convertToSem0(module)
 
         // TODO: Do something with the converted module
         val afterRoundTrip = convertFromSem0(converted)
-        val revalidated = validateModule(afterRoundTrip, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        // TODO: If/when sem0 includes linking in libraries, we shouldn't pass in libraries here
+        val revalidated = validateModule(afterRoundTrip, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
         try {
             try {

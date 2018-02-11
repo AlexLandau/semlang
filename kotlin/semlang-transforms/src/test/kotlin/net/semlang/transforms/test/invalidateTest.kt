@@ -6,6 +6,7 @@ import net.semlang.api.RawContext
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.getAllStandaloneCompilableFiles
+import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -16,19 +17,19 @@ import java.io.File
 
 // TODO: Move this to where invalidation is?
 @RunWith(Parameterized::class)
-class InvalidationTest(private val file: File) {
+class InvalidationTest(private val file: File, private val libraries: List<ValidatedModule>) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            return getAllStandaloneCompilableFiles()
+            return getCompilableFilesWithAssociatedLibraries()
         }
     }
 
     @Test
     fun testInvalidateRevalidateRoundTripEquality() {
         val validate = fun(context: RawContext): ValidatedModule {
-            return validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+            return validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         }
         val initialRawContext = parseFile(file).assumeSuccess()
         val initialModule = validate(initialRawContext)
