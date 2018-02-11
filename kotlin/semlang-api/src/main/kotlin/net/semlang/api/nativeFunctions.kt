@@ -42,7 +42,6 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
-    addStringFunctions(definitions)
 
     return toMap(definitions)
 }
@@ -259,16 +258,6 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
             outputType = sequenceT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
-}
-
-private fun addStringFunctions(definitions: ArrayList<TypeSignature>) {
-    val stringType = NativeStruct.UNICODE_STRING.getType()
-
-    // Unicode.String.length
-    // TODO: Limit output to 32-bit type
-    definitions.add(TypeSignature(EntityId.of("Unicode", "String", "length"),
-            argumentTypes = listOf(stringType),
-            outputType = Type.NATURAL))
 }
 
 object NativeStruct {

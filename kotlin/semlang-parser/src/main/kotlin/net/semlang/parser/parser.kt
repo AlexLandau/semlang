@@ -134,6 +134,9 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             )
         }
         val arguments: List<UnvalidatedArgument> = parseFunctionArguments(function.function_arguments())
+        if (function.type() == null) {
+            throw LocationAwareParsingException("Functions must specify a return type", locationOf(function))
+        }
         val returnType: UnvalidatedType = parseType(function.type())
 
         val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())

@@ -1,18 +1,11 @@
-@Test(["hello"], "5")
-@Test([""], "0")
-@Test(["🙂"], "1") // We count code points, not code units
-@Test(["\""], "1") // Escaped character
-@Test(["\\"], "1") // Escaped character
-function stringLength(str: Unicode.String): Natural {
-    Unicode.String.length(str)
+@Test(["Hello"], "success(72)")
+@Test(["hello"], "success(104)")
+@Test([""], "failure")
+@Test(["🙂"], "success(128578)")
+function getFirstCharacter(str: Unicode.String): Try<Natural> {
+    Try.map<Unicode.CodePoint, Natural>(List.get<Unicode.CodePoint>(str->codePoints, Natural."0"), getValue|(_))
 }
 
-@Test([], "1")
-function literalLength1(): Natural {
-    Unicode.String.length(Unicode.String."\"")
-}
-
-@Test([], "1")
-function literalLength2(): Natural {
-    Unicode.String.length(Unicode.String."\\")
+function getValue(cp: Unicode.CodePoint): Natural {
+    cp->natural
 }
