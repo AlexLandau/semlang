@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 public class Naturals {
     private Naturals() {
@@ -20,6 +21,14 @@ public class Naturals {
 
     public static BigInteger absoluteDifference(BigInteger left, BigInteger right) {
         return left.subtract(right).abs();
+    }
+
+    public static Optional<BigInteger> fromInteger(BigInteger integer) {
+        if (integer.signum() >= 0) {
+            return Optional.of(integer);
+        } else {
+            return Optional.empty();
+        }
     }
 
     public static BitsBigEndian toBits(BigInteger value) {

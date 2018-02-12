@@ -4,6 +4,7 @@ dependencies {
   compile project(':kotlin:semlang-test-utils')
 
   testCompile project(':java:semlang-java-runtime')
+  testCompile project(':kotlin:semlang-linker')
 
   compile 'com.squareup:javapoet:1.9.0'
 }

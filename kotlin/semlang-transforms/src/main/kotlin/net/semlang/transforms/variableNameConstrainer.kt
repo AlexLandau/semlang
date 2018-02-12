@@ -150,4 +150,19 @@ object RenamingStrategies {
         }
         return newName
     }
+
+    fun getKeywordAvoidingStrategy(keywords: Set<String>): (varName: String, allVarNamesPresent: Set<String>) -> String {
+        return fun(varName: String, allVarNamesPresent: Set<String>): String {
+            if (!keywords.contains(varName)) {
+                return varName
+            }
+            var suffix = 1
+            var newName = varName + suffix
+            while (allVarNamesPresent.contains(newName)) {
+                suffix += 1
+                newName = varName + suffix
+            }
+            return newName
+        }
+    }
 }

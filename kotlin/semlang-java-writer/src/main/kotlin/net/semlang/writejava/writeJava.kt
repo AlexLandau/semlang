@@ -28,13 +28,71 @@ import javax.lang.model.element.Modifier
 
 data class WrittenJavaInfo(val testClassNames: List<String>)
 
+private val JAVA_KEYWORDS = setOf(
+        "abstract",
+        "assert",
+        "boolean",
+        "break",
+        "byte",
+        "case",
+        "catch",
+        "char",
+        "class",
+        "const",
+        "continue",
+        "default",
+        "do",
+        "double",
+        "else",
+        "enum",
+        "extends",
+        "false",
+        "final",
+        "finally",
+        "float",
+        "for",
+        "goto",
+        "if",
+        "implements",
+        "import",
+        "instanceof",
+        "int",
+        "interface",
+        "long",
+        "native",
+        "new",
+        "null",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "return",
+        "short",
+        "static",
+        "strictfp",
+        "super",
+        "switch",
+        "synchronized",
+        "this",
+        "throw",
+        "throws",
+        "transient",
+        "true",
+        "try",
+        "void",
+        "volatile",
+        "while"
+)
+
 fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: List<String>, newSrcDir: File, newTestSrcDir: File): WrittenJavaInfo {
     if (javaPackage.isEmpty()) {
         error("The Java package must be non-empty.")
     }
     // Pre-processing steps
+    // TODO: Combine variable renaming steps
     val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
-    val withoutInlineFunctions = extractInlineFunctions(tempModule1)
+    val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
+    val withoutInlineFunctions = extractInlineFunctions(tempModule2)
     val module = validateModule(withoutInlineFunctions, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
@@ -741,7 +799,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.originalRef.toString())
+        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.originalRef.toString()).sanitize()
 
         if (semlangType.parameters.isEmpty()) {
             return className
@@ -752,7 +810,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getStructClassName(functionId: EntityId): ClassName {
-        return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), functionId.namespacedName.last())
+        return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), functionId.namespacedName.last()).sanitize()
     }
 
     private fun getContainingClassName(functionId: EntityId): ClassName {
@@ -768,9 +826,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             packageParts.add(part)
         }
         if (className == null) {
-            return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), "Functions")
+            return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), "Functions").sanitize()
         }
-        return ClassName.get(packageParts.joinToString("."), className)
+        return ClassName.get(packageParts.joinToString("."), className).sanitize()
     }
 
     val testClassCounts = LinkedHashMap<String, Int>()
@@ -838,6 +896,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("List", "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
         // TODO: Find an approach to remove most uses of append where we'd be better off with e.g. add
         map.put(EntityId.of("List", "append"), StaticFunctionCallStrategy(javaLists, "append"))
+        map.put(EntityId.of("List", "concatenate"), StaticFunctionCallStrategy(javaLists, "concatenate"))
         // TODO: Find an approach where we can replace this with a simple .get() call...
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
         map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
@@ -860,11 +919,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Share implementations with Integer in some cases
         map.put(EntityId.of("Natural", "plus"), MethodFunctionCallStrategy("add"))
         map.put(EntityId.of("Natural", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Natural", "remainder"), MethodFunctionCallStrategy("remainder"))
         map.put(EntityId.of("Natural", "lesser"), MethodFunctionCallStrategy("min"))
         map.put(EntityId.of("Natural", "equals"), MethodFunctionCallStrategy("equals"))
         map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
         map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
         map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
+        map.put(EntityId.of("Natural", "fromInteger"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
         map.put(EntityId.of("Natural", "toBits"), StaticFunctionCallStrategy(javaNaturals, "toBits"))
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
@@ -994,4 +1055,8 @@ class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy
 
 private interface FunctionTypeStrategy {
     fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName
+}
+
+fun ClassName.sanitize(): ClassName {
+    return ClassName.get(this.packageName().replace("-", "_"), this.simpleName())
 }

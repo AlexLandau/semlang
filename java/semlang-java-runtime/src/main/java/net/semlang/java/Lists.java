@@ -25,6 +25,13 @@ public class Lists {
         return newList;
     }
 
+    public static <T> List<T> concatenate(List<T> left, List<T> right) {
+        List<T> newList = new ArrayList<T>(left.size() + right.size());
+        newList.addAll(left);
+        newList.addAll(right);
+        return newList;
+    }
+
     public static <T> Optional<T> get(List<T> list, BigInteger index) {
         final int intIndex = index.intValueExact();
         try {
