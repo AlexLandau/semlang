@@ -208,10 +208,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                             error("")
                         }
                         val dataType = chosenTypes[0]
-                        val dataTypeName = getType(dataType)
+                        val dataTypeName = getType(dataType, true)
                         val dataVarName = ensureUnusedVariable("data")
                         val interfaceParameters = chosenTypes.drop(1)
-                        val interfaceParameterNames = interfaceParameters.map(this@JavaCodeWriter::getType)
+                        val interfaceParameterNames = interfaceParameters.map { this@JavaCodeWriter.getType(it, true) }
 
                         val instanceType = if (interfaceParameters.isEmpty()) {
                             instanceClassName
@@ -303,7 +303,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
         struct.members.forEach { member ->
-            val javaType = getType(member.type)
+            val javaType = getType(member.type, false)
             builder.addField(javaType, member.name, Modifier.PUBLIC, Modifier.FINAL)
 
             constructor.addParameter(javaType, member.name)
@@ -316,7 +316,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             createMethod.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
         }
         struct.members.forEach { member ->
-            val javaType = getType(member.type)
+            val javaType = getType(member.type, false)
             createMethod.addParameter(javaType, member.name)
         }
         val requires = struct.requires
@@ -366,9 +366,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         method.arguments.forEach { argument ->
-            builder.addParameter(getType(argument.type.replacingParameters(typeReplacements)), argument.name)
+            builder.addParameter(getType(argument.type.replacingParameters(typeReplacements), false), argument.name)
         }
-        builder.returns(getType(method.returnType.replacingParameters(typeReplacements)))
+        builder.returns(getType(method.returnType.replacingParameters(typeReplacements), false))
 
         return builder
     }
@@ -383,11 +383,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         function.arguments.forEach { argument ->
-            builder.addParameter(getType(argument.type), argument.name)
+            builder.addParameter(getType(argument.type, false), argument.name)
             addToVariableScope(argument.name)
         }
 
-        builder.returns(getType(function.returnType))
+        builder.returns(getType(function.returnType, false))
 
         // TODO: Add block here
         builder.addCode(writeBlock(function.block, null))
@@ -407,14 +407,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         block.assignments.forEach { (name, type, expression) ->
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
             if (expression is TypedExpression.IfThen) {
-                builder.addStatement("final \$T \$L", getType(type), name)
+                builder.addStatement("final \$T \$L", getType(type, false), name)
                 builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
                 builder.add(writeBlock(expression.thenBlock, name))
                 builder.nextControlFlow("else")
                 builder.add(writeBlock(expression.elseBlock, name))
                 builder.endControlFlow()
             } else {
-                builder.addStatement("final \$T \$L = \$L", getType(type), name, writeExpression(expression))
+                builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
             }
             addToVariableScope(name)
         }
@@ -749,13 +749,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return evaluateStringLiteral(literal).contents
     }
 
-    private fun getType(semlangType: Type): TypeName {
+    private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
             Type.INTEGER -> TypeName.get(BigInteger::class.java)
             Type.NATURAL -> TypeName.get(BigInteger::class.java)
-            Type.BOOLEAN -> TypeName.BOOLEAN
-            is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter))
-            is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter))
+            Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
+            is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
+            is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
             is Type.ParameterType -> TypeVariableName.get(semlangType.name)
@@ -765,7 +765,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun getFunctionType(semlangType: Type.FunctionType): TypeName {
         val strategy = getFunctionTypeStrategy(semlangType)
 
-        return strategy.getTypeName(semlangType, this::getType)
+        return strategy.getTypeName(semlangType, { this.getType(it, true) })
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
@@ -775,8 +775,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (interfaceRef != null) {
             val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
             val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
-            val dataTypeParameter = getType(semlangType.parameters[0])
-            val otherParameters = semlangType.parameters.drop(1).map { t -> getType(t) }
+            val dataTypeParameter = getType(semlangType.parameters[0], true)
+            val otherParameters = semlangType.parameters.drop(1).map { getType(it, true) }
             val bareInterfaceName = getStructClassName(interfaceId)
             val interfaceJavaName = if (otherParameters.isEmpty()) {
                 bareInterfaceName
@@ -804,7 +804,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (semlangType.parameters.isEmpty()) {
             return className
         } else {
-            val parameterTypeNames: List<TypeName> = semlangType.parameters.map(this::getType)
+            val parameterTypeNames: List<TypeName> = semlangType.parameters.map { this.getType(it, true) }
             return ParameterizedTypeName.get(className, *parameterTypeNames.toTypedArray())
         }
     }
@@ -983,7 +983,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getChosenTypesCode(chosenSemlangTypes: List<Type>): CodeBlock {
-        val chosenTypes = chosenSemlangTypes.map(this::getType)
+        val chosenTypes = chosenSemlangTypes.map { this.getType(it, true) }
         val typesCodeBuilder = CodeBlock.builder()
         typesCodeBuilder.add("\$T", chosenTypes[0])
         for (chosenType in chosenTypes.drop(1)) {
@@ -1017,44 +1017,44 @@ private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrate
 }
 
 object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
-    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+    override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
         if (type.argTypes.isNotEmpty()) {
             error("")
         }
         val className = ClassName.get(java.util.function.Supplier::class.java)
 
-        return ParameterizedTypeName.get(className, getType(type.outputType).box())
+        return ParameterizedTypeName.get(className, getTypeForParameter(type.outputType).box())
     }
 }
 
 object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
-    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+    override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
         if (type.argTypes.size != 1) {
             error("")
         }
         val className = ClassName.get(java.util.function.Function::class.java)
 
-        return ParameterizedTypeName.get(className, getType(type.argTypes[0]).box(), getType(type.outputType).box())
+        return ParameterizedTypeName.get(className, getTypeForParameter(type.argTypes[0]).box(), getTypeForParameter(type.outputType).box())
     }
 
 }
 
 class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy {
-    override fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName {
+    override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
         val className = ClassName.bestGuess("net.semlang.java.function.Function" + numArgs)
 
         val parameterTypes = ArrayList<TypeName>()
         for (semlangType in type.argTypes) {
-            parameterTypes.add(getType(semlangType).box())
+            parameterTypes.add(getTypeForParameter(semlangType).box())
         }
-        parameterTypes.add(getType(type.outputType).box())
+        parameterTypes.add(getTypeForParameter(type.outputType).box())
 
         return ParameterizedTypeName.get(className, *parameterTypes.toTypedArray())
     }
 }
 
 private interface FunctionTypeStrategy {
-    fun getTypeName(type: Type.FunctionType, getType: (Type) -> TypeName): TypeName
+    fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName
 }
 
 fun ClassName.sanitize(): ClassName {
