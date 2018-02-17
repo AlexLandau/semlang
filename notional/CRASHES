@@ -1,0 +1,89 @@
+Some deep thoughts around typing, crashes, and optimizations via equivalent functions:
+
+I intended a few things to be true about this language that I now realize have unexpectedly weird interactions:
+
+1. Any function may crash the program, and this is not explicitly reflected in the type system. This is a reflection of
+   the realities that most functions involve some kind of memory allocation, which may fail, as well as the possibility
+   of hardware failures (including the machine itself being shut off, if we consider the possibility of an
+   implementation running code across multiple machines or VMs).
+2. I believe that the distinction between "eager" and "lazy" evaluation (like the distinction between "interpreted" and
+   "compiled") should, for a sufficiently declarative language like Semlang, be left to a runtime environment to decide,
+   not imposed by the language definition. Obviously this leaves cases where one RTE may, e.g., enter an infinite loop
+   that was ignored entirely by another, better RTE, but choosing an RTE in conjunction with a given piece of software
+   is expected to be an engineering decision that people will have to make anyway (like choosing a version of the JVM).
+   The relevant takeaway is that ___.
+3. At some point, we'll be able to prove that function X is equivalent to function Y, and the RTE may make substitutions
+   between the two at will for the sake of performance.
+
+So here's where it may get a little weird. Which of the following functions are equivalent?
+
+function hasSquareOver100VersionA(n: Natural): Boolean {
+  let square = Natural.times(n, n)
+  Natural.greaterThan(square, Natural."100")
+}
+
+This is the "obvious" form of the function (ignoring the version where you don't bother to square the number because
+you know algebra).
+
+struct NumberOver100 {
+  natural: Natural
+  requires {
+    Natural.greaterThan(natural, Natural."100")
+  }
+}
+
+function hasSquareOver100VersionB(n: Natural): Boolean {
+  let square = Natural.times(n, n)
+  let over100: Try<NumberOver100> = NumberOver100(square)
+  Try.assert<Boolean>(Try.map<NumberOver100, Boolean>(over100, function(ignored: NumberOver100) { Boolean."true" }))
+}
+
+This is a more obscure relative; it crashes the program if the square is not, in fact, over 100. (This is obviously
+silly in this case, but some people may want to deliberately crash their program in the case of a failed assertion,
+which could be structurally similar to this case.) However, we could argue that it is equivalent to version A in that it
+gives the same answer in all cases where it doesn't crash.
+
+But if we're going to be agnostic around eager vs. lazy evaluation, what about this case? Should this be considered
+different from B?
+
+function hasSquareOver100VersionC(n: Natural): Boolean {
+  let square = Natural.times(n, n)
+  let over100: Try<NumberOver100> = NumberOver100(square)
+  let unused = Try.assert<NumberOver100>(over100)
+  Boolean."true"
+}
+
+And if "gives the same answer in all cases where it doesn't crash" is the criterion, then is the following equivalent to
+B as well?
+
+function hasSquareOver100VersionD(n: Natural): Boolean {
+  Boolean."true"
+}
+
+Here are some of the questions that this brings up:
+
+1) Is it at all useful to care about whether two functions give the same answer in cases where they don't crash?
+2) Should the type system treat forced crashes (those caused by Try.assume) differently from those caused by memory or
+   hardware issues? What about the proof system?
+3) What if a forced crash lies on an unused or potentially unused path of the code that would be ignored by lazy
+   evaluation?
+
+Some answers:
+
+1) For some people reading this, the whole idea of ignoring crashes when comparing functions must have seemed out of
+   left field to begin with. However, if you're trying to compare the behavior of functions empirically and you get a
+   crash from one for a given input, you expect to have to throw it out, as another runtime environment running the same
+   function on the same inputs might not crash. (Such a comparison would also want to limit the amount of computation
+   performed for a given input; reaching a computational limit would be thrown out equivalently to a crash in that case.)
+   This is a reminder that while these empirical comparisons are useful for finding candidates for equivalent functions,
+   we shouldn't translate these intuitions about empirical testing to how we establish proofs of function equivalence.
+2) The type system doesn't need to start handling Try.assume crashes, but a proof system does need to treat these
+   differently; a proof system should, effectively, check the equivalence of the code as it would behave in the absence
+   of memory constraints. That said, I also expect there to be situations where the proof system is aware of the
+   possibility of crashes at any time, especially in the cases of either "meta-calls" or other cases where there is a
+   logical barrier between execution contexts -- e.g. if different parts of the program were executed on different
+   hardware.
+3) We should be clear that in this case -- the C version of the function above -- runtimes are free to ignore the code
+   leading to the unused variable. If you need a certain situation to cause a crash, it should be written so that no
+   path through the function can avoid the crash. (It would be worth formalizing this somehow, perhaps in conjunction
+   with figuring out easier function rewriting, which will involve similar concepts.)
