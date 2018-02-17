@@ -47,12 +47,10 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     fun apply(): Block {
         for (assignment in block.assignments) {
             val splitResult = trySplitting(assignment.expression)
-            newAssignments.addAll(splitResult.splitAssignments)
             newAssignments.add(Assignment(assignment.name, assignment.type, splitResult.modifiedExpression, null))
         }
 
         val splitResult = tryMakingIntoVar(block.returnedExpression)
-        newAssignments.addAll(splitResult.newAssignments)
         val newReturnedExpression = splitResult.variable
 
         return Block(newAssignments, newReturnedExpression, null)
@@ -68,27 +66,24 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     private fun trySplitting(expression: Expression): ExpressionMultisplitResult {
         return when (expression) {
             is Expression.Variable -> {
-                ExpressionMultisplitResult(expression, listOf())
+                ExpressionMultisplitResult(expression)
             }
             is Expression.Literal -> {
-                ExpressionMultisplitResult(expression, listOf())
+                ExpressionMultisplitResult(expression)
             }
             is Expression.ListLiteral -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newContents = expression.contents.map { item ->
                     val result = tryMakingIntoVar(item)
-                    newAssignments.addAll(result.newAssignments)
                     result.variable
                 }
 
                 val replacementExpression = Expression.ListLiteral(newContents, expression.chosenParameter, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.Follow -> {
                 val result = tryMakingIntoVar(expression.structureExpression)
                 val replacementExpression = Expression.Follow(result.variable, expression.name, null)
-                ExpressionMultisplitResult(replacementExpression, result.newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.IfThen -> {
                 val conditionResult = tryMakingIntoVar(expression.condition)
@@ -101,76 +96,60 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                         simplifiedElseBlock,
                         null)
 
-                ExpressionMultisplitResult(replacementExpression, conditionResult.newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.ExpressionFunctionCall -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newArguments = expression.arguments.map { argument ->
                     val result = tryMakingIntoVar(argument)
-                    newAssignments.addAll(result.newAssignments)
                     result.variable
                 }
 
                 val result = tryMakingIntoVar(expression.functionExpression)
-                newAssignments.addAll(result.newAssignments)
 
                 val replacementExpression = Expression.ExpressionFunctionCall(result.variable, newArguments, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.NamedFunctionCall -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newArguments = expression.arguments.map { argument ->
                     val result = tryMakingIntoVar(argument)
-                    newAssignments.addAll(result.newAssignments)
                     result.variable
                 }
 
                 val replacementExpression = Expression.NamedFunctionCall(expression.functionRef, newArguments, expression.chosenParameters, null, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.ExpressionFunctionBinding -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newBindings = expression.bindings.map { binding ->
                     if (binding == null) {
                         null
                     } else {
                         val result = tryMakingIntoVar(binding)
-                        newAssignments.addAll(result.newAssignments)
                         result.variable
                     }
                 }
 
                 val result = tryMakingIntoVar(expression.functionExpression)
-                newAssignments.addAll(result.newAssignments)
 
                 val replacementExpression = Expression.ExpressionFunctionBinding(result.variable, newBindings, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.NamedFunctionBinding -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newBindings = expression.bindings.map { binding ->
                     if (binding == null) {
                         null
                     } else {
                         val result = tryMakingIntoVar(binding)
-                        newAssignments.addAll(result.newAssignments)
                         result.variable
                     }
                 }
 
                 val replacementExpression = Expression.NamedFunctionBinding(expression.functionRef, newBindings, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
             is Expression.InlineFunction -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope)
                 val replacementExpression = Expression.InlineFunction(expression.arguments, block, null)
-                ExpressionMultisplitResult(replacementExpression, newAssignments)
+                ExpressionMultisplitResult(replacementExpression)
             }
         }
     }
@@ -182,7 +161,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     private fun tryMakingIntoVar(expression: Expression): MakeIntoVarResult {
         return when (expression) {
             is Expression.Variable -> {
-                MakeIntoVarResult(expression, listOf())
+                MakeIntoVarResult(expression)
             }
             is Expression.Follow -> {
                 val subresult = tryMakingIntoVar(expression.structureExpression)
@@ -190,25 +169,22 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val newFollow = Expression.Follow(subresult.variable, expression.name, null)
                 val replacementName = createAndRecordNewVarName()
 
-                val assignments = subresult.newAssignments + Assignment(replacementName, null, newFollow, null)
+                newAssignments.add(Assignment(replacementName, null, newFollow, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, assignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.Literal -> {
                 val replacementName = createAndRecordNewVarNameForLiteral(expression.literal)
 
-                val assignment = Assignment(replacementName, null, expression, null)
+                newAssignments.add(Assignment(replacementName, null, expression, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, listOf(assignment))
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.ListLiteral -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newContents = expression.contents.map { item ->
                     val subresult = tryMakingIntoVar(item)
-                    newAssignments.addAll(subresult.newAssignments)
                     subresult.variable
                 }
 
@@ -218,7 +194,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newListLiteral, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.IfThen -> {
                 val subresult = tryMakingIntoVar(expression.condition)
@@ -233,22 +209,18 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                         null)
                 val replacementName = createAndRecordNewVarName()
 
-                val assignments = subresult.newAssignments + Assignment(replacementName, null, newIfThen, null)
+                newAssignments.add(Assignment(replacementName, null, newIfThen, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, assignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.ExpressionFunctionCall -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newArguments = expression.arguments.map { argument ->
                     val subresult = tryMakingIntoVar(argument)
-                    newAssignments.addAll(subresult.newAssignments)
                     subresult.variable
                 }
 
                 val subresult = tryMakingIntoVar(expression.functionExpression)
-                newAssignments.addAll(subresult.newAssignments)
 
                 val newFunctionCall = Expression.ExpressionFunctionCall(subresult.variable, newArguments, expression.chosenParameters, null)
 
@@ -256,14 +228,11 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.NamedFunctionCall -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newArguments = expression.arguments.map { argument ->
                     val subresult = tryMakingIntoVar(argument)
-                    newAssignments.addAll(subresult.newAssignments)
                     subresult.variable
                 }
 
@@ -273,23 +242,19 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.ExpressionFunctionBinding -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newBindings = expression.bindings.map { binding ->
                     if (binding == null) {
                         null
                     } else {
                         val subresult = tryMakingIntoVar(binding)
-                        newAssignments.addAll(subresult.newAssignments)
                         subresult.variable
                     }
                 }
 
                 val subresult = tryMakingIntoVar(expression.functionExpression)
-                newAssignments.addAll(subresult.newAssignments)
 
                 val newFunctionCall = Expression.ExpressionFunctionBinding(subresult.variable, newBindings, expression.chosenParameters, null)
 
@@ -297,17 +262,14 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.NamedFunctionBinding -> {
-                val newAssignments = ArrayList<Assignment>()
-
                 val newBindings = expression.bindings.map { binding ->
                     if (binding == null) {
                         null
                     } else {
                         val subresult = tryMakingIntoVar(binding)
-                        newAssignments.addAll(subresult.newAssignments)
                         subresult.variable
                     }
                 }
@@ -318,10 +280,9 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
             is Expression.InlineFunction -> {
-                val newAssignments = ArrayList<Assignment>()
 
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope)
                 val newInlineFunction = Expression.InlineFunction(expression.arguments, block, null)
@@ -329,7 +290,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 newAssignments.add(Assignment(replacementName, null, newInlineFunction, null))
                 val typedVariable = Expression.Variable(replacementName, null)
 
-                MakeIntoVarResult(typedVariable, newAssignments)
+                MakeIntoVarResult(typedVariable)
             }
         }
     }
@@ -367,6 +328,6 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     }
 }
 
-private data class MakeIntoVarResult(val variable: Expression.Variable, val newAssignments: List<Assignment>)
+private data class MakeIntoVarResult(val variable: Expression.Variable)
 
-private data class ExpressionMultisplitResult(val modifiedExpression: Expression, val splitAssignments: List<Assignment>)
+private data class ExpressionMultisplitResult(val modifiedExpression: Expression)
