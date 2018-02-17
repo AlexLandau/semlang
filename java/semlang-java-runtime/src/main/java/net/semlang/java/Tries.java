@@ -12,6 +12,14 @@ public class Tries {
         return Optional.empty();
     }
 
+    public static <T> Optional<T> success(T value) {
+        return Optional.of(value);
+    }
+
+    public static <T> boolean isSuccess(Optional<T> argument) {
+        return argument.isPresent();
+    }
+
     public static <T> T assume(Optional<T> argument) {
         return argument.get();
     }

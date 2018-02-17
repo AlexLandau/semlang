@@ -9,6 +9,7 @@ import net.semlang.parser.validateModule
 import net.semlang.transforms.RenamingStrategies
 import net.semlang.transforms.constrainVariableNames
 import net.semlang.transforms.extractInlineFunctions
+import net.semlang.transforms.hoistMatchingExpressions
 import java.io.File
 import java.math.BigInteger
 import java.util.*
@@ -16,8 +17,6 @@ import javax.lang.model.element.Modifier
 
 /**
  * TODO:
- * - Needed preprocessing step: Put if-then statements only at the top level (assignment or return statement)
- *   - If no existing tests run into this problem, create a test that does so
  * - Use a preprocessing step to change the Adapter types
  * - Preprocess to identify places where Sequence.first() calls should be turned into while loops
  * - Add variables to the scope in more places (and remove when finished)
@@ -93,7 +92,8 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
     val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
     val withoutInlineFunctions = extractInlineFunctions(tempModule2)
-    val module = validateModule(withoutInlineFunctions, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
+    val simplified = hoistMatchingExpressions(withoutInlineFunctions, { it is Expression.IfThen })
+    val module = validateModule(simplified, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
@@ -930,6 +930,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
+        map.put(EntityId.of("Try", "success"), StaticFunctionCallStrategy(javaTries, "success"))
+        map.put(EntityId.of("Try", "isSuccess"), StaticFunctionCallStrategy(javaTries, "isSuccess"))
         map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
         map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
 
