@@ -77,26 +77,22 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                     result
                 }
 
-                val replacementExpression = Expression.ListLiteral(newContents, expression.chosenParameter, null)
-                replacementExpression
+                Expression.ListLiteral(newContents, expression.chosenParameter, null)
             }
             is Expression.Follow -> {
                 val result = tryMakingIntoVar(expression.structureExpression)
-                val replacementExpression = Expression.Follow(result, expression.name, null)
-                replacementExpression
+                Expression.Follow(result, expression.name, null)
             }
             is Expression.IfThen -> {
                 val conditionResult = tryMakingIntoVar(expression.condition)
                 val simplifiedThenBlock = hoistExpressionsInBlock(expression.thenBlock, varNamesInScope)
                 val simplifiedElseBlock = hoistExpressionsInBlock(expression.elseBlock, varNamesInScope)
 
-                val replacementExpression = Expression.IfThen(
+                Expression.IfThen(
                         conditionResult,
                         simplifiedThenBlock,
                         simplifiedElseBlock,
                         null)
-
-                replacementExpression
             }
             is Expression.ExpressionFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -106,8 +102,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val result = tryMakingIntoVar(expression.functionExpression)
 
-                val replacementExpression = Expression.ExpressionFunctionCall(result, newArguments, expression.chosenParameters, null)
-                replacementExpression
+                Expression.ExpressionFunctionCall(result, newArguments, expression.chosenParameters, null)
             }
             is Expression.NamedFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -115,8 +110,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                     result
                 }
 
-                val replacementExpression = Expression.NamedFunctionCall(expression.functionRef, newArguments, expression.chosenParameters, null, null)
-                replacementExpression
+                Expression.NamedFunctionCall(expression.functionRef, newArguments, expression.chosenParameters, null, null)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -130,8 +124,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val result = tryMakingIntoVar(expression.functionExpression)
 
-                val replacementExpression = Expression.ExpressionFunctionBinding(result, newBindings, expression.chosenParameters, null)
-                replacementExpression
+                Expression.ExpressionFunctionBinding(result, newBindings, expression.chosenParameters, null)
             }
             is Expression.NamedFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -143,13 +136,11 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                     }
                 }
 
-                val replacementExpression = Expression.NamedFunctionBinding(expression.functionRef, newBindings, expression.chosenParameters, null)
-                replacementExpression
+                Expression.NamedFunctionBinding(expression.functionRef, newBindings, expression.chosenParameters, null)
             }
             is Expression.InlineFunction -> {
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope)
-                val replacementExpression = Expression.InlineFunction(expression.arguments, block, null)
-                replacementExpression
+                Expression.InlineFunction(expression.arguments, block, null)
             }
         }
     }
@@ -170,17 +161,13 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val replacementName = createAndRecordNewVarName()
 
                 newAssignments.add(Assignment(replacementName, null, newFollow, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.Literal -> {
                 val replacementName = createAndRecordNewVarNameForLiteral(expression.literal)
 
                 newAssignments.add(Assignment(replacementName, null, expression, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.ListLiteral -> {
                 val newContents = expression.contents.map { item ->
@@ -192,9 +179,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newListLiteral, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.IfThen -> {
                 val subresult = tryMakingIntoVar(expression.condition)
@@ -210,9 +195,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val replacementName = createAndRecordNewVarName()
 
                 newAssignments.add(Assignment(replacementName, null, newIfThen, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.ExpressionFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -226,9 +209,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.NamedFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -240,9 +221,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -260,9 +239,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.NamedFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -278,9 +255,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newFunctionCall, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
             is Expression.InlineFunction -> {
 
@@ -288,9 +263,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val newInlineFunction = Expression.InlineFunction(expression.arguments, block, null)
                 val replacementName = createAndRecordNewVarName()
                 newAssignments.add(Assignment(replacementName, null, newInlineFunction, null))
-                val typedVariable = Expression.Variable(replacementName, null)
-
-                typedVariable
+                Expression.Variable(replacementName, null)
             }
         }
     }
