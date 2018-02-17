@@ -47,7 +47,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     fun apply(): Block {
         for (assignment in block.assignments) {
             val splitResult = trySplitting(assignment.expression)
-            newAssignments.add(Assignment(assignment.name, assignment.type, splitResult.modifiedExpression, null))
+            newAssignments.add(Assignment(assignment.name, assignment.type, splitResult, null))
         }
 
         val splitResult = tryMakingIntoVar(block.returnedExpression)
@@ -57,19 +57,19 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     }
 
     /**
-     * Returns an expression of the simplest possible form of the same expression type and any additional assignments
-     * needed to define any newly required variables.
+     * Returns an expression of the simplest possible form of the same expression type. As a side effect, adds any
+     * additional needed assignments to [newAssignments].
      *
      * Note that expressions containing blocks (namely if-then expressions) will have their blocks simplified, but will
      * not have their contents flattened (i.e. moved outside of the blocks).
      */
-    private fun trySplitting(expression: Expression): ExpressionMultisplitResult {
+    private fun trySplitting(expression: Expression): Expression {
         return when (expression) {
             is Expression.Variable -> {
-                ExpressionMultisplitResult(expression)
+                expression
             }
             is Expression.Literal -> {
-                ExpressionMultisplitResult(expression)
+                expression
             }
             is Expression.ListLiteral -> {
                 val newContents = expression.contents.map { item ->
@@ -78,12 +78,12 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 }
 
                 val replacementExpression = Expression.ListLiteral(newContents, expression.chosenParameter, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.Follow -> {
                 val result = tryMakingIntoVar(expression.structureExpression)
                 val replacementExpression = Expression.Follow(result, expression.name, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.IfThen -> {
                 val conditionResult = tryMakingIntoVar(expression.condition)
@@ -96,7 +96,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                         simplifiedElseBlock,
                         null)
 
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.ExpressionFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -107,7 +107,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val result = tryMakingIntoVar(expression.functionExpression)
 
                 val replacementExpression = Expression.ExpressionFunctionCall(result, newArguments, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.NamedFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -116,7 +116,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 }
 
                 val replacementExpression = Expression.NamedFunctionCall(expression.functionRef, newArguments, expression.chosenParameters, null, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.ExpressionFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -131,7 +131,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 val result = tryMakingIntoVar(expression.functionExpression)
 
                 val replacementExpression = Expression.ExpressionFunctionBinding(result, newBindings, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.NamedFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -144,19 +144,19 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 }
 
                 val replacementExpression = Expression.NamedFunctionBinding(expression.functionRef, newBindings, expression.chosenParameters, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
             is Expression.InlineFunction -> {
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope)
                 val replacementExpression = Expression.InlineFunction(expression.arguments, block, null)
-                ExpressionMultisplitResult(replacementExpression)
+                replacementExpression
             }
         }
     }
 
     /**
-     * Returns a variable of the same type and any additional assignments needed to define any newly required variables. The
-     * assignments will give the variable the same value as the given expression.
+     * Returns a variable. As a side effect, adds any additional assignments needed to define any newly required
+     * variables to [newAssignments]. The assignments will give the variable the same value as the given expression.
      */
     private fun tryMakingIntoVar(expression: Expression): Expression.Variable {
         return when (expression) {
@@ -327,5 +327,3 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
         }
     }
 }
-
-private data class ExpressionMultisplitResult(val modifiedExpression: Expression)
