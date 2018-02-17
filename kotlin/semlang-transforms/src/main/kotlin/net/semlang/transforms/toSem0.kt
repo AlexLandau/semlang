@@ -11,7 +11,7 @@ fun convertToSem0(module: ValidatedModule): S0Context {
     // Apply some pre-transformations...
     val v2 = extractInlineFunctions(module)
     val v3 = transformInterfacesToStructs(v2)
-    val v4 = simplifyExpressions(v3)
+    val v4 = simplifyAllExpressions(v3)
 
     return Sem1To0Converter(v4).apply()
 }

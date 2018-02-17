@@ -3,7 +3,6 @@ package net.semlang.transforms.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
-import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Assert.fail
 import org.junit.Test
@@ -15,7 +14,6 @@ import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
 import net.semlang.transforms.convertFromSem0
 import net.semlang.transforms.convertToSem0
-import net.semlang.transforms.simplifyExpressions
 import java.io.File
 
 @RunWith(Parameterized::class)

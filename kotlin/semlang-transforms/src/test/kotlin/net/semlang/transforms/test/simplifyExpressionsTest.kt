@@ -13,7 +13,7 @@ import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
-import net.semlang.transforms.simplifyExpressions
+import net.semlang.transforms.simplifyAllExpressions
 import java.io.File
 
 @RunWith(Parameterized::class)
@@ -29,7 +29,7 @@ class SimplifyExpressionsTest(private val file: File, private val libraries: Lis
     @Test
     fun testSimplification() {
         val originalContext = parseFile(file).assumeSuccess()
-        val simplifiedContext = simplifyExpressions(originalContext)
+        val simplifiedContext = simplifyAllExpressions(originalContext)
         val simplifiedModule = validateModule(simplifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
         try {
