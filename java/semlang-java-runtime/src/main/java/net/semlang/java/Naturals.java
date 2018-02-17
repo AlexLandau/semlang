@@ -46,4 +46,14 @@ public class Naturals {
         }
         return BitsBigEndian.create(bits);
     }
+
+    private static final BigInteger TWO = BigInteger.valueOf(2L);
+    public static BigInteger fromBits(BitsBigEndian bits) {
+        BigInteger curValue = BigInteger.ZERO;
+        for (Bit bit : bits.bits) {
+            curValue = curValue.multiply(TWO);
+            curValue = curValue.add(bit.natural);
+        }
+        return curValue;
+    }
 }

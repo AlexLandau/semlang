@@ -25,11 +25,30 @@ public class Lists {
         return newList;
     }
 
+    public static <T> List<T> appendFront(T element, List<T> existingList) {
+        List<T> newList = new ArrayList<T>(existingList.size() + 1);
+        newList.add(element);
+        newList.addAll(existingList);
+        return newList;
+    }
+
     public static <T> List<T> concatenate(List<T> left, List<T> right) {
         List<T> newList = new ArrayList<T>(left.size() + right.size());
         newList.addAll(left);
         newList.addAll(right);
         return newList;
+    }
+
+    public static <T> List<T> drop(List<T> list, BigInteger numberToDrop) {
+        return list.subList(numberToDrop.intValueExact(), list.size());
+    }
+
+    public static <T> List<T> lastN(List<T> list, BigInteger n) {
+        int startingIndex = list.size() - n.intValueExact();
+        if (startingIndex <= 0) {
+            return list;
+        }
+        return list.subList(startingIndex, list.size());
     }
 
     public static <T> Optional<T> get(List<T> list, BigInteger index) {

@@ -896,7 +896,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("List", "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
         // TODO: Find an approach to remove most uses of append where we'd be better off with e.g. add
         map.put(EntityId.of("List", "append"), StaticFunctionCallStrategy(javaLists, "append"))
+        map.put(EntityId.of("List", "appendFront"), StaticFunctionCallStrategy(javaLists, "appendFront"))
         map.put(EntityId.of("List", "concatenate"), StaticFunctionCallStrategy(javaLists, "concatenate"))
+        map.put(EntityId.of("List", "drop"), StaticFunctionCallStrategy(javaLists, "drop"))
+        map.put(EntityId.of("List", "lastN"), StaticFunctionCallStrategy(javaLists, "lastN"))
         // TODO: Find an approach where we can replace this with a simple .get() call...
         // Harder than it sounds, given the BigInteger input; i.e. we need to intelligently replace with a "Size"/"Index" type
         map.put(EntityId.of("List", "get"), StaticFunctionCallStrategy(javaLists, "get"))
@@ -926,6 +929,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
         map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
         map.put(EntityId.of("Natural", "fromInteger"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
+        map.put(EntityId.of("Natural", "fromBits"), StaticFunctionCallStrategy(javaNaturals, "fromBits"))
         map.put(EntityId.of("Natural", "toBits"), StaticFunctionCallStrategy(javaNaturals, "toBits"))
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
