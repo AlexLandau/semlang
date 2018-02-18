@@ -383,6 +383,36 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
         builder.addMethod(createMethod.build())
 
+        if (isDataStruct(struct, module)) {
+            // Write equals() and hashCode()
+            val equalsMethod = MethodSpec.methodBuilder("equals").addModifiers(Modifier.PUBLIC)
+            equalsMethod.addAnnotation(Override::class.java)
+            equalsMethod.addParameter(java.lang.Object::class.java, "o")
+            equalsMethod.returns(TypeName.BOOLEAN)
+            equalsMethod.beginControlFlow("if (this == o)")
+            equalsMethod.addStatement("return true")
+            equalsMethod.endControlFlow()
+            equalsMethod.beginControlFlow("if (!(o instanceof \$T))", className)
+            equalsMethod.addStatement("return false")
+            equalsMethod.endControlFlow()
+            equalsMethod.addStatement("\$T other = (\$T) o", className, className)
+
+            val equalsReturnStatement = CodeBlock.builder()
+            equalsReturnStatement.add("return ")
+            var isFirst = true
+            for (member in struct.members) {
+                if (!isFirst) {
+                    equalsReturnStatement.add(" && ")
+                }
+                equalsReturnStatement.add(CodeBlock.of("\$T.equals(this.\$L, other.\$L)", Objects::class.java, member.name, member.name))
+                isFirst = false
+            }
+            equalsMethod.addStatement("\$L", equalsReturnStatement.build())
+            builder.addMethod(equalsMethod.build())
+
+            // TODO: Also write hashCode()
+        }
+
         return builder
     }
 
@@ -1124,6 +1154,47 @@ private interface FunctionTypeStrategy {
     fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName
 }
 
-fun ClassName.sanitize(): ClassName {
+private fun ClassName.sanitize(): ClassName {
     return ClassName.get(this.packageName().replace("-", "_"), this.simpleName())
+}
+
+// TODO: This will probably become a language-wide distinction
+// TODO: Maybe put this on the ValidatedModule itself?
+private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
+    return when (type) {
+        Type.INTEGER -> true
+        Type.NATURAL -> true
+        Type.BOOLEAN -> true
+        is Type.List -> isDataType(type.parameter, containingModule)
+        is Type.Try -> isDataType(type.parameter, containingModule)
+        is Type.FunctionType -> false
+        is Type.ParameterType -> false // Might have cases in the future where a parameter can be restricted to be data
+        is Type.NamedType -> {
+            if (containingModule == null) {
+                // TODO: For now we assume these are all data other than BasicSequence
+                return getNativeStructs().containsKey(type.ref.id) && type.ref.id != NativeStruct.BASIC_SEQUENCE.id
+            }
+            val entityResolution = containingModule.resolve(type.ref) ?: error("failed entityResolution for ${type.ref}")
+            when (entityResolution.type) {
+                FunctionLikeType.NATIVE_FUNCTION -> error("Native functions shouldn't be types")
+                FunctionLikeType.FUNCTION -> error("Functions shouldn't be types")
+                FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                    val struct = containingModule.getInternalStruct(entityResolution.entityRef)
+                    isDataStruct(struct.struct, struct.module)
+                }
+                FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
+                FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
+            }
+        }
+    }
+}
+
+private fun isDataStruct(struct: Struct, containingModule: ValidatedModule?): Boolean {
+    for (member in struct.members) {
+        val isDataType = isDataType(member.type, containingModule)
+        if (!isDataType) {
+            return false
+        }
+    }
+    return true
 }
