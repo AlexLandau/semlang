@@ -2,7 +2,9 @@ package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
-import net.semlang.internal.test.getSemlangNativeCorpusFiles
+import net.semlang.api.ValidatedModule
+import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
+import net.semlang.linker.linkModuleWithDependencies
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -20,24 +22,30 @@ import java.net.URL
 
 
 @RunWith(Parameterized::class)
-class WriteJavaTest(private val file: File) {
+class WriteJavaTest(private val file: File, private val libraries: List<ValidatedModule>) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            return getSemlangNativeCorpusFiles()
+            return getCompilableFilesWithAssociatedLibraries()
         }
     }
 
     @Test
     fun testWritingJava() {
-        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val unlinkedModule = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val linkedModule = if (libraries.isEmpty()) {
+            unlinkedModule
+        } else {
+            val linkedContext = linkModuleWithDependencies(unlinkedModule)
+            validateModule(linkedContext.contents, linkedContext.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        }
 
         val newSrcDir = Files.createTempDirectory("generatedJavaSource").toFile()
         val newTestSrcDir = Files.createTempDirectory("generatedJavaTestSource").toFile()
         val destFolder = Files.createTempDirectory("generatedJavaBin").toFile()
 
-        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(module, listOf("net", "semlang", "test"), newSrcDir, newTestSrcDir)
+        val writtenJavaSourceInfo = writeJavaSourceIntoFolders(linkedModule, listOf("net", "semlang", "test"), newSrcDir, newTestSrcDir)
 
         // Now run the compiler...
         val compiler = ToolProvider.getSystemJavaCompiler()
@@ -51,7 +59,7 @@ class WriteJavaTest(private val file: File) {
         System.out.println("Files in bin: ${collectNonDirFiles(listOf(destFolder))}")
         System.out.println("Here are the source files:")
         for (sourceFile in sourceFiles) {
-            System.out.println("Generated code for test $file:")
+            System.out.println("Generated code for test $file (file $sourceFile):")
             System.out.println(Files.readAllLines(sourceFile.toPath()).joinToString("\n"))
         }
 
@@ -73,7 +81,7 @@ class WriteJavaTest(private val file: File) {
         // TODO: Figure out a way to relay failures correctly
         if (!result.wasSuccessful()) {
             fail("Generated JUnit test was not successful. Failures were:\n" + result.failures)
-        } else if (result.runCount == 0) {
+        } else if (result.runCount == 0 && !file.path.contains("semlang-parser")) {
             fail("Run count was 0")
         }
     }
