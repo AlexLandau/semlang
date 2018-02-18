@@ -249,6 +249,24 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 object NativeStruct {
     private val typeT = Type.ParameterType("T")
     private val typeU = Type.ParameterType("U")
+    val NATURAL2 = Struct(
+            EntityId.of("Natural2"),
+            CURRENT_NATIVE_MODULE_ID,
+            listOf(),
+            listOf(
+                    Member("integer", Type.INTEGER)
+            ),
+            // requires: value > -1
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    EntityRef.of("Integer", "greaterThan"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
+                    listOf(TypedExpression.Variable(Type.INTEGER, "integer"),
+                            TypedExpression.Literal(Type.INTEGER, "-1")),
+                    listOf()
+            )),
+            listOf()
+    )
     val BASIC_SEQUENCE = Struct(
             EntityId.of("BasicSequence"),
             CURRENT_NATIVE_MODULE_ID,
@@ -335,6 +353,7 @@ object NativeStruct {
 fun getNativeStructs(): Map<EntityId, Struct> {
     val structs = ArrayList<Struct>()
 
+    structs.add(NativeStruct.NATURAL2)
     structs.add(NativeStruct.BASIC_SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
