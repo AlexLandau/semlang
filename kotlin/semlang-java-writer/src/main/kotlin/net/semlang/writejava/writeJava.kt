@@ -99,17 +99,19 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
 }
 
 private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
-    val classMap = HashMap<ClassName, TypeSpec.Builder>()
+    // TODO: This might be all we need for the package
+    val javaPackageString: String = javaPackage.joinToString(".")
 
     fun write(): WrittenJavaInfo {
+        val classMap = HashMap<ClassName, TypeSpec.Builder>()
         namedFunctionCallStrategies.putAll(getNativeFunctionCallStrategies())
 
         module.ownStructs.values.forEach { struct ->
-            val className = getStructClassName(struct.id)
+            val className = getOwnTypeClassName(struct.id)
             val structClassBuilder = writeStructClass(struct, className)
 
             if (classMap.containsKey(className)) {
-                error("Something's wrong here")
+                error("Duplicate class name $className for struct ${struct.id}")
             }
             classMap[className] = structClassBuilder
         }
@@ -117,11 +119,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         addStructConstructorFunctionCallStrategies(module.getAllInternalStructs().values)
 
         module.ownInterfaces.values.forEach { interfac ->
-            val className = getStructClassName(interfac.id)
+            val className = getOwnTypeClassName(interfac.id)
             val interfaceBuilder = writeInterface(interfac, className)
 
             if (classMap.containsKey(className)) {
-                error("Something's wrong here")
+                error("Duplicate class name $className for interface ${interfac.id}")
             }
             classMap[className] = interfaceBuilder
         }
@@ -149,20 +151,64 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
-        classMap.forEach { className, classBuilder ->
-            val javaFile = JavaFile.builder(className.packageName(), classBuilder.build())
-                    .build()
-            javaFile.writeTo(newSrcDir)
-        }
+        writeClassesToFiles(classMap)
 
         writePreparedJUnitTests(newTestSrcDir)
 
         return WrittenJavaInfo(testClassCounts.keys.toList())
     }
 
+    private fun writeClassesToFiles(classMap: MutableMap<ClassName, TypeSpec.Builder>) {
+        // Collect classes in such a way that we can deal with needing to embed some classes in others
+        val allClassNamesAndEnclosingClassNames = HashSet<ClassName>()
+        for (className in classMap.keys) {
+            var curClassName = className
+            allClassNamesAndEnclosingClassNames.add(className)
+            while (curClassName.enclosingClassName() != null) {
+                curClassName = curClassName.enclosingClassName()
+                allClassNamesAndEnclosingClassNames.add(curClassName)
+            }
+        }
+
+        // Sort from shortest size to longest
+        val orderedClassNamesToProcess = ArrayList<ClassName>(allClassNamesAndEnclosingClassNames)
+        orderedClassNamesToProcess.sortBy { className -> className.simpleNames().size }
+
+        // Add to the enclosing classes
+        for (className in orderedClassNamesToProcess) {
+            val existingBuilder = classMap[className]
+            val builder = if (existingBuilder == null) {
+                // Create an empty class
+                val newBuilder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                classMap[className] = newBuilder
+                newBuilder
+            } else {
+                existingBuilder
+            }
+            val enclosingClassName = className.enclosingClassName()
+            if (enclosingClassName != null) {
+                val enclosingClassBuilder = classMap[enclosingClassName]!!
+                builder.addModifiers(Modifier.STATIC)
+                enclosingClassBuilder.addType(builder.build())
+            }
+        }
+
+        classMap.forEach { className, classBuilder ->
+            if (className.enclosingClassName() == null) {
+                val javaFile = JavaFile.builder(className.packageName(), classBuilder.build())
+                        .build()
+                javaFile.writeTo(newSrcDir)
+            }
+        }
+    }
+
+    private fun getOwnTypeClassName(id: EntityId): ClassName {
+        return getClassNameForTypeId(ResolvedEntityRef(this.module.id, id))
+    }
+
     private fun addStructConstructorFunctionCallStrategies(structs: Collection<Struct>) {
         for (struct in structs) {
-            val structClass = getStructClassName(struct.id)
+            val structClass = getOwnTypeClassName(struct.id)
             // Check to avoid overriding special cases
             if (!namedFunctionCallStrategies.containsKey(struct.id)) {
                 namedFunctionCallStrategies[struct.id] = object : FunctionCallStrategy {
@@ -199,7 +245,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         interfaces.forEach { interfac ->
             // Check to avoid overriding special cases
             if (!namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
-                val instanceClassName = getStructClassName(interfac.id)
+                val instanceClassName = getOwnTypeClassName(interfac.id)
                 val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
 
                 namedFunctionCallStrategies[interfac.adapterId] = object : FunctionCallStrategy {
@@ -773,11 +819,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
         val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
         if (interfaceRef != null) {
-            val interfaceId = module.resolve(interfaceRef)?.entityRef?.id ?: error("error")
+            val resolvedInterfaceRef = module.resolve(interfaceRef) ?: error("error")
             val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
             val dataTypeParameter = getType(semlangType.parameters[0], true)
             val otherParameters = semlangType.parameters.drop(1).map { getType(it, true) }
-            val bareInterfaceName = getStructClassName(interfaceId)
+            val bareInterfaceName = getClassNameForTypeId(resolvedInterfaceRef.entityRef)
             val interfaceJavaName = if (otherParameters.isEmpty()) {
                 bareInterfaceName
             } else {
@@ -799,7 +845,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // associated package name for that"
 
         // TODO: Might end up being more complicated? This is probably not quite right
-        val className = predefinedClassName ?: ClassName.bestGuess(javaPackage.joinToString(".") + "." + semlangType.originalRef.toString()).sanitize()
+        val className = predefinedClassName ?: getClassNameForTypeId(semlangType.ref)
 
         if (semlangType.parameters.isEmpty()) {
             return className
@@ -807,10 +853,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val parameterTypeNames: List<TypeName> = semlangType.parameters.map { this.getType(it, true) }
             return ParameterizedTypeName.get(className, *parameterTypeNames.toTypedArray())
         }
-    }
-
-    private fun getStructClassName(functionId: EntityId): ClassName {
-        return ClassName.get((javaPackage + functionId.namespacedName.dropLast(1)).joinToString("."), functionId.namespacedName.last()).sanitize()
     }
 
     private fun getContainingClassName(functionId: EntityId): ClassName {
@@ -998,6 +1040,16 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return typesCodeBuilder.build()
     }
 
+    private fun getClassNameForTypeId(ref: ResolvedEntityRef): ClassName {
+        val moduleName = ref.module.module
+        val javaPackage = javaPackageString + "." + sanitizePackageName(moduleName)
+        val names = ref.id.namespacedName
+        return ClassName.get(javaPackage, names[0], *names.drop(1).toTypedArray())
+    }
+
+    private fun sanitizePackageName(moduleName: String): String {
+        return moduleName.replace("-", "_")
+    }
 }
 
 private interface FunctionCallStrategy {
