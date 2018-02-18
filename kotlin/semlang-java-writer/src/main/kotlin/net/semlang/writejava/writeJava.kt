@@ -170,21 +170,22 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
-        // Sort from shortest size to longest
-        val orderedClassNamesToProcess = ArrayList<ClassName>(allClassNamesAndEnclosingClassNames)
-        orderedClassNamesToProcess.sortBy { className -> className.simpleNames().size }
+        // Sort from shortest name size to longest (so each class comes after its enclosing class, if any)
+        val classNamesOuterToInner = ArrayList<ClassName>(allClassNamesAndEnclosingClassNames)
+        classNamesOuterToInner.sortBy { className -> className.simpleNames().size }
 
-        // Add to the enclosing classes
-        for (className in orderedClassNamesToProcess) {
-            val existingBuilder = classMap[className]
-            val builder = if (existingBuilder == null) {
-                // Create an empty class
+        // Add any needed enclosing classes that don't exist yet
+        for (className in classNamesOuterToInner) {
+            if (!classMap.containsKey(className)) {
                 val newBuilder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 classMap[className] = newBuilder
-                newBuilder
-            } else {
-                existingBuilder
             }
+        }
+
+        // Add classes to their enclosing classes
+        // (We build as we go, so this has to be done innermost-to-outermost)
+        for (className in classNamesOuterToInner.reversed()) {
+            val builder = classMap[className]!!
             val enclosingClassName = className.enclosingClassName()
             if (enclosingClassName != null) {
                 val enclosingClassBuilder = classMap[enclosingClassName]!!
