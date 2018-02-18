@@ -1043,12 +1043,20 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun getClassNameForTypeId(ref: ResolvedEntityRef): ClassName {
         val moduleName = ref.module.module
         val javaPackage = javaPackageString + "." + sanitizePackageName(moduleName)
-        val names = ref.id.namespacedName
-        return ClassName.get(javaPackage, names[0], *names.drop(1).toTypedArray())
+        val names = ref.id.namespacedName.map(this::sanitizeClassName)
+        try {
+            return ClassName.get(javaPackage, names[0], *names.drop(1).toTypedArray())
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Problem for reference $ref from entity ID ${ref.id} and module ID ${ref.id}", e)
+        }
     }
 
     private fun sanitizePackageName(moduleName: String): String {
         return moduleName.replace("-", "_")
+    }
+
+    private fun sanitizeClassName(className: String): String {
+        return className.replace("-", "_")
     }
 }
 
