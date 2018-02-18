@@ -6,11 +6,10 @@ import net.semlang.internal.test.TestAnnotationContents
 import net.semlang.internal.test.verifyTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.parser.validateModule
-import net.semlang.transforms.RenamingStrategies
-import net.semlang.transforms.constrainVariableNames
-import net.semlang.transforms.extractInlineFunctions
-import net.semlang.transforms.hoistMatchingExpressions
+import net.semlang.parser.write
+import net.semlang.transforms.*
 import java.io.File
+import java.io.StringWriter
 import java.math.BigInteger
 import java.util.*
 import javax.lang.model.element.Modifier
@@ -91,9 +90,10 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     // TODO: Combine variable renaming steps
     val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
     val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
-    val withoutInlineFunctions = extractInlineFunctions(tempModule2)
-    val simplified = hoistMatchingExpressions(withoutInlineFunctions, { it is Expression.IfThen })
-    val module = validateModule(simplified, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
+    val tempModule3 = extractInlineFunctions(tempModule2)
+    val tempModule4 = hoistMatchingExpressions(tempModule3, { it is Expression.IfThen })
+    val tempModule5 = preventDuplicateVariableNames(tempModule4)
+    val module = validateModule(tempModule5, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
@@ -484,6 +484,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         block.assignments.forEach { (name, type, expression) ->
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
             if (expression is TypedExpression.IfThen) {
+                // The variable gets added to our scope early in this case
+                addToVariableScope(name)
                 builder.addStatement("final \$T \$L", getType(type, false), name)
                 builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
                 builder.add(writeBlock(expression.thenBlock, name))
@@ -492,8 +494,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 builder.endControlFlow()
             } else {
                 builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
+                addToVariableScope(name)
             }
-            addToVariableScope(name)
         }
 
         // TODO: Handle case where returnedExpression is if/then (?) -- or will that get factored out?
