@@ -153,6 +153,16 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + struct)
         }
 
+        if (struct.id == NativeStruct.NATURAL2.id) {
+            val semInteger = arguments[0] as? SemObject.Integer ?: error("Type error when constructing a Natural")
+            val value = semInteger.value
+            if (value >= BigInteger.ZERO) {
+                return SemObject.Try.Success(SemObject.Natural(semInteger.value))
+            } else {
+                return SemObject.Try.Failure
+            }
+        }
+
         if (struct.id == NativeStruct.UNICODE_STRING.id) {
             val semList = arguments[0] as? SemObject.SemList ?: error("Type error when constructing a Unicode.String")
             val codePoints: List<Int> = semList.contents.map { semObject ->
@@ -246,6 +256,11 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                 } else if (innerResult is SemObject.Instance) {
                     val index = innerResult.interfaceDef.getIndexForName(name)
                     return innerResult.methods[index]
+                } else if (innerResult is SemObject.Natural) {
+                    if (name != "integer") {
+                        error("The only valid member in a Natural is 'integer'")
+                    }
+                    return SemObject.Integer(innerResult.value)
                 } else if (innerResult is SemObject.UnicodeString) {
                     if (name != "codePoints") {
                         error("The only valid member in a Unicode.String is 'codePoints'")
@@ -348,6 +363,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
     }
 
     private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL2.id) {
+            return evaluateNaturalLiteral(literal)
+        }
         if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
             // TODO: Check for errors related to string encodings
             return evaluateStringLiteral(literal)

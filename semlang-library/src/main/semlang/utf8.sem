@@ -11,11 +11,11 @@
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
 @Exported
 function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
-  if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
+  if (Natural2.equals(List.size<Byte>(bytes), Natural2."0")) {
     Try.success<Unicode.String>(Unicode.String."")
   } else {
     // TODO: Convert to the newer bytes-to-bits approach
-    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural2."0"))
     let firstByteBits = Byte.toBits(firstByte)
     let 128bit = Byte.BitPosition."7"
     if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
@@ -35,7 +35,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
         Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."2")),
       )) {
         // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
-        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
+        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural2."1")) // TODO: Fix assumption
         let secondByteBits = Byte.toBits(secondByte)
         let fullBits = BitsBigEndian(List.concatenate<Bit>(
           List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),

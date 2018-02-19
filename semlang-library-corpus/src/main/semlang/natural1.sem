@@ -16,7 +16,7 @@ function sequenceTest(index: Natural): Natural {
 @Test(["31"], "5")
 @Test(["255"], "8")
 @Test(["256"], "9")
-function toBitsLengthTest(value: Natural): Natural {
+function toBitsLengthTest(value: Natural): Natural2 {
   let bits = Natural.toBits(value)
   List.size<Bit>(bits->bits)
 }
@@ -29,7 +29,7 @@ function toBitsLengthTest(value: Natural): Natural {
 @Test(["1", "8"], "success(8)")
 @Test(["255", "8"], "success(8)")
 @Test(["256", "8"], "failure")
-function toNBitsLengthTest(value: Natural, numBits: Natural): Try<Natural> {
+function toNBitsLengthTest(value: Natural, numBits: Natural2): Try<Natural2> {
   let bits: Try<BitsBigEndian> = Natural.toNBits(value, numBits)
-  Try.map<BitsBigEndian, Natural>(bits, function(validBits: BitsBigEndian) { List.size<Bit>(validBits->bits) })
+  Try.map<BitsBigEndian, Natural2>(bits, function(validBits: BitsBigEndian) { List.size<Bit>(validBits->bits) })
 }

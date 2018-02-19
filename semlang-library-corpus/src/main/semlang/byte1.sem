@@ -32,7 +32,7 @@ function byteLiteralTest3(): Byte {
 @Test(["255"], "1")
 function Byte.toBitsTest1(byte: Byte): Bit {
   let bits = Byte.toBits(byte)->bitsBigEndian
-  Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."0"))
+  Try.assume<Bit>(List.get<Bit>(bits->bits, Natural2."0"))
 }
 
 @Test(["0"], "0")
@@ -44,7 +44,7 @@ function Byte.toBitsTest1(byte: Byte): Bit {
 @Test(["255"], "1")
 function Byte.toBitsTest2(byte: Byte): Bit {
   let bits = Byte.toBits(byte)->bitsBigEndian
-  Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."7"))
+  Try.assume<Bit>(List.get<Bit>(bits->bits, Natural2."7"))
 }
 
 @Test(["0"], "0")

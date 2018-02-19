@@ -571,7 +571,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Special sauce...
         val type = expression.structureExpression.type
         if (type is Type.NamedType) {
-            if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
+            if (type.ref.id == NativeStruct.NATURAL2.id) {
+                if (expression.name != "integer") {
+                    error("...")
+                }
+                // Just reuse the BigInteger as-is
+                return writeExpression(expression.structureExpression)
+            } else if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 if (expression.name != "codePoints") {
                     error("...")
                 }
@@ -796,9 +802,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
                 val resolvedType = this.module.resolve(type.ref) ?: error("Unresolved type ${type.ref}")
-                if (isNativeModule(resolvedType.entityRef.module) &&
-                    resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
-                    return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                if (isNativeModule(resolvedType.entityRef.module))  {
+                    if (resolvedType.entityRef.id == NativeStruct.NATURAL2.id) {
+                        return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+                    }
+                    if (resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
+                        return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                    }
                 }
 
                 // TODO: We need to know what the structs are here...
@@ -830,8 +840,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
-            Type.INTEGER -> TypeName.get(BigInteger::class.java)
-            Type.NATURAL -> TypeName.get(BigInteger::class.java)
+            Type.INTEGER -> ClassName.get(BigInteger::class.java)
+            Type.NATURAL -> ClassName.get(BigInteger::class.java)
             Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
@@ -866,6 +876,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
+            listOf("Natural2") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
@@ -1020,6 +1031,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+
+        // Natural2 constructor
+        map.put(EntityId.of("Natural2"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
 
         // Unicode.CodePoint constructor
         map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))

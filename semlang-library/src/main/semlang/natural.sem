@@ -44,15 +44,15 @@ function Natural.greaterThanOrEqualTo(left: Natural, right: Natural): Boolean {
 }
 
 @Exported
-function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
+function Natural.toNBits(value: Natural, numBits: Natural2): Try<BitsBigEndian> {
   let allBits = if (Natural.equals(value, Natural."0")) {
     []<Bit>
   } else {
     Natural.toBits(value)->bits
   }
   let actualNumBits = List.size<Bit>(allBits)
-  let paddingNeededMaybe = Natural.minus(numBits, actualNumBits)
-  Try.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural) {
+  let paddingNeededMaybe = Natural2(Natural2.minus(numBits, actualNumBits))
+  Try.map<Natural2, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural2) {
     let padding = List.nCopies<Bit>(paddingNeeded, Bit."0")
     BitsBigEndian(List.concatenate<Bit>(padding, allBits))
   })

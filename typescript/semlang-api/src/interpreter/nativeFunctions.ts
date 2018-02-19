@@ -132,6 +132,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.greaterThan": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
         return booleanObject(left.value.greater(right.value));
     },
+    "Integer.lessThan": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
+        return booleanObject(left.value.lesser(right.value));
+    },
     "Integer.minus": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value.minus(right.value));
     },
@@ -246,6 +249,14 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         }
         const bitsList = listObject(bits.reverse());
         return structObject(NativeStructs["BitsBigEndian"], [bitsList]);
+    },
+    "Natural2": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
+        const value = integer.value;
+        if (value.isNegative()) {
+            return failureObject();
+        } else {
+            return successObject(naturalObject(value));
+        }
     },
     "Sequence.create": (context: InterpreterContext, base: SemObject, successor: SemObject.FunctionBinding): SemObject => {
         const sequenceInterface = NativeInterfaces["Sequence"];

@@ -5,7 +5,7 @@
 function getSquareOfDistanceFromOrigin(a: Integer, b: Integer): Integer {
   let asList = [a, b]<Integer>
   let squaredList = List.map<Integer, Integer>(asList, function(i: Integer) { Integer.times(i, i) })
-  let aSquared = Try.assume<Integer>(List.get<Integer>(squaredList, Natural."0"))
-  let bSquared = Try.assume<Integer>(List.get<Integer>(squaredList, Natural."1"))
+  let aSquared = Try.assume<Integer>(List.get<Integer>(squaredList, Natural2."0"))
+  let bSquared = Try.assume<Integer>(List.get<Integer>(squaredList, Natural2."1"))
   Integer.plus(aSquared, bSquared)
 }

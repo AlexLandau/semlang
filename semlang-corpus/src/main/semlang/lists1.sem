@@ -1,6 +1,6 @@
 
 @Test([], "2")
-function myCode.listSize2(): Natural {
+function myCode.listSize2(): Natural2 {
   let emptyList: List<Integer> = []<Integer>
   let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")
   let listTwo: List<Integer> = List.append<Integer>(listOne, Integer."10")
@@ -9,7 +9,7 @@ function myCode.listSize2(): Natural {
 }
 
 @Test([], "3")
-function myCode.listSize3(): Natural {
+function myCode.listSize3(): Natural2 {
   let emptyList: List<Integer> = []<Integer>
   let listOne: List<Integer> = List.append<Integer>(emptyList, Integer."1")
   let listTwo: List<Integer> = List.append<Integer>(listOne, Integer."10")

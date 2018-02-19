@@ -1,0 +1,14 @@
+@Exported
+function Natural2.minus(left: Natural2, right: Natural2): Integer {
+  Integer.minus(left->integer, right->integer)
+}
+
+@Exported
+function Natural2.equals(left: Natural2, right: Natural2): Boolean {
+  Integer.equals(left->integer, right->integer)
+}
+
+@Exported
+function Natural2.lessThan(left: Natural2, right: Natural2): Boolean {
+  Integer.lessThan(left->integer, right->integer)
+}
