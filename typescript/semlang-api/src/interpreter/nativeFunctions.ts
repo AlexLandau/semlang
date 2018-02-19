@@ -19,20 +19,20 @@ export const NativeStructs: { [structName: string]: Struct } = {
                     arguments: [
                         {
                             type: "namedCall",
-                            function: "Natural.equals",
+                            function: "Integer.equals",
                             chosenParameters: [],
                             arguments: [
-                                { type: "var", var: "natural" },
-                                { type: "literal", literalType: "Natural", value: "0" }
+                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                                { type: "literal", literalType: "Integer", value: "0" }
                             ],
                         },
                         {
                             type: "namedCall",
-                            function: "Natural.equals",
+                            function: "Integer.equals",
                             chosenParameters: [],
                             arguments: [
-                                { type: "var", var: "natural" },
-                                { type: "literal", literalType: "Natural", value: "1" }
+                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                                { type: "literal", literalType: "Integer", value: "1" }
                             ],
                         },
                     ],
@@ -51,11 +51,11 @@ export const NativeStructs: { [structName: string]: Struct } = {
             {
                 return: {
                     type: "namedCall",
-                    function: "Natural.lessThan",
+                    function: "Integer.lessThan",
                     chosenParameters: [],
                     arguments: [
-                        { type: "var", var: "natural" },
-                        { type: "literal", literalType: "Natural", value: "1114112" }
+                        { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                        { type: "literal", literalType: "Integer", value: "1114112" }
                     ],
                 }
             }
@@ -210,63 +210,6 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
     "List.size": (context: InterpreterContext, list: SemObject.List): SemObject.Natural => {
         return naturalObject(bigInt(list.contents.length));
-    },
-    "Natural.absoluteDifference": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        const difference = left.value.minus(right.value);
-        return naturalObject(difference.abs());
-    },
-    "Natural.equals": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value.equals(right.value));
-    },
-    "Natural.fromBits": (context: InterpreterContext, bitsStruct: SemObject.Struct): SemObject.Natural => {
-        const bitsListObject = bitsStruct.members[0] as SemObject.List;
-        const bitStructsList = bitsListObject.contents as SemObject.Struct[];
-        let intValue = bigInt.zero;
-        for (const bitStruct of bitStructsList) {
-            const bitNatural = bitStruct.members[0] as SemObject.Natural;
-            intValue = intValue.times(2);
-            intValue = intValue.plus(bitNatural.value);
-        }
-        return naturalObject(intValue);
-    },
-    "Natural.fromInteger": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
-        const intValue = integer.value
-        if (intValue.isNegative()) {
-            return failureObject()
-        } else {
-            return successObject(naturalObject(intValue));
-        }
-    },
-    "Natural.greaterThan": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value > right.value);
-    },
-    "Natural.lesser": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        const a = left.value;
-        const b = right.value;
-        return naturalObject((a.lt(b)) ? a : b);
-    },
-    "Natural.lessThan": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value < right.value);
-    },
-    "Natural.plus": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        return naturalObject(left.value.plus(right.value));
-    },
-    "Natural.times": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        return naturalObject(left.value.times(right.value));
-    },
-    "Natural.toBits": (context: InterpreterContext, natural: SemObject.Natural): SemObject.Struct => {
-        let value = natural.value;
-        const bits = [] as SemObject.Struct[];
-        if (value.isZero()) {
-            bits.push(bit(bigInt.zero));
-        } else {
-            while (value.isPositive()) {
-                bits.push(bit(value.and(bigInt.one)));
-                value = value.divide(2);
-            }
-        }
-        const bitsList = listObject(bits.reverse());
-        return structObject(NativeStructs["BitsBigEndian"], [bitsList]);
     },
     "Natural2": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
         const value = integer.value;
