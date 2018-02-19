@@ -20,7 +20,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
     let 128bit = Byte.BitPosition."7"
     if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
       let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
-      let remainingBytes = List.drop<Byte>(bytes, Natural."1")
+      let remainingBytes = List.drop<Byte>(bytes, Natural2."1")
       Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
         function(remainingString: Unicode.String) {
           let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
@@ -38,12 +38,12 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
         let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural2."1")) // TODO: Fix assumption
         let secondByteBits = Byte.toBits(secondByte)
         let fullBits = BitsBigEndian(List.concatenate<Bit>(
-          List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),
-          List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural."6")
+          List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural2."5"),
+          List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural2."6")
         ))
         let codePointValue = Natural.fromBits(fullBits)
         let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
-        let remainingBytes = List.drop<Byte>(bytes, Natural."2")
+        let remainingBytes = List.drop<Byte>(bytes, Natural2."2")
         Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
           function(remainingString: Unicode.String) {
             let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
