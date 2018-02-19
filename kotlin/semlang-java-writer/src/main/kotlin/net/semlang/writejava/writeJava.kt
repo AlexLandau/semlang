@@ -999,7 +999,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "equals"), MethodFunctionCallStrategy("equals"))
         map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
-        map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
         map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
