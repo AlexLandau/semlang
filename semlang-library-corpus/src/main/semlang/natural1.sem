@@ -29,7 +29,7 @@ function toBitsLengthTest(value: Natural): Natural2 {
 @Test(["1", "8"], "success(8)")
 @Test(["255", "8"], "success(8)")
 @Test(["256", "8"], "failure")
-function toNBitsLengthTest(value: Natural, numBits: Natural2): Try<Natural2> {
-  let bits: Try<BitsBigEndian> = Natural.toNBits(value, numBits)
+function toNBitsLengthTest(value: Natural2, numBits: Natural2): Try<Natural2> {
+  let bits: Try<BitsBigEndian> = Natural2.toNBits(value, numBits)
   Try.map<BitsBigEndian, Natural2>(bits, function(validBits: BitsBigEndian) { List.size<Bit>(validBits->bits) })
 }
