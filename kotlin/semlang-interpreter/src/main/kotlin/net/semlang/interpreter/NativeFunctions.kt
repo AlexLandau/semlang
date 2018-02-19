@@ -176,17 +176,6 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Natural(left.value + right.value)
     }))
 
-    // Natural.divide
-    list.add(NativeFunction(naturalDot("divide"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        if (right.value.toInt() == 0) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(SemObject.Natural(left.value / right.value))
-        }
-    }))
-
     // Natural.toPower
     list.add(NativeFunction(naturalDot("toPower"), { args: List<SemObject>, _: InterpreterCallback ->
         val base = args[0] as? SemObject.Natural ?: typeError()
@@ -317,13 +306,6 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Natural ?: typeError()
         val right = args[1] as? SemObject.Natural ?: typeError()
         SemObject.Natural(left.value.min(right.value))
-    }))
-
-    // Natural.remainder
-    list.add(NativeFunction(naturalDot("remainder"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value.remainder(right.value))
     }))
 
     // Natural.absoluteDifference
@@ -520,6 +502,18 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
                 apply(theFunction, listOf(theTry.contents))
             }
             is SemObject.Try.Failure -> theTry
+        }
+    }))
+
+    // Try.orElse
+    list.add(NativeFunction(tryDot("orElse"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        val alternative = args[1]
+        when (theTry) {
+            is SemObject.Try.Success -> {
+                theTry.contents
+            }
+            is SemObject.Try.Failure -> alternative
         }
     }))
 }

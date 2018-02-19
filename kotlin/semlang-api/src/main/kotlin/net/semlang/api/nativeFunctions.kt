@@ -101,12 +101,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.plus
     definitions.add(TypeSignature(EntityId.of("Natural", "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
-    // Natural.divide
-    definitions.add(TypeSignature(EntityId.of("Natural", "divide"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(Type.NATURAL)))
-
-    // Natural.remainder
-    definitions.add(TypeSignature(EntityId.of("Natural", "remainder"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
     // Natural.toPower
     definitions.add(TypeSignature(EntityId.of("Natural", "toPower"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
@@ -226,6 +220,12 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Try", "flatMap"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), Type.Try(paramU))),
             outputType = Type.Try(paramU)))
+
+    // Try.orElse
+    definitions.add(TypeSignature(EntityId.of("Try", "orElse"), typeParameters = listOf("T"),
+            argumentTypes = listOf(Type.Try(paramT), paramT),
+            outputType = paramT))
+
 }
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {

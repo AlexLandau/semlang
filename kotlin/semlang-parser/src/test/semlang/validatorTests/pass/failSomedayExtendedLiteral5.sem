@@ -1,14 +1,14 @@
 struct Digit {
-  value: Natural
+  natural: Natural2
   requires {
-    Natural.lessThan(value, Natural."10")
+    Integer.lessThan(natural->integer, Integer."10")
   }
 }
 
 struct EvenDigit {
-  value: Digit
+  digit: Digit
   requires {
-    Natural.equals(Natural."0", Natural.remainder(value->value, Natural."2"))
+    Integer.equals(Integer."0", Try.assume<Integer>(Integer.modulo(digit->natural->integer, Integer."2")))
   }
 }
 

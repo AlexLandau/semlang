@@ -36,11 +36,16 @@ function Natural2.lessThan(left: Natural2, right: Natural2): Boolean {
 }
 
 @Exported
+function Natural2.greaterThan(left: Natural2, right: Natural2): Boolean {
+  Integer.greaterThan(left->integer, right->integer)
+}
+
+@Exported
 function Natural2.isBetweenInclusive(toCheck: Natural2, lowerBound: Natural2, upperBound: Natural2): Boolean {
-    Boolean.and(
-        Natural2.lessThanOrEqualTo(lowerBound, toCheck),
-        Natural2.lessThanOrEqualTo(toCheck, upperBound)
-    )
+  Boolean.and(
+    Natural2.lessThanOrEqualTo(lowerBound, toCheck),
+    Natural2.lessThanOrEqualTo(toCheck, upperBound)
+  )
 }
 
 @Exported
@@ -50,6 +55,23 @@ function Natural2.lessThanOrEqualTo(left: Natural2, right: Natural2): Boolean {
   } else {
     Natural2.equals(left, right)
   }
+}
+
+@Exported
+function Natural2.greater(left: Natural2, right: Natural2): Natural2 {
+  if (Natural2.greaterThan(left, right)) {
+    left
+  } else {
+    right
+  }
+}
+
+@Exported
+function Natural2.max(naturals: List<Natural2>): Try<Natural2> {
+  let firstValueMaybe = List.first<Natural2>(naturals)
+  Try.map<Natural2, Natural2>(firstValueMaybe, function(firstValue: Natural2) {
+    List.reduce<Natural2, Natural2>(naturals, firstValue, Natural2.greater|(_, _))
+  })
 }
 
 @Exported
@@ -103,9 +125,33 @@ function Natural2.toBitsList(value: Natural2): List<Bit> {
 // TODO: You really want this to be done natively...
 @Exported
 function Natural2.fromBits(bitsBigEndian: BitsBigEndian): Natural2 {
-//  BitsBigEndian(Natural2.toBitsList(value))
   List.reduce<Bit, Natural2>(bitsBigEndian->bits, Natural2."0", function(valueSoFar: Natural2, bit: Bit) {
     let doubledValue = Natural2.times(valueSoFar, Natural2."2")
     Natural2.plus(doubledValue, bit->natural)
   })
+}
+
+// TODO: Move this somewhere appropriate?
+@Exported
+function Natural2.sum(numbers: List<Natural2>): Natural2 {
+  List.reduce<Natural2, Natural2>(numbers, Natural2."0", Natural2.plus|(_, _))
+}
+
+@Exported
+function Natural2.rangeInclusive(start: Natural2, end: Natural2): List<Natural2> {
+  let numberOfValuesMaybe = Natural2(Natural2.minus(Natural2.plus(end, Natural2."1"), start))
+  let rangeMaybe = Try.map<Natural2, List<Natural2>>(numberOfValuesMaybe, function(numValues: Natural2) {
+    Sequence.getRange<Natural2>(Natural2.arithmeticProgression(start, Natural2."1"), numValues)
+  })
+  Try.orElse<List<Natural2>>(rangeMaybe, []<Natural2>)
+}
+
+@Exported
+function Natural2.sequence(): Sequence<Natural2> {
+  Sequence.create<Natural2>(Natural2."0", Natural2.plus|(_, Natural2."1"))
+}
+
+@Exported
+function Natural2.arithmeticProgression(initialValue: Natural2, increment: Natural2): Sequence<Natural2> {
+  Sequence.create<Natural2>(initialValue, Natural2.plus|(_, increment))
 }
