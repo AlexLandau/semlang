@@ -321,8 +321,6 @@ export class InterpreterContext {
             throw new Error(`Unexpected Boolean literal ${value}`);
         } else if (type === "Integer") {
             return integerObject(bigInt(value));
-        } else if (type === "Natural") {
-            return naturalObject(bigInt(value));
         } else if (isTryType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {

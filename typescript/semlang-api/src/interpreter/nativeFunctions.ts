@@ -9,7 +9,7 @@ const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
     "Bit": {
         id: "Bit",
-        members: [{name: "natural", type: "Natural"}],
+        members: [{name: "natural", type: {name: "Natural2"}}],
         requires: [
             {
                 return: {
@@ -46,7 +46,7 @@ export const NativeStructs: { [structName: string]: Struct } = {
     },
     "Unicode.CodePoint": {
         id: "Unicode.CodePoint",
-        members: [{ name: "natural", type: "Natural" }],
+        members: [{ name: "natural", type: {name: "Natural2"} }],
         requires: [
             {
                 return: {
@@ -76,7 +76,7 @@ export const NativeInterfaces: { [interfaceName: string]: Interface } = {
         id: "Sequence",
         typeParameters: ['T'],
         methods: [
-            { name: "get", arguments: [{name: "index", type: "Natural"}], returnType: typeT },
+            { name: "get", arguments: [{name: "index", type: {name: "Natural2"}}], returnType: typeT },
             { name: "first", arguments: [{name: "condition", type: { from: [typeT], to: "Boolean" }}], returnType: typeT },
         ],
     },
