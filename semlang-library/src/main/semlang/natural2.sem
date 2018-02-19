@@ -106,10 +106,13 @@ function Natural2.toNBits(value: Natural2, numBits: Natural2): Try<BitsBigEndian
 }
 
 // TODO: You really want this to be done natively...
-// TODO: This is supposed to return [0]?
 @Exported
 function Natural2.toBits(value: Natural2): BitsBigEndian {
-  BitsBigEndian(Natural2.toBitsList(value))
+  if (Natural2.equals(value, Natural2."0")) {
+    BitsBigEndian([Bit."0"]<Bit>)
+  } else {
+    BitsBigEndian(Natural2.toBitsList(value))
+  }
 }
 function Natural2.toBitsList(value: Natural2): List<Bit> {
   // TODO: This can probably be done better/non-recursively

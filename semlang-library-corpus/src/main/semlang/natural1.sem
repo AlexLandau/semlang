@@ -2,8 +2,8 @@
 @Test(["0"], "0")
 @Test(["1"], "1")
 @Test(["7"], "7")
-function sequenceTest(index: Natural2): Natural {
-    Natural.sequence()->get(index)
+function sequenceTest(index: Natural2): Natural2 {
+    Natural2.sequence()->get(index)
 }
 
 @Test(["0"], "1")
@@ -16,8 +16,8 @@ function sequenceTest(index: Natural2): Natural {
 @Test(["31"], "5")
 @Test(["255"], "8")
 @Test(["256"], "9")
-function toBitsLengthTest(value: Natural): Natural2 {
-  let bits = Natural.toBits(value)
+function toBitsLengthTest(value: Natural2): Natural2 {
+  let bits = Natural2.toBits(value)
   List.size<Bit>(bits->bits)
 }
 
