@@ -92,18 +92,9 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.greaterThan
     definitions.add(TypeSignature(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
-
-    // TODO: Will remove when Natural becomes a struct
-    // Integer.fromNatural
-    definitions.add(TypeSignature(EntityId.of("Integer", "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
 }
 
 private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
-
-    // TODO: Will remove when Natural becomes a struct
-    // Natural.fromInteger
-    definitions.add(TypeSignature(EntityId.of("Natural", "fromInteger"), listOf(Type.INTEGER), Type.Try(Type.NATURAL)))
-
     // Natural.times
     definitions.add(TypeSignature(EntityId.of("Natural", "times"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 

@@ -21,11 +21,6 @@ function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upper
 }
 
 @Exported
-function Natural.minus(left: Natural, right: Natural): Try<Natural> {
-  Natural.fromInteger(Integer.minus(Integer.fromNatural(left), Integer.fromNatural(right)))
-}
-
-@Exported
 function Natural.lessThanOrEqualTo(left: Natural, right: Natural): Boolean {
   if (Natural.lessThan(left, right)) {
     Boolean."true"

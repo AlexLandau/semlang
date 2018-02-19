@@ -147,12 +147,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value > right.value)
     }))
 
-    // Integer.fromNatural
-    list.add(NativeFunction(integerDot("fromNatural"), { args: List<SemObject>, _: InterpreterCallback ->
-        val natural = args[0] as? SemObject.Natural ?: typeError()
-        SemObject.Integer(natural.value)
-    }))
-
     // TODO: Future native library optimization
 //    // Integer.sum
 //    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -167,16 +161,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
     val naturalDot = fun(name: String) = EntityId.of("Natural", name)
-
-    // Natural.fromInteger
-    list.add(NativeFunction(naturalDot("fromInteger"), { args: List<SemObject>, _: InterpreterCallback ->
-        val integer = args[0] as? SemObject.Integer ?: typeError()
-        if (integer.value >= BigInteger.ZERO) {
-            SemObject.Try.Success(SemObject.Natural(integer.value))
-        } else {
-            SemObject.Try.Failure
-        }
-    }))
 
     // Natural.times
     list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
