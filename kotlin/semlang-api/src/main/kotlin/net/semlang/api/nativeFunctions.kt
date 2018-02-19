@@ -38,7 +38,6 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
 
     addBooleanFunctions(definitions)
     addIntegerFunctions(definitions)
-    addNaturalFunctions(definitions)
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
@@ -92,15 +91,6 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.greaterThan
     definitions.add(TypeSignature(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
-}
-
-private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
-    // Natural.equals
-    definitions.add(TypeSignature(EntityId.of("Natural", "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.lessThan
-    definitions.add(TypeSignature(EntityId.of("Natural", "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.greaterThan
-    definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
@@ -257,10 +247,14 @@ object NativeStruct {
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
-                    EntityRef.of("Natural", "lessThan"),
-                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "lessThan")),
-                    listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
-                            TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "1114112")),
+                    EntityRef.of("Integer", "lessThan"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
+                    listOf(
+                            TypedExpression.Follow(Type.INTEGER,
+                                    TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                    "integer"),
+                            TypedExpression.Literal(Type.INTEGER, "1114112")
+                    ),
                     listOf()
             )),
             listOf()
@@ -289,17 +283,25 @@ object NativeStruct {
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Boolean", "or")),
                     listOf(TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
-                            EntityRef.of("Natural", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
-                                    TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "0")),
+                            EntityRef.of("Integer", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
+                            listOf(
+                                    TypedExpression.Follow(Type.INTEGER,
+                                            TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                            "integer"),
+                                    TypedExpression.Literal(Type.INTEGER, "0")
+                            ),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
-                            EntityRef.of("Natural", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
-                                    TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "1")),
+                            EntityRef.of("Integer", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
+                            listOf(
+                                    TypedExpression.Follow(Type.INTEGER,
+                                            TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                            "integer"),
+                                    TypedExpression.Literal(Type.INTEGER, "1")
+                            ),
                             listOf()
                         )
                     ),
