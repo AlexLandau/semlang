@@ -95,12 +95,6 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
-    // Natural.times
-    definitions.add(TypeSignature(EntityId.of("Natural", "times"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.plus
-    definitions.add(TypeSignature(EntityId.of("Natural", "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
     // Natural.equals
     definitions.add(TypeSignature(EntityId.of("Natural", "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.lessThan

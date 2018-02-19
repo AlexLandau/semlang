@@ -162,20 +162,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
     val naturalDot = fun(name: String) = EntityId.of("Natural", name)
 
-    // Natural.times
-    list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value * right.value)
-    }))
-
-    // Natural.plus
-    list.add(NativeFunction(naturalDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value + right.value)
-    }))
-
     // Natural.equals
     list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
