@@ -39,12 +39,12 @@ function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
 
 // TODO: Singleton candidate
 function MappedSequence.getMappedSequenceAdapter<T, U>(): Sequence.Adapter<MappedSequence<T, U>, U> {
-    let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
+    let getBinding: (MappedSequence<T, U>, Natural2) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
     Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
 }
 
-function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {
+function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural2): U {
     let preTransformed: T = sequence->sequence->get(index)
     sequence->mapping(preTransformed)
 }

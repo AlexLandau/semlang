@@ -11,7 +11,7 @@ struct TwoNaturals {
 @Test(["5"], "5")
 @Test(["6"], "8")
 @Test(["7"], "13")
-function myStuff.fibonacci(n: Natural): Natural {
+function myStuff.fibonacci(n: Natural2): Natural {
   let base: TwoNaturals = TwoNaturals(Natural."1", Natural."0")
   let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
   let fibonaccis: Sequence<TwoNaturals> = Sequence.create<TwoNaturals>(base, next)

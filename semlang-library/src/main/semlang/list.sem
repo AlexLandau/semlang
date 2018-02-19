@@ -22,5 +22,5 @@ function List.last<T>(list: List<T>): Try<T> {
 function List.nCopies<T>(n: Natural2, value: T): List<T> {
   let sequence = Sequence.create<List<T>>([]<T>, List.append<T>|(_, value))
   // TODO: Resimplify this
-  sequence->get(Try.assume<Natural>(Natural.fromInteger(n->integer)))
+  sequence->get(n)
 }

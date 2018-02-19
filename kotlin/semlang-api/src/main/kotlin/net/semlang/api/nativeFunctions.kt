@@ -370,7 +370,7 @@ object NativeInterface {
             CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
-                    Method("get", listOf(), listOf(Argument("index", Type.NATURAL)), typeT),
+                    Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL2.getType())), typeT),
                     Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
             ),
             listOf()
