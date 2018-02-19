@@ -58,6 +58,15 @@ function Natural2.lessThanOrEqualTo(left: Natural2, right: Natural2): Boolean {
 }
 
 @Exported
+function Natural2.lesser(left: Natural2, right: Natural2): Natural2 {
+  if (Natural2.lessThan(left, right)) {
+    left
+  } else {
+    right
+  }
+}
+
+@Exported
 function Natural2.greater(left: Natural2, right: Natural2): Natural2 {
   if (Natural2.greaterThan(left, right)) {
     left

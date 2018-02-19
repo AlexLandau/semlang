@@ -264,48 +264,6 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value > right.value)
     }))
 
-    // TODO: Standard library optimizations
-//    // Natural.lessThanOrEqualTo
-//    list.add(NativeFunction(naturalDot("lessThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val left = args[0] as? SemObject.Natural ?: typeError()
-//        val right = args[1] as? SemObject.Natural ?: typeError()
-//        SemObject.Boolean(left.value <= right.value)
-//    }))
-//
-//    // Natural.greaterThanOrEqualTo
-//    list.add(NativeFunction(naturalDot("greaterThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val left = args[0] as? SemObject.Natural ?: typeError()
-//        val right = args[1] as? SemObject.Natural ?: typeError()
-//        SemObject.Boolean(left.value >= right.value)
-//    }))
-
-    // Natural.max
-    list.add(NativeFunction(naturalDot("max"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        val max = list.contents.maxBy { semObj ->
-            (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
-        }
-        if (max == null) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(max)
-        }
-    }))
-
-    // Natural.lesser
-    list.add(NativeFunction(naturalDot("lesser"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value.min(right.value))
-    }))
-
-    // Natural.absoluteDifference
-    list.add(NativeFunction(naturalDot("absoluteDifference"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural((left.value - right.value).abs())
-    }))
-
 }
 
 private fun asBit(value: Int): SemObject.Struct {

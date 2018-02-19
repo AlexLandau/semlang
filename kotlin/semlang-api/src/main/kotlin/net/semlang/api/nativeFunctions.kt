@@ -114,14 +114,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), NativeStruct.BITS_BIG_ENDIAN.getType()))
     // Natural.fromBits
     definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(NativeStruct.BITS_BIG_ENDIAN.getType()), Type.NATURAL))
-
-    // Natural.max
-    definitions.add(TypeSignature(EntityId.of("Natural", "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
-    // Natural.lesser
-    definitions.add(TypeSignature(EntityId.of("Natural", "lesser"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.absoluteDifference
-    definitions.add(TypeSignature(EntityId.of("Natural", "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
