@@ -67,15 +67,6 @@ sealed class UnvalidatedType {
             return this
         }
     }
-    object NATURAL : UnvalidatedType() {
-        override fun getTypeString(): String {
-            return "Natural"
-        }
-
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return this
-        }
-    }
     object BOOLEAN : UnvalidatedType() {
         override fun getTypeString(): String {
             return "Boolean"
@@ -180,15 +171,6 @@ sealed class Type {
     object INTEGER : Type() {
         override fun getTypeString(): String {
             return "Integer"
-        }
-
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return this
-        }
-    }
-    object NATURAL : Type() {
-        override fun getTypeString(): String {
-            return "Natural"
         }
 
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {

@@ -44,7 +44,6 @@ sealed class LiteralValidator {
 fun getTypeValidatorFor(type: Type): LiteralValidator? {
     return when (type) {
         Type.INTEGER -> LiteralValidator.INTEGER
-        Type.NATURAL -> LiteralValidator.NATURAL
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> null
         is Type.NamedType -> {

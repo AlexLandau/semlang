@@ -7,8 +7,8 @@ interface SupplierFactory<T> {
 }
 
 @Test([], "1")
-function myCode.getNumberOne(): Natural {
-    let supplierFactory: SupplierFactory<Natural> = SupplierFactory<Natural, Natural>(Natural."1", SupplierFactory.Adapter<Natural, Natural>(getSupplier<Natural>|(_)))
+function myCode.getNumberOne(): Natural2 {
+    let supplierFactory: SupplierFactory<Natural2> = SupplierFactory<Natural2, Natural2>(Natural2."1", SupplierFactory.Adapter<Natural2, Natural2>(getSupplier<Natural2>|(_)))
     supplierFactory->getFactory()->getValue()
 }
 

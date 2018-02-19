@@ -20,7 +20,6 @@ data class S0Member(val name: String, val type: S0Type)
 
 sealed class S0Type {
     object Integer: S0Type()
-    object Natural: S0Type()
     object Boolean: S0Type()
     data class List(val parameter: S0Type): S0Type()
     data class Try(val parameter: S0Type): S0Type()

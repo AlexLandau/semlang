@@ -559,9 +559,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         }
 
         val typeId = entity_ref.entity_id().ID().text
-        if (typeId == "Natural") {
-            return UnvalidatedType.NATURAL
-        } else if (typeId == "Integer") {
+        if (typeId == "Integer") {
             return UnvalidatedType.INTEGER
         } else if (typeId == "Boolean") {
             return UnvalidatedType.BOOLEAN

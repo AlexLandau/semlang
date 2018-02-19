@@ -158,7 +158,6 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     private fun apply(type: Type): UnvalidatedType {
         return when (type) {
             Type.INTEGER -> UnvalidatedType.INTEGER
-            Type.NATURAL -> UnvalidatedType.NATURAL
             Type.BOOLEAN -> UnvalidatedType.BOOLEAN
             is Type.List -> UnvalidatedType.List(apply(type.parameter))
             is Type.Try -> UnvalidatedType.Try(apply(type.parameter))
@@ -492,7 +491,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
     private fun enqueueType(type: Type, containingModule: ValidatedModule) {
         val unused: Any = when (type) {
             Type.INTEGER -> { /* Do nothing */ }
-            Type.NATURAL -> { /* Do nothing */ }
             Type.BOOLEAN -> { /* Do nothing */ }
             is Type.List -> {
                 enqueueType(type.parameter, containingModule)

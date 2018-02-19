@@ -125,7 +125,6 @@ private class Sem0To1Converter(val input: S0Context) {
     private fun apply(type: S0Type): UnvalidatedType {
         return when (type) {
             S0Type.Integer -> UnvalidatedType.INTEGER
-            S0Type.Natural -> UnvalidatedType.NATURAL
             S0Type.Boolean -> UnvalidatedType.BOOLEAN
             is S0Type.List -> {
                 UnvalidatedType.List(apply(type.parameter))

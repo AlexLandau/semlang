@@ -780,9 +780,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             Type.INTEGER -> {
                 CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
             }
-            Type.NATURAL -> {
-                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
-            }
             Type.BOOLEAN -> {
                 CodeBlock.of("\$L", literal)
             }
@@ -841,7 +838,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
             Type.INTEGER -> ClassName.get(BigInteger::class.java)
-            Type.NATURAL -> ClassName.get(BigInteger::class.java)
             Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
@@ -1182,7 +1178,6 @@ private fun ClassName.sanitize(): ClassName {
 private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
     return when (type) {
         Type.INTEGER -> true
-        Type.NATURAL -> true
         Type.BOOLEAN -> true
         is Type.List -> isDataType(type.parameter, containingModule)
         is Type.Try -> isDataType(type.parameter, containingModule)

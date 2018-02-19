@@ -40,7 +40,6 @@ fun invalidate(block: TypedBlock): Block {
 fun invalidate(type: Type): UnvalidatedType {
     return when (type) {
         Type.INTEGER -> UnvalidatedType.INTEGER
-        Type.NATURAL -> UnvalidatedType.NATURAL
         Type.BOOLEAN -> UnvalidatedType.BOOLEAN
         is Type.List -> {
             UnvalidatedType.List(invalidate(type.parameter))

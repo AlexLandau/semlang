@@ -379,7 +379,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateType(type: UnvalidatedType, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Type? {
         return when (type) {
             UnvalidatedType.INTEGER -> Type.INTEGER
-            UnvalidatedType.NATURAL -> Type.NATURAL
             UnvalidatedType.BOOLEAN -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null

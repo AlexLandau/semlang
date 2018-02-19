@@ -75,7 +75,6 @@ private class Sem1To0Converter(val input: RawContext) {
     private fun apply(type: UnvalidatedType): S0Type {
         return when (type) {
             UnvalidatedType.INTEGER -> S0Type.Integer
-            UnvalidatedType.NATURAL -> S0Type.Natural
             UnvalidatedType.BOOLEAN -> S0Type.Boolean
             is UnvalidatedType.List -> S0Type.List(apply(type.parameter))
             is UnvalidatedType.Try -> S0Type.Try(apply(type.parameter))
