@@ -107,13 +107,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Natural", "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.greaterThan
     definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-
-    // Natural.bitwiseAnd
-    definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-    // Natural.toBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), NativeStruct.BITS_BIG_ENDIAN.getType()))
-    // Natural.fromBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(NativeStruct.BITS_BIG_ENDIAN.getType()), Type.NATURAL))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
