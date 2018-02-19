@@ -101,9 +101,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
     // Natural.plus
     definitions.add(TypeSignature(EntityId.of("Natural", "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
 
-    // Natural.toPower
-    definitions.add(TypeSignature(EntityId.of("Natural", "toPower"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
     // Natural.equals
     definitions.add(TypeSignature(EntityId.of("Natural", "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
     // Natural.lessThan
@@ -125,9 +122,6 @@ private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Natural.absoluteDifference
     definitions.add(TypeSignature(EntityId.of("Natural", "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.rangeInclusive
-    definitions.add(TypeSignature(EntityId.of("Natural", "rangeInclusive"), listOf(Type.NATURAL, Type.NATURAL), Type.List(Type.NATURAL)))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {

@@ -176,15 +176,6 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Natural(left.value + right.value)
     }))
 
-    // Natural.toPower
-    list.add(NativeFunction(naturalDot("toPower"), { args: List<SemObject>, _: InterpreterCallback ->
-        val base = args[0] as? SemObject.Natural ?: typeError()
-        val exponent = args[1] as? SemObject.Natural ?: typeError()
-        // Note: Currently this crashes if the exponent is greater than Integer.MAX_VALUE.
-        // We could at least special-case when the base is 0 or 1.
-        SemObject.Natural(base.value.pow(exponent.value.intValueExact()))
-    }))
-
     // Natural.bitwiseAnd
     list.add(NativeFunction(naturalDot("bitwiseAnd"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Natural ?: typeError()
@@ -315,23 +306,6 @@ private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
         SemObject.Natural((left.value - right.value).abs())
     }))
 
-    // Natural.rangeInclusive
-    list.add(NativeFunction(naturalDot("rangeInclusive"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        if (left.value > right.value) {
-            SemObject.SemList(listOf())
-        } else {
-            // This approach reduces issues around large numbers that are still close to each other
-            val difference = right.value.minus(left.value).longValueExact()
-            val range = (0..difference)
-                    .asSequence()
-                    .map { left.value.plus(BigInteger.valueOf(it)) }
-                    .map { SemObject.Natural(it) }
-                    .toList()
-            SemObject.SemList(range)
-        }
-    }))
 }
 
 private fun asBit(value: Int): SemObject.Struct {
