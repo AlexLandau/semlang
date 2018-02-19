@@ -83,13 +83,6 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
     val integerDot = fun(name: String) = EntityId.of("Integer", name)
 
-    // Integer.times
-    list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Integer ?: typeError()
-        val right = args[1] as? SemObject.Integer ?: typeError()
-        SemObject.Integer(left.value * right.value)
-    }))
-
     // Integer.plus
     list.add(NativeFunction(integerDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Integer ?: typeError()
@@ -102,6 +95,35 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Integer ?: typeError()
         val right = args[1] as? SemObject.Integer ?: typeError()
         SemObject.Integer(left.value - right.value)
+    }))
+
+    // Integer.times
+    list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Integer(left.value * right.value)
+    }))
+
+    // Integer.dividedBy
+    list.add(NativeFunction(integerDot("dividedBy"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        if (right.value == BigInteger.ZERO) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Integer(left.value / right.value))
+        }
+    }))
+
+    // Integer.modulo
+    list.add(NativeFunction(integerDot("modulo"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        if (right.value < BigInteger.ONE) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Integer(left.value.mod(right.value)))
+        }
     }))
 
     // Integer.equals

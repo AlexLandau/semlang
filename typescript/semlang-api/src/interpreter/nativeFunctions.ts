@@ -2,7 +2,7 @@ import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject } from "./SemObject";
-import { Struct, Type, Interface } from "../api/language";
+import { Struct, Type, Interface, isTryType } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
 const typeT: Type.NamedType = { name: "T" };
@@ -154,6 +154,24 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.times": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value.times(right.value));
     },
+    "Integer.dividedBy": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+        if (right.value.equals(0)) {
+            return failureObject();
+        }
+        return successObject(integerObject(left.value.divide(right.value)));
+    },
+    "Integer.modulo": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+        if (right.value.lesser(1)) {
+            return failureObject();
+        }
+        const moduloValue = left.value.mod(right.value);
+        // We expect the modulo value to be positive, but the BigInteger library returns a value with the same sign as the quotient
+        const fixedModuloValue = moduloValue.lesser(0) ? right.value.plus(moduloValue) : moduloValue;
+        if (fixedModuloValue.lesser(0) || fixedModuloValue.greaterOrEquals(right.value)) {
+            throw new Error(`Assumption in Integer.modulo failed; inputs were ${JSON.stringify(left)}, ${JSON.stringify(right)}, JS modulo value was ${moduloValue}, and fixed modulo value was ${fixedModuloValue}`);
+        }
+        return successObject(integerObject(fixedModuloValue));
+    },
     "List.append": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject(list.contents.concat(newElem));
     },
@@ -275,12 +293,23 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Try.assume": (context: InterpreterContext, theTry: SemObject.Try): SemObject => {
         if (theTry.type === "Try.Success") {
             return theTry.value;
-        } else {
+        } else if (theTry.type === "Try.Failure") {
             throw new Error(`A Try.assume() call failed`);
+        } else {
+            throw new Error(`Type error in Try.assume: Got ${JSON.stringify(theTry)} instead of a Try`);
         }
     },
     "Try.failure": (context: InterpreterContext): SemObject.Try.Failure => {
         return failureObject();
+    },
+    "Try.flatMap": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
+        if (theTry.type === "Try.Success") {
+            const value = theTry.value;
+            const result = context.evaluateBoundFunction(fn, [value]) as SemObject.Try;
+            return result;
+        } else {
+            return theTry;
+        }
     },
     "Try.isSuccess": (context: InterpreterContext, theTry: SemObject.Try): SemObject.Boolean => {
         const isSuccess = theTry.type === "Try.Success"

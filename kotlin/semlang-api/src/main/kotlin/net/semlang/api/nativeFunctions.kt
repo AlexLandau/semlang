@@ -81,6 +81,11 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     // Integer.minus
     definitions.add(TypeSignature(EntityId.of("Integer", "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
+    // Integer.dividedBy
+    definitions.add(TypeSignature(EntityId.of("Integer", "dividedBy"), listOf(Type.INTEGER, Type.INTEGER), Type.Try(Type.INTEGER)))
+    // Integer.modulo
+    definitions.add(TypeSignature(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Try(Type.INTEGER)))
+
     // Integer.equals
     definitions.add(TypeSignature(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.lessThan
@@ -283,15 +288,15 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", Type.NATURAL)
+                    Member("natural", NativeStruct.NATURAL2.getType())
             ),
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
                     EntityRef.of("Natural", "lessThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "lessThan")),
-                    listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                            TypedExpression.Literal(Type.NATURAL, "1114112")),
+                    listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                            TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "1114112")),
                     listOf()
             )),
             listOf()
@@ -311,7 +316,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", Type.NATURAL)
+                    Member("natural", NativeStruct.NATURAL2.getType())
             ),
             // requires: value = 0 or value = 1
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
@@ -322,15 +327,15 @@ object NativeStruct {
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
                             ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                                    TypedExpression.Literal(Type.NATURAL, "0")),
+                            listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                    TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "0")),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
                             EntityRef.of("Natural", "equals"),
                             ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                                    TypedExpression.Literal(Type.NATURAL, "1")),
+                            listOf(TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                    TypedExpression.Literal(NativeStruct.NATURAL2.getType(), "1")),
                             listOf()
                         )
                     ),

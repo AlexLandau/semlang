@@ -998,6 +998,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "plus"), MethodFunctionCallStrategy("add"))
         map.put(EntityId.of("Integer", "minus"), MethodFunctionCallStrategy("subtract"))
         map.put(EntityId.of("Integer", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Integer", "dividedBy"), StaticFunctionCallStrategy(javaIntegers, "dividedBy"))
+        map.put(EntityId.of("Integer", "modulo"), StaticFunctionCallStrategy(javaIntegers, "modulo"))
         map.put(EntityId.of("Integer", "equals"), MethodFunctionCallStrategy("equals"))
         map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
@@ -1024,6 +1026,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Try", "isSuccess"), StaticFunctionCallStrategy(javaTries, "isSuccess"))
         map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
         map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
+        map.put(EntityId.of("Try", "flatMap"), StaticFunctionCallStrategy(javaTries, "flatMap"))
 
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))

@@ -3,9 +3,9 @@
 @Test(["255"], "success(255)")
 @Test(["256"], "failure")
 @Test(["511"], "failure")
-function byteTest(i: Natural): Try<Natural> {
+function byteTest(i: Natural2): Try<Natural2> {
     let byte: Try<Byte> = Byte(i)
-    Try.map<Byte, Natural>(byte, function(validByte: Byte) { validByte->natural })
+    Try.map<Byte, Natural2>(byte, function(validByte: Byte) { validByte->natural })
 }
 
 @Test([], "0")

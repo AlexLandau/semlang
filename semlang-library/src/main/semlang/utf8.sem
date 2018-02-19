@@ -41,7 +41,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
           List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural2."5"),
           List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural2."6")
         ))
-        let codePointValue = Natural.fromBits(fullBits)
+        let codePointValue = Natural2.fromBits(fullBits)
         let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
         let remainingBytes = List.drop<Byte>(bytes, Natural2."2")
         Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),

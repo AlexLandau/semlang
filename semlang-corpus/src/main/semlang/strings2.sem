@@ -2,10 +2,10 @@
 @Test(["hello"], "success(104)")
 @Test([""], "failure")
 @Test(["🙂"], "success(128578)")
-function getFirstCharacter(str: Unicode.String): Try<Natural> {
-    Try.map<Unicode.CodePoint, Natural>(List.get<Unicode.CodePoint>(str->codePoints, Natural2."0"), getValue|(_))
+function getFirstCharacter(str: Unicode.String): Try<Natural2> {
+    Try.map<Unicode.CodePoint, Natural2>(List.get<Unicode.CodePoint>(str->codePoints, Natural2."0"), getValue|(_))
 }
 
-function getValue(cp: Unicode.CodePoint): Natural {
+function getValue(cp: Unicode.CodePoint): Natural2 {
     cp->natural
 }

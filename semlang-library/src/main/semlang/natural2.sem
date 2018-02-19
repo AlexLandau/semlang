@@ -1,6 +1,28 @@
 @Exported
+function Natural2.plus(left: Natural2, right: Natural2): Natural2 {
+  Try.assume<Natural2>(Natural2(Integer.plus(left->integer, right->integer)))
+}
+
+@Exported
 function Natural2.minus(left: Natural2, right: Natural2): Integer {
   Integer.minus(left->integer, right->integer)
+}
+
+@Exported
+function Natural2.times(left: Natural2, right: Natural2): Natural2 {
+  Try.assume<Natural2>(Natural2(Integer.times(left->integer, right->integer)))
+}
+
+@Exported
+function Natural2.dividedBy(left: Natural2, right: Natural2): Try<Natural2> {
+  let divisionResult: Try<Integer> = Integer.dividedBy(left->integer, right->integer)
+  Try.flatMap<Integer, Natural2>(divisionResult, Natural2|(_))
+}
+
+@Exported
+function Natural2.modulo(left: Natural2, right: Natural2): Try<Natural2> {
+  let moduloResult: Try<Integer> = Integer.modulo(left->integer, right->integer)
+  Try.flatMap<Integer, Natural2>(moduloResult, Natural2|(_))
 }
 
 @Exported
@@ -11,4 +33,79 @@ function Natural2.equals(left: Natural2, right: Natural2): Boolean {
 @Exported
 function Natural2.lessThan(left: Natural2, right: Natural2): Boolean {
   Integer.lessThan(left->integer, right->integer)
+}
+
+@Exported
+function Natural2.isBetweenInclusive(toCheck: Natural2, lowerBound: Natural2, upperBound: Natural2): Boolean {
+    Boolean.and(
+        Natural2.lessThanOrEqualTo(lowerBound, toCheck),
+        Natural2.lessThanOrEqualTo(toCheck, upperBound)
+    )
+}
+
+@Exported
+function Natural2.lessThanOrEqualTo(left: Natural2, right: Natural2): Boolean {
+  if (Natural2.lessThan(left, right)) {
+    Boolean."true"
+  } else {
+    Natural2.equals(left, right)
+  }
+}
+
+@Exported
+function Natural2.absoluteDifference(left: Natural2, right: Natural2): Natural2 {
+  let difference = Integer.minus(left->integer, right->integer)
+  Natural2.absoluteValue(difference)
+}
+
+@Exported
+function Natural2.absoluteValue(integer: Integer): Natural2 {
+  let integerValue = if (Integer.lessThan(integer, Integer."0")) {
+    Integer.minus(Integer."0", integer)
+  } else {
+    integer
+  }
+  Try.assume<Natural2>(Natural2(integerValue))
+}
+
+@Exported
+function Natural2.toNBits(value: Natural2, numBits: Natural2): Try<BitsBigEndian> {
+  let allBits = if (Natural2.equals(value, Natural2."0")) {
+    []<Bit>
+  } else {
+    Natural2.toBits(value)->bits
+  }
+  let actualNumBits = List.size<Bit>(allBits)
+  let paddingNeededMaybe = Natural2(Natural2.minus(numBits, actualNumBits))
+  Try.map<Natural2, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural2) {
+    let padding = List.nCopies<Bit>(paddingNeeded, Bit."0")
+    BitsBigEndian(List.concatenate<Bit>(padding, allBits))
+  })
+}
+
+// TODO: You really want this to be done natively...
+// TODO: This is supposed to return [0]?
+@Exported
+function Natural2.toBits(value: Natural2): BitsBigEndian {
+  BitsBigEndian(Natural2.toBitsList(value))
+}
+function Natural2.toBitsList(value: Natural2): List<Bit> {
+  // TODO: This can probably be done better/non-recursively
+  if (Natural2.equals(value, Natural2."0")) {
+    []<Bit>
+  } else {
+    let listWithoutLastBit = Natural2.toBitsList(Try.assume<Natural2>(Natural2.dividedBy(value, Natural2."2")))
+    let curBit = Try.assume<Bit>(Bit(Try.assume<Natural2>(Natural2.modulo(value, Natural2."2"))))
+    List.append<Bit>(listWithoutLastBit, curBit)
+  }
+}
+
+// TODO: You really want this to be done natively...
+@Exported
+function Natural2.fromBits(bitsBigEndian: BitsBigEndian): Natural2 {
+//  BitsBigEndian(Natural2.toBitsList(value))
+  List.reduce<Bit, Natural2>(bitsBigEndian->bits, Natural2."0", function(valueSoFar: Natural2, bit: Bit) {
+    let doubledValue = Natural2.times(valueSoFar, Natural2."2")
+    Natural2.plus(doubledValue, bit->natural)
+  })
 }
