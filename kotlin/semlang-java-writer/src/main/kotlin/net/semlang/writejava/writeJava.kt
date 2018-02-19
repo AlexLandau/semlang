@@ -1002,20 +1002,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
         map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
 
-        val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
-        // Share implementations with Integer in some cases
-        map.put(EntityId.of("Natural", "plus"), MethodFunctionCallStrategy("add"))
-        map.put(EntityId.of("Natural", "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(EntityId.of("Natural", "remainder"), MethodFunctionCallStrategy("remainder"))
-        map.put(EntityId.of("Natural", "lesser"), MethodFunctionCallStrategy("min"))
-        map.put(EntityId.of("Natural", "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
-        map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
-        map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
-        map.put(EntityId.of("Natural", "fromInteger"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
-        map.put(EntityId.of("Natural", "fromBits"), StaticFunctionCallStrategy(javaNaturals, "fromBits"))
-        map.put(EntityId.of("Natural", "toBits"), StaticFunctionCallStrategy(javaNaturals, "toBits"))
-
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
         map.put(EntityId.of("Try", "success"), StaticFunctionCallStrategy(javaTries, "success"))
@@ -1032,6 +1018,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
 
         // Natural2 constructor
+        val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         map.put(EntityId.of("Natural2"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
 
         // Unicode.CodePoint constructor
