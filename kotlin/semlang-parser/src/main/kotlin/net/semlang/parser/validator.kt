@@ -552,7 +552,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     //TODO: Construct this more sensibly from more centralized lists
-    private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Natural", "Boolean", "function", "let", "return", "if", "else", "struct", "requires")
+    private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Boolean", "function", "let", "return", "if", "else", "struct", "requires")
 
     private fun isInvalidVariableName(name: String, typeInfo: AllTypeInfo): Boolean {
         val nameAsEntityRef = EntityId.of(name).asRef()

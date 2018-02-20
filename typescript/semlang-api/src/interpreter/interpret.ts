@@ -485,7 +485,7 @@ interface LiteralTypeChain {
 }
 
 function isNativeLiteralType(type: Type) {
-    if (type === "Integer" || type === "Natural" || type === "Boolean") {
+    if (type === "Integer" || type === "Boolean") {
         return true;
     }
     if (isNamedType(type)) {
