@@ -114,13 +114,13 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 
     // List.drop
     definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL2.getType()),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.List(paramT)))
 
     // TODO: Semantics of this are arguably different from last()... but I kind of like it that way
     // List.lastN
     definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL2.getType()),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.List(paramT)))
 
     // List.map
@@ -141,11 +141,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     // List.size
     definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT)),
-            outputType = NativeStruct.NATURAL2.getType()))
+            outputType = NativeStruct.NATURAL.getType()))
 
     // List.get
     definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL2.getType()),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.Try(paramT)))
 }
 
@@ -208,8 +208,8 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 object NativeStruct {
     private val typeT = Type.ParameterType("T")
     private val typeU = Type.ParameterType("U")
-    val NATURAL2 = Struct(
-            EntityId.of("Natural2"),
+    val NATURAL = Struct(
+            EntityId.of("Natural"),
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -242,7 +242,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", NativeStruct.NATURAL2.getType())
+                    Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
@@ -251,7 +251,7 @@ object NativeStruct {
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
                     listOf(
                             TypedExpression.Follow(Type.INTEGER,
-                                    TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                    TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
                                     "integer"),
                             TypedExpression.Literal(Type.INTEGER, "1114112")
                     ),
@@ -274,7 +274,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", NativeStruct.NATURAL2.getType())
+                    Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value = 0 or value = 1
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
@@ -287,7 +287,7 @@ object NativeStruct {
                             ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
                             listOf(
                                     TypedExpression.Follow(Type.INTEGER,
-                                            TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "0")
                             ),
@@ -298,7 +298,7 @@ object NativeStruct {
                             ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
                             listOf(
                                     TypedExpression.Follow(Type.INTEGER,
-                                            TypedExpression.Variable(NativeStruct.NATURAL2.getType(), "natural"),
+                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "1")
                             ),
@@ -324,7 +324,7 @@ object NativeStruct {
 fun getNativeStructs(): Map<EntityId, Struct> {
     val structs = ArrayList<Struct>()
 
-    structs.add(NativeStruct.NATURAL2)
+    structs.add(NativeStruct.NATURAL)
     structs.add(NativeStruct.BASIC_SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
@@ -341,7 +341,7 @@ object NativeInterface {
             CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
-                    Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL2.getType())), typeT),
+                    Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL.getType())), typeT),
                     Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
             ),
             listOf()

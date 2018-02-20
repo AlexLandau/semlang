@@ -2,11 +2,11 @@
 @Test(["70"], "success(70)")
 @Test(["1114111"], "success(1114111)")
 @Test(["1114112"], "failure")
-function createCodePoint(value: Natural2): Try<Natural2> {
+function createCodePoint(value: Natural): Try<Natural> {
   let codePointMaybe = Unicode.CodePoint(value)
-  Try.map<Unicode.CodePoint, Natural2>(codePointMaybe, getCodePointValue|(_))
+  Try.map<Unicode.CodePoint, Natural>(codePointMaybe, getCodePointValue|(_))
 }
 
-function getCodePointValue(codePoint: Unicode.CodePoint): Natural2 {
+function getCodePointValue(codePoint: Unicode.CodePoint): Natural {
   codePoint->natural
 }

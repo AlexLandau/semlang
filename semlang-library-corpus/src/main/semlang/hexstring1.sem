@@ -9,6 +9,6 @@
 @Test(["201"], "513")
 @Test(["0a0"], "160")
 @Test(["af"], "175")
-function testHexStringToValue(hexString: HexString): Natural2 {
+function testHexStringToValue(hexString: HexString): Natural {
   HexString.toValue(hexString)
 }

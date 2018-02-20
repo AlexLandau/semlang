@@ -3,16 +3,16 @@
 @Test(["🙂"], "1") // We count code points, not code units
 @Test(["\""], "1") // Escaped character
 @Test(["\\"], "1") // Escaped character
-function stringLength(str: Unicode.String): Natural2 {
+function stringLength(str: Unicode.String): Natural {
     Unicode.String.length(str)
 }
 
 @Test([], "1")
-function literalLength1(): Natural2 {
+function literalLength1(): Natural {
     Unicode.String.length(Unicode.String."\"")
 }
 
 @Test([], "1")
-function literalLength2(): Natural2 {
+function literalLength2(): Natural {
     Unicode.String.length(Unicode.String."\\")
 }

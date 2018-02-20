@@ -1,4 +1,4 @@
 @Exported
-function Unicode.String.length(string: Unicode.String): Natural2 {
+function Unicode.String.length(string: Unicode.String): Natural {
   List.size<Unicode.CodePoint>(string->codePoints)
 }

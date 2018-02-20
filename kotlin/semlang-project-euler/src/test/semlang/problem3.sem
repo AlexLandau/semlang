@@ -1,43 +1,43 @@
 //The prime factors of 13195 are 5, 7, 13 and 29.
 //What is the largest prime factor of the number 600851475143 ?
 
-function euler.getLargestPrimeFactor(n: Natural2): Natural2 {
-    let primeFactors: List<Natural2> = getPrimeFactors(n)
-    let largestPrimeFactor: Natural2 = Try.assume<Natural2>(Natural2.max(primeFactors))
+function euler.getLargestPrimeFactor(n: Natural): Natural {
+    let primeFactors: List<Natural> = getPrimeFactors(n)
+    let largestPrimeFactor: Natural = Try.assume<Natural>(Natural.max(primeFactors))
     largestPrimeFactor
 }
 
-function getPrimeFactors(n: Natural2): List<Natural2> {
-    let primes: Sequence<Natural2> = getPrimes()
-    let firstPrimeDivisor: Natural2 = primes->first(dividesEvenly|(_, n))
-    if (Natural2.equals(n, firstPrimeDivisor)) {
-        [n]<Natural2>
+function getPrimeFactors(n: Natural): List<Natural> {
+    let primes: Sequence<Natural> = getPrimes()
+    let firstPrimeDivisor: Natural = primes->first(dividesEvenly|(_, n))
+    if (Natural.equals(n, firstPrimeDivisor)) {
+        [n]<Natural>
     } else {
-        let dividend: Natural2 = Try.assume<Natural2>(Natural2.dividedBy(n, firstPrimeDivisor))
-        let recursiveFactors: List<Natural2> = getPrimeFactors(dividend)
-        List.append<Natural2>(recursiveFactors, firstPrimeDivisor)
+        let dividend: Natural = Try.assume<Natural>(Natural.dividedBy(n, firstPrimeDivisor))
+        let recursiveFactors: List<Natural> = getPrimeFactors(dividend)
+        List.append<Natural>(recursiveFactors, firstPrimeDivisor)
     }
 }
 
 // Library candidate for a non-standard library?
-function getPrimes(): Sequence<Natural2> {
-    let 2: Natural2 = Natural2."2"
-    Sequence.createAccumulating<Natural2>(2, getNextPrime|(_))
+function getPrimes(): Sequence<Natural> {
+    let 2: Natural = Natural."2"
+    Sequence.createAccumulating<Natural>(2, getNextPrime|(_))
 }
 
-function getNextPrime(allPreviousPrimes: List<Natural2>): Natural2 {
-    let lastPrime: Natural2 = Try.assume<Natural2>(List.last<Natural2>(allPreviousPrimes))
-    let firstCandidate: Natural2 = Natural2.plus(lastPrime, Natural2."1")
-    let candidates: Sequence<Natural2> = Natural2.arithmeticProgression(firstCandidate, Natural2."1")
+function getNextPrime(allPreviousPrimes: List<Natural>): Natural {
+    let lastPrime: Natural = Try.assume<Natural>(List.last<Natural>(allPreviousPrimes))
+    let firstCandidate: Natural = Natural.plus(lastPrime, Natural."1")
+    let candidates: Sequence<Natural> = Natural.arithmeticProgression(firstCandidate, Natural."1")
     candidates->first(isNotDivisibleByAny|(_, allPreviousPrimes))
 }
 
-function isNotDivisibleByAny(n: Natural2, allPreviousPrimes: List<Natural2>): Boolean {
-    let divisibilities: List<Boolean> = List.map<Natural2, Boolean>(allPreviousPrimes, dividesEvenly|(_, n))
+function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Boolean {
+    let divisibilities: List<Boolean> = List.map<Natural, Boolean>(allPreviousPrimes, dividesEvenly|(_, n))
     Boolean.not(Boolean.any(divisibilities))
 }
 
-function dividesEvenly(denominator: Natural2, numerator: Natural2): Boolean {
-    let remainder: Natural2 = Try.assume<Natural2>(Natural2.modulo(numerator, denominator))
-    Natural2.equals(remainder, Natural2."0")
+function dividesEvenly(denominator: Natural, numerator: Natural): Boolean {
+    let remainder: Natural = Try.assume<Natural>(Natural.modulo(numerator, denominator))
+    Natural.equals(remainder, Natural."0")
 }

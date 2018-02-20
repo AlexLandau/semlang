@@ -25,20 +25,20 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
 }
 
 @Exported
-function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural2): List<T> {
+function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List<T> {
   // TODO: Can do something better here
   // TODO: Should we switch Sequence back to a struct and get rid of map()?
-  let initialValue = SequenceRangeElement<T>(Natural2."0", []<T>)
+  let initialValue = SequenceRangeElement<T>(Natural."0", []<T>)
   let rangeSequence = Sequence.create<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>) {
     let curValue = sequence->get(rangeElement->indexToGet)
-    let nextIndex = Natural2.plus(rangeElement->indexToGet, Natural2."1")
+    let nextIndex = Natural.plus(rangeElement->indexToGet, Natural."1")
     let newValues = List.append<T>(rangeElement->accumulatedValues, curValue)
     SequenceRangeElement<T>(nextIndex, newValues)
   })
   rangeSequence->get(numElements)->accumulatedValues
 }
 struct SequenceRangeElement<T> {
-  indexToGet: Natural2
+  indexToGet: Natural
   accumulatedValues: List<T>
 }
 
@@ -56,12 +56,12 @@ function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
 
 // TODO: Singleton candidate
 function MappedSequence.getMappedSequenceAdapter<T, U>(): Sequence.Adapter<MappedSequence<T, U>, U> {
-    let getBinding: (MappedSequence<T, U>, Natural2) -> U = MappedSequence.get<T, U>|(_, _)
+    let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
     Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
 }
 
-function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural2): U {
+function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {
     let preTransformed: T = sequence->sequence->get(index)
     sequence->mapping(preTransformed)
 }

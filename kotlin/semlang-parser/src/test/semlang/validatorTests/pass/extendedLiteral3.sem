@@ -1,5 +1,5 @@
 struct Digit {
-  value: Natural2
+  value: Natural
   requires {
     Integer.lessThan(value->integer, Integer."10")
   }

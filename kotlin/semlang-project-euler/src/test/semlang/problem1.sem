@@ -1,12 +1,12 @@
 
-function euler.problem1(): Natural2 {
-  let range: List<Natural2> = Natural2.rangeInclusive(Natural2."1", Natural2."999")
-  let multiples: List<Natural2> = List.filter<Natural2>(range, euler.multiplesFilter|(_))
-  Natural2.sum(multiples)
+function euler.problem1(): Natural {
+  let range: List<Natural> = Natural.rangeInclusive(Natural."1", Natural."999")
+  let multiples: List<Natural> = List.filter<Natural>(range, euler.multiplesFilter|(_))
+  Natural.sum(multiples)
 }
 
-function euler.multiplesFilter(n: Natural2): Boolean {
-  let multipleOfThree: Boolean = Natural2.equals(Natural2."0", Try.assume<Natural2>(Natural2.modulo(n, Natural2."3")))
-  let multipleOfFive: Boolean = Natural2.equals(Natural2."0", Try.assume<Natural2>(Natural2.modulo(n, Natural2."5")))
+function euler.multiplesFilter(n: Natural): Boolean {
+  let multipleOfThree: Boolean = Natural.equals(Natural."0", Try.assume<Natural>(Natural.modulo(n, Natural."3")))
+  let multipleOfFive: Boolean = Natural.equals(Natural."0", Try.assume<Natural>(Natural.modulo(n, Natural."5")))
   Boolean.or(multipleOfThree, multipleOfFive)
 }

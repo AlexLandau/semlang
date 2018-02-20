@@ -11,16 +11,16 @@
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
 @Exported
 function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
-  if (Natural2.equals(List.size<Byte>(bytes), Natural2."0")) {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
     Try.success<Unicode.String>(Unicode.String."")
   } else {
     // TODO: Convert to the newer bytes-to-bits approach
-    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural2."0"))
+    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
     let firstByteBits = Byte.toBits(firstByte)
     let 128bit = Byte.BitPosition."7"
     if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
       let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
-      let remainingBytes = List.drop<Byte>(bytes, Natural2."1")
+      let remainingBytes = List.drop<Byte>(bytes, Natural."1")
       Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
         function(remainingString: Unicode.String) {
           let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
@@ -35,15 +35,15 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
         Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."2")),
       )) {
         // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
-        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural2."1")) // TODO: Fix assumption
+        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
         let secondByteBits = Byte.toBits(secondByte)
         let fullBits = BitsBigEndian(List.concatenate<Bit>(
-          List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural2."5"),
-          List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural2."6")
+          List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),
+          List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural."6")
         ))
-        let codePointValue = Natural2.fromBits(fullBits)
+        let codePointValue = Natural.fromBits(fullBits)
         let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
-        let remainingBytes = List.drop<Byte>(bytes, Natural2."2")
+        let remainingBytes = List.drop<Byte>(bytes, Natural."2")
         Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
           function(remainingString: Unicode.String) {
             let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)

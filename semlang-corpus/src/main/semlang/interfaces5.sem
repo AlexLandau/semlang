@@ -1,5 +1,5 @@
 interface Supplier {
-    getValue(): Natural2
+    getValue(): Natural
 }
 
 interface SupplierFactory {
@@ -7,16 +7,16 @@ interface SupplierFactory {
 }
 
 @Test([], "1")
-function myCode.getNumberOne(): Natural2 {
-    let supplierFactory: SupplierFactory = SupplierFactory<Natural2>(Natural2."1", SupplierFactory.Adapter<Natural2>(getSupplier|(_)))
+function myCode.getNumberOne(): Natural {
+    let supplierFactory: SupplierFactory = SupplierFactory<Natural>(Natural."1", SupplierFactory.Adapter<Natural>(getSupplier|(_)))
     supplierFactory->getFactory()->getValue()
 }
 
-function getSupplier(n: Natural2): Supplier {
-    let adapter = Supplier.Adapter<Natural2>(identity|(_))
-    Supplier<Natural2>(n, adapter)
+function getSupplier(n: Natural): Supplier {
+    let adapter = Supplier.Adapter<Natural>(identity|(_))
+    Supplier<Natural>(n, adapter)
 }
 
-function identity(n: Natural2): Natural2 {
+function identity(n: Natural): Natural {
     n
 }

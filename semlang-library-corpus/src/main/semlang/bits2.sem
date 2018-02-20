@@ -4,9 +4,9 @@
 @Test(["3"], "2")
 @Test(["42"], "3")
 @Test(["0"], "0")
-function getBitsSumOfNatural2(n: Natural2): Natural2 {
-  let bits: BitsBigEndian = Natural2.toBits(n)
-  List.reduce<Bit, Natural2>(bits->bits, Natural2."0", function (prevSum: Natural2, bit: Bit) {
-    Natural2.plus(prevSum, bit->natural)
+function getBitsSumOfNatural(n: Natural): Natural {
+  let bits: BitsBigEndian = Natural.toBits(n)
+  List.reduce<Bit, Natural>(bits->bits, Natural."0", function (prevSum: Natural, bit: Bit) {
+    Natural.plus(prevSum, bit->natural)
   })
 }

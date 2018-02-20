@@ -1,6 +1,6 @@
 
 @Test([], "3")
-function myCode.listLiteralSize(): Natural2 {
+function myCode.listLiteralSize(): Natural {
   let list = [Integer."1", Integer."10", Integer."50"]<Integer>
   List.size<Integer>(list)
 }
@@ -10,7 +10,7 @@ function myCode.listLiteralSize(): Natural2 {
 @Test(["2"], "success(42)")
 @Test(["3"], "failure")
 @Test(["4"], "failure")
-function myCode.listGet(index: Natural2): Try<Natural2> {
-  let list = [Natural2."23", Natural2."17", Natural2."42"]<Natural2>
-  List.get<Natural2>(list, index)
+function myCode.listGet(index: Natural): Try<Natural> {
+  let list = [Natural."23", Natural."17", Natural."42"]<Natural>
+  List.get<Natural>(list, index)
 }

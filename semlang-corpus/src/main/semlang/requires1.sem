@@ -1,5 +1,5 @@
 struct WholeNumber {
-  value: Natural2
+  value: Natural
   requires {
     Integer.greaterThan(value->integer, Integer."0")
   }
@@ -8,11 +8,11 @@ struct WholeNumber {
 @Test(["1"], "success(1)")
 @Test(["123"], "success(123)")
 @Test(["0"], "failure")
-function testWholeNumber(input: Natural2): Try<Natural2> {
+function testWholeNumber(input: Natural): Try<Natural> {
   let wholeNumber: Try<WholeNumber> = WholeNumber(input)
-  Try.map<WholeNumber, Natural2>(wholeNumber, getWholeNumberValue|(_))
+  Try.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))
 }
 
-function getWholeNumberValue(wholeNumber: WholeNumber): Natural2 {
+function getWholeNumberValue(wholeNumber: WholeNumber): Natural {
   wholeNumber->value
 }

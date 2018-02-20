@@ -1,25 +1,25 @@
 
 @Exported
 function List.isEmpty<T>(list: List<T>): Boolean {
-  Natural2.equals(List.size<T>(list), Natural2."0")
+  Natural.equals(List.size<T>(list), Natural."0")
 }
 
 @Exported
 function List.first<T>(list: List<T>): Try<T> {
-  List.get<T>(list, Natural2."0")
+  List.get<T>(list, Natural."0")
 }
 
 @Exported
 function List.last<T>(list: List<T>): Try<T> {
   let size = List.size<T>(list)
-  let lastIndexMaybe: Try<Natural2> = Natural2(Natural2.minus(size, Natural2."1"))
-  Try.flatMap<Natural2, T>(lastIndexMaybe, function(lastIndex: Natural2) {
+  let lastIndexMaybe: Try<Natural> = Natural(Natural.minus(size, Natural."1"))
+  Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural) {
     List.get<T>(list, lastIndex)
   })
 }
 
 @Exported
-function List.nCopies<T>(n: Natural2, value: T): List<T> {
+function List.nCopies<T>(n: Natural, value: T): List<T> {
   let sequence = Sequence.create<List<T>>([]<T>, List.append<T>|(_, value))
   // TODO: Resimplify this
   sequence->get(n)

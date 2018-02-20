@@ -153,7 +153,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             throw IllegalArgumentException("Wrong number of arguments for struct constructor " + struct)
         }
 
-        if (struct.id == NativeStruct.NATURAL2.id) {
+        if (struct.id == NativeStruct.NATURAL.id) {
             val semInteger = arguments[0] as? SemObject.Integer ?: error("Type error when constructing a Natural")
             val value = semInteger.value
             if (value >= BigInteger.ZERO) {
@@ -362,7 +362,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
     }
 
     private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
-        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL2.id) {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL.id) {
             return evaluateNaturalLiteral(literal)
         }
         if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {

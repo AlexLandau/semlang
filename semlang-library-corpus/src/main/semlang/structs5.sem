@@ -12,13 +12,13 @@ function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
 @Test(["1"], "6")
 @Test(["2"], "12")
 @Test(["3"], "20")
-function myStuff.myFunction(input: Natural2): Integer {
-  let 1: Natural2 = Natural2."1"
-  let newX: Natural2 = Natural2.plus(input, 1)
-  let newY: Natural2 = Natural2.plus(newX, 1)
-  let object: myStuff.Point<Natural2> = myStuff.Point<Natural2>(newX, newY)
-  let partialOutput: Natural2 = Natural2.times(object->x, object->y)
-  let specificFunction: (myStuff.Point<Natural2>) -> Integer = myStuff.genericFunction<Natural2>|(_)
+function myStuff.myFunction(input: Natural): Integer {
+  let 1: Natural = Natural."1"
+  let newX: Natural = Natural.plus(input, 1)
+  let newY: Natural = Natural.plus(newX, 1)
+  let object: myStuff.Point<Natural> = myStuff.Point<Natural>(newX, newY)
+  let partialOutput: Natural = Natural.times(object->x, object->y)
+  let specificFunction: (myStuff.Point<Natural>) -> Integer = myStuff.genericFunction<Natural>|(_)
   let constantFactor: Integer = specificFunction(object)
   let output: Integer = Integer.times(partialOutput->integer, constantFactor)
   output

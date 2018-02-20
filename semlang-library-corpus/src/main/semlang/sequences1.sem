@@ -1,6 +1,6 @@
 struct TwoNaturals {
-  left: Natural2
-  right: Natural2
+  left: Natural
+  right: Natural
 }
 
 @Test(["0"], "0")
@@ -11,15 +11,15 @@ struct TwoNaturals {
 @Test(["5"], "5")
 @Test(["6"], "8")
 @Test(["7"], "13")
-function myStuff.fibonacci(n: Natural2): Natural2 {
-  let base: TwoNaturals = TwoNaturals(Natural2."1", Natural2."0")
+function myStuff.fibonacci(n: Natural): Natural {
+  let base: TwoNaturals = TwoNaturals(Natural."1", Natural."0")
   let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
   let fibonaccis: Sequence<TwoNaturals> = Sequence.create<TwoNaturals>(base, next)
   fibonaccis->get(n)->right
 }
 
 function myStuff.nextPair(pair: TwoNaturals): TwoNaturals {
-  let nextLeft: Natural2 = pair->right
-  let nextRight: Natural2 = Natural2.plus(pair->left, pair->right)
+  let nextLeft: Natural = pair->right
+  let nextRight: Natural = Natural.plus(pair->left, pair->right)
   TwoNaturals(nextLeft, nextRight)
 }

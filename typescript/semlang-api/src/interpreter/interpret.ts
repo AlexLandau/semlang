@@ -340,7 +340,7 @@ export class InterpreterContext {
                 const name = type.name;
 
                 // Handle naturals
-                if (name === "Natural2") {
+                if (name === "Natural") {
                     return naturalObject(bigInt(value));
                 }
 
@@ -489,7 +489,7 @@ function isNativeLiteralType(type: Type) {
         return true;
     }
     if (isNamedType(type)) {
-        if (type.name === "Unicode.String" || type.name === "Natural2") {
+        if (type.name === "Unicode.String" || type.name === "Natural") {
             return true;
         }
     }

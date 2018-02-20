@@ -16,22 +16,22 @@ struct HexString {
   }
 }
 
-function getHexCodePointValue(codePoint: Unicode.CodePoint): Try<Natural2> {
-  if (Natural2.isBetweenInclusive(codePoint->natural, Natural2."48", Natural2."57")) {
+function getHexCodePointValue(codePoint: Unicode.CodePoint): Try<Natural> {
+  if (Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57")) {
     // Note: In these cases, absoluteDifference() should act as minus().
     // Not sure if this is the right permanent solution.
-    Try.success<Natural2>(Natural2.absoluteDifference(codePoint->natural, Natural2."48"))
+    Try.success<Natural>(Natural.absoluteDifference(codePoint->natural, Natural."48"))
   } else {
-    if (Natural2.isBetweenInclusive(codePoint->natural, Natural2."97", Natural2."102")) {
-      Try.success<Natural2>(Natural2.absoluteDifference(codePoint->natural, Natural2."87"))
+    if (Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")) {
+      Try.success<Natural>(Natural.absoluteDifference(codePoint->natural, Natural."87"))
     } else {
-      Try.failure<Natural2>()
+      Try.failure<Natural>()
     }
   }
 }
 
 function isValidHexCodePoint(codePoint: Unicode.CodePoint): Boolean {
-  Try.isSuccess<Natural2>(getHexCodePointValue(codePoint))
+  Try.isSuccess<Natural>(getHexCodePointValue(codePoint))
 //  Boolean.or(
 //    // Number case: 0-9
 //    Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57"),
@@ -41,17 +41,17 @@ function isValidHexCodePoint(codePoint: Unicode.CodePoint): Boolean {
 }
 
 @Exported
-function HexString.toValue(hexString: HexString): Natural2 {
-  List.reduce<Unicode.CodePoint, Natural2>(
+function HexString.toValue(hexString: HexString): Natural {
+  List.reduce<Unicode.CodePoint, Natural>(
     hexString->string->codePoints,
-    Natural2."0",
+    Natural."0",
     hexStringReduction|(_, _)
   )
 }
 
-function hexStringReduction(numberSoFar: Natural2, nextCodePoint: Unicode.CodePoint): Natural2 {
-  let prefixValue = Natural2.times(numberSoFar, Natural2."16")
-  let currentDigitValue = Try.assume<Natural2>(getHexCodePointValue(nextCodePoint))
-  Natural2.plus(prefixValue, currentDigitValue)
+function hexStringReduction(numberSoFar: Natural, nextCodePoint: Unicode.CodePoint): Natural {
+  let prefixValue = Natural.times(numberSoFar, Natural."16")
+  let currentDigitValue = Try.assume<Natural>(getHexCodePointValue(nextCodePoint))
+  Natural.plus(prefixValue, currentDigitValue)
 }
 
