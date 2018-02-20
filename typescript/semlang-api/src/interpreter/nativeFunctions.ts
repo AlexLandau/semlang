@@ -2,14 +2,14 @@ import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject } from "./SemObject";
-import { Struct, Type, Interface } from "../api/language";
+import { Struct, Type, Interface, isTryType } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
 const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
     "Bit": {
         id: "Bit",
-        members: [{name: "natural", type: "Natural"}],
+        members: [{name: "natural", type: {name: "Natural"}}],
         requires: [
             {
                 return: {
@@ -19,20 +19,20 @@ export const NativeStructs: { [structName: string]: Struct } = {
                     arguments: [
                         {
                             type: "namedCall",
-                            function: "Natural.equals",
+                            function: "Integer.equals",
                             chosenParameters: [],
                             arguments: [
-                                { type: "var", var: "natural" },
-                                { type: "literal", literalType: "Natural", value: "0" }
+                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                                { type: "literal", literalType: "Integer", value: "0" }
                             ],
                         },
                         {
                             type: "namedCall",
-                            function: "Natural.equals",
+                            function: "Integer.equals",
                             chosenParameters: [],
                             arguments: [
-                                { type: "var", var: "natural" },
-                                { type: "literal", literalType: "Natural", value: "1" }
+                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                                { type: "literal", literalType: "Integer", value: "1" }
                             ],
                         },
                     ],
@@ -46,16 +46,16 @@ export const NativeStructs: { [structName: string]: Struct } = {
     },
     "Unicode.CodePoint": {
         id: "Unicode.CodePoint",
-        members: [{ name: "natural", type: "Natural" }],
+        members: [{ name: "natural", type: {name: "Natural"} }],
         requires: [
             {
                 return: {
                     type: "namedCall",
-                    function: "Natural.lessThan",
+                    function: "Integer.lessThan",
                     chosenParameters: [],
                     arguments: [
-                        { type: "var", var: "natural" },
-                        { type: "literal", literalType: "Natural", value: "1114112" }
+                        { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
+                        { type: "literal", literalType: "Integer", value: "1114112" }
                     ],
                 }
             }
@@ -76,7 +76,7 @@ export const NativeInterfaces: { [interfaceName: string]: Interface } = {
         id: "Sequence",
         typeParameters: ['T'],
         methods: [
-            { name: "get", arguments: [{name: "index", type: "Natural"}], returnType: typeT },
+            { name: "get", arguments: [{name: "index", type: {name: "Natural"}}], returnType: typeT },
             { name: "first", arguments: [{name: "condition", type: { from: [typeT], to: "Boolean" }}], returnType: typeT },
         ],
     },
@@ -132,6 +132,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.greaterThan": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
         return booleanObject(left.value.greater(right.value));
     },
+    "Integer.lessThan": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
+        return booleanObject(left.value.lesser(right.value));
+    },
     "Integer.minus": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value.minus(right.value));
     },
@@ -150,6 +153,24 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
     "Integer.times": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value.times(right.value));
+    },
+    "Integer.dividedBy": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+        if (right.value.equals(0)) {
+            return failureObject();
+        }
+        return successObject(integerObject(left.value.divide(right.value)));
+    },
+    "Integer.modulo": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+        if (right.value.lesser(1)) {
+            return failureObject();
+        }
+        const moduloValue = left.value.mod(right.value);
+        // We expect the modulo value to be positive, but the BigInteger library returns a value with the same sign as the quotient
+        const fixedModuloValue = moduloValue.lesser(0) ? right.value.plus(moduloValue) : moduloValue;
+        if (fixedModuloValue.lesser(0) || fixedModuloValue.greaterOrEquals(right.value)) {
+            throw new Error(`Assumption in Integer.modulo failed; inputs were ${JSON.stringify(left)}, ${JSON.stringify(right)}, JS modulo value was ${moduloValue}, and fixed modulo value was ${fixedModuloValue}`);
+        }
+        return successObject(integerObject(fixedModuloValue));
     },
     "List.append": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject(list.contents.concat(newElem));
@@ -190,62 +211,13 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.size": (context: InterpreterContext, list: SemObject.List): SemObject.Natural => {
         return naturalObject(bigInt(list.contents.length));
     },
-    "Natural.absoluteDifference": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        const difference = left.value.minus(right.value);
-        return naturalObject(difference.abs());
-    },
-    "Natural.equals": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value.equals(right.value));
-    },
-    "Natural.fromBits": (context: InterpreterContext, bitsStruct: SemObject.Struct): SemObject.Natural => {
-        const bitsListObject = bitsStruct.members[0] as SemObject.List;
-        const bitStructsList = bitsListObject.contents as SemObject.Struct[];
-        let intValue = bigInt.zero;
-        for (const bitStruct of bitStructsList) {
-            const bitNatural = bitStruct.members[0] as SemObject.Natural;
-            intValue = intValue.times(2);
-            intValue = intValue.plus(bitNatural.value);
-        }
-        return naturalObject(intValue);
-    },
-    "Natural.fromInteger": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
-        const intValue = integer.value
-        if (intValue.isNegative()) {
-            return failureObject()
+    "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
+        const value = integer.value;
+        if (value.isNegative()) {
+            return failureObject();
         } else {
-            return successObject(naturalObject(intValue));
+            return successObject(naturalObject(value));
         }
-    },
-    "Natural.greaterThan": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value > right.value);
-    },
-    "Natural.lesser": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        const a = left.value;
-        const b = right.value;
-        return naturalObject((a.lt(b)) ? a : b);
-    },
-    "Natural.lessThan": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Boolean => {
-        return booleanObject(left.value < right.value);
-    },
-    "Natural.plus": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        return naturalObject(left.value.plus(right.value));
-    },
-    "Natural.times": (context: InterpreterContext, left: SemObject.Natural, right: SemObject.Natural): SemObject.Natural => {
-        return naturalObject(left.value.times(right.value));
-    },
-    "Natural.toBits": (context: InterpreterContext, natural: SemObject.Natural): SemObject.Struct => {
-        let value = natural.value;
-        const bits = [] as SemObject.Struct[];
-        if (value.isZero()) {
-            bits.push(bit(bigInt.zero));
-        } else {
-            while (value.isPositive()) {
-                bits.push(bit(value.and(bigInt.one)));
-                value = value.divide(2);
-            }
-        }
-        const bitsList = listObject(bits.reverse());
-        return structObject(NativeStructs["BitsBigEndian"], [bitsList]);
     },
     "Sequence.create": (context: InterpreterContext, base: SemObject, successor: SemObject.FunctionBinding): SemObject => {
         const sequenceInterface = NativeInterfaces["Sequence"];
@@ -264,12 +236,23 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Try.assume": (context: InterpreterContext, theTry: SemObject.Try): SemObject => {
         if (theTry.type === "Try.Success") {
             return theTry.value;
-        } else {
+        } else if (theTry.type === "Try.Failure") {
             throw new Error(`A Try.assume() call failed`);
+        } else {
+            throw new Error(`Type error in Try.assume: Got ${JSON.stringify(theTry)} instead of a Try`);
         }
     },
     "Try.failure": (context: InterpreterContext): SemObject.Try.Failure => {
         return failureObject();
+    },
+    "Try.flatMap": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
+        if (theTry.type === "Try.Success") {
+            const value = theTry.value;
+            const result = context.evaluateBoundFunction(fn, [value]) as SemObject.Try;
+            return result;
+        } else {
+            return theTry;
+        }
     },
     "Try.isSuccess": (context: InterpreterContext, theTry: SemObject.Try): SemObject.Boolean => {
         const isSuccess = theTry.type === "Try.Success"

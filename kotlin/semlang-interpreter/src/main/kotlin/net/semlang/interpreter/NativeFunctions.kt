@@ -13,7 +13,6 @@ fun getNativeFunctions(): Map<EntityId, NativeFunction> {
 
     addBooleanFunctions(list)
     addIntegerFunctions(list)
-    addNaturalFunctions(list)
     addListFunctions(list)
     addTryFunctions(list)
     addSequenceFunctions(list)
@@ -83,13 +82,6 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
 private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
     val integerDot = fun(name: String) = EntityId.of("Integer", name)
 
-    // Integer.times
-    list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Integer ?: typeError()
-        val right = args[1] as? SemObject.Integer ?: typeError()
-        SemObject.Integer(left.value * right.value)
-    }))
-
     // Integer.plus
     list.add(NativeFunction(integerDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Integer ?: typeError()
@@ -102,6 +94,35 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Integer ?: typeError()
         val right = args[1] as? SemObject.Integer ?: typeError()
         SemObject.Integer(left.value - right.value)
+    }))
+
+    // Integer.times
+    list.add(NativeFunction(integerDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        SemObject.Integer(left.value * right.value)
+    }))
+
+    // Integer.dividedBy
+    list.add(NativeFunction(integerDot("dividedBy"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        if (right.value == BigInteger.ZERO) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Integer(left.value / right.value))
+        }
+    }))
+
+    // Integer.modulo
+    list.add(NativeFunction(integerDot("modulo"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Integer ?: typeError()
+        val right = args[1] as? SemObject.Integer ?: typeError()
+        if (right.value < BigInteger.ONE) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Integer(left.value.mod(right.value)))
+        }
     }))
 
     // Integer.equals
@@ -125,12 +146,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value > right.value)
     }))
 
-    // Integer.fromNatural
-    list.add(NativeFunction(integerDot("fromNatural"), { args: List<SemObject>, _: InterpreterCallback ->
-        val natural = args[0] as? SemObject.Natural ?: typeError()
-        SemObject.Integer(natural.value)
-    }))
-
     // TODO: Future native library optimization
 //    // Integer.sum
 //    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -141,209 +156,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 //        })
 //        SemObject.Integer(sum)
 //    }))
-}
-
-private fun addNaturalFunctions(list: MutableList<NativeFunction>) {
-    val naturalDot = fun(name: String) = EntityId.of("Natural", name)
-
-    // Natural.fromInteger
-    list.add(NativeFunction(naturalDot("fromInteger"), { args: List<SemObject>, _: InterpreterCallback ->
-        val integer = args[0] as? SemObject.Integer ?: typeError()
-        if (integer.value >= BigInteger.ZERO) {
-            SemObject.Try.Success(SemObject.Natural(integer.value))
-        } else {
-            SemObject.Try.Failure
-        }
-    }))
-
-    // Natural.times
-    list.add(NativeFunction(naturalDot("times"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value * right.value)
-    }))
-
-    // Natural.plus
-    list.add(NativeFunction(naturalDot("plus"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value + right.value)
-    }))
-
-    // Natural.divide
-    list.add(NativeFunction(naturalDot("divide"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        if (right.value.toInt() == 0) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(SemObject.Natural(left.value / right.value))
-        }
-    }))
-
-    // Natural.toPower
-    list.add(NativeFunction(naturalDot("toPower"), { args: List<SemObject>, _: InterpreterCallback ->
-        val base = args[0] as? SemObject.Natural ?: typeError()
-        val exponent = args[1] as? SemObject.Natural ?: typeError()
-        // Note: Currently this crashes if the exponent is greater than Integer.MAX_VALUE.
-        // We could at least special-case when the base is 0 or 1.
-        SemObject.Natural(base.value.pow(exponent.value.intValueExact()))
-    }))
-
-    // Natural.bitwiseAnd
-    list.add(NativeFunction(naturalDot("bitwiseAnd"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value.and(right.value))
-    }))
-
-    // Natural.toBits
-    list.add(NativeFunction(naturalDot("toBits"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        // TODO: Get a more efficient internal representation
-        val length = left.value.bitLength()
-        val bitList = ArrayList<SemObject>()
-        if (length == 0) {
-            // Return a single 0
-            bitList.add(asBit(0))
-        } else {
-            for (i in (length - 1) downTo 0) {
-                val bit = asBit(left.value.testBit(i))
-                bitList.add(bit)
-            }
-        }
-        val bitSemList = SemObject.SemList(bitList)
-        SemObject.Struct(NativeStruct.BITS_BIG_ENDIAN, listOf(bitSemList))
-    }))
-
-    // TODO: Use as standard library optimization
-//    // Natural.toNBits
-//    list.add(NativeFunction(naturalDot("toNBits"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val number = args[0] as? SemObject.Natural ?: typeError()
-//        val numBitsToOutput = (args[1] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
-//        // TODO: Get a more efficient internal representation
-//        val actualNumBits = number.value.bitLength()
-//        if (actualNumBits > numBitsToOutput) {
-//            SemObject.Try.Failure
-//        } else {
-//            val bitList = ArrayList<SemObject>()
-//            for (i in (numBitsToOutput - 1) downTo 0) {
-//                val bit = asBit(number.value.testBit(i))
-//                bitList.add(bit)
-//            }
-//            val bitSemList = SemObject.SemList(bitList)
-//            SemObject.Try.Success(SemObject.Struct(NativeStruct.BITS_BIG_ENDIAN, listOf(bitSemList)))
-//        }
-//    }))
-
-    // Natural.fromBits
-    list.add(NativeFunction(naturalDot("fromBits"), { args: List<SemObject>, _: InterpreterCallback ->
-        val bitsStruct = args[0] as? SemObject.Struct ?: typeError()
-
-        if (bitsStruct.struct.id != NativeStruct.BITS_BIG_ENDIAN.id) {
-            typeError()
-        }
-        val bitsList = bitsStruct.objects[0] as? SemObject.SemList ?: typeError()
-        val bitStructs = bitsList.contents
-
-        val two = BigInteger.valueOf(2L)
-        var number = BigInteger.ZERO
-        bitStructs.forEach { bitStructArg ->
-            number = number.times(two)
-            val bitStruct = bitStructArg as? SemObject.Struct ?: typeError()
-            val bitValue = bitStruct.objects[0] as? SemObject.Natural ?: typeError()
-            number = number.plus(bitValue.value) // 1 or 0
-        }
-        SemObject.Natural(number)
-    }))
-
-    // Natural.equals
-    list.add(NativeFunction(naturalDot("equals"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Boolean(left.value == right.value)
-    }))
-
-    // Natural.lessThan
-    list.add(NativeFunction(naturalDot("lessThan"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Boolean(left.value < right.value)
-    }))
-
-    // Natural.greaterThan
-    list.add(NativeFunction(naturalDot("greaterThan"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Boolean(left.value > right.value)
-    }))
-
-    // TODO: Standard library optimizations
-//    // Natural.lessThanOrEqualTo
-//    list.add(NativeFunction(naturalDot("lessThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val left = args[0] as? SemObject.Natural ?: typeError()
-//        val right = args[1] as? SemObject.Natural ?: typeError()
-//        SemObject.Boolean(left.value <= right.value)
-//    }))
-//
-//    // Natural.greaterThanOrEqualTo
-//    list.add(NativeFunction(naturalDot("greaterThanOrEqualTo"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val left = args[0] as? SemObject.Natural ?: typeError()
-//        val right = args[1] as? SemObject.Natural ?: typeError()
-//        SemObject.Boolean(left.value >= right.value)
-//    }))
-
-    // Natural.max
-    list.add(NativeFunction(naturalDot("max"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        val max = list.contents.maxBy { semObj ->
-            (semObj as? SemObject.Natural)?.value ?: error("Runtime type error: Expected Natural")
-        }
-        if (max == null) {
-            SemObject.Try.Failure
-        } else {
-            SemObject.Try.Success(max)
-        }
-    }))
-
-    // Natural.lesser
-    list.add(NativeFunction(naturalDot("lesser"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value.min(right.value))
-    }))
-
-    // Natural.remainder
-    list.add(NativeFunction(naturalDot("remainder"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural(left.value.remainder(right.value))
-    }))
-
-    // Natural.absoluteDifference
-    list.add(NativeFunction(naturalDot("absoluteDifference"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.Natural((left.value - right.value).abs())
-    }))
-
-    // Natural.rangeInclusive
-    list.add(NativeFunction(naturalDot("rangeInclusive"), { args: List<SemObject>, _: InterpreterCallback ->
-        val left = args[0] as? SemObject.Natural ?: typeError()
-        val right = args[1] as? SemObject.Natural ?: typeError()
-        if (left.value > right.value) {
-            SemObject.SemList(listOf())
-        } else {
-            // This approach reduces issues around large numbers that are still close to each other
-            val difference = right.value.minus(left.value).longValueExact()
-            val range = (0..difference)
-                    .asSequence()
-                    .map { left.value.plus(BigInteger.valueOf(it)) }
-                    .map { SemObject.Natural(it) }
-                    .toList()
-            SemObject.SemList(range)
-        }
-    }))
 }
 
 private fun asBit(value: Int): SemObject.Struct {
@@ -514,6 +326,18 @@ private fun addTryFunctions(list: MutableList<NativeFunction>) {
                 apply(theFunction, listOf(theTry.contents))
             }
             is SemObject.Try.Failure -> theTry
+        }
+    }))
+
+    // Try.orElse
+    list.add(NativeFunction(tryDot("orElse"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theTry = args[0] as? SemObject.Try ?: typeError()
+        val alternative = args[1]
+        when (theTry) {
+            is SemObject.Try.Success -> {
+                theTry.contents
+            }
+            is SemObject.Try.Failure -> alternative
         }
     }))
 }

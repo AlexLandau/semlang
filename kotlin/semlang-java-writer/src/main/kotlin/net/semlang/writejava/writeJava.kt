@@ -571,7 +571,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Special sauce...
         val type = expression.structureExpression.type
         if (type is Type.NamedType) {
-            if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
+            if (type.ref.id == NativeStruct.NATURAL.id) {
+                if (expression.name != "integer") {
+                    error("...")
+                }
+                // Just reuse the BigInteger as-is
+                return writeExpression(expression.structureExpression)
+            } else if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
                 if (expression.name != "codePoints") {
                     error("...")
                 }
@@ -774,9 +780,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             Type.INTEGER -> {
                 CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
             }
-            Type.NATURAL -> {
-                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
-            }
             Type.BOOLEAN -> {
                 CodeBlock.of("\$L", literal)
             }
@@ -796,9 +799,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
                 val resolvedType = this.module.resolve(type.ref) ?: error("Unresolved type ${type.ref}")
-                if (isNativeModule(resolvedType.entityRef.module) &&
-                    resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
-                    return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                if (isNativeModule(resolvedType.entityRef.module))  {
+                    if (resolvedType.entityRef.id == NativeStruct.NATURAL.id) {
+                        return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+                    }
+                    if (resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
+                        return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                    }
                 }
 
                 // TODO: We need to know what the structs are here...
@@ -830,8 +837,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
-            Type.INTEGER -> TypeName.get(BigInteger::class.java)
-            Type.NATURAL -> TypeName.get(BigInteger::class.java)
+            Type.INTEGER -> ClassName.get(BigInteger::class.java)
             Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
@@ -866,6 +872,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
+            listOf("Natural") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("Unicode", "String") -> ClassName.get(String::class.java)
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
@@ -987,25 +994,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "plus"), MethodFunctionCallStrategy("add"))
         map.put(EntityId.of("Integer", "minus"), MethodFunctionCallStrategy("subtract"))
         map.put(EntityId.of("Integer", "times"), MethodFunctionCallStrategy("multiply"))
+        map.put(EntityId.of("Integer", "dividedBy"), StaticFunctionCallStrategy(javaIntegers, "dividedBy"))
+        map.put(EntityId.of("Integer", "modulo"), StaticFunctionCallStrategy(javaIntegers, "modulo"))
         map.put(EntityId.of("Integer", "equals"), MethodFunctionCallStrategy("equals"))
         map.put(EntityId.of("Integer", "lessThan"), StaticFunctionCallStrategy(javaIntegers, "lessThan"))
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
-        map.put(EntityId.of("Integer", "fromNatural"), PassedThroughVarFunctionCallStrategy)
         map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
-
-        val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
-        // Share implementations with Integer in some cases
-        map.put(EntityId.of("Natural", "plus"), MethodFunctionCallStrategy("add"))
-        map.put(EntityId.of("Natural", "times"), MethodFunctionCallStrategy("multiply"))
-        map.put(EntityId.of("Natural", "remainder"), MethodFunctionCallStrategy("remainder"))
-        map.put(EntityId.of("Natural", "lesser"), MethodFunctionCallStrategy("min"))
-        map.put(EntityId.of("Natural", "equals"), MethodFunctionCallStrategy("equals"))
-        map.put(EntityId.of("Natural", "lessThan"), StaticFunctionCallStrategy(javaNaturals, "lessThan"))
-        map.put(EntityId.of("Natural", "greaterThan"), StaticFunctionCallStrategy(javaNaturals, "greaterThan"))
-        map.put(EntityId.of("Natural", "absoluteDifference"), StaticFunctionCallStrategy(javaNaturals, "absoluteDifference"))
-        map.put(EntityId.of("Natural", "fromInteger"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
-        map.put(EntityId.of("Natural", "fromBits"), StaticFunctionCallStrategy(javaNaturals, "fromBits"))
-        map.put(EntityId.of("Natural", "toBits"), StaticFunctionCallStrategy(javaNaturals, "toBits"))
 
         val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
         map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
@@ -1013,6 +1007,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Try", "isSuccess"), StaticFunctionCallStrategy(javaTries, "isSuccess"))
         map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
         map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
+        map.put(EntityId.of("Try", "flatMap"), StaticFunctionCallStrategy(javaTries, "flatMap"))
 
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
@@ -1020,6 +1015,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+
+        // Natural constructor
+        val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
+        map.put(EntityId.of("Natural"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
 
         // Unicode.CodePoint constructor
         map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
@@ -1165,7 +1164,6 @@ private fun ClassName.sanitize(): ClassName {
 private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
     return when (type) {
         Type.INTEGER -> true
-        Type.NATURAL -> true
         Type.BOOLEAN -> true
         is Type.List -> isDataType(type.parameter, containingModule)
         is Type.Try -> isDataType(type.parameter, containingModule)

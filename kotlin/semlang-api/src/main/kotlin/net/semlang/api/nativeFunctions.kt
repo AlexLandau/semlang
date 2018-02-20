@@ -38,7 +38,6 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
 
     addBooleanFunctions(definitions)
     addIntegerFunctions(definitions)
-    addNaturalFunctions(definitions)
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
@@ -81,63 +80,17 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
     // Integer.minus
     definitions.add(TypeSignature(EntityId.of("Integer", "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
+    // Integer.dividedBy
+    definitions.add(TypeSignature(EntityId.of("Integer", "dividedBy"), listOf(Type.INTEGER, Type.INTEGER), Type.Try(Type.INTEGER)))
+    // Integer.modulo
+    definitions.add(TypeSignature(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Try(Type.INTEGER)))
+
     // Integer.equals
     definitions.add(TypeSignature(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.lessThan
     definitions.add(TypeSignature(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.greaterThan
     definitions.add(TypeSignature(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
-
-    // TODO: Will remove when Natural becomes a struct
-    // Integer.fromNatural
-    definitions.add(TypeSignature(EntityId.of("Integer", "fromNatural"), listOf(Type.NATURAL), Type.INTEGER))
-}
-
-private fun addNaturalFunctions(definitions: ArrayList<TypeSignature>) {
-
-    // TODO: Will remove when Natural becomes a struct
-    // Natural.fromInteger
-    definitions.add(TypeSignature(EntityId.of("Natural", "fromInteger"), listOf(Type.INTEGER), Type.Try(Type.NATURAL)))
-
-    // Natural.times
-    definitions.add(TypeSignature(EntityId.of("Natural", "times"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.plus
-    definitions.add(TypeSignature(EntityId.of("Natural", "plus"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.divide
-    definitions.add(TypeSignature(EntityId.of("Natural", "divide"), listOf(Type.NATURAL, Type.NATURAL), Type.Try(Type.NATURAL)))
-
-    // Natural.remainder
-    definitions.add(TypeSignature(EntityId.of("Natural", "remainder"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.toPower
-    definitions.add(TypeSignature(EntityId.of("Natural", "toPower"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.equals
-    definitions.add(TypeSignature(EntityId.of("Natural", "equals"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.lessThan
-    definitions.add(TypeSignature(EntityId.of("Natural", "lessThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-    // Natural.greaterThan
-    definitions.add(TypeSignature(EntityId.of("Natural", "greaterThan"), listOf(Type.NATURAL, Type.NATURAL), Type.BOOLEAN))
-
-    // Natural.bitwiseAnd
-    definitions.add(TypeSignature(EntityId.of("Natural", "bitwiseAnd"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-    // Natural.toBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "toBits"), listOf(Type.NATURAL), NativeStruct.BITS_BIG_ENDIAN.getType()))
-    // Natural.fromBits
-    definitions.add(TypeSignature(EntityId.of("Natural", "fromBits"), listOf(NativeStruct.BITS_BIG_ENDIAN.getType()), Type.NATURAL))
-
-    // Natural.max
-    definitions.add(TypeSignature(EntityId.of("Natural", "max"), listOf(Type.List(Type.NATURAL)), Type.Try(Type.NATURAL)))
-    // Natural.lesser
-    definitions.add(TypeSignature(EntityId.of("Natural", "lesser"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.absoluteDifference
-    definitions.add(TypeSignature(EntityId.of("Natural", "absoluteDifference"), listOf(Type.NATURAL, Type.NATURAL), Type.NATURAL))
-
-    // Natural.rangeInclusive
-    definitions.add(TypeSignature(EntityId.of("Natural", "rangeInclusive"), listOf(Type.NATURAL, Type.NATURAL), Type.List(Type.NATURAL)))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
@@ -161,13 +114,13 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 
     // List.drop
     definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.List(paramT)))
 
     // TODO: Semantics of this are arguably different from last()... but I kind of like it that way
     // List.lastN
     definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.List(paramT)))
 
     // List.map
@@ -188,11 +141,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     // List.size
     definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT)),
-            outputType = Type.NATURAL))
+            outputType = NativeStruct.NATURAL.getType()))
 
     // List.get
     definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), Type.NATURAL),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
             outputType = Type.Try(paramT)))
 }
 
@@ -230,6 +183,12 @@ private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature(EntityId.of("Try", "flatMap"), typeParameters = listOf("T", "U"),
             argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), Type.Try(paramU))),
             outputType = Type.Try(paramU)))
+
+    // Try.orElse
+    definitions.add(TypeSignature(EntityId.of("Try", "orElse"), typeParameters = listOf("T"),
+            argumentTypes = listOf(Type.Try(paramT), paramT),
+            outputType = paramT))
+
 }
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
@@ -249,6 +208,24 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 object NativeStruct {
     private val typeT = Type.ParameterType("T")
     private val typeU = Type.ParameterType("U")
+    val NATURAL = Struct(
+            EntityId.of("Natural"),
+            CURRENT_NATIVE_MODULE_ID,
+            listOf(),
+            listOf(
+                    Member("integer", Type.INTEGER)
+            ),
+            // requires: value > -1
+            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
+                    Type.BOOLEAN,
+                    EntityRef.of("Integer", "greaterThan"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
+                    listOf(TypedExpression.Variable(Type.INTEGER, "integer"),
+                            TypedExpression.Literal(Type.INTEGER, "-1")),
+                    listOf()
+            )),
+            listOf()
+    )
     val BASIC_SEQUENCE = Struct(
             EntityId.of("BasicSequence"),
             CURRENT_NATIVE_MODULE_ID,
@@ -265,15 +242,19 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", Type.NATURAL)
+                    Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
-                    EntityRef.of("Natural", "lessThan"),
-                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "lessThan")),
-                    listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                            TypedExpression.Literal(Type.NATURAL, "1114112")),
+                    EntityRef.of("Integer", "lessThan"),
+                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
+                    listOf(
+                            TypedExpression.Follow(Type.INTEGER,
+                                    TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
+                                    "integer"),
+                            TypedExpression.Literal(Type.INTEGER, "1114112")
+                    ),
                     listOf()
             )),
             listOf()
@@ -293,7 +274,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("natural", Type.NATURAL)
+                    Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value = 0 or value = 1
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
@@ -302,17 +283,25 @@ object NativeStruct {
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Boolean", "or")),
                     listOf(TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
-                            EntityRef.of("Natural", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                                    TypedExpression.Literal(Type.NATURAL, "0")),
+                            EntityRef.of("Integer", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
+                            listOf(
+                                    TypedExpression.Follow(Type.INTEGER,
+                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
+                                            "integer"),
+                                    TypedExpression.Literal(Type.INTEGER, "0")
+                            ),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
-                            EntityRef.of("Natural", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Natural", "equals")),
-                            listOf(TypedExpression.Variable(Type.NATURAL, "natural"),
-                                    TypedExpression.Literal(Type.NATURAL, "1")),
+                            EntityRef.of("Integer", "equals"),
+                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
+                            listOf(
+                                    TypedExpression.Follow(Type.INTEGER,
+                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
+                                            "integer"),
+                                    TypedExpression.Literal(Type.INTEGER, "1")
+                            ),
                             listOf()
                         )
                     ),
@@ -335,6 +324,7 @@ object NativeStruct {
 fun getNativeStructs(): Map<EntityId, Struct> {
     val structs = ArrayList<Struct>()
 
+    structs.add(NativeStruct.NATURAL)
     structs.add(NativeStruct.BASIC_SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
@@ -351,7 +341,7 @@ object NativeInterface {
             CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
-                    Method("get", listOf(), listOf(Argument("index", Type.NATURAL)), typeT),
+                    Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL.getType())), typeT),
                     Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
             ),
             listOf()

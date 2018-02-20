@@ -29,3 +29,7 @@ function myCode.addThreeV4(n: Natural): Natural {
   let increment: (Natural) -> Natural = Natural.plus|(Natural."1", _)
   myCode.applyThreeTimes<Natural>(n, increment)
 }
+
+function Natural.plus(left: Natural, right: Natural): Natural {
+  Try.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
+}

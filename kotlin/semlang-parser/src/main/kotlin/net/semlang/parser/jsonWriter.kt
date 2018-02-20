@@ -139,7 +139,6 @@ private fun toTypeNode(type: Type): JsonNode {
     val factory = JsonNodeFactory.instance
     return when (type) {
         Type.INTEGER -> TextNode(type.toString())
-        Type.NATURAL -> TextNode(type.toString())
         Type.BOOLEAN -> TextNode(type.toString())
         is Type.List -> {
             ObjectNode(factory).set("List", toTypeNode(type.parameter))
@@ -187,7 +186,6 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         return when (node.textValue()) {
             "Integer" -> UnvalidatedType.INTEGER
             "Boolean" -> UnvalidatedType.BOOLEAN
-            "Natural" -> UnvalidatedType.NATURAL
             else -> error("Unrecognized type string: ${node.textValue()}")
         }
     }

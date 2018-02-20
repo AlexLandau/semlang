@@ -13,7 +13,7 @@ function getPrimeFactors(n: Natural): List<Natural> {
     if (Natural.equals(n, firstPrimeDivisor)) {
         [n]<Natural>
     } else {
-        let dividend: Natural = Try.assume<Natural>(Natural.divide(n, firstPrimeDivisor))
+        let dividend: Natural = Try.assume<Natural>(Natural.dividedBy(n, firstPrimeDivisor))
         let recursiveFactors: List<Natural> = getPrimeFactors(dividend)
         List.append<Natural>(recursiveFactors, firstPrimeDivisor)
     }
@@ -38,6 +38,6 @@ function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Bool
 }
 
 function dividesEvenly(denominator: Natural, numerator: Natural): Boolean {
-    let remainder: Natural = Natural.remainder(numerator, denominator)
+    let remainder: Natural = Try.assume<Natural>(Natural.modulo(numerator, denominator))
     Natural.equals(remainder, Natural."0")
 }

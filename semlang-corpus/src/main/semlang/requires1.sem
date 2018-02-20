@@ -1,7 +1,7 @@
 struct WholeNumber {
   value: Natural
   requires {
-    Natural.greaterThan(value, Natural."0")
+    Integer.greaterThan(value->integer, Integer."0")
   }
 }
 

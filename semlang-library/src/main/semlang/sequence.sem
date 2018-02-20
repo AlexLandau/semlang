@@ -24,6 +24,23 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
     element->curValue
 }
 
+@Exported
+function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List<T> {
+  // TODO: Can do something better here
+  // TODO: Should we switch Sequence back to a struct and get rid of map()?
+  let initialValue = SequenceRangeElement<T>(Natural."0", []<T>)
+  let rangeSequence = Sequence.create<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>) {
+    let curValue = sequence->get(rangeElement->indexToGet)
+    let nextIndex = Natural.plus(rangeElement->indexToGet, Natural."1")
+    let newValues = List.append<T>(rangeElement->accumulatedValues, curValue)
+    SequenceRangeElement<T>(nextIndex, newValues)
+  })
+  rangeSequence->get(numElements)->accumulatedValues
+}
+struct SequenceRangeElement<T> {
+  indexToGet: Natural
+  accumulatedValues: List<T>
+}
 
 @Exported
 function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {

@@ -27,4 +27,8 @@ public class Tries {
     public static <T, U> Optional<U> map(Optional<T> argument, Function<T, U> function) {
         return argument.map(function);
     }
+
+    public static <T, U> Optional<U> flatMap(Optional<T> argument, Function<T, Optional<U>> function) {
+        return argument.flatMap(function);
+    }
 }

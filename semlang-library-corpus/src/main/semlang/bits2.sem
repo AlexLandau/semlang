@@ -6,7 +6,6 @@
 @Test(["0"], "0")
 function getBitsSumOfNatural(n: Natural): Natural {
   let bits: BitsBigEndian = Natural.toBits(n)
-  // Try.assume<Bit>(List.get<Bit>(bits->bits, Natural."0"))
   List.reduce<Bit, Natural>(bits->bits, Natural."0", function (prevSum: Natural, bit: Bit) {
     Natural.plus(prevSum, bit->natural)
   })

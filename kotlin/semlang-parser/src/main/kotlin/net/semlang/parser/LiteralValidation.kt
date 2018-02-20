@@ -10,14 +10,12 @@ sealed class LiteralValidator {
     object INTEGER : LiteralValidator() {
         override fun validate(literal: String): Boolean {
             if (literal.startsWith("-")) {
-                return literal != "-0" && NATURAL.validate(literal.substring(1))
+                return literal != "-0" && validateNatural(literal.substring(1))
             }
-            return NATURAL.validate(literal)
+            return validateNatural(literal)
         }
-    }
 
-    object NATURAL : LiteralValidator() {
-        override fun validate(literal: String): Boolean {
+        private fun validateNatural(literal: String): Boolean {
             if (literal.isEmpty()) {
                 return false
             }
@@ -44,7 +42,6 @@ sealed class LiteralValidator {
 fun getTypeValidatorFor(type: Type): LiteralValidator? {
     return when (type) {
         Type.INTEGER -> LiteralValidator.INTEGER
-        Type.NATURAL -> LiteralValidator.NATURAL
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> null
         is Type.NamedType -> {

@@ -226,7 +226,16 @@ export class InterpreterContext {
                     throw new Error(`Interface of type ${interfaceDef.id} doesn't have method named ${followName}`);
                 }
                 return methods[index];
+            } else if (structureObject.type === "Natural") {
+                if (expression.name !== "integer") {
+                    throw new Error(`Only component of a Natural is integer`);
+                }
+
+                return integerObject(structureObject.value);
             } else if (structureObject.type === "String") {
+                if (expression.name !== "codePoints") {
+                    throw new Error(`Only component of a Unicode.String is codePoints`);
+                }
                 const stringLiteral = structureObject.value;
 
                 const codePoints = UtfString.stringToCodePoints(stringLiteral);
@@ -312,8 +321,6 @@ export class InterpreterContext {
             throw new Error(`Unexpected Boolean literal ${value}`);
         } else if (type === "Integer") {
             return integerObject(bigInt(value));
-        } else if (type === "Natural") {
-            return naturalObject(bigInt(value));
         } else if (isTryType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
@@ -331,6 +338,11 @@ export class InterpreterContext {
             // Remainder of cases should be named types
             if (isNamedType(type)) {
                 const name = type.name;
+
+                // Handle naturals
+                if (name === "Natural") {
+                    return naturalObject(bigInt(value));
+                }
 
                 // Handle strings
                 if (name === "Unicode.String") {
@@ -473,11 +485,11 @@ interface LiteralTypeChain {
 }
 
 function isNativeLiteralType(type: Type) {
-    if (type === "Integer" || type === "Natural" || type === "Boolean") {
+    if (type === "Integer" || type === "Boolean") {
         return true;
     }
     if (isNamedType(type)) {
-        if (type.name === "Unicode.String") {
+        if (type.name === "Unicode.String" || type.name === "Natural") {
             return true;
         }
     }

@@ -20,6 +20,6 @@ function myStuff.myFunction(input: Natural): Integer {
   let partialOutput = Natural.times(object->x, object->y)
   let specificFunction = myStuff.genericFunction<Natural>|(_)
   let constantFactor = specificFunction(object)
-  let output = Integer.times(Integer.fromNatural(partialOutput), constantFactor)
+  let output = Integer.times(partialOutput->integer, constantFactor)
   output
 }

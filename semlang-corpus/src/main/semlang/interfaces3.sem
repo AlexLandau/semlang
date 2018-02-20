@@ -12,42 +12,42 @@ interface myCode.Operator<T> {
 @Test(["9", "0"], "81")
 @Test(["6", "8"], "100")
 @Test(["2", "5"], "29")
-function myCode.squareDistance(a: Natural, b: Natural): Natural {
-    let plusOperator: myCode.Operator<Natural> = getPlusOperator()
-    let timesOperator: myCode.Operator<Natural> = getTimesOperator()
-    let aSquared: Natural = timesOperator->apply(a, a)
-    let bSquared: Natural = selfApply(timesOperator, b)
+function myCode.squareDistance(a: Integer, b: Integer): Integer {
+    let plusOperator: myCode.Operator<Integer> = getPlusOperator()
+    let timesOperator: myCode.Operator<Integer> = getTimesOperator()
+    let aSquared: Integer = timesOperator->apply(a, a)
+    let bSquared: Integer = selfApply(timesOperator, b)
     plusOperator->apply(aSquared, bSquared)
 }
 
-function selfApply(operator: myCode.Operator<Natural>, value: Natural): Natural {
+function selfApply(operator: myCode.Operator<Integer>, value: Integer): Integer {
     // Throw in a function binding, just because we can
-    let applyOnce: (Natural) -> Natural = operator->apply|(value, _)
+    let applyOnce: (Integer) -> Integer = operator->apply|(value, _)
     applyOnce(value)
 }
 
-function getPlusOperator(): myCode.Operator<Natural> {
-    myCode.Operator<Natural, Natural>(Natural."0", getOperatorAdapter(implPlus|(_, _, _)))
+function getPlusOperator(): myCode.Operator<Integer> {
+    myCode.Operator<Integer, Integer>(Integer."0", getOperatorAdapter(implPlus|(_, _, _)))
 }
 
 // TODO: Someday add a library function for this?
-function implGetIdentity(identity: Natural): Natural {
+function implGetIdentity(identity: Integer): Integer {
     identity
 }
 
 // TODO: Do something with lambda expressions that prevents us from needing this
-function implPlus(identity: Natural, left: Natural, right: Natural): Natural {
-    Natural.plus(left, right)
+function implPlus(identity: Integer, left: Integer, right: Integer): Integer {
+    Integer.plus(left, right)
 }
 
-function getTimesOperator(): myCode.Operator<Natural> {
-    myCode.Operator<Natural, Natural>(Natural."1", getOperatorAdapter(implTimes|(_, _, _)))
+function getTimesOperator(): myCode.Operator<Integer> {
+    myCode.Operator<Integer, Integer>(Integer."1", getOperatorAdapter(implTimes|(_, _, _)))
 }
 
-function getOperatorAdapter(applyMethod: (Natural, Natural, Natural) -> Natural): myCode.Operator.Adapter<Natural, Natural> {
-    myCode.Operator.Adapter<Natural, Natural>(implGetIdentity|(_), applyMethod)
+function getOperatorAdapter(applyMethod: (Integer, Integer, Integer) -> Integer): myCode.Operator.Adapter<Integer, Integer> {
+    myCode.Operator.Adapter<Integer, Integer>(implGetIdentity|(_), applyMethod)
 }
 
-function implTimes(identity: Natural, left: Natural, right: Natural): Natural {
-    Natural.times(left, right)
+function implTimes(identity: Integer, left: Integer, right: Integer): Integer {
+    Integer.times(left, right)
 }

@@ -12,7 +12,7 @@ function List.first<T>(list: List<T>): Try<T> {
 @Exported
 function List.last<T>(list: List<T>): Try<T> {
   let size = List.size<T>(list)
-  let lastIndexMaybe: Try<Natural> = Natural.minus(size, Natural."1")
+  let lastIndexMaybe: Try<Natural> = Natural(Natural.minus(size, Natural."1"))
   Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural) {
     List.get<T>(list, lastIndex)
   })
@@ -21,5 +21,6 @@ function List.last<T>(list: List<T>): Try<T> {
 @Exported
 function List.nCopies<T>(n: Natural, value: T): List<T> {
   let sequence = Sequence.create<List<T>>([]<T>, List.append<T>|(_, value))
+  // TODO: Resimplify this
   sequence->get(n)
 }
