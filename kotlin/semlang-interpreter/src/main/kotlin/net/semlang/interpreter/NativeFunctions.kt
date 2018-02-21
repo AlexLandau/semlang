@@ -352,7 +352,7 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         val base = args[0]
         val successor = args[1] as? SemObject.FunctionBinding ?: typeError()
 
-        val struct = SemObject.Struct(NativeStruct.BASIC_SEQUENCE, listOf(base, successor))
+        val struct = SemObject.BasicSequence(base, successor)
 
         // But now we need to turn that into an interface...
         SemObject.Instance(NativeInterface.SEQUENCE, listOf(
@@ -363,13 +363,10 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
 
     // BasicSequence.get(BasicSequence, index)
     list.add(NativeFunction(EntityId.of("BasicSequence", "get"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val sequence = args[0] as? SemObject.Struct ?: typeError()
+        val sequence = args[0] as? SemObject.BasicSequence ?: typeError()
         val index = args[1] as? SemObject.Natural ?: typeError()
-        if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
-            typeError()
-        }
-        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
-        var value = sequence.objects[0]
+        val successor = sequence.successor
+        var value = sequence.initialValue
         // TODO: Obscure error case: Value of index is greater than Long.MAX_VALUE
         for (i in 1..index.value.longValueExact()) {
             value = apply(successor, listOf(value))
@@ -380,13 +377,10 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
 
     // BasicSequence.first
     list.add(NativeFunction(EntityId.of("BasicSequence", "first"), BasicSequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
-        val sequence = args[0] as? SemObject.Struct ?: typeError()
+        val sequence = args[0] as? SemObject.BasicSequence ?: typeError()
         val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
-        if (sequence.struct.id != NativeStruct.BASIC_SEQUENCE.id) {
-            typeError()
-        }
-        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
-        var value = sequence.objects[0]
+        val successor = sequence.successor
+        var value = sequence.initialValue
         while (true) {
             val passes = apply(predicate, listOf(value)) as? SemObject.Boolean ?: typeError()
             if (passes.value) {

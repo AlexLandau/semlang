@@ -178,6 +178,12 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
             return SemObject.UnicodeString(asString)
         }
 
+        if (struct.id == NativeStruct.BASIC_SEQUENCE.id) {
+            val initialValue = arguments[0]
+            val successor = arguments[1] as? SemObject.FunctionBinding ?: error("Type error when constructing a BasicSequence")
+            return SemObject.BasicSequence(initialValue, successor)
+        }
+
         val requiresBlock = struct.requires
         if (requiresBlock == null) {
             return SemObject.Struct(struct, arguments)
