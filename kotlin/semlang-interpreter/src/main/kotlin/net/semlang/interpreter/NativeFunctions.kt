@@ -366,27 +366,43 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         val sequence = args[0] as? SemObject.BasicSequence ?: typeError()
         val index = args[1] as? SemObject.Natural ?: typeError()
         val successor = sequence.successor
-        var value = sequence.initialValue
-        // TODO: Obscure error case: Value of index is greater than Long.MAX_VALUE
-        for (i in 1..index.value.longValueExact()) {
-            value = apply(successor, listOf(value))
-        }
-        value
 
+        // TODO: Obscure error case: Value of index is greater than Integer.MAX_VALUE
+        val indexInt = index.value.intValueExact()
+        if (sequence.cache.size > indexInt) {
+            sequence.cache[indexInt]
+        } else {
+            val startingIndex = sequence.cache.size - 1
+            var value = sequence.cache[startingIndex]
+
+            for (i in sequence.cache.size..indexInt) {
+                value = apply(successor, listOf(value))
+                sequence.cache.add(value)
+            }
+            value
+        }
     }))
 
     // BasicSequence.first
     list.add(NativeFunction(EntityId.of("BasicSequence", "first"), BasicSequenceFirst@ { args: List<SemObject>, apply: InterpreterCallback ->
         val sequence = args[0] as? SemObject.BasicSequence ?: typeError()
         val predicate = args[1] as? SemObject.FunctionBinding ?: typeError()
+
         val successor = sequence.successor
-        var value = sequence.initialValue
+        var index = 0
+        var value = sequence.cache[0]
+
         while (true) {
             val passes = apply(predicate, listOf(value)) as? SemObject.Boolean ?: typeError()
             if (passes.value) {
                 return@BasicSequenceFirst value
             }
-            value = apply(successor, listOf(value))
+            index++
+            if (sequence.cache.size > index) {
+                value = sequence.cache[index]
+            } else {
+                value = apply(successor, listOf(value))
+            }
         }
         error("Unreachable") // TODO: Better way to make Kotlin compile here?
     }))
