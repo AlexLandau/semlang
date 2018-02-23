@@ -11,6 +11,7 @@ interface SemlangInterpreter {
 
 class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpreter {
     private val nativeFunctions: Map<EntityId, NativeFunction> = getNativeFunctions()
+    private val otherOptimizedFunctions: Map<ResolvedEntityRef, NativeFunction> = getOptimizedFunctions(mainModule)
 
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
         return interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)
@@ -37,6 +38,12 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpr
                     return nativeFunction.apply(arguments, this::interpretBinding)
                 }
                 FunctionLikeType.FUNCTION -> {
+                    // TODO: Check for standard library functions
+                    val optimizedImpl = otherOptimizedFunctions[entityResolution.entityRef]
+                    if (optimizedImpl != null) {
+                        return optimizedImpl.apply(arguments, this::interpretBinding)
+                    }
+
                     val function: FunctionWithModule = referringModule.getInternalFunction(entityResolution.entityRef)
                     if (arguments.size != function.function.arguments.size) {
                         throw IllegalArgumentException("Wrong number of arguments for function $functionRef")
