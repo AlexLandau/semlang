@@ -10,8 +10,7 @@ import java.util.function.Consumer
 fun getOptimizedFunctions(mainModule: ValidatedModule): Map<ResolvedEntityRef, NativeFunction> {
     val result = HashMap<ResolvedEntityRef, NativeFunction>()
 
-    // TODO: Also pull in transitive dependencies
-    val moduleIds = mainModule.upstreamModules.keys
+    val moduleIds = getAllModuleIds(mainModule)
     for (moduleId in moduleIds) {
         addFunctionsFromModule(result, moduleId)
     }
@@ -19,7 +18,24 @@ fun getOptimizedFunctions(mainModule: ValidatedModule): Map<ResolvedEntityRef, N
     return result
 }
 
+/**
+ * Returns the module IDs for the given module and all its dependencies, including transitive dependencies.
+ */
+private fun getAllModuleIds(module: ValidatedModule): Set<ModuleId> {
+    val allModuleIds = HashSet<ModuleId>()
+    addAllModuleIds(allModuleIds, module)
+    return allModuleIds
+}
+
+private fun addAllModuleIds(allModuleIds: HashSet<ModuleId>, module: ValidatedModule) {
+    allModuleIds.add(module.id)
+    for (upstreamModule in module.upstreamModules.values) {
+        addAllModuleIds(allModuleIds, upstreamModule)
+    }
+}
+
 private fun addFunctionsFromModule(result: HashMap<ResolvedEntityRef, NativeFunction>, moduleId: ModuleId) {
+    // TODO: Fix the version check once we get real module versioning
     if (moduleId.group == "semlang" && moduleId.module == "standard-library" && moduleId.version == "develop") {
         addStandardLibraryFunctions(getFunctionAddingConsumer(moduleId, result))
     }
