@@ -36,21 +36,36 @@ private fun getFunctionAddingConsumer(moduleId: ModuleId, allFunctionsMap: HashM
 }
 
 private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction>) {
-    nativeImplAdder.accept(NativeFunction(EntityId.of("Sequence", "getRange"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val sequence = args[0] as? SemObject.Instance ?: typeError()
-        val numElements = args[1] as? SemObject.Natural ?: typeError()
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Natural", "plus"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
 
-        val elements = ArrayList<SemObject>()
-        var value = sequence.objects[0] // initialValue
-        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
-
-        for (i in 0..numElements.value.intValueExact()) {
-            elements.add(value)
-            value = apply(successor, listOf(value))
-        }
-
-        SemObject.SemList(elements)
+        SemObject.Natural(left.value + right.value)
     }))
+
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Natural", "equals"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+
+        SemObject.Boolean(left.value.equals(right.value))
+    }))
+
+    // TODO: This only really works as intended if it's a struct/BasicSequence... (?) Maybe return Sequence to be a struct?
+//    nativeImplAdder.accept(NativeFunction(EntityId.of("Sequence", "getRange"), { args: List<SemObject>, apply: InterpreterCallback ->
+//        val sequence = args[0] as? SemObject.Instance ?: typeError()
+//        val numElements = args[1] as? SemObject.Natural ?: typeError()
+//
+//        val elements = ArrayList<SemObject>()
+//        var value = sequence.objects[0] // initialValue
+//        val successor = sequence.objects[1] as? SemObject.FunctionBinding ?: typeError()
+//
+//        for (i in 0..numElements.value.intValueExact()) {
+//            elements.add(value)
+//            value = apply(successor, listOf(value))
+//        }
+//
+//        SemObject.SemList(elements)
+//    }))
 }
 
 private fun typeError(): Nothing {
