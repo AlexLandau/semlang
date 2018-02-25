@@ -9,9 +9,15 @@ interface SemlangInterpreter {
     fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject
 }
 
-class SemlangForwardInterpreter(val mainModule: ValidatedModule): SemlangInterpreter {
+data class InterpreterOptions(val useLibraryOptimizations: Boolean = true)
+
+class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: InterpreterOptions): SemlangInterpreter {
     private val nativeFunctions: Map<EntityId, NativeFunction> = getNativeFunctions()
-    private val otherOptimizedFunctions: Map<ResolvedEntityRef, NativeFunction> = getOptimizedFunctions(mainModule)
+    private val otherOptimizedFunctions: Map<ResolvedEntityRef, NativeFunction> =
+            if (options.useLibraryOptimizations)
+                getOptimizedFunctions(mainModule)
+            else
+                mapOf()
 
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
         return interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)

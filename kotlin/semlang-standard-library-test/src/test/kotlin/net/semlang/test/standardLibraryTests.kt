@@ -11,6 +11,7 @@ import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
+import net.semlang.interpreter.InterpreterOptions
 import net.semlang.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
 import net.semlang.parser.parseFiles
@@ -43,9 +44,18 @@ class StandardLibraryTests(private val file: File) {
 
 
     @Test
-    fun test() {
+    fun testWithOptimizations() {
         val validatedContext = parseAndValidateFile(file)
-        val testsCount = runAnnotationTests(validatedContext)
+        val testsCount = runAnnotationTests(validatedContext, InterpreterOptions(useLibraryOptimizations = true))
+        if (testsCount == 0) {
+            Assert.fail("Expected at least one @Test in file $file, but there were none")
+        }
+    }
+
+    @Test
+    fun testWithoutOptimizations() {
+        val validatedContext = parseAndValidateFile(file)
+        val testsCount = runAnnotationTests(validatedContext, InterpreterOptions(useLibraryOptimizations = false))
         if (testsCount == 0) {
             Assert.fail("Expected at least one @Test in file $file, but there were none")
         }

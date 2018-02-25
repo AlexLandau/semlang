@@ -4,6 +4,7 @@ import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import net.semlang.api.*
+import net.semlang.interpreter.InterpreterOptions
 import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
 import net.semlang.parser.parseFileNamed
@@ -39,7 +40,7 @@ class ProjectEulerExamples {
 
         val standardLibraryContext = getDefaultLocalRepository().loadModule(ModuleId("semlang", "standard-library", "develop"))
 
-        return SemlangForwardInterpreter(validateModule(rawContext, ModuleId("semlang", "eulerTestFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)).assumeSuccess())
+        return SemlangForwardInterpreter(validateModule(rawContext, ModuleId("semlang", "eulerTestFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)).assumeSuccess(), InterpreterOptions())
     }
 }
 
