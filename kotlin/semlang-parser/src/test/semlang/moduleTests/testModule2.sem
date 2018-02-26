@@ -1,5 +1,5 @@
 
-@Exported
+@Export
 function exportedByBoth(): Integer {
     Integer."5"
 }
@@ -8,7 +8,7 @@ function exportedBy1(): Integer {
     Integer."6"
 }
 
-@Exported
+@Export
 function exportedBy2(): Integer {
     Integer."7"
 }

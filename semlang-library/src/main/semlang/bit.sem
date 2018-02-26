@@ -1,5 +1,5 @@
 
-@Exported
+@Export
 function Bit.equals(left: Bit, right: Bit): Boolean {
   Natural.equals(left->natural, right->natural)
 }

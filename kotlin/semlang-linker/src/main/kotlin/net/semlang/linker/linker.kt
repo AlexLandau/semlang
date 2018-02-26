@@ -54,7 +54,7 @@ private data class RelevantEntities(
 )
 
 private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleId) {
-    private val EXPORTED_ANNOTATION = Annotation("Exported", listOf())
+    private val EXPORT_ANNOTATION = Annotation("Export", listOf())
 
     private fun translateRef(ref: ResolvedEntityRef): EntityRef {
         if (isNativeModule(ref.module)) {
@@ -76,12 +76,12 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         return Function(newId, function.typeParameters, arguments, returnType, block, annotations, null, null)
     }
 
-    // Remove the "Exported" annotation from entities not in the root module
+    // Remove the "Export" annotation from entities not in the root module
     private fun handleAnnotations(annotations: List<Annotation>, entityModule: ModuleId): List<Annotation> {
         if (entityModule == rootModuleId) {
             return annotations
         }
-        return annotations - listOf(EXPORTED_ANNOTATION)
+        return annotations - listOf(EXPORT_ANNOTATION)
     }
 
     private fun apply(block: TypedBlock): Block {

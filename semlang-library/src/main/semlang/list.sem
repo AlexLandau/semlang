@@ -1,15 +1,15 @@
 
-@Exported
+@Export
 function List.isEmpty<T>(list: List<T>): Boolean {
   Natural.equals(List.size<T>(list), Natural."0")
 }
 
-@Exported
+@Export
 function List.first<T>(list: List<T>): Try<T> {
   List.get<T>(list, Natural."0")
 }
 
-@Exported
+@Export
 function List.last<T>(list: List<T>): Try<T> {
   let size = List.size<T>(list)
   let lastIndexMaybe: Try<Natural> = Natural(Natural.minus(size, Natural."1"))
@@ -18,7 +18,7 @@ function List.last<T>(list: List<T>): Try<T> {
   })
 }
 
-@Exported
+@Export
 function List.nCopies<T>(n: Natural, value: T): List<T> {
   let sequence = Sequence.create<List<T>>([]<T>, List.append<T>|(_, value))
   // TODO: Resimplify this

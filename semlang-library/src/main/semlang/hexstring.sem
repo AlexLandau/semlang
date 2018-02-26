@@ -1,6 +1,6 @@
 
 // Represents a non-negative hex value
-@Exported
+@Export
 struct HexString {
   string: Unicode.String
   requires {
@@ -40,7 +40,7 @@ function isValidHexCodePoint(codePoint: Unicode.CodePoint): Boolean {
 //  )
 }
 
-@Exported
+@Export
 function HexString.toValue(hexString: HexString): Natural {
   List.reduce<Unicode.CodePoint, Natural>(
     hexString->string->codePoints,

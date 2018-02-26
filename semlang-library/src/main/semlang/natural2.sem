@@ -1,46 +1,46 @@
-@Exported
+@Export
 function Natural.plus(left: Natural, right: Natural): Natural {
   Try.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
 }
 
-@Exported
+@Export
 function Natural.minus(left: Natural, right: Natural): Integer {
   Integer.minus(left->integer, right->integer)
 }
 
-@Exported
+@Export
 function Natural.times(left: Natural, right: Natural): Natural {
   Try.assume<Natural>(Natural(Integer.times(left->integer, right->integer)))
 }
 
-@Exported
+@Export
 function Natural.dividedBy(left: Natural, right: Natural): Try<Natural> {
   let divisionResult: Try<Integer> = Integer.dividedBy(left->integer, right->integer)
   Try.flatMap<Integer, Natural>(divisionResult, Natural|(_))
 }
 
-@Exported
+@Export
 function Natural.modulo(left: Natural, right: Natural): Try<Natural> {
   let moduloResult: Try<Integer> = Integer.modulo(left->integer, right->integer)
   Try.flatMap<Integer, Natural>(moduloResult, Natural|(_))
 }
 
-@Exported
+@Export
 function Natural.equals(left: Natural, right: Natural): Boolean {
   Integer.equals(left->integer, right->integer)
 }
 
-@Exported
+@Export
 function Natural.lessThan(left: Natural, right: Natural): Boolean {
   Integer.lessThan(left->integer, right->integer)
 }
 
-@Exported
+@Export
 function Natural.greaterThan(left: Natural, right: Natural): Boolean {
   Integer.greaterThan(left->integer, right->integer)
 }
 
-@Exported
+@Export
 function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upperBound: Natural): Boolean {
   Boolean.and(
     Natural.lessThanOrEqualTo(lowerBound, toCheck),
@@ -48,7 +48,7 @@ function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upper
   )
 }
 
-@Exported
+@Export
 function Natural.lessThanOrEqualTo(left: Natural, right: Natural): Boolean {
   if (Natural.lessThan(left, right)) {
     Boolean."true"
@@ -57,7 +57,7 @@ function Natural.lessThanOrEqualTo(left: Natural, right: Natural): Boolean {
   }
 }
 
-@Exported
+@Export
 function Natural.lesser(left: Natural, right: Natural): Natural {
   if (Natural.lessThan(left, right)) {
     left
@@ -66,7 +66,7 @@ function Natural.lesser(left: Natural, right: Natural): Natural {
   }
 }
 
-@Exported
+@Export
 function Natural.greater(left: Natural, right: Natural): Natural {
   if (Natural.greaterThan(left, right)) {
     left
@@ -75,7 +75,7 @@ function Natural.greater(left: Natural, right: Natural): Natural {
   }
 }
 
-@Exported
+@Export
 function Natural.max(naturals: List<Natural>): Try<Natural> {
   let firstValueMaybe = List.first<Natural>(naturals)
   Try.map<Natural, Natural>(firstValueMaybe, function(firstValue: Natural) {
@@ -83,13 +83,13 @@ function Natural.max(naturals: List<Natural>): Try<Natural> {
   })
 }
 
-@Exported
+@Export
 function Natural.absoluteDifference(left: Natural, right: Natural): Natural {
   let difference = Integer.minus(left->integer, right->integer)
   Natural.absoluteValue(difference)
 }
 
-@Exported
+@Export
 function Natural.absoluteValue(integer: Integer): Natural {
   let integerValue = if (Integer.lessThan(integer, Integer."0")) {
     Integer.minus(Integer."0", integer)
@@ -99,7 +99,7 @@ function Natural.absoluteValue(integer: Integer): Natural {
   Try.assume<Natural>(Natural(integerValue))
 }
 
-@Exported
+@Export
 function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
   let allBits = if (Natural.equals(value, Natural."0")) {
     []<Bit>
@@ -115,7 +115,7 @@ function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
 }
 
 // TODO: You really want this to be done natively...
-@Exported
+@Export
 function Natural.toBits(value: Natural): BitsBigEndian {
   if (Natural.equals(value, Natural."0")) {
     BitsBigEndian([Bit."0"]<Bit>)
@@ -135,7 +135,7 @@ function Natural.toBitsList(value: Natural): List<Bit> {
 }
 
 // TODO: You really want this to be done natively...
-@Exported
+@Export
 function Natural.fromBits(bitsBigEndian: BitsBigEndian): Natural {
   List.reduce<Bit, Natural>(bitsBigEndian->bits, Natural."0", function(valueSoFar: Natural, bit: Bit) {
     let doubledValue = Natural.times(valueSoFar, Natural."2")
@@ -144,12 +144,12 @@ function Natural.fromBits(bitsBigEndian: BitsBigEndian): Natural {
 }
 
 // TODO: Move this somewhere appropriate?
-@Exported
+@Export
 function Natural.sum(numbers: List<Natural>): Natural {
   List.reduce<Natural, Natural>(numbers, Natural."0", Natural.plus|(_, _))
 }
 
-@Exported
+@Export
 function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
   let numberOfValuesMaybe = Natural(Natural.minus(Natural.plus(end, Natural."1"), start))
   let rangeMaybe = Try.map<Natural, List<Natural>>(numberOfValuesMaybe, function(numValues: Natural) {
@@ -158,12 +158,12 @@ function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
   Try.orElse<List<Natural>>(rangeMaybe, []<Natural>)
 }
 
-@Exported
+@Export
 function Natural.sequence(): Sequence<Natural> {
   Sequence.create<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
 }
 
-@Exported
+@Export
 function Natural.arithmeticProgression(initialValue: Natural, increment: Natural): Sequence<Natural> {
   Sequence.create<Natural>(initialValue, Natural.plus|(_, increment))
 }

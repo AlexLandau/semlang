@@ -5,7 +5,7 @@ struct AccumulatingSequenceElement<T> {
     curValue: T
     accumulatedValues: List<T>
 }
-@Exported
+@Export
 function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
     let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
         AccumulatingSequenceElement<T>(initialValue, [initialValue]<T>),
@@ -24,7 +24,7 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
     element->curValue
 }
 
-@Exported
+@Export
 function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List<T> {
   // TODO: Can do something better here
   // TODO: Should we switch Sequence back to a struct and get rid of map()?
@@ -42,7 +42,7 @@ struct SequenceRangeElement<T> {
   accumulatedValues: List<T>
 }
 
-@Exported
+@Export
 function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())

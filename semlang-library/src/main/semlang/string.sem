@@ -1,4 +1,4 @@
-@Exported
+@Export
 function Unicode.String.length(string: Unicode.String): Natural {
   List.size<Unicode.CodePoint>(string->codePoints)
 }

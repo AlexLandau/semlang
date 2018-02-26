@@ -180,16 +180,16 @@ class ValidatedModule private constructor(val id: ModuleId,
         private fun findExported(values: Collection<TopLevelEntity>): Set<EntityId> {
             val exportedIds = HashSet<EntityId>()
             for (value in values) {
-                if (hasExportedAnnotation(value)) {
+                if (hasExportAnnotation(value)) {
                     exportedIds.add(value.id)
                 }
             }
             return exportedIds
         }
 
-        private fun hasExportedAnnotation(value: TopLevelEntity): Boolean {
+        private fun hasExportAnnotation(value: TopLevelEntity): Boolean {
             for (annotation in value.annotations) {
-                if (annotation.name == "Exported") {
+                if (annotation.name == "Export") {
                     return true
                 }
             }

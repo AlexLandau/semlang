@@ -9,7 +9,7 @@
  * etc. Also add a less-strict parser.
  */
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
-@Exported
+@Export
 function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
   if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
     Try.success<Unicode.String>(Unicode.String."")

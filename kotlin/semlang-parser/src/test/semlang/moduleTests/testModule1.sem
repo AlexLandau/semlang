@@ -1,10 +1,10 @@
 
-@Exported
+@Export
 function exportedByBoth(): Integer {
     Integer."1"
 }
 
-@Exported
+@Export
 function exportedBy1(): Integer {
     Integer."2"
 }

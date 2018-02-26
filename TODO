@@ -159,7 +159,6 @@ Design choices to reconsider:
 Errors I've made in writing things:
 - (2) Used . in place of ->
 - Forgot to export something
-- Used "@Export" instead of "@Exported"
 - (3) Typed "val" instead of "let"
 - Forgot the "->value"
 - Forgot Try.assume wrapping List.get

@@ -1,5 +1,5 @@
 
-@Exported
+@Export
 struct Byte {
   natural: Natural
   requires {
@@ -7,7 +7,7 @@ struct Byte {
   }
 }
 
-@Exported
+@Export
 struct ByteBits {
   bitsBigEndian: BitsBigEndian
   requires {
@@ -15,7 +15,7 @@ struct ByteBits {
   }
 }
 
-@Exported
+@Export
 struct Byte.BitPosition {
   natural: Natural
   requires {
@@ -23,13 +23,13 @@ struct Byte.BitPosition {
   }
 }
 
-@Exported
+@Export
 function Byte.toBits(byte: Byte): ByteBits {
   let bits = Try.assume<BitsBigEndian>(Natural.toNBits(byte->natural, Natural."8"))
   Try.assume<ByteBits>(ByteBits(bits))
 }
 
-@Exported
+@Export
 function ByteBits.get(bits: ByteBits, bitPosition: Byte.BitPosition): Bit {
   Try.assume<Bit>(List.get<Bit>(bits->bitsBigEndian->bits, bitPosition->natural))
 }
