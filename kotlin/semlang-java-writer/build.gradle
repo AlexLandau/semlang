@@ -10,3 +10,5 @@ dependencies {
 }
 
 tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
+tasks.test.inputs.files(fileTree("../../semlang-library/src/main/semlang"))
+tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))

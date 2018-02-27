@@ -1,3 +1,29 @@
+@Test(["0", "0"], "0")
+@Test(["0", "1"], "1")
+@Test(["1", "0"], "1")
+@Test(["1", "1"], "2")
+@Test(["2", "4"], "6")
+@Test(["0", "4294967296"], "4294967296")
+@Test(["2147483648", "2147483648"], "4294967296")
+@Test(["1000000", "4294967296"], "4295967296")
+@Test(["0", "18446744073709551616"], "18446744073709551616")
+@Test(["1000000000000000", "18446744073709551616"], "18447744073709551616")
+function Natural.plusTest(left: Natural, right: Natural): Natural {
+  Natural.plus(left, right)
+}
+
+@Test(["0", "0"], "true")
+@Test(["0", "1"], "false")
+@Test(["1", "0"], "false")
+@Test(["1", "1"], "true")
+@Test(["2", "4"], "false")
+@Test(["0", "4294967296"], "false") //offset of 2^32
+@Test(["1000000", "4295967296"], "false") //offset of 2^32
+@Test(["0", "18446744073709551616"], "false") //offset of 2^64
+@Test(["1000000000000000", "18447744073709551616"], "false") //offset of 2^64
+function Natural.equalsTest(left: Natural, right: Natural): Boolean {
+  Natural.equals(left, right)
+}
 
 @Test(["0"], "0")
 @Test(["1"], "1")
