@@ -39,6 +39,16 @@ public class Lists {
         return newList;
     }
 
+    public static <T> Optional<List<T>> subList(List<T> list, BigInteger start, BigInteger end) {
+        int startInt = start.intValueExact();
+        int endInt = end.intValueExact();
+        if (startInt > endInt || endInt > list.size() || startInt >= list.size()) {
+            return Optional.empty();
+        } else {
+            return Optional.of(list.subList(start.intValueExact(), end.intValueExact()));
+        }
+    }
+
     public static <T> List<T> drop(List<T> list, BigInteger numberToDrop) {
         return list.subList(numberToDrop.intValueExact(), list.size());
     }

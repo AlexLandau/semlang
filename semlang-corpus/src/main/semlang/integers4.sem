@@ -1,3 +1,7 @@
+@Test(["0", "-2"], "failure")
+@Test(["1", "-2"], "failure")
+@Test(["-1", "-2"], "failure")
+@Test(["0", "-1"], "failure")
 @Test(["0", "0"], "failure")
 @Test(["10", "0"], "failure")
 @Test(["-10", "0"], "failure")

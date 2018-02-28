@@ -980,6 +980,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("List", "append"), StaticFunctionCallStrategy(javaLists, "append"))
         map.put(EntityId.of("List", "appendFront"), StaticFunctionCallStrategy(javaLists, "appendFront"))
         map.put(EntityId.of("List", "concatenate"), StaticFunctionCallStrategy(javaLists, "concatenate"))
+        map.put(EntityId.of("List", "subList"), StaticFunctionCallStrategy(javaLists, "subList"))
         map.put(EntityId.of("List", "drop"), StaticFunctionCallStrategy(javaLists, "drop"))
         map.put(EntityId.of("List", "lastN"), StaticFunctionCallStrategy(javaLists, "lastN"))
         // TODO: Find an approach where we can replace this with a simple .get() call...

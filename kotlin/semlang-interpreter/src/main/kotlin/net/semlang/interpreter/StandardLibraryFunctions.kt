@@ -4,6 +4,7 @@ import net.semlang.api.EntityId
 import net.semlang.api.ModuleId
 import net.semlang.api.ResolvedEntityRef
 import net.semlang.api.ValidatedModule
+import java.math.BigInteger
 import java.util.function.Consumer
 
 // TODO: At some point, we'll want to identify functions in a more errorproof way
@@ -57,6 +58,16 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         val right = args[1] as? SemObject.Natural ?: typeError()
 
         SemObject.Natural(left.value + right.value)
+    }))
+
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Natural", "modulo"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Natural ?: typeError()
+        val right = args[1] as? SemObject.Natural ?: typeError()
+        if (right.value < BigInteger.ONE) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Natural(left.value.mod(right.value)))
+        }
     }))
 
     nativeImplAdder.accept(NativeFunction(EntityId.of("Natural", "equals"), { args: List<SemObject>, _: InterpreterCallback ->

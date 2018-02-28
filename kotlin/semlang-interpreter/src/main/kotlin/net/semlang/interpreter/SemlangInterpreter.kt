@@ -1,6 +1,7 @@
 package net.semlang.interpreter
 
 import net.semlang.api.*
+import java.io.PrintStream
 import java.math.BigInteger
 import java.util.*
 import java.util.stream.Collectors
@@ -9,7 +10,9 @@ interface SemlangInterpreter {
     fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject
 }
 
-data class InterpreterOptions(val useLibraryOptimizations: Boolean = true)
+data class InterpreterOptions(val useLibraryOptimizations: Boolean = true, val runCountOutput: PrintStream? = null) {
+    val collectRunCounts = runCountOutput != null
+}
 
 class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: InterpreterOptions): SemlangInterpreter {
     private val nativeFunctions: Map<EntityId, NativeFunction> = getNativeFunctions()
@@ -19,8 +22,17 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             else
                 mapOf()
 
+    private val runCounts = HashMap<ResolvedEntityRef, Long>()
+
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
-        return interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)
+        val result = interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)
+        if (options.runCountOutput != null) {
+            options.runCountOutput.println("Run counts:")
+            for (key in runCounts.keys) {
+                options.runCountOutput.println("$key: ${runCounts[key]}")
+            }
+        }
+        return result
     }
 
     /**
@@ -30,6 +42,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
      */
     private fun interpret(functionRef: ResolvedEntityRef, arguments: List<SemObject>, referringModule: ValidatedModule?): SemObject {
         try {
+            if (options.collectRunCounts) {
+                addToRunCount(functionRef)
+            }
             if (referringModule == null) {
                 return interpretNative(functionRef, arguments)
             }
@@ -75,6 +90,15 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             }
         } catch (e: RuntimeException) {
             throw IllegalStateException("Error while interpreting $functionRef with arguments $arguments", e)
+        }
+    }
+
+    private fun addToRunCount(functionRef: ResolvedEntityRef) {
+        val curCount = runCounts[functionRef]
+        if (curCount != null) {
+            runCounts[functionRef] = curCount + 1
+        } else {
+            runCounts[functionRef] = 1
         }
     }
 

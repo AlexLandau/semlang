@@ -112,6 +112,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(Type.List(paramT), Type.List(paramT)),
             outputType = Type.List(paramT)))
 
+    // List.subList
+    definitions.add(TypeSignature(EntityId.of("List", "subList"), typeParameters = listOf("T"),
+            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
+            outputType = Type.Try(Type.List(paramT))))
+
     // List.drop
     definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),

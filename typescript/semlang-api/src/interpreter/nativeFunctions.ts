@@ -211,6 +211,14 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.size": (context: InterpreterContext, list: SemObject.List): SemObject.Natural => {
         return naturalObject(bigInt(list.contents.length));
     },
+    "List.subList": (context: InterpreterContext, list: SemObject.List, start: SemObject.Natural, end: SemObject.Natural): SemObject.Try => {
+        const startInt = start.value.toJSNumber();
+        const endInt = end.value.toJSNumber();
+        if (startInt > endInt || endInt > list.contents.length || startInt >= list.contents.length) {
+            return failureObject();
+        }
+        return successObject(listObject(list.contents.slice(startInt, endInt)));
+    },
     "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
         const value = integer.value;
         if (value.isNegative()) {

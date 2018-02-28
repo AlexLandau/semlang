@@ -194,6 +194,20 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         SemObject.SemList(list1.contents + list2.contents)
     }))
 
+    // List.subList
+    list.add(NativeFunction(listDot("subList"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val startInclusive = (args[1] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
+        val endExclusive = (args[2] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
+
+        if (startInclusive > endExclusive || endExclusive > list.contents.size || startInclusive >= list.contents.size) {
+            SemObject.Try.Failure
+        } else {
+            val sublist = list.contents.subList(startInclusive, endExclusive)
+            SemObject.Try.Success(SemObject.SemList(sublist))
+        }
+    }))
+
     // List.drop
     list.add(NativeFunction(listDot("drop"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()
