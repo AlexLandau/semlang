@@ -42,7 +42,7 @@ public class Lists {
     public static <T> Optional<List<T>> subList(List<T> list, BigInteger start, BigInteger end) {
         int startInt = start.intValueExact();
         int endInt = end.intValueExact();
-        if (startInt > endInt || endInt > list.size() || startInt >= list.size()) {
+        if (startInt > endInt || endInt > list.size()) {
             return Optional.empty();
         } else {
             return Optional.of(list.subList(start.intValueExact(), end.intValueExact()));

@@ -117,11 +117,6 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
             outputType = Type.Try(Type.List(paramT))))
 
-    // List.drop
-    definitions.add(TypeSignature(EntityId.of("List", "drop"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
-            outputType = Type.List(paramT)))
-
     // TODO: Semantics of this are arguably different from last()... but I kind of like it that way
     // List.lastN
     definitions.add(TypeSignature(EntityId.of("List", "lastN"), typeParameters = listOf("T"),

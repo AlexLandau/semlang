@@ -31,7 +31,10 @@ function List.testSubListContents(start: Natural, end: Natural, index: Natural):
 @Test(["1", "5"], "failure")
 @Test(["3", "3"], "success(0)")
 @Test(["3", "4"], "success(1)")
-@Test(["4", "4"], "failure")
+@Test(["4", "3"], "failure")
+@Test(["4", "4"], "success(0)")
+@Test(["5", "4"], "failure")
+@Test(["5", "5"], "failure")
 function List.testSubListSize(start: Natural, end: Natural): Try<Natural> {
   let sublist = List.subList<Integer>([Integer."3", Integer."77", Integer."49", Integer."20"]<Integer>, start, end)
   Try.map<List<Integer>, Natural>(sublist, List.size<Integer>|(_))

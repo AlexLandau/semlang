@@ -200,19 +200,12 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         val startInclusive = (args[1] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
         val endExclusive = (args[2] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
 
-        if (startInclusive > endExclusive || endExclusive > list.contents.size || startInclusive >= list.contents.size) {
+        if (startInclusive > endExclusive || endExclusive > list.contents.size) {
             SemObject.Try.Failure
         } else {
             val sublist = list.contents.subList(startInclusive, endExclusive)
             SemObject.Try.Success(SemObject.SemList(sublist))
         }
-    }))
-
-    // List.drop
-    list.add(NativeFunction(listDot("drop"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        val numToDrop = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.SemList(list.contents.drop(numToDrop.value.intValueExact()))
     }))
 
     // List.lastN

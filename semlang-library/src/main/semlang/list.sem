@@ -24,3 +24,17 @@ function List.nCopies<T>(n: Natural, value: T): List<T> {
   // TODO: Resimplify this
   sequence->get(n)
 }
+
+@Export
+function List.drop<T>(list: List<T>, n: Natural): List<T> {
+  let end = List.size<T>(list)
+  let start = Natural.lesser(n, end)
+  Try.assume<List<T>>(List.subList<T>(list, start, end))
+}
+
+@Export
+function List.dropLast<T>(list: List<T>, n: Natural): List<T> {
+  let endMaybe = Natural(Natural.minus(List.size<T>(list), n))
+  let end = Try.orElse<Natural>(endMaybe, Natural."0")
+  Try.assume<List<T>>(List.subList<T>(list, Natural."0", end))
+}

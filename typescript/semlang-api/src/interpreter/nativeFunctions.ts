@@ -181,9 +181,6 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.concatenate": (context: InterpreterContext, left: SemObject.List, right: SemObject.List): SemObject.List => {
         return listObject(left.contents.concat(right.contents));
     },
-    "List.drop": (context: InterpreterContext, list: SemObject.List, n: SemObject.Natural): SemObject.List => {
-        return listObject(list.contents.slice(n.value.toJSNumber()));
-    },
     "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Try => {
         const i = index.value;
         if (i.lt(list.contents.length)) {
@@ -214,7 +211,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.subList": (context: InterpreterContext, list: SemObject.List, start: SemObject.Natural, end: SemObject.Natural): SemObject.Try => {
         const startInt = start.value.toJSNumber();
         const endInt = end.value.toJSNumber();
-        if (startInt > endInt || endInt > list.contents.length || startInt >= list.contents.length) {
+        if (startInt > endInt || endInt > list.contents.length) {
             return failureObject();
         }
         return successObject(listObject(list.contents.slice(startInt, endInt)));
@@ -273,6 +270,13 @@ export const NativeFunctions: { [functionName: string]: Function } = {
             return successObject(result);
         } else {
             return theTry;
+        }
+    },
+    "Try.orElse": (context: InterpreterContext, theTry: SemObject.Try, alternative: SemObject): SemObject => {
+        if (theTry.type === "Try.Success") {
+            return theTry.value;
+        } else {
+            return alternative;
         }
     },
     "Try.success": (context: InterpreterContext, object: SemObject): SemObject.Try.Success => {

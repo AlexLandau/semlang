@@ -1007,8 +1007,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Try", "success"), StaticFunctionCallStrategy(javaTries, "success"))
         map.put(EntityId.of("Try", "isSuccess"), StaticFunctionCallStrategy(javaTries, "isSuccess"))
         map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
-        map.put(EntityId.of("Try", "map"), StaticFunctionCallStrategy(javaTries, "map"))
-        map.put(EntityId.of("Try", "flatMap"), StaticFunctionCallStrategy(javaTries, "flatMap"))
+        map.put(EntityId.of("Try", "map"), MethodFunctionCallStrategy("map"))
+        map.put(EntityId.of("Try", "flatMap"), MethodFunctionCallStrategy("flatMap"))
+        map.put(EntityId.of("Try", "orElse"), MethodFunctionCallStrategy("orElse"))
 
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
