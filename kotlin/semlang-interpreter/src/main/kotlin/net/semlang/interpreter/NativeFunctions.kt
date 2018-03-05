@@ -208,13 +208,6 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         }
     }))
 
-    // List.lastN
-    list.add(NativeFunction(listDot("lastN"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list = args[0] as? SemObject.SemList ?: typeError()
-        val n = args[1] as? SemObject.Natural ?: typeError()
-        SemObject.SemList(list.contents.takeLast(n.value.intValueExact()))
-    }))
-
     // List.filter
     list.add(NativeFunction(listDot("filter"), { args: List<SemObject>, apply: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()

@@ -38,3 +38,17 @@ function List.dropLast<T>(list: List<T>, n: Natural): List<T> {
   let end = Try.orElse<Natural>(endMaybe, Natural."0")
   Try.assume<List<T>>(List.subList<T>(list, Natural."0", end))
 }
+
+@Export
+function List.firstN<T>(list: List<T>, n: Natural): List<T> {
+  let end = Natural.lesser(n, List.size<T>(list))
+  Try.assume<List<T>>(List.subList<T>(list, Natural."0", end))
+}
+
+@Export
+function List.lastN<T>(list: List<T>, n: Natural): List<T> {
+  let size = List.size<T>(list)
+  let startMaybe = Natural(Natural.minus(size, n))
+  let start = Try.orElse<Natural>(startMaybe, Natural."0")
+  Try.assume<List<T>>(List.subList<T>(list, start, size))
+}

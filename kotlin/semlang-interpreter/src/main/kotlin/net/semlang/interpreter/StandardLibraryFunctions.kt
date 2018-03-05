@@ -91,6 +91,20 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         SemObject.SemList(list.contents.dropLast(numToDrop.value.intValueExact()))
     }))
 
+    // List.firstN
+    nativeImplAdder.accept(NativeFunction(EntityId.of("List", "firstN"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val n = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.SemList(list.contents.take(n.value.intValueExact()))
+    }))
+
+    // List.lastN
+    nativeImplAdder.accept(NativeFunction(EntityId.of("List", "lastN"), { args: List<SemObject>, _: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val n = args[1] as? SemObject.Natural ?: typeError()
+        SemObject.SemList(list.contents.takeLast(n.value.intValueExact()))
+    }))
+
     // TODO: This only really works as intended if it's a struct/BasicSequence... (?) Maybe return Sequence to be a struct?
 //    nativeImplAdder.accept(NativeFunction(EntityId.of("Sequence", "getRange"), { args: List<SemObject>, apply: InterpreterCallback ->
 //        val sequence = args[0] as? SemObject.Instance ?: typeError()
