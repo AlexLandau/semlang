@@ -123,10 +123,10 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, val parameters: kotlin.collections.List<UnvalidatedType> = listOf()): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, val isThreaded: Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf()): UnvalidatedType() {
         companion object {
             fun forParameter(name: String): NamedType {
-                return NamedType(EntityRef(null, EntityId(listOf(name))), listOf())
+                return NamedType(EntityRef(null, EntityId(listOf(name))), false, listOf())
             }
         }
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
@@ -136,6 +136,7 @@ sealed class UnvalidatedType {
                 return replacement
             }
             return NamedType(ref,
+                    isThreaded,
                     parameters.map { it.replacingParameters(parameterMap) }
             )
         }
@@ -255,7 +256,7 @@ sealed class Type {
      * that types agree with one another.
      */
     // TODO: Should "ref" be an EntityResolution? Either way, stop passing originalRef to resolvers
-    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val isThreaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             val replacement = parameterMap[this]
             if (replacement != null) {
@@ -264,6 +265,7 @@ sealed class Type {
             }
             return NamedType(ref,
                     originalRef,
+                    isThreaded,
                     parameters.map { parameter -> parameter.replacingParameters(parameterMap) }
             )
         }
@@ -403,9 +405,9 @@ data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map(UnvalidatedType.NamedType.Companion::forParameter)
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), typeParameters)
+            UnvalidatedType.NamedType(id.asRef(), false, typeParameters)
         } else {
-            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), typeParameters))
+            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), false, typeParameters))
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -417,7 +419,7 @@ data class Struct(override val id: EntityId, val moduleId: ModuleId, val typePar
     }
 
     fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), typeParameters.map(Type::ParameterType))
+        return Type.NamedType(resolvedRef, id.asRef(), false, typeParameters.map(Type::ParameterType))
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -425,9 +427,9 @@ data class Struct(override val id: EntityId, val moduleId: ModuleId, val typePar
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type::ParameterType)
         val outputType = if (requires == null) {
-            Type.NamedType(resolvedRef, id.asRef(), typeParameters)
+            Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
         } else {
-            Type.Try(Type.NamedType(resolvedRef, id.asRef(), typeParameters))
+            Type.Try(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
         }
         return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -463,10 +465,10 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         val dataStructType = UnvalidatedType.NamedType.forParameter(dataTypeParameter)
         argumentTypes.add(dataStructType)
 
-        val adapterType = UnvalidatedType.NamedType(this.adapterId.asRef(), allTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val adapterType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, allTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
         argumentTypes.add(adapterType)
 
-        val outputType = UnvalidatedType.NamedType(this.id.asRef(), explicitTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val outputType = UnvalidatedType.NamedType(this.id.asRef(), false, explicitTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
 
         return UnvalidatedTypeSignature(this.id, argumentTypes, outputType, allTypeParameters)
     }
@@ -479,7 +481,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = UnvalidatedType.NamedType(this.adapterId.asRef(), adapterTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val outputType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, adapterTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
 
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -491,7 +493,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     }
 
     fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), typeParameters.map(Type::ParameterType))
+        return Type.NamedType(resolvedRef, id.asRef(), false, typeParameters.map(Type::ParameterType))
     }
 
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
@@ -515,10 +517,10 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
         val dataStructType = Type.ParameterType(dataTypeParameter)
         argumentTypes.add(dataStructType)
 
-        val adapterType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), allTypeParameters.map { name -> Type.ParameterType(name) })
+        val adapterType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), false, allTypeParameters.map { name -> Type.ParameterType(name) })
         argumentTypes.add(adapterType)
 
-        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.id), this.id.asRef(), explicitTypeParameters.map { name -> Type.ParameterType(name) })
+        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.id), this.id.asRef(), false, explicitTypeParameters.map { name -> Type.ParameterType(name) })
 
         return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters)
     }
@@ -531,7 +533,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), adapterTypeParameters.map { name -> Type.ParameterType(name) })
+        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), false, adapterTypeParameters.map { name -> Type.ParameterType(name) })
 
         return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }

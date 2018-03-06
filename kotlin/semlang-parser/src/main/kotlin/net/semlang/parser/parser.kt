@@ -485,7 +485,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseTypeRef(type_ref: Sem1Parser.Type_refContext): EntityRef {
-        val module_ref = entity_ref.module_ref()
+        val module_ref = type_ref.module_ref()
         val moduleRef = if (module_ref == null) {
             null
         } else {
@@ -500,7 +500,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             }
         }
 
-        return EntityRef(moduleRef, parseEntityId(entity_ref.entity_id()))
+        return EntityRef(moduleRef, parseEntityId(type_ref.entity_id()))
     }
 
     private fun parseEntityRef(entity_ref: Sem1Parser.Entity_refContext): EntityRef {
@@ -572,9 +572,37 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 this::parseType)
     }
 
+    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
+        val isThreaded = type_ref.TILDE() != null
+        if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
+            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isThreaded, parameters)
+        }
+
+        val typeId = type_ref.entity_id().ID().text
+        if (typeId == "Integer") {
+            return UnvalidatedType.INTEGER
+        } else if (typeId == "Boolean") {
+            return UnvalidatedType.BOOLEAN
+        } else if (typeId == "List") {
+            if (parameters.size != 1) {
+                error("List should only accept a single parameter; parameters were: $parameters")
+            }
+            return UnvalidatedType.List(parameters[0])
+        } else if (typeId == "Try") {
+            if (parameters.size != 1) {
+                error("Try should only accept a single parameter; parameters were: $parameters")
+            }
+            return UnvalidatedType.Try(parameters[0])
+        }
+
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters)
+    }
+
+    // TODO: Fix this duplication somehow
     private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
+        val isThreaded = false
         if (entity_ref.module_ref() != null || entity_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseEntityRef(entity_ref), parameters)
+            return UnvalidatedType.NamedType(parseEntityRef(entity_ref), isThreaded, parameters)
         }
 
         val typeId = entity_ref.entity_id().ID().text
@@ -594,7 +622,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             return UnvalidatedType.Try(parameters[0])
         }
 
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), parameters)
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters)
     }
 
     private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {

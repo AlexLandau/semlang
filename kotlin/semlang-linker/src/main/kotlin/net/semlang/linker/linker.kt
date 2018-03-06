@@ -169,11 +169,11 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is Type.NamedType -> {
                 val newRef = translateRef(type.ref)
                 val parameters = type.parameters.map(this::apply)
-                UnvalidatedType.NamedType(newRef, parameters)
+                UnvalidatedType.NamedType(newRef, type.isThreaded, parameters)
             }
             is Type.ParameterType -> {
                 val newRef = EntityRef.of(type.name)
-                UnvalidatedType.NamedType(newRef)
+                UnvalidatedType.NamedType(newRef, false)
             }
         }
     }

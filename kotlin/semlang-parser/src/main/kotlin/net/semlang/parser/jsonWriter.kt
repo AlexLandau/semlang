@@ -202,7 +202,8 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         } else {
             listOf()
         }
-        return UnvalidatedType.NamedType(id, parameters)
+        // TODO: Fix
+        return UnvalidatedType.NamedType(id, false, parameters)
     } else if (node.has("from")) {
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])

@@ -407,7 +407,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                         return null
                     }
                     val parameters = type.parameters.map { parameter -> validateType(parameter, typeInfo, typeParametersInScope) ?: return null }
-                    Type.NamedType(resolved.entityRef, type.ref, parameters)
+                    Type.NamedType(resolved.entityRef, type.ref, type.isThreaded, parameters)
                 }
             }
         }
