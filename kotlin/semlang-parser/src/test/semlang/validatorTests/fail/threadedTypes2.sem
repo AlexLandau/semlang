@@ -1,0 +1,7 @@
+
+function sayHello(out1: ~TextOut): ~TextOut {
+  let out2: ~TextOut = TextOut.println(out1, Unicode.String."Hello, world!")
+  // Trying to reuse out1 should fail
+  let out3: ~TextOut = TextOut.println(out1, Unicode.String."Hello, world!")
+  out3
+}

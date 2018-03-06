@@ -1,0 +1,5 @@
+
+function sayHello(out1: ~TextOut): ~TextOut {
+  let out2: ~TextOut = TextOut.println(out1, Unicode.String."Hello, world!")
+  out2
+}
