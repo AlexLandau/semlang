@@ -41,6 +41,7 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
+    addThreadedFunctions(definitions)
 
     return toMap(definitions)
 }
@@ -199,6 +200,13 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
 }
 
+private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
+    // TextOut.print
+    definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
+            argumentTypes = listOf(NativeThreadedType.TEXT_OUT, NativeStruct.UNICODE_STRING.getType()),
+            outputType = NativeThreadedType.TEXT_OUT))
+}
+
 object NativeStruct {
     private val typeT = Type.ParameterType("T")
     private val typeU = Type.ParameterType("U")
@@ -348,4 +356,25 @@ fun getNativeInterfaces(): Map<EntityId, Interface> {
     interfaces.add(NativeInterface.SEQUENCE)
 
     return toMap(interfaces)
+}
+
+object NativeThreadedType {
+    private val textOutId = EntityId.of("TextOut")
+    val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
+}
+
+/**
+ * An "opaque" type is a named type that doesn't represent a struct or interface and isn't
+ * a native type like Integer or Boolean. This includes native threaded types.
+ *
+ * TODO: We should have a way for the module system to include ways to specify additional opaque types and
+ * associated methods that must have a native implementation. (Obviously, these wouldn't be supported by
+ * every type of runtime environment.)
+ */
+fun getNativeOpaqueTypes(): Map<EntityId, Type.NamedType> {
+    val types = ArrayList<Type.NamedType>()
+
+    types.add(NativeThreadedType.TEXT_OUT)
+
+    return types.associateBy { it.ref.id }
 }

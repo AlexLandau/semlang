@@ -1,6 +1,8 @@
 
 @Script
 function sayHello(standardOut: ~TextOut): ~TextOut {
-  let standardOut: ~TextOut = TextOut.println(standardOut, Unicode.String."Hello, world!")
-  standardOut
+  // TODO: Fix how the string literal works here...
+  let standardOut2: ~TextOut = TextOut.print(standardOut, Unicode.String."Hello, world!
+")
+  standardOut2
 }

@@ -1,6 +1,6 @@
 
 function sayHello(out1: ~TextOut): ~TextOut {
-  let out2: ~TextOut = TextOut.println(out1, Unicode.String."Hello, world!")
+  let out2: ~TextOut = TextOut.print(out1, Unicode.String."Hello, world!\n")
   // Trying to reuse out1 should fail
   out1
 }

@@ -142,12 +142,14 @@ sealed class UnvalidatedType {
         }
 
         override fun getTypeString(): String {
-            return ref.toString() +
-                if (parameters.isEmpty()) {
-                    ""
-                } else {
-                    "<" + parameters.joinToString(", ") + ">"
-                }
+            // TODO: This might be wrong if the ref includes a module...
+            return (if (isThreaded) "~" else "") +
+                    ref.toString() +
+                    if (parameters.isEmpty()) {
+                        ""
+                    } else {
+                        "<" + parameters.joinToString(", ") + ">"
+                    }
         }
 
         override fun toString(): String {

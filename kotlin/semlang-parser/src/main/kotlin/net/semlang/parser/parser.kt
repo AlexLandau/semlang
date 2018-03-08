@@ -555,7 +555,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         if (type.type_ref() != null) {
             return parseTypeGivenParameters(type.type_ref(), listOf())
         }
-        throw IllegalArgumentException("Unparsed type " + type)
+        throw IllegalArgumentException("Unparsed type " + type.text)
     }
 
     private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<UnvalidatedType> {

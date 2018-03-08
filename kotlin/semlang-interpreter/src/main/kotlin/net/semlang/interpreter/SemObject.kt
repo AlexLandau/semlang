@@ -1,6 +1,7 @@
 package net.semlang.interpreter
 
 import net.semlang.api.*
+import java.io.PrintStream
 import java.math.BigInteger
 
 // These are Semlang objects that are stored and handled by the interpreter.
@@ -40,6 +41,9 @@ sealed class SemObject {
     // Note: The module here is the module that defines the bound function. It can be used to evaluate the function.
     // Absence of a containing module indicates the native module.
     data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject()
+
+    // Types for threaded object types
+    data class TextOut(val out: PrintStream): SemObject()
 }
 
 sealed class FunctionBindingTarget {

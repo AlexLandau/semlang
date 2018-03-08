@@ -8,7 +8,11 @@ import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
 import org.junit.Test
 import net.semlang.parser.*
+import org.junit.Assert
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.OutputStream
+import java.io.PrintStream
 
 class HelloWorldTest {
 
@@ -18,8 +22,10 @@ class HelloWorldTest {
         val module = parseAndValidateFile(File("../../semlang-hello-world/src/main/semlang/helloWorld.sem"), moduleId, CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
 
         val interpreter = SemlangForwardInterpreter(module, InterpreterOptions())
-        val mockedTextOut = SemObject.Boolean(true) //TODO: Fix this to be an actual mock object
+        val outputCollector = ByteArrayOutputStream()
+        val mockedTextOut = SemObject.TextOut(PrintStream(outputCollector)) //TODO: Fix this to be an actual mock object
         interpreter.interpret(EntityId.of("sayHello"), listOf(mockedTextOut))
+        Assert.assertEquals("Hello, world!\n", outputCollector.toString())
     }
 
 }

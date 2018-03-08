@@ -646,6 +646,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
                 module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
             }
+            FunctionLikeType.OPAQUE_TYPE -> {
+                error("$resolved should be a function, not an opaque type")
+            }
         }
 
         // TODO: More compact references when not binding arguments
@@ -1186,6 +1189,7 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 }
                 FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
                 FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
+                FunctionLikeType.OPAQUE_TYPE -> false
             }
         }
     }
