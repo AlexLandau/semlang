@@ -277,7 +277,9 @@ sealed class Type {
         }
 
         override fun getTypeString(): String {
-            return ref.toString() +
+            // TODO: This might be wrong if the ref includes a module...
+            return (if (isThreaded) "~" else "") +
+                    ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
                     } else {
