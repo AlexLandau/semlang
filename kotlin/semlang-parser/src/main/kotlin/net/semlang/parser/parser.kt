@@ -580,15 +580,27 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val typeId = type_ref.entity_id().ID().text
         if (typeId == "Integer") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Integer is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             return UnvalidatedType.INTEGER
         } else if (typeId == "Boolean") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Boolean is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             return UnvalidatedType.BOOLEAN
         } else if (typeId == "List") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("List is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
             return UnvalidatedType.List(parameters[0])
         } else if (typeId == "Try") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Try is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             if (parameters.size != 1) {
                 error("Try should only accept a single parameter; parameters were: $parameters")
             }

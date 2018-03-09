@@ -398,12 +398,27 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                         && type.ref.moduleRef == null
                         && type.ref.id.namespacedName.size == 1
                         && typeParametersInScope.contains(type.ref.id.namespacedName[0])) {
+                    if (type.isThreaded) {
+                        error("Type parameters shouldn't be marked as threaded")
+                    }
                     Type.ParameterType(type.ref.id.namespacedName[0])
                 } else {
                     val resolved = typeInfo.resolver.resolve(type.ref)
                     if (resolved == null) {
                         // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
                         errors.add(Issue("Unresolved type reference: ${type.ref}", null, IssueLevel.ERROR))
+                        return null
+                    }
+                    // TODO: This will probably need to change; the resolver will probably need to know which types are threaded ahead of time
+                    val shouldBeThreaded = (resolved.type == FunctionLikeType.OPAQUE_TYPE)
+                    if (shouldBeThreaded && !type.isThreaded) {
+                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
+                        errors.add(Issue("Type is threaded and should be marked as such with '~'", null, IssueLevel.ERROR))
+                        return null
+                    }
+                    if (type.isThreaded && !shouldBeThreaded) {
+                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
+                        errors.add(Issue("Type is not threaded and should not be marked with '~'", null, IssueLevel.ERROR))
                         return null
                     }
                     val parameters = type.parameters.map { parameter -> validateType(parameter, typeInfo, typeParametersInScope) ?: return null }
