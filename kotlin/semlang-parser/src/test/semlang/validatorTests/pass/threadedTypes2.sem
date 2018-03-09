@@ -1,0 +1,9 @@
+
+function sayHelloMaybe(out1: ~TextOut, isGoodbye: Boolean): ~TextOut {
+  let out2: ~TextOut = if (isGoodbye) {
+    TextOut.print(out1, Unicode.String."Goodbye, world!\n")
+  } else {
+    TextOut.print(out1, Unicode.String."Hello, world!\n")
+  }
+  out2
+}
