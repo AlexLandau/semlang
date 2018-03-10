@@ -1,0 +1,6 @@
+// If we allowed newlines in string constants, there would be issues with source files getting
+// converted between \n and \r\n when moved between machines
+function getStringWithNewline(): Unicode.String {
+  Unicode.String."Hello, world!
+"
+}

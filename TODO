@@ -57,6 +57,7 @@ Intended near-term refactors and changes:
 - There needs to be some way for interpreters/transpilers/compilers to have optional Semlang implementations of native
   thing A in terms of B, thing B in terms of A, etc.
 - String library methods
+- Add more escaped character options in string literals
 - List literals: Don't require parameter type if non-empty
   - (But avoid this in the base language if it looks like we can't avoid subtypes in the future)
   - Support short-form embedded literals when parameter type is present

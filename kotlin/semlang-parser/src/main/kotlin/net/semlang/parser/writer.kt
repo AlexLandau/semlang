@@ -305,10 +305,14 @@ fun escapeLiteralContents(literal: String): String {
     var i = 0
     while (i < literal.length) {
         val c = literal[i]
-        if (c == '\\' || c == '\"') {
-            sb.append('\\')
+        when (c) {
+            '\\' -> sb.append("\\\\")
+            '\"' -> sb.append("\\\"")
+            '\n' -> sb.append("\\n")
+            '\r' -> sb.append("\\r")
+            '\t' -> sb.append("\\t")
+            else -> sb.append(c)
         }
-        sb.append(c)
         i++
     }
     return sb.toString()

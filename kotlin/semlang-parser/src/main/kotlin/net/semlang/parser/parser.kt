@@ -24,7 +24,7 @@ private fun parseLiteral(literalFromParser: TerminalNode): String {
             if (i + 1 >= innerString.length) {
                 error("Something went wrong with string literal evaluation")
             }
-            sb.append(innerString[i + 1])
+            sb.append(handleSpecialEscapeCodes(innerString[i + 1]))
             i += 2
         } else {
             sb.append(c)
@@ -32,6 +32,15 @@ private fun parseLiteral(literalFromParser: TerminalNode): String {
         }
     }
     return sb.toString()
+}
+
+private fun handleSpecialEscapeCodes(c: Char): Char {
+    return when (c) {
+        'n' -> '\n'
+        'r' -> '\r'
+        't' -> '\t'
+        else -> c
+    }
 }
 
 private fun rangeOf(context: ParserRuleContext): Range {

@@ -25,7 +25,7 @@ ELSE               : 'else';
 REQUIRES           : 'requires';
 
 // Literals
-LITERAL            : '"' ( ~["\\] | '\\' . )* '"' ;
+LITERAL            : '"' ( ~["\\\n\r] | '\\' ~[\n\r] )* '"' ;
 
 // Operators
 DOT                : '.' ;
