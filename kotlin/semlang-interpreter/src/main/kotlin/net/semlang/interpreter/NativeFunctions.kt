@@ -400,23 +400,14 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
 }
 
 private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
-
     // TextOut.print
     list.add(NativeFunction(EntityId.of("TextOut", "print"), { args: List<SemObject>, _: InterpreterCallback ->
         val out = args[0] as? SemObject.TextOut ?: typeError()
         val text = args[1] as? SemObject.UnicodeString ?: typeError()
 
-//        val struct = SemObject.Struct(NativeStruct.BASIC_SEQUENCE, listOf(base, successor))
-//
-//        // But now we need to turn that into an interface...
-//        SemObject.Instance(NativeInterface.SEQUENCE, listOf(
-//                SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("get")), null, listOf(struct, null)),
-//                SemObject.FunctionBinding(FunctionBindingTarget.Named(basicSequenceDot("first")), null, listOf(struct, null))
-//        ))
         out.out.print(text.contents)
         out
     }))
-
 }
 
 private fun addStringFunctions(list: MutableList<NativeFunction>) {

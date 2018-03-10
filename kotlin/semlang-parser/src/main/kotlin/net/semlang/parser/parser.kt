@@ -391,7 +391,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             }
 
             if (expression.LITERAL() != null) {
-                val type = parseTypeGivenParameters(expression.entity_ref(), listOf())
+                val type = parseTypeGivenParameters(expression.type_ref(), listOf())
                 val literal = parseLiteral(expression.LITERAL())
                 return AmbiguousExpression.Literal(type, literal, locationOf(expression))
             }
@@ -610,33 +610,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             if (isThreaded) {
                 throw LocationAwareParsingException("Try is not a threaded type; remove the ~", locationOf(type_ref))
             }
-            if (parameters.size != 1) {
-                error("Try should only accept a single parameter; parameters were: $parameters")
-            }
-            return UnvalidatedType.Try(parameters[0])
-        }
-
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters)
-    }
-
-    // TODO: Fix this duplication somehow
-    private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
-        val isThreaded = false
-        if (entity_ref.module_ref() != null || entity_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseEntityRef(entity_ref), isThreaded, parameters)
-        }
-
-        val typeId = entity_ref.entity_id().ID().text
-        if (typeId == "Integer") {
-            return UnvalidatedType.INTEGER
-        } else if (typeId == "Boolean") {
-            return UnvalidatedType.BOOLEAN
-        } else if (typeId == "List") {
-            if (parameters.size != 1) {
-                error("List should only accept a single parameter; parameters were: $parameters")
-            }
-            return UnvalidatedType.List(parameters[0])
-        } else if (typeId == "Try") {
             if (parameters.size != 1) {
                 error("Try should only accept a single parameter; parameters were: $parameters")
             }
