@@ -167,11 +167,16 @@ sealed class UnvalidatedType {
 sealed class Type {
     abstract fun replacingParameters(parameterMap: Map<out Type, Type>): Type
     abstract protected fun getTypeString(): String
+    abstract fun isThreaded(): Boolean
     override fun toString(): String {
         return getTypeString()
     }
 
     object INTEGER : Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun getTypeString(): String {
             return "Integer"
         }
@@ -181,6 +186,10 @@ sealed class Type {
         }
     }
     object BOOLEAN : Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun getTypeString(): String {
             return "Boolean"
         }
@@ -191,6 +200,10 @@ sealed class Type {
     }
 
     data class List(val parameter: Type): Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             return List(parameter.replacingParameters(parameterMap))
         }
@@ -205,6 +218,10 @@ sealed class Type {
     }
 
     data class Try(val parameter: Type): Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             return Try(parameter.replacingParameters(parameterMap))
         }
@@ -219,6 +236,10 @@ sealed class Type {
     }
 
     data class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
                     outputType.replacingParameters(parameterMap))
@@ -237,6 +258,10 @@ sealed class Type {
     }
 
     data class ParameterType(val name: String): Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             val replacement = parameterMap[this]
             return if (replacement != null) replacement else this
@@ -258,7 +283,11 @@ sealed class Type {
      * that types agree with one another.
      */
     // TODO: Should "ref" be an EntityResolution? Either way, stop passing originalRef to resolvers
-    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val isThreaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val threaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+        override fun isThreaded(): Boolean {
+            return threaded
+        }
+
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
             val replacement = parameterMap[this]
             if (replacement != null) {
@@ -267,7 +296,7 @@ sealed class Type {
             }
             return NamedType(ref,
                     originalRef,
-                    isThreaded,
+                    threaded,
                     parameters.map { parameter -> parameter.replacingParameters(parameterMap) }
             )
         }
@@ -278,7 +307,7 @@ sealed class Type {
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...
-            return (if (isThreaded) "~" else "") +
+            return (if (threaded) "~" else "") +
                     ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
@@ -304,16 +333,17 @@ sealed class Type {
             if (other !is NamedType) {
                 return false
             }
-            return Objects.equals(ref, other.ref) && Objects.equals(parameters, other.parameters)
+            return Objects.equals(ref, other.ref) && threaded == other.threaded && Objects.equals(parameters, other.parameters)
         }
 
         /**
          * Ignores the value of [originalRef].
          */
         override fun hashCode(): Int {
-            return Objects.hash(ref, parameters)
+            return Objects.hash(ref, threaded, parameters)
         }
     }
+
 }
 
 // TODO: Maybe rename TypeSignature -> FunctionSignature?

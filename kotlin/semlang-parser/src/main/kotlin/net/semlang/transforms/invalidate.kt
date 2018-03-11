@@ -57,7 +57,7 @@ fun invalidate(type: Type): UnvalidatedType {
         }
         is Type.NamedType -> {
             val parameters = type.parameters.map(::invalidate)
-            UnvalidatedType.NamedType(type.originalRef, type.isThreaded, parameters)
+            UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
         }
     }
 }

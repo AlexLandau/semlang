@@ -647,6 +647,9 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 if (binding.type != type) {
                     fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
                 }
+                if (binding.type.isThreaded()) {
+                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                }
             }
         }
         val postBindingType = Type.FunctionType(
@@ -695,6 +698,9 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             } else {
                 if (binding.type != type) {
                     fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
+                }
+                if (binding.type.isThreaded()) {
+                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
             }
         }
@@ -983,7 +989,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
         val type = variableTypes[expression.name]
         if (type != null) {
-            if (type is Type.NamedType && type.isThreaded) {
+            if (type.isThreaded()) {
                 consumedThreadedVars.add(expression.name)
             }
             return TypedExpression.Variable(type, expression.name)
@@ -1041,6 +1047,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         return struct.members.map { member ->
             val type = validateType(member.type, typeInfo, typeParametersInScope) ?: return null
+            if (type.isThreaded()) {
+                // TODO: Improve position of message
+                errors.add(Issue("Structs cannot have members with threaded types", struct.idLocation, IssueLevel.ERROR))
+            }
             Member(member.name, type)
         }
     }

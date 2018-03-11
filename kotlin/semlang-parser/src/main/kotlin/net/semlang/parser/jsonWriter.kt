@@ -160,7 +160,7 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.NamedType -> {
             val node = ObjectNode(factory)
-            node.put("name", (if (type.isThreaded) "~" else "") + type.originalRef.toString())
+            node.put("name", (if (type.isThreaded()) "~" else "") + type.originalRef.toString())
             if (type.parameters.isNotEmpty()) {
                 val paramsArray = node.putArray("params")
                 type.parameters.forEach { parameter ->
