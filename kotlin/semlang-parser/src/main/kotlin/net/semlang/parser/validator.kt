@@ -382,10 +382,16 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             UnvalidatedType.BOOLEAN -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null
+                if (parameter.isThreaded()) {
+                    errors.add(Issue("Lists cannot have a threaded parameter type", null, IssueLevel.ERROR))
+                }
                 Type.List(parameter)
             }
             is UnvalidatedType.Try -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null
+                if (parameter.isThreaded()) {
+                    errors.add(Issue("Tries cannot have a threaded parameter type", null, IssueLevel.ERROR))
+                }
                 Type.Try(parameter)
             }
             is UnvalidatedType.FunctionType -> {
@@ -656,6 +662,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 postBindingArgumentTypes,
                 functionType.outputType)
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+        for (chosenParameter in chosenParameters) {
+            if (chosenParameter.isThreaded()) {
+                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+            }
+        }
 
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, chosenParameters)
     }
@@ -672,6 +683,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         if (chosenParameters.size != signature.typeParameters.size) {
             fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
+        }
+        for (chosenParameter in chosenParameters) {
+            if (chosenParameter.isThreaded()) {
+                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+            }
         }
 
         val expectedFunctionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
@@ -739,6 +755,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 // Chosen types come from the struct type known for the variable
                 val typeParameters = parentTypeInfo.typeParameters
                 val chosenTypes = parentNamedType.getParameterizedTypes()
+                for (chosenParameter in chosenTypes) {
+                    if (chosenParameter.isThreaded()) {
+                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    }
+                }
                 val type = parameterizeAndValidateType(memberType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
@@ -756,6 +777,12 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
                 val typeParameters = interfac.typeParameters
                 val chosenTypes = interfaceType.getParameterizedTypes()
+                for (chosenParameter in chosenTypes) {
+                    if (chosenParameter.isThreaded()) {
+                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    }
+                }
+
                 val type = parameterizeAndValidateType(methodType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
 
                 return TypedExpression.Follow(type, structureExpression, expression.name)
@@ -795,6 +822,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             return null
         }
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+        for (chosenParameter in chosenParameters) {
+            if (chosenParameter.isThreaded()) {
+                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+            }
+        }
 
         return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, chosenParameters)
     }
@@ -826,6 +858,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
+        for (chosenParameter in chosenParameters) {
+            if (chosenParameter.isThreaded()) {
+                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+            }
+        }
         val functionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
         if (argumentTypes != functionType.argTypes) {
             errors.add(Issue("The function $functionRef expects argument types ${functionType.argTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
@@ -841,32 +878,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         } catch (e: RuntimeException) {
             throw RuntimeException("Signature being parameterized is $signature", e)
         }
-    }
-
-    // TODO: We're disagreeing in multiple places on List<Type> vs. List<String>, should fix that at some point
-    private fun makeParameterMap(parameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Map<Type, Type>? {
-        if (parameters.size != chosenTypes.size) {
-            errors.add(Issue("Wrong number of type parameters for function $functionId; ${parameters.size} required, but ${chosenTypes.size} provided", location, IssueLevel.ERROR))
-            return null
-        }
-        val map: MutableMap<Type, Type> = HashMap()
-
-        parameters.zip(chosenTypes).forEach { pair ->
-            val (parameter, chosenType) = pair
-            val existingValue = map.get(parameter)
-            if (existingValue != null) {
-                // I think this is correct behavior...
-                fail("Not anticipating seeing the same parameter type twice")
-            }
-            map.put(parameter, chosenType)
-        }
-
-        return map
-    }
-
-    private fun parameterizeType(typeWithWrongParameters: Type, typeParameters: List<Type>, chosenTypes: List<Type>, functionId: EntityId, location: Location?): Type? {
-        val parameterMap = makeParameterMap(typeParameters, chosenTypes, functionId, location) ?: return null
-        return typeWithWrongParameters.replacingParameters(parameterMap)
     }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): TypedExpression? {
@@ -934,6 +945,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val chosenParameter = validateType(expression.chosenParameter, typeInfo, typeParametersInScope) ?: return null
+        if (chosenParameter.isThreaded()) {
+            errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+        }
+
         val listType = Type.List(chosenParameter)
 
         val contents = expression.contents.map { item ->

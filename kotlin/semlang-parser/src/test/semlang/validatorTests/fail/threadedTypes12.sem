@@ -1,0 +1,5 @@
+// Disallow Tries with threaded parameter types for now
+function tryTextOut(out: ~TextOut): ~TextOut {
+  let theTry = Try.success<~TextOut>(out)
+  Try.assume<~TextOut>(theTry)
+}

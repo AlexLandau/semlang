@@ -1,0 +1,18 @@
+// In general, threaded types shouldn't be accepted as type parameters under normal circumstances
+struct Pair<T> {
+  left: T
+  right: T
+}
+
+function duplicateReference<T>(item: T): Pair<T> {
+  Pair<T>(item, item)
+}
+
+function doBadStuff(out1: ~TextOut): ~TextOut {
+  let thePair = duplicateReference<~TextOut>(out1)
+  let left1 = thePair->left
+  let right1 = thePair->right
+  let left2 = TextOut.print(left1, Unicode.String."foo")
+  let right2 = TextOut.print(right1, Unicode.String."bar")
+  left2
+}

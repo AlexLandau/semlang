@@ -1,0 +1,5 @@
+// Disallow Lists with threaded parameter types for now
+function listTextOut(): ~TextOut {
+  let list = []<~TextOut>
+  Try.assume<~TextOut>(List.get<~TextOut>(list, Natural."0"))
+}
