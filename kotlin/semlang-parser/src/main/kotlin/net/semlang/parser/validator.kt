@@ -613,6 +613,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val varsToBind = ArrayList<String>(variableTypes.keys)
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
         val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
+        for (varToBindWithType in varsToBindWithTypes) {
+            if (varToBindWithType.type.isThreaded()) {
+                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a threaded type", expression.location, IssueLevel.ERROR))
+            }
+        }
 
         val functionType = Type.FunctionType(validatedArguments.map(Argument::type), validatedBlock.type)
 
