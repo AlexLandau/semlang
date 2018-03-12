@@ -87,6 +87,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
                     return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
                 }
+                FunctionLikeType.OPAQUE_TYPE -> {
+                    error("Tried to use an opaque type as a function: $entityResolution")
+                }
             }
         } catch (e: RuntimeException) {
             throw IllegalStateException("Error while interpreting $functionRef with arguments $arguments", e)

@@ -140,7 +140,7 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Type.NamedType -> {
                 val ref = convertRef(type.id)
                 val parameters = type.parameters.map(this::apply)
-                UnvalidatedType.NamedType(ref, parameters)
+                UnvalidatedType.NamedType(ref, type.isThreaded, parameters)
             }
         }
     }

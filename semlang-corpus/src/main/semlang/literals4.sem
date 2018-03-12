@@ -39,6 +39,21 @@ function stringLiteral8(): Unicode.String {
     Unicode.String."\\"
 }
 
+@Test([], "\n")
+function stringLiteral9(): Unicode.String {
+    Unicode.String."\n"
+}
+
+@Test([], "\r")
+function stringLiteral10(): Unicode.String {
+    Unicode.String."\r"
+}
+
+@Test([], "\t")
+function stringLiteral11(): Unicode.String {
+    Unicode.String."\t"
+}
+
 @Test(["1"], "1")
 @Test(["Hello, world!"], "13")
 @Test([""], "0")
@@ -47,6 +62,9 @@ function stringLiteral8(): Unicode.String {
 @Test(["\""], "1")
 @Test(["\'"], "1")
 @Test(["\\"], "1")
+@Test(["\n"], "1")
+@Test(["\r"], "1")
+@Test(["\t"], "1")
 function stringLiteralLength(string: Unicode.String): Natural {
     List.size<Unicode.CodePoint>(string->codePoints)
 }

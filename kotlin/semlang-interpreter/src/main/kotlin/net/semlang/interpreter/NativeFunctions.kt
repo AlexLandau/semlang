@@ -16,7 +16,7 @@ fun getNativeFunctions(): Map<EntityId, NativeFunction> {
     addListFunctions(list)
     addTryFunctions(list)
     addSequenceFunctions(list)
-    addStringFunctions(list)
+    addNativeThreadedFunctions(list)
 
     return toMap(list)
 }
@@ -397,6 +397,17 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         error("Unreachable") // TODO: Better way to make Kotlin compile here?
     }))
 
+}
+
+private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
+    // TextOut.print
+    list.add(NativeFunction(EntityId.of("TextOut", "print"), { args: List<SemObject>, _: InterpreterCallback ->
+        val out = args[0] as? SemObject.TextOut ?: typeError()
+        val text = args[1] as? SemObject.UnicodeString ?: typeError()
+
+        out.out.print(text.contents)
+        out
+    }))
 }
 
 private fun addStringFunctions(list: MutableList<NativeFunction>) {

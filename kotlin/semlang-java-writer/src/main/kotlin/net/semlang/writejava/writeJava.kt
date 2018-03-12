@@ -9,6 +9,7 @@ import net.semlang.parser.validateModule
 import net.semlang.parser.write
 import net.semlang.transforms.*
 import java.io.File
+import java.io.PrintStream
 import java.io.StringWriter
 import java.math.BigInteger
 import java.util.*
@@ -646,6 +647,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
                 module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
             }
+            FunctionLikeType.OPAQUE_TYPE -> {
+                error("$resolved should be a function, not an opaque type")
+            }
         }
 
         // TODO: More compact references when not binding arguments
@@ -878,6 +882,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
             listOf("Bit") -> ClassName.bestGuess("net.semlang.java.Bit")
             listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
+            listOf("TextOut") -> ClassName.get(PrintStream::class.java)
             else -> null
         }
 
@@ -1017,6 +1022,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+
+        val javaTextOut = ClassName.bestGuess("net.semlang.java.TextOut")
+        map.put(EntityId.of("TextOut", "print"), StaticFunctionCallStrategy(javaTextOut, "print"))
 
         // Natural constructor
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
@@ -1186,6 +1194,7 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 }
                 FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
                 FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
+                FunctionLikeType.OPAQUE_TYPE -> false
             }
         }
     }

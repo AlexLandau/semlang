@@ -98,6 +98,9 @@ private fun parseAnnotations(node: JsonNode?): List<Annotation> {
 
 private fun parseEntityRef(node: JsonNode): EntityRef {
     val text = node.textValue() ?: error("IDs and refs should be strings")
+    return parseEntityRef(text)
+}
+private fun parseEntityRef(text: String): EntityRef {
     val parts = text.split(":")
     if (parts.size == 1) {
         return EntityRef(null, parseEntityId(parts[0]))
@@ -157,7 +160,7 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.NamedType -> {
             val node = ObjectNode(factory)
-            node.put("name", type.originalRef.toString())
+            node.put("name", (if (type.isThreaded()) "~" else "") + type.originalRef.toString())
             if (type.parameters.isNotEmpty()) {
                 val paramsArray = node.putArray("params")
                 type.parameters.forEach { parameter ->
@@ -195,14 +198,16 @@ private fun parseType(node: JsonNode): UnvalidatedType {
     }
 
     if (node.has("name")) {
-        val id = parseEntityRef(node["name"])
+        val isThreaded = node["name"].textValue().startsWith("~")
+        val refName = if (isThreaded) node["name"].textValue().substring(1) else node["name"].textValue()
+        val id = parseEntityRef(refName)
         val parameters = if (node.has("params")) {
             val paramsArray = node["params"]
             paramsArray.map(::parseType)
         } else {
             listOf()
         }
-        return UnvalidatedType.NamedType(id, parameters)
+        return UnvalidatedType.NamedType(id, isThreaded, parameters)
     } else if (node.has("from")) {
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])

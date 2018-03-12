@@ -86,7 +86,7 @@ private class Sem1To0Converter(val input: RawContext) {
             is UnvalidatedType.NamedType -> {
                 val id = convertRef(type.ref)
                 val parameters = type.parameters.map(this::apply)
-                S0Type.NamedType(id, parameters)
+                S0Type.NamedType(id, type.isThreaded, parameters)
             }
         }
     }

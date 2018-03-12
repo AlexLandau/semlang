@@ -75,6 +75,9 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR)
                 add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR)
             }
+            getNativeOpaqueTypes().keys.forEach { id ->
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE)
+            }
 
             ownFunctions.forEach { id ->
                 add(id, ownModuleId, FunctionLikeType.FUNCTION)
@@ -349,12 +352,14 @@ class ValidatedModule private constructor(val id: ModuleId,
 
 }
 
+// TODO: Rename to something else (EntityType? EntityIdType?) given that opaque types are now part of this
 enum class FunctionLikeType {
     NATIVE_FUNCTION,
     FUNCTION,
     STRUCT_CONSTRUCTOR,
     INSTANCE_CONSTRUCTOR,
-    ADAPTER_CONSTRUCTOR
+    ADAPTER_CONSTRUCTOR,
+    OPAQUE_TYPE
 }
 
 data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType)

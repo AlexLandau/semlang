@@ -1,0 +1,4 @@
+// We currently disallow structs with threaded objects in them (will add later)
+struct TextOutHolder {
+  value: ~TextOut
+}

@@ -48,8 +48,12 @@ class ValidatorPositiveTests(private val file: File) {
 //        System.out.println("Rewritten contents for file $file:")
 //        System.out.println(writtenToString)
 //        System.out.println("(End contents)")
-        val reparsed = parseString(writtenToString, "").assumeSuccess()
-        assertRawContextsEqual(initiallyParsed, reparsed)
+        try {
+            val reparsed = parseString(writtenToString, "").assumeSuccess()
+            assertRawContextsEqual(initiallyParsed, reparsed)
+        } catch (e: RuntimeException) {
+            throw AssertionError("Error while reparsing; written version was: $writtenToString", e)
+        }
     }
 
     @Test

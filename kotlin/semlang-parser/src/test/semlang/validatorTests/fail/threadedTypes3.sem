@@ -1,0 +1,5 @@
+// Doesn't include the ~ to indicate a threaded type
+function sayHello(out1: TextOut): TextOut {
+  let out2 = TextOut.print(out1, Unicode.String."Hello, world!\n")
+  out2
+}

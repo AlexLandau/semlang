@@ -25,7 +25,7 @@ ELSE               : 'else';
 REQUIRES           : 'requires';
 
 // Literals
-LITERAL            : '"' ( ~["\\] | '\\' . )* '"' ;
+LITERAL            : '"' ( ~["\\\n\r] | '\\' ~[\n\r] )* '"' ;
 
 // Operators
 DOT                : '.' ;
@@ -47,6 +47,7 @@ GREATER_THAN       : '>' ;
 PIPE               : '|' ;
 AT                 : '@' ;
 HYPHEN             : '-' ;
+TILDE              : '~' ;
 
 // Identifiers
 ID                 : [_]*[a-zA-Z0-9][A-Za-z0-9_]* ;

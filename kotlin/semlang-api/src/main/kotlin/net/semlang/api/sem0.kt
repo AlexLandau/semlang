@@ -24,7 +24,7 @@ sealed class S0Type {
     data class List(val parameter: S0Type): S0Type()
     data class Try(val parameter: S0Type): S0Type()
     data class FunctionType(val argTypes: kotlin.collections.List<S0Type>, val outputType: S0Type): S0Type()
-    data class NamedType(val id: String, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
+    data class NamedType(val id: String, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
 }
 
 data class S0Function(val id: String, val typeParameters: List<String>, val arguments: List<S0Argument>, val returnType: S0Type, val block: S0Block, val annotations: List<S0Annotation>)

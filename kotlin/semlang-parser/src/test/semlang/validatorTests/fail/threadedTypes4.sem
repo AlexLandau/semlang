@@ -1,0 +1,4 @@
+// Incorrectly marks Integer as threaded
+function increment(value: ~Integer): ~Integer {
+  Integer.plus(value, Integer."1")
+}

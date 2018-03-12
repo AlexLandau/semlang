@@ -24,7 +24,7 @@ private fun parseLiteral(literalFromParser: TerminalNode): String {
             if (i + 1 >= innerString.length) {
                 error("Something went wrong with string literal evaluation")
             }
-            sb.append(innerString[i + 1])
+            sb.append(handleSpecialEscapeCodes(innerString[i + 1]))
             i += 2
         } else {
             sb.append(c)
@@ -32,6 +32,15 @@ private fun parseLiteral(literalFromParser: TerminalNode): String {
         }
     }
     return sb.toString()
+}
+
+private fun handleSpecialEscapeCodes(c: Char): Char {
+    return when (c) {
+        'n' -> '\n'
+        'r' -> '\r'
+        't' -> '\t'
+        else -> c
+    }
 }
 
 private fun rangeOf(context: ParserRuleContext): Range {
@@ -382,7 +391,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             }
 
             if (expression.LITERAL() != null) {
-                val type = parseTypeGivenParameters(expression.entity_ref(), listOf())
+                val type = parseTypeGivenParameters(expression.type_ref(), listOf())
                 val literal = parseLiteral(expression.LITERAL())
                 return AmbiguousExpression.Literal(type, literal, locationOf(expression))
             }
@@ -484,6 +493,25 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return UnvalidatedArgument(name, type, locationOf(function_argument))
     }
 
+    private fun parseTypeRef(type_ref: Sem1Parser.Type_refContext): EntityRef {
+        val module_ref = type_ref.module_ref()
+        val moduleRef = if (module_ref == null) {
+            null
+        } else {
+            if (module_ref.childCount == 1) {
+                ModuleRef(null, module_ref.module_id(0).text, null)
+            } else if (module_ref.childCount == 3) {
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
+            } else if (module_ref.childCount == 5) {
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, module_ref.module_id(2).text)
+            } else {
+                error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
+            }
+        }
+
+        return EntityRef(moduleRef, parseEntityId(type_ref.entity_id()))
+    }
+
     private fun parseEntityRef(entity_ref: Sem1Parser.Entity_refContext): EntityRef {
         val module_ref = entity_ref.module_ref()
         val moduleRef = if (module_ref == null) {
@@ -530,13 +558,13 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         if (type.LESS_THAN() != null) {
             val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-            return parseTypeGivenParameters(type.entity_ref(), parameterTypes)
+            return parseTypeGivenParameters(type.type_ref(), parameterTypes)
         }
 
-        if (type.entity_ref() != null) {
-            return parseTypeGivenParameters(type.entity_ref(), listOf())
+        if (type.type_ref() != null) {
+            return parseTypeGivenParameters(type.type_ref(), listOf())
         }
-        throw IllegalArgumentException("Unparsed type " + type)
+        throw IllegalArgumentException("Unparsed type " + type.text)
     }
 
     private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<UnvalidatedType> {
@@ -553,29 +581,42 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 this::parseType)
     }
 
-    private fun parseTypeGivenParameters(entity_ref: Sem1Parser.Entity_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
-        if (entity_ref.module_ref() != null || entity_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseEntityRef(entity_ref), parameters)
+    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
+        val isThreaded = type_ref.TILDE() != null
+        if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
+            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isThreaded, parameters)
         }
 
-        val typeId = entity_ref.entity_id().ID().text
+        val typeId = type_ref.entity_id().ID().text
         if (typeId == "Integer") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Integer is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             return UnvalidatedType.INTEGER
         } else if (typeId == "Boolean") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Boolean is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             return UnvalidatedType.BOOLEAN
         } else if (typeId == "List") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("List is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
             return UnvalidatedType.List(parameters[0])
         } else if (typeId == "Try") {
+            if (isThreaded) {
+                throw LocationAwareParsingException("Try is not a threaded type; remove the ~", locationOf(type_ref))
+            }
             if (parameters.size != 1) {
                 error("Try should only accept a single parameter; parameters were: $parameters")
             }
             return UnvalidatedType.Try(parameters[0])
         }
 
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), parameters)
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters)
     }
 
     private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {
