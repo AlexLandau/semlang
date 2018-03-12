@@ -22,7 +22,7 @@ class HelloWorldTest {
 
         val interpreter = SemlangForwardInterpreter(module, InterpreterOptions())
         val outputCollector = ByteArrayOutputStream()
-        val mockedTextOut = SemObject.TextOut(PrintStream(outputCollector)) //TODO: Fix this to be an actual mock object
+        val mockedTextOut = SemObject.TextOut(PrintStream(outputCollector))
         interpreter.interpret(EntityId.of("sayHello"), listOf(mockedTextOut))
         Assert.assertEquals("Hello, world!\n", outputCollector.toString())
     }
