@@ -1,5 +1,8 @@
 Major near-term projects:
 - Threaded types, console-out support, and application functions
+  - Ability to test functions involving threaded objects
+  - Threaded structs
+    - Destructuring statements
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors

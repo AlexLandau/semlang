@@ -609,7 +609,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeInfo, typeParametersInScope, HashSet(), containingFunctionId) ?: return null
 
         // Note: This is the source of the canonical in-memory ordering
-        // TODO: Verify that threaded vars are not referenced in the inline function block
         val varsToBind = ArrayList<String>(variableTypes.keys)
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
         val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
