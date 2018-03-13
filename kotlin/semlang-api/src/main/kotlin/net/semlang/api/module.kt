@@ -138,6 +138,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
         }
     }
 }
+private val EXPORT_ANNOTATION_NAME = EntityId.of("Export")
 // TODO: Would storing or returning things in a non-map format improve performance?
 // TODO: When we have re-exporting implemented, check somewhere that we don't export multiple refs with the same ID
 class ValidatedModule private constructor(val id: ModuleId,
@@ -192,7 +193,7 @@ class ValidatedModule private constructor(val id: ModuleId,
 
         private fun hasExportAnnotation(value: TopLevelEntity): Boolean {
             for (annotation in value.annotations) {
-                if (annotation.name == "Export") {
+                if (annotation.name == EXPORT_ANNOTATION_NAME) {
                     return true
                 }
             }

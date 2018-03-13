@@ -58,7 +58,7 @@ private class Sem1To0Converter(val input: RawContext) {
     }
 
     private fun apply(annotation: Annotation): S0Annotation {
-        return S0Annotation(annotation.name, annotation.values.map(this::apply))
+        return S0Annotation(annotation.name.toString(), annotation.values.map(this::apply))
     }
 
     private fun apply(annotationArg: AnnotationArgument): S0AnnotationArg {
