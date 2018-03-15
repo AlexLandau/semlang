@@ -218,3 +218,25 @@ private fun instantiateMockArguments(argumentSpecs: List<Argument>, arguments: L
 private fun fail(text: String): Nothing {
     throw AssertionError(text)
 }
+
+enum class TestsType {
+    ALL_TESTS,
+    NON_MOCK_TESTS,
+}
+
+/**
+ * Returns the number of tests that we would expect to run for this module.
+ */
+fun getExpectedTestCount(module: ValidatedModule, testsType: TestsType): Int {
+    var count = 0
+    for (function in module.ownFunctions.values) {
+        for (annotation in function.annotations) {
+            if (annotation.name == TEST_ANNOTATION_NAME) {
+                count++
+            } else if (testsType == TestsType.ALL_TESTS && annotation.name == MOCK_TEST_ANNOTATION_NAME) {
+                count++
+            }
+        }
+    }
+    return count
+}
