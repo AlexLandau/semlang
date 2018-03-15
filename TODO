@@ -57,6 +57,9 @@ Intended near-term refactors and changes:
 - Additional primitive types (N-bit integers, floating-point numbers, rationals?)
 - Other native-y types: Set, UniqueList, Map, Symbol, Snow?
 - Try error tracking
+- Mock tests in other environments
+  - Transpiled Java
+  - TypeScript interpreter
 - There needs to be some way for interpreters/transpilers/compilers to have optional Semlang implementations of native
   thing A in terms of B, thing B in terms of A, etc.
 - String library methods
