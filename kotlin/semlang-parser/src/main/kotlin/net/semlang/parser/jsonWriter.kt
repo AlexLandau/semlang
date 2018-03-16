@@ -221,7 +221,7 @@ private fun parseType(node: JsonNode): UnvalidatedType {
 }
 
 private fun addAnnotation(node: ObjectNode, annotation: Annotation) {
-    node.put("name", annotation.name)
+    node.put("name", annotation.name.toString())
     if (annotation.values.isNotEmpty()) {
         val valuesArray = node.putArray("values")
         addAnnotationItems(valuesArray, annotation.values)
@@ -245,7 +245,8 @@ fun addAnnotationItems(array: ArrayNode, values: List<AnnotationArgument>) {
 private fun parseAnnotation(node: JsonNode): Annotation {
     if (!node.isObject()) error("Expected an annotation to be an object")
 
-    val name = node["name"]?.textValue() ?: error("Annotations must have names that are text")
+    val nameString = node["name"]?.textValue() ?: error("Annotations must have names that are text")
+    val name = EntityId.parse(nameString)
     val values = node["values"]?.let(::parseAnnotationArgs) ?: listOf()
 
     return Annotation(name, values)

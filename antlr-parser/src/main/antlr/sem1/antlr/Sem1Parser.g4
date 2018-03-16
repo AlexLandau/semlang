@@ -79,7 +79,7 @@ method : ID LPAREN function_arguments RPAREN COLON type
 annotations : | annotation annotations ;
 annotation : annotation_name
   | annotation_name LPAREN annotation_contents_list RPAREN ;
-annotation_name : AT ID ;
+annotation_name : AT entity_id ;
 annotation_contents_list : | annotation_item | annotation_item COMMA | annotation_item COMMA annotation_contents_list ;
 annotation_item : LITERAL | LBRACKET annotation_contents_list RBRACKET ;
 

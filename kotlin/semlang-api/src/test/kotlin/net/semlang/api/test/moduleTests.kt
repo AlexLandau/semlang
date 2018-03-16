@@ -122,7 +122,7 @@ class ContextTests {
 private fun createFunctionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
     val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, uniqueAspect.toString()))
     val annotations = if (exported) {
-        listOf(Annotation("Export", listOf()))
+        listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {
         listOf()
     }
@@ -132,7 +132,7 @@ private fun createFunctionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect:
 private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Struct {
     val member = Member(uniqueAspect.toString(), Type.INTEGER)
     val annotations = if (exported) {
-        listOf(Annotation("Export", listOf()))
+        listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {
         listOf()
     }
@@ -142,7 +142,7 @@ private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: I
 private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Interface {
     val method = Method(uniqueAspect.toString(), listOf(), listOf(), Type.INTEGER)
     val annotations = if (exported) {
-        listOf(Annotation("Export", listOf()))
+        listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {
         listOf()
     }

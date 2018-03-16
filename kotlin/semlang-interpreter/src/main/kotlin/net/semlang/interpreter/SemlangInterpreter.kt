@@ -10,7 +10,7 @@ interface SemlangInterpreter {
     fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject
 }
 
-data class InterpreterOptions(val useLibraryOptimizations: Boolean = true, val runCountOutput: PrintStream? = null) {
+data class InterpreterOptions(val useLibraryOptimizations: Boolean = true, val runCountOutput: PrintStream? = null, val mockCalls: Map<EntityId, Map<List<SemObject>, SemObject>> = mapOf()) {
     val collectRunCounts = runCountOutput != null
 }
 
@@ -55,6 +55,10 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
             when (entityResolution.type) {
                 FunctionLikeType.NATIVE_FUNCTION -> {
+                    val mockSpec = options.mockCalls[entityResolution.entityRef.id]
+                    if (mockSpec != null) {
+                        return doMockCall(mockSpec, arguments)
+                    }
                     val nativeFunction = nativeFunctions[functionRef.id] ?: error("Native function not implemented: $functionRef")
                     return nativeFunction.apply(arguments, this::interpretBinding)
                 }
@@ -96,6 +100,15 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         }
     }
 
+    private fun doMockCall(mockSpec: Map<List<SemObject>, SemObject>, arguments: List<SemObject>): SemObject {
+        val thisCase = mockSpec[arguments]
+        if (thisCase == null) {
+            // TODO: Add function name
+            error("No mock call was provided for this function for arguments $arguments")
+        }
+        return thisCase
+    }
+
     private fun addToRunCount(functionRef: ResolvedEntityRef) {
         val curCount = runCounts[functionRef]
         if (curCount != null) {
@@ -124,6 +137,11 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
     private fun interpretNative(ref: ResolvedEntityRef, arguments: List<SemObject>): SemObject {
         // TODO: Better approach to figuring out the type of thing here (i.e. a TypeResolver just for native stuff)
         assertModuleRefConsistentWithNative(ref)
+
+        val mockSpec = options.mockCalls[ref.id]
+        if (mockSpec != null) {
+            return doMockCall(mockSpec, arguments)
+        }
 
         val nativeFunction = nativeFunctions[ref.id]
         if (nativeFunction != null) {

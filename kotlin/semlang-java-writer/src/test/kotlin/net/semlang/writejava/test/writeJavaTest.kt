@@ -1,9 +1,12 @@
 package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
+import net.semlang.api.EntityId
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
+import net.semlang.internal.test.TestsType
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
+import net.semlang.internal.test.getExpectedTestCount
 import net.semlang.linker.linkModuleWithDependencies
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,11 +81,12 @@ class WriteJavaTest(private val file: File, private val libraries: List<Validate
         System.out.println("testClasses: $testClasses")
 
         val result = org.junit.runner.JUnitCore.runClasses(*(testClasses.toTypedArray()))
+        val expectedRunCount = getExpectedTestCount(linkedModule, TestsType.NON_MOCK_TESTS)
         // TODO: Figure out a way to relay failures correctly
         if (!result.wasSuccessful()) {
             fail("Generated JUnit test was not successful. Failures were:\n" + result.failures)
-        } else if (result.runCount == 0 && !file.path.contains("semlang-parser")) {
-            fail("Run count was 0")
+        } else if (result.runCount != expectedRunCount) {
+            fail("Expected number of tests to run was $expectedRunCount, actual was ${result.runCount}")
         }
     }
 

@@ -114,7 +114,7 @@ private fun writeFunction(function: Function, writer: Writer) {
 private fun writeAnnotations(annotations: List<Annotation>, writer: Writer) {
     for (annotation in annotations) {
         writer.append("@")
-                .append(annotation.name)
+                .append(annotation.name.toString())
         if (annotation.values.isNotEmpty()) {
             writer.append("(")
             writeAnnotationArguments(annotation.values, writer)

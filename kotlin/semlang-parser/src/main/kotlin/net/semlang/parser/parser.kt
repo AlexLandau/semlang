@@ -204,7 +204,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseAnnotation(annotation: Sem1Parser.AnnotationContext): Annotation {
-        val name = annotation.annotation_name().ID().text
+        val name = parseEntityId(annotation.annotation_name().entity_id())
         val args = if (annotation.annotation_contents_list() != null) {
             parseAnnotationArgumentsList(annotation.annotation_contents_list())
         } else {

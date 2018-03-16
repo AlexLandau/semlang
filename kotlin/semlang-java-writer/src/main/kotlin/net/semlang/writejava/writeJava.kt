@@ -144,7 +144,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
             // Write unit tests for @Test annotations
             function.annotations.forEach { annotation ->
-                if (annotation.name == "Test") {
+                if (annotation.name == EntityId.of("Test")) {
                     val testContents = verifyTestAnnotationContents(annotation.values, function)
 
                     prepareJUnitTest(function, testContents)

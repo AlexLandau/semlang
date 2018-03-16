@@ -54,7 +54,7 @@ private data class RelevantEntities(
 )
 
 private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleId) {
-    private val EXPORT_ANNOTATION = Annotation("Export", listOf())
+    private val EXPORT_ANNOTATION = Annotation(EntityId.of("Export"), listOf())
 
     private fun translateRef(ref: ResolvedEntityRef): EntityRef {
         if (isNativeModule(ref.module)) {

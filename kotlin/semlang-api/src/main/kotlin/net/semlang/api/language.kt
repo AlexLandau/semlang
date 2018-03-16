@@ -9,10 +9,24 @@ data class EntityId(val namespacedName: List<String>) {
         if (namespacedName.isEmpty()) {
             error("Entity IDs must have at least one name component")
         }
+        // TODO: Whitelist characters in the name as well; disallow whitespace
+        for (namePart in namespacedName) {
+            if (namePart.isEmpty()) {
+                error("Entity IDs may not have empty name components")
+            }
+        }
     }
     companion object {
         fun of(vararg names: String): EntityId {
             return EntityId(names.toList())
+        }
+
+        /**
+         * Parses the components of an entity ID expressed as a period-delimited string. In particular, this reverses
+         * the [EntityId.toString] operation.
+         */
+        fun parse(periodDelimitedNames: String): EntityId {
+            return EntityId(periodDelimitedNames.split("."))
         }
     }
 
@@ -358,7 +372,7 @@ data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
 data class Range(val start: Position, val end: Position)
 data class Location(val documentUri: String, val range: Range)
 
-data class Annotation(val name: String, val values: List<AnnotationArgument>)
+data class Annotation(val name: EntityId, val values: List<AnnotationArgument>)
 sealed class AnnotationArgument {
     data class Literal(val value: String): AnnotationArgument()
     data class List(val values: kotlin.collections.List<AnnotationArgument>): AnnotationArgument()

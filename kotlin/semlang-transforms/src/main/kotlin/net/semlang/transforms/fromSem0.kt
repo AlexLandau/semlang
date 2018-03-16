@@ -42,7 +42,7 @@ private class Sem0To1Converter(val input: S0Context) {
     }
 
     private fun apply(annotation: S0Annotation): Annotation {
-        return Annotation(annotation.name, annotation.values.map(this::apply))
+        return Annotation(EntityId.parse(annotation.name), annotation.values.map(this::apply))
     }
 
     private fun apply(annotationArg: S0AnnotationArg): AnnotationArgument {
