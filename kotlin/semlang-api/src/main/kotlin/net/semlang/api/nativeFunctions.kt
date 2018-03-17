@@ -201,10 +201,30 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
+    val paramT = Type.ParameterType("T")
+
     // TextOut.print
     definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
             argumentTypes = listOf(NativeThreadedType.TEXT_OUT, NativeStruct.UNICODE_STRING.getType()),
             outputType = NativeThreadedType.TEXT_OUT))
+
+    val listBuilderT = NativeThreadedType.LIST_BUILDER
+
+    // ListBuilder constructor
+    // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "create"), typeParameters = listOf("T"),
+            argumentTypes = listOf(),
+            outputType = listBuilderT))
+
+    // ListBuilder.append
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "append"), typeParameters = listOf("T"),
+            argumentTypes = listOf(listBuilderT, paramT),
+            outputType = listBuilderT))
+
+    // ListBuilder.build
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "build"), typeParameters = listOf("T"),
+            argumentTypes = listOf(listBuilderT),
+            outputType = Type.List(paramT)))
 }
 
 object NativeStruct {
@@ -361,6 +381,9 @@ fun getNativeInterfaces(): Map<EntityId, Interface> {
 object NativeThreadedType {
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
+
+    private val listBuilderId = EntityId.of("ListBuilder")
+    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType("T")))
 }
 
 /**
@@ -375,6 +398,7 @@ fun getNativeOpaqueTypes(): Map<EntityId, Type.NamedType> {
     val types = ArrayList<Type.NamedType>()
 
     types.add(NativeThreadedType.TEXT_OUT)
+    types.add(NativeThreadedType.LIST_BUILDER)
 
     return types.associateBy { it.ref.id }
 }

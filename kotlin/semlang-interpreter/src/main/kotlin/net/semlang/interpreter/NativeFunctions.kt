@@ -408,6 +408,26 @@ private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
         out.out.print(text.contents)
         out
     }))
+
+    // ListBuilder.create
+    list.add(NativeFunction(EntityId.of("ListBuilder", "create"), { _: List<SemObject>, _: InterpreterCallback ->
+        SemObject.ListBuilder(ArrayList())
+    }))
+
+    // ListBuilder.append
+    list.add(NativeFunction(EntityId.of("ListBuilder", "append"), { args: List<SemObject>, _: InterpreterCallback ->
+        val builder = args[0] as? SemObject.ListBuilder ?: typeError()
+        val itemToAdd = args[1]
+        builder.listSoFar.add(itemToAdd)
+        builder
+    }))
+
+    // ListBuilder.build
+    list.add(NativeFunction(EntityId.of("ListBuilder", "build"), { args: List<SemObject>, _: InterpreterCallback ->
+        val builder = args[0] as? SemObject.ListBuilder ?: typeError()
+
+        SemObject.SemList(builder.listSoFar)
+    }))
 }
 
 private fun addStringFunctions(list: MutableList<NativeFunction>) {

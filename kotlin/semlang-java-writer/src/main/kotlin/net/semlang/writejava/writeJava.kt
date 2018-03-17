@@ -883,6 +883,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("Bit") -> ClassName.bestGuess("net.semlang.java.Bit")
             listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
             listOf("TextOut") -> ClassName.get(PrintStream::class.java)
+            listOf("ListBuilder") -> ClassName.get(java.util.List::class.java)
             else -> null
         }
 
@@ -1025,6 +1026,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val javaTextOut = ClassName.bestGuess("net.semlang.java.TextOut")
         map.put(EntityId.of("TextOut", "print"), StaticFunctionCallStrategy(javaTextOut, "print"))
+
+        val javaListBuilder = ClassName.bestGuess("net.semlang.java.ListBuilders")
+        map.put(EntityId.of("ListBuilder", "create"), StaticFunctionCallStrategy(javaListBuilder, "create"))
+        map.put(EntityId.of("ListBuilder", "append"), StaticFunctionCallStrategy(javaListBuilder, "append"))
+        map.put(EntityId.of("ListBuilder", "build"), PassedThroughVarFunctionCallStrategy)
 
         // Natural constructor
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")

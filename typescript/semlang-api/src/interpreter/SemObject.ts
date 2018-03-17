@@ -10,7 +10,8 @@ export type SemObject = SemObject.Integer
  | SemObject.String
  | SemObject.Struct
  | SemObject.Instance
- | SemObject.FunctionBinding;
+ | SemObject.FunctionBinding
+ | SemObject.ListBuilder;
 export namespace SemObject {
     export interface Integer {
         type: "Integer";
@@ -64,6 +65,10 @@ export namespace SemObject {
         bindings: Array<SemObject | undefined>;
     }
     export type FunctionBinding = NamedFunctionBinding | InlineFunctionBinding;
+    export interface ListBuilder {
+        type: "ListBuilder";
+        contents: SemObject[];
+    }
 }
 
 export function integerObject(value: BigInteger): SemObject.Integer {
@@ -93,6 +98,13 @@ export function booleanObject(value: boolean): SemObject.Boolean {
 export function listObject(contents: SemObject[]): SemObject.List {
     return {
         type: "List",
+        contents
+    };
+}
+
+export function listBuilderObject(contents: SemObject[]): SemObject.ListBuilder {
+    return {
+        type: "ListBuilder",
         contents
     };
 }

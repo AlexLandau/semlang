@@ -1,0 +1,25 @@
+function buildListUsingBuilder(): List<Integer> {
+  let builder1: ~ListBuilder<Integer> = ListBuilder.create<Integer>()
+  let builder2 = ListBuilder.append<Integer>(builder1, Integer."1")
+  let builder3 = ListBuilder.append<Integer>(builder2, Integer."4")
+  let builder4 = ListBuilder.append<Integer>(builder3, Integer."9")
+  let result: List<Integer> = ListBuilder.build<Integer>(builder4)
+  result
+}
+
+@Test([], "3")
+function testSize(): Natural {
+  List.size<Integer>(buildListUsingBuilder())
+}
+
+@Test([], "true")
+function testExpectedValues(): Boolean {
+  let list = buildListUsingBuilder()
+  Boolean.and(
+    Integer.equals(Integer."1", Try.assume<Integer>(List.get<Integer>(list, Natural."0"))),
+    Boolean.and(
+      Integer.equals(Integer."4", Try.assume<Integer>(List.get<Integer>(list, Natural."1"))),
+      Integer.equals(Integer."9", Try.assume<Integer>(List.get<Integer>(list, Natural."2"))),
+    )
+  )
+}

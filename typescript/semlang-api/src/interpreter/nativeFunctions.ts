@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
-import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject } from "./SemObject";
+import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject } from "./SemObject";
 import { Struct, Type, Interface, isTryType } from "../api/language";
 import { InterpreterContext } from "./interpret";
 
@@ -215,6 +215,16 @@ export const NativeFunctions: { [functionName: string]: Function } = {
             return failureObject();
         }
         return successObject(listObject(list.contents.slice(startInt, endInt)));
+    },
+    "ListBuilder.append": (context: InterpreterContext, builder: SemObject.ListBuilder, item: SemObject): SemObject.ListBuilder => {
+        builder.contents.push(item);
+        return builder;
+    },
+    "ListBuilder.build": (context: InterpreterContext, builder: SemObject.ListBuilder): SemObject.List => {
+        return listObject(builder.contents);
+    },
+    "ListBuilder.create": (context: InterpreterContext): SemObject.ListBuilder => {
+        return listBuilderObject([]);
     },
     "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
         const value = integer.value;

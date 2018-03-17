@@ -44,6 +44,7 @@ sealed class SemObject {
 
     // Types for threaded object types
     data class TextOut(val out: PrintStream): SemObject()
+    data class ListBuilder(val listSoFar: ArrayList<SemObject>): SemObject()
 
     // Used by mock tests to represent mocked objects of threaded types
     data class Mock(val name: String) : SemObject()
