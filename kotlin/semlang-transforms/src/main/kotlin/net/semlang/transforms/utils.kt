@@ -107,7 +107,10 @@ fun replaceLocalFunctionNameReferences(block: Block, replacements: Map<EntityId,
  */
 fun replaceSomeExpressionsPostvisit(block: Block, transformation: (Expression) -> Expression?): Block {
     return PostvisitExpressionReplacer(transformation).apply(block)
+}
 
+fun replaceSomeExpressionsPostvisit(expression: Expression, transformation: (Expression) -> Expression?): Expression {
+    return PostvisitExpressionReplacer(transformation).apply(expression)
 }
 
 private class PostvisitExpressionReplacer(val transformation: (Expression) -> Expression?) {
@@ -117,7 +120,7 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
         return Block(assignments, returnedExpression, block.location)
     }
 
-    private fun apply(expression: Expression): Expression {
+    fun apply(expression: Expression): Expression {
         val withInnerTransformations = when (expression) {
             is Expression.Variable -> expression
             is Expression.IfThen -> {
