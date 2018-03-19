@@ -1,6 +1,6 @@
 package net.semlang.transforms.normalform
 
-import net.semlang.api.Expression
+import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.transforms.replaceSomeExpressionsPostvisit
 
@@ -8,6 +8,7 @@ import net.semlang.transforms.replaceSomeExpressionsPostvisit
 // Step 1: Have a corpus test showing that turning a function into its normal form, then back again, does not change its
 //   meaning (i.e. check that its tests still work).
 // Step 2: As part of the test, verify that the output of normalization has all its expected qualities.
+// Step 3: Expand to also include requires blocks?
 
 // Subsequent steps: Write an optimization using the normal form; write some framework around applying multiple such
 // optimizations.
@@ -34,8 +35,25 @@ fun getNormalFormContents(function: Function): NormalFormFunctionContents {
     val expressionList = translateExpressions(untranslatedExpressionList, oldVarsToNewVars)
     val seminormalContents = NormalFormFunctionContents(expressionList)
     // TODO: Normalize before returning
-    System.out.println(seminormalContents.components.joinToString("\n  "))
-    return seminormalContents
+    val normalContents = seminormalContents.normalize()
+    System.out.println(normalContents.components.joinToString("\n  "))
+    return normalContents
+}
+
+// TODO: This is a bad API
+fun replaceFunctionBlock(function: Function, contents: NormalFormFunctionContents): Function {
+    val arguments = function.arguments.mapIndexed { index, argument ->
+        UnvalidatedArgument("a${index}", argument.type, argument.location)
+    }
+
+    // TODO: Do something more intelligent for if blocks
+    val returnedExpression = contents.components[0]
+    val assignments = contents.components.drop(1).mapIndexed { index, component ->
+        Assignment("v${index + 1}", null, component, null)
+    }.reversed()
+    val block = Block(assignments, returnedExpression, null)
+
+    return Function(function.id, function.typeParameters, arguments, function.returnType, block, function.annotations, null, null)
 }
 
 fun translateExpressions(untranslatedExpressionList: ArrayList<Expression>, oldVarsToNewVars: HashMap<String, Expression.Variable>): List<Expression> {
@@ -97,5 +115,25 @@ fun translateExpressions(untranslatedExpressionList: ArrayList<Expression>, oldV
  * This form does not currently carry type information.
  */
 data class NormalFormFunctionContents(val components: List<Expression>) {
+    init {
+        if (components.isEmpty()) {
+            error("Semi-normal form functions must have at least one component")
+        }
+    }
+
+    fun normalize(): NormalFormFunctionContents {
+        // So what are the things we need to fix up here?
+        // 1) Expressions that are more than one "level" should be split up so their subexpressions are out in their own
+        //    variables. This should probably happen early.
+        // 2) Identical expressions should be deduplicated. This should happen after (1) and probably needs to be
+        //    repeated until quiescence.
+        // 3) Expressions shouldn't be single variables. This might happen around the same time as (2), though I'm not
+        //    sure if it needs to be applied multiple times like (2) will be.
+        // 4) The order of expressions should be rearranged to the specific order we expect, with the names of the
+        //    variables changing accordingly. This should happen last.
+
+        // TODO: Implement all these things. For now, add each component and its testing jointly.
+        return this
+    }
 
 }
