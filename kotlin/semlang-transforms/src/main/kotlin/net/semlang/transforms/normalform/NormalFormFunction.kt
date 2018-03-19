@@ -133,7 +133,88 @@ data class NormalFormFunctionContents(val components: List<Expression>) {
         //    variables changing accordingly. This should happen last.
 
         // TODO: Implement all these things. For now, add each component and its testing jointly.
-        return this
+        val flattenedContents = flatten(components)
+
+        val normalized = NormalFormFunctionContents(flattenedContents)
+        if (!normalized.isFullyNormal()) {
+            error("Normalization did not work as expected")
+        }
+        return normalized
     }
 
+    fun isFullyNormal(): Boolean {
+        // TODO: Implement
+        return true
+    }
+}
+
+private fun flatten(components: List<Expression>): List<Expression> {
+    val mutatingContents = ArrayList<Expression>()
+    mutatingContents.addAll(components)
+
+    // Extracts the subexpression to the end of mutatingContents if needed.
+    // Returns the appropriate variable name.
+    val extractIntoContentsIfNeeded: (Expression) -> Expression.Variable = fun(expression: Expression): Expression.Variable {
+        if (expression is Expression.Variable) {
+            return expression
+        }
+        mutatingContents.add(expression)
+        return Expression.Variable("v${mutatingContents.size - 1}", null)
+    }
+
+    val extractBlockIntoContents: (Block) -> Block = fun(block: Block): Block {
+        // TODO: This will suck =( need to deal with variable names
+        // Alternative would be to pre-substitute all variables... which could lead to perf bugs in pathological cases
+        TODO()
+    }
+
+    var i = 0
+    // Note: The size of mutatingContents is expected to change while this loop is in progress
+    while (i < mutatingContents.size) {
+        val originalExpr = mutatingContents[i]
+
+        val newExpr = when (originalExpr) {
+            is Expression.Variable -> originalExpr
+            is Expression.IfThen -> {
+                val condition = extractIntoContentsIfNeeded(originalExpr.condition)
+                val thenBlock = extractBlockIntoContents(originalExpr.thenBlock)
+                val elseBlock = extractBlockIntoContents(originalExpr.elseBlock)
+                Expression.IfThen(condition, thenBlock, elseBlock, null)
+            }
+            is Expression.NamedFunctionCall -> {
+                val arguments = originalExpr.arguments.map(extractIntoContentsIfNeeded)
+                Expression.NamedFunctionCall(originalExpr.functionRef, arguments, originalExpr.chosenParameters, null, null)
+            }
+            is Expression.ExpressionFunctionCall -> {
+                val functionExpression = extractIntoContentsIfNeeded(originalExpr.functionExpression)
+                val arguments = originalExpr.arguments.map(extractIntoContentsIfNeeded)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, originalExpr.chosenParameters, null)
+            }
+            is Expression.Literal -> originalExpr
+            is Expression.ListLiteral -> {
+                val contents = originalExpr.contents.map(extractIntoContentsIfNeeded)
+                Expression.ListLiteral(contents, originalExpr.chosenParameter, null)
+            }
+            is Expression.NamedFunctionBinding -> {
+                val bindings = originalExpr.bindings.map { if (it == null) null else extractIntoContentsIfNeeded(it) }
+                Expression.NamedFunctionBinding(originalExpr.functionRef, bindings, originalExpr.chosenParameters, null)
+            }
+            is Expression.ExpressionFunctionBinding -> {
+                val functionExpression = extractIntoContentsIfNeeded(originalExpr.functionExpression)
+                val bindings = originalExpr.bindings.map { if (it == null) null else extractIntoContentsIfNeeded(it) }
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, originalExpr.chosenParameters, null)
+            }
+            is Expression.Follow -> {
+                val structureExpression = extractIntoContentsIfNeeded(originalExpr.structureExpression)
+                Expression.Follow(structureExpression, originalExpr.name, null)
+            }
+            is Expression.InlineFunction -> TODO()
+        }
+
+        mutatingContents.set(i, newExpr)
+
+        i++
+    }
+
+    return mutatingContents
 }
