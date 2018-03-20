@@ -2,6 +2,8 @@ package net.semlang.transforms.normalform
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import net.semlang.parser.getVarsReferencedIn
+import net.semlang.transforms.MutableUniqueList
 import net.semlang.transforms.replaceSomeExpressionsPostvisit
 
 // TODO: Steps for this addition:
@@ -17,6 +19,9 @@ import net.semlang.transforms.replaceSomeExpressionsPostvisit
 // In particular, it could be bad if said code ended up valid (and with a different semantic meaning) as
 // a result; who is responsible for preventing that, the framework or the transformations?
 fun getNormalFormContents(function: Function): NormalFormFunctionContents {
+    // TODO: Can we require that inline functions be removed before this is applied? They kind of add their own set of
+    // headaches. (Yeah, let's do that and add a function transforming whole modules.)
+
     // Replace the variable names in our subexpressions with "a"- and "v"- variables
     val oldVarsToNewVars = HashMap<String, Expression.Variable>()
     function.arguments.forEachIndexed { index, argument ->
@@ -75,6 +80,10 @@ fun translateExpressions(untranslatedExpressionList: ArrayList<Expression>, oldV
  * Represents the "normal form" of a function. This is an alternative representation of the
  * function than the familiar imperative-style system. Objects of this type may be either a
  * "semi-normal" or "normal" form, the latter of which fulfills additional properties.
+ *
+ * The biggest difference from the imperative representation is that here, the last step of a function is the first
+ * component of the list, and components generally depend on the outputs of later components rather than earlier
+ * assignments. In other words, the order is backwards from what you would expect in a Function.
  *
  * The following is true of code in both the semi-normal and normal forms:
  * - The first expression represents the value returned by the function.
@@ -135,7 +144,20 @@ data class NormalFormFunctionContents(val components: List<Expression>) {
         // TODO: Implement all these things. For now, add each component and its testing jointly.
         val flattenedContents = flatten(components)
 
-        val normalized = NormalFormFunctionContents(flattenedContents)
+        // Then we'll also need to do the reordering
+        // TODO: This won't give the same result from different inputs just yet
+        val orderedContents = toposort(flattenedContents)
+
+        // TODO: Issue that needs to be resolved before future work: We want the ordering of expressions to be consistent when
+        // the function is identical, but the assumption was that a simple rule like "opening function call is always f(v1, v2, v3, ...)"
+        // would take care of it. But that ends up being inconsistent with the toposorted and deduplicated assumptions, i.e. v3
+        // (as defined in this way) could depend on v2.
+        //
+        // Is there some clever way to solve this? Would it perhaps be sufficient to first change things into this order (or use
+        // it to add the elements in a deterministic order) and then use a deterministic toposorting algorithm?
+
+
+        val normalized = NormalFormFunctionContents(orderedContents)
         if (!normalized.isFullyNormal()) {
             error("Normalization did not work as expected")
         }
@@ -218,3 +240,53 @@ private fun flatten(components: List<Expression>): List<Expression> {
 
     return mutatingContents
 }
+
+// Note: This implementation is intentionally deterministic, hence the otherwise odd choices of data structures.
+// TODO: Actually make fully deterministic
+private fun toposort(originalContents: List<Expression>): List<Expression> {
+    // Note: I'm sorting indices instead of Expression values because I'm paranoid about issues where two Expressions
+    // in the list are value-equals
+    val outputOrder = MutableUniqueList<Int>()
+
+    val referencingExpressions = HashMap<Int, MutableUniqueList<Int>>()
+    for (i in 0..(originalContents.size - 1)) {
+        referencingExpressions.put(i, MutableUniqueList())
+    }
+    originalContents.forEachIndexed { index, expression ->
+        // TODO: getVarsReferencedIn is currently not deterministic, fix that
+        for (varName in getVarsReferencedIn(expression)) {
+            if (varName.startsWith("v")) {
+                val varNumber = varName.drop(1).toInt()
+                // varNumber is referenced by this expression
+                referencingExpressions[varNumber]!!.add(index)
+            }
+        }
+    }
+
+    fun toposortAdd(indexToAdd: Int) {
+        // Add all the things that reference this before adding this
+        for (expressionReferencingUs in referencingExpressions[indexToAdd]!!) {
+            toposortAdd(expressionReferencingUs)
+        }
+        outputOrder.add(indexToAdd)
+    }
+
+    for (i in 0..(originalContents.size - 1)) {
+        toposortAdd(i)
+    }
+
+    // Use the ordering we found to reorder the expressions, then translate them
+    val oldVarsToNewVars = HashMap<String, Expression.Variable>()
+    for (newIndex in 0..(outputOrder.size - 1)) {
+        val oldIndex = outputOrder[newIndex]
+        oldVarsToNewVars.put("v$oldIndex", Expression.Variable("v$newIndex", null))
+    }
+    val reorderedOutput = ArrayList<Expression>()
+    for (index in outputOrder) {
+        reorderedOutput.add(originalContents[index])
+    }
+    val translatedOutput = translateExpressions(reorderedOutput, oldVarsToNewVars)
+    return translatedOutput
+}
+
+
