@@ -4,6 +4,7 @@ import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.parser.getVarsReferencedIn
 import net.semlang.transforms.MutableUniqueList
+import net.semlang.transforms.extractInlineFunctions
 import net.semlang.transforms.replaceSomeExpressionsPostvisit
 
 // TODO: Steps for this addition:
@@ -18,6 +19,16 @@ import net.semlang.transforms.replaceSomeExpressionsPostvisit
 // TODO: Could there be bad consequences if transformations are applied to unvalidated, incorrect code?
 // In particular, it could be bad if said code ended up valid (and with a different semantic meaning) as
 // a result; who is responsible for preventing that, the framework or the transformations?
+
+fun convertFunctionsToNormalForm(module: ValidatedModule): RawContext {
+    val withoutInlineFunctions = extractInlineFunctions(module)
+    val functions = withoutInlineFunctions.functions.map { function ->
+        val normalFormContents = getNormalFormContents(function)
+        replaceFunctionBlock(function, normalFormContents)
+    }
+    return withoutInlineFunctions.copy(functions = functions)
+}
+
 fun getNormalFormContents(function: Function): NormalFormFunctionContents {
     // TODO: Can we require that inline functions be removed before this is applied? They kind of add their own set of
     // headaches. (Yeah, let's do that and add a function transforming whole modules.)
@@ -230,7 +241,7 @@ private fun flatten(components: List<Expression>): List<Expression> {
                 val structureExpression = extractIntoContentsIfNeeded(originalExpr.structureExpression)
                 Expression.Follow(structureExpression, originalExpr.name, null)
             }
-            is Expression.InlineFunction -> TODO()
+            is Expression.InlineFunction -> error("All inline functions must be removed before converting to normal form")
         }
 
         mutatingContents.set(i, newExpr)

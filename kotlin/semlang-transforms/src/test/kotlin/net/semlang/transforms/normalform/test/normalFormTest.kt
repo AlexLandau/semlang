@@ -8,9 +8,7 @@ import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
-import net.semlang.transforms.normalform.getNormalFormContents
-import net.semlang.transforms.normalform.replaceFunctionBlock
-import net.semlang.transforms.simplifyAllExpressions
+import net.semlang.transforms.normalform.convertFunctionsToNormalForm
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,13 +28,9 @@ class NormalFormTest(private val file: File, private val libraries: List<Validat
     @Test
     fun testNormalFormConversion() {
         val originalContext = parseFile(file).assumeSuccess()
+        val originalModule = validateModule(originalContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
-        val modifiedFunctions = originalContext.functions.map { function ->
-            val seminormalForm = getNormalFormContents(function)
-            replaceFunctionBlock(function, seminormalForm)
-        }
-        val modifiedContext = originalContext.copy(functions = modifiedFunctions)
-
+        val modifiedContext = convertFunctionsToNormalForm(originalModule)
         val modifiedModule = try {
             validateModule(modifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         } catch(e: RuntimeException) {

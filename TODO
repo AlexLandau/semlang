@@ -162,6 +162,8 @@ Design choices to reconsider:
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
 - Probably rename the existing "Package" concept to "Namespace"
+- Consider removing inline functions from sem1, moving to sem2? Or keep around for translations to languages supporting
+  lambda expressions?
 
 Errors I've made in writing things:
 - (2) Used . in place of ->
