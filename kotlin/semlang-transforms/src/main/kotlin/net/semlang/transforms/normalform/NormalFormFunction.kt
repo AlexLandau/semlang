@@ -16,6 +16,12 @@ import net.semlang.transforms.replaceSomeExpressionsPostvisit
 // Subsequent steps: Write an optimization using the normal form; write some framework around applying multiple such
 // optimizations.
 
+// TODO: The function contents object should also include the number of arguments, right?
+
+// TODO: What about a situation where two functions look the same but have different types? In one case, with something
+// like List.size or List.subList; in another case, with something like Data.equals? Or what about the identity-function
+// case? Do argument types and return types need to be considered part of that part of the function?
+
 // TODO: Could there be bad consequences if transformations are applied to unvalidated, incorrect code?
 // In particular, it could be bad if said code ended up valid (and with a different semantic meaning) as
 // a result; who is responsible for preventing that, the framework or the transformations?
@@ -72,7 +78,7 @@ fun replaceFunctionBlock(function: Function, contents: NormalFormFunctionContent
     return Function(function.id, function.typeParameters, arguments, function.returnType, block, function.annotations, null, null)
 }
 
-fun translateExpressions(untranslatedExpressionList: ArrayList<Expression>, oldVarsToNewVars: HashMap<String, Expression.Variable>): List<Expression> {
+fun translateExpressions(untranslatedExpressionList: List<Expression>, oldVarsToNewVars: Map<String, Expression.Variable>): List<Expression> {
     return untranslatedExpressionList.map { expression ->
         replaceSomeExpressionsPostvisit(expression, fun(expr: Expression): Expression? {
             if (expr is Expression.Variable) {
@@ -157,7 +163,11 @@ data class NormalFormFunctionContents(val components: List<Expression>) {
 
         // Then we'll also need to do the reordering
         // TODO: This won't give the same result from different inputs just yet
-        val orderedContents = toposort(flattenedContents)
+        val orderedContents = try {
+            toposort(flattenedContents)
+        } catch(e: RuntimeException) {
+            throw RuntimeException("Toposort failed, flattenedContents were: $flattenedContents", e)
+        }
 
         // TODO: Issue that needs to be resolved before future work: We want the ordering of expressions to be consistent when
         // the function is identical, but the assumption was that a simple rule like "opening function call is always f(v1, v2, v3, ...)"
@@ -187,7 +197,7 @@ private fun flatten(components: List<Expression>): List<Expression> {
 
     // Extracts the subexpression to the end of mutatingContents if needed.
     // Returns the appropriate variable name.
-    val extractIntoContentsIfNeeded: (Expression) -> Expression.Variable = fun(expression: Expression): Expression.Variable {
+    fun extractIntoContentsIfNeeded(expression: Expression): Expression.Variable {
         if (expression is Expression.Variable) {
             return expression
         }
@@ -198,7 +208,31 @@ private fun flatten(components: List<Expression>): List<Expression> {
     val extractBlockIntoContents: (Block) -> Block = fun(block: Block): Block {
         // TODO: This will suck =( need to deal with variable names
         // Alternative would be to pre-substitute all variables... which could lead to perf bugs in pathological cases
-        TODO()
+
+        // Okay, so...
+        // The output here is going to be a block containing one variable, which is something new.
+        // Each assignment previously in the block, as well as the return value, is going to be put into the mutatingContents.
+        // If there is additional complexity in subexpressions or blocks we're putting into the mutatingContents, we don't
+        // have to deal with that yet... BUT we DO have to rename the relevant variables within subexpressions.
+
+//        val expressionsToPutInContents = ArrayList<Expression>()
+        val variableRenaming = HashMap<String, Expression.Variable>()
+//        var returnValueVarName: String?
+        var expectedVariableIndex = mutatingContents.size
+        for (assignment in block.assignments) {
+            val translatedExpression = translateExpressions(listOf(assignment.expression), variableRenaming).single()
+            mutatingContents.add(translatedExpression)
+            variableRenaming.put(assignment.name, Expression.Variable("v$expectedVariableIndex", null))
+            expectedVariableIndex++
+        }
+
+        // TODO: Change these to a singleton translateExpression
+        val translatedReturnExpression = translateExpressions(listOf(block.returnedExpression), variableRenaming).single()
+        mutatingContents.add(translatedReturnExpression)
+        val returnValueVarName = "v$expectedVariableIndex"
+        val newReturnedExpression = Expression.Variable(returnValueVarName, null)
+
+        return Block(listOf(), newReturnedExpression, null)
     }
 
     var i = 0
@@ -215,17 +249,17 @@ private fun flatten(components: List<Expression>): List<Expression> {
                 Expression.IfThen(condition, thenBlock, elseBlock, null)
             }
             is Expression.NamedFunctionCall -> {
-                val arguments = originalExpr.arguments.map(extractIntoContentsIfNeeded)
+                val arguments = originalExpr.arguments.map(::extractIntoContentsIfNeeded)
                 Expression.NamedFunctionCall(originalExpr.functionRef, arguments, originalExpr.chosenParameters, null, null)
             }
             is Expression.ExpressionFunctionCall -> {
                 val functionExpression = extractIntoContentsIfNeeded(originalExpr.functionExpression)
-                val arguments = originalExpr.arguments.map(extractIntoContentsIfNeeded)
+                val arguments = originalExpr.arguments.map(::extractIntoContentsIfNeeded)
                 Expression.ExpressionFunctionCall(functionExpression, arguments, originalExpr.chosenParameters, null)
             }
             is Expression.Literal -> originalExpr
             is Expression.ListLiteral -> {
-                val contents = originalExpr.contents.map(extractIntoContentsIfNeeded)
+                val contents = originalExpr.contents.map(::extractIntoContentsIfNeeded)
                 Expression.ListLiteral(contents, originalExpr.chosenParameter, null)
             }
             is Expression.NamedFunctionBinding -> {
