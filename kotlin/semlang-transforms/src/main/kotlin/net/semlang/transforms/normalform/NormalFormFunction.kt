@@ -68,17 +68,62 @@ fun replaceFunctionBlock(function: Function, contents: NormalFormFunctionContent
         UnvalidatedArgument("a${index}", argument.type, argument.location)
     }
 
+    // TODO: First determine which statements can go in which other statements' if-blocks
+//    val ifBlockPlacement = getIfBlockPlacement(contents)
+    val ifAwareContents = IffyNormalFormContents(contents.components, mapOf())
+    // TODO: Tidy up the if/then aspects...
+
     // TODO: Do something more intelligent for if blocks
-    val returnedExpression = contents.components[0]
-    val assignments = contents.components.drop(1).mapIndexed { index, component ->
+    val returnedExpression = ifAwareContents.components[0]
+    val assignments = ifAwareContents.components.drop(1).mapIndexed { index, component ->
         Assignment("v${index + 1}", null, component, null)
     }.reversed()
     val block = Block(assignments, returnedExpression, null)
 
+//    val block = fixIfBlocks(blockWithBadIfBlocks)
+
     return Function(function.id, function.typeParameters, arguments, function.returnType, block, function.annotations, null, null)
 }
 
-fun translateExpressions(untranslatedExpressionList: List<Expression>, oldVarsToNewVars: Map<String, Expression.Variable>): List<Expression> {
+private enum class IfBlockType {
+    THEN,
+    ELSE,
+}
+//private data class IfBlockIndex(val index: Int, val blockType: IfBlockType)
+//private sealed class IfBlockAwareLocation
+//// Refers to the variable created by an assignment, or the use of such a variable outside an if/then block
+//private data class OutsideIfBlock(val index: Int): IfBlockAwareLocation()
+//// Refers to the use of a variable inside the then block of an if statement
+//private data class InsideThenBlock(val index: Int): IfBlockAwareLocation()
+//// Refers to the use of a variable inside the else block of an if statement
+//private data class InsideElseBlock(val index: Int): IfBlockAwareLocation()
+
+private data class IfBlockId(val index: Int, val blockType: IfBlockType)
+private data class IfBlockAwareLocation(val ifBlockIds: List<IfBlockId>, val indexInBlock: Int)
+
+/**
+ * Each key in the map represents an item that will be moved into the if-statement block represented by the value.
+ */
+//private fun getIfBlockPlacement(contents: NormalFormFunctionContents): Map<Int, IfBlockIndex> {
+    // First, get the dependency graph...
+    // What do we want to know -- what points to us?
+    // Which direction do we make the graph?
+    // We want to look for cases where the only reference to an item is from an if block...
+    // But then it's also okay if there are references from other things that are in the same block
+//    val nontransitiveDependencyGraph = HashMap<IfBlockAwareLocation, MutableSet<IfBlockAwareLocation>>()
+//    contents.components.forEachIndexed { index, expression ->
+//
+//    }
+    // Even if we do put stuff in an if/then block... we still need to know its location within...
+
+    // So probably we need a standard like "v2t0e1" -- look at the if expression at index 2, look at the if expression
+    // in its then block at index 0, get the expression in its else block at index 1
+
+    // Do a kind of dumb crawl over the contents
+//    val referencedAlready = HashSet<String>()
+//}
+
+private fun translateExpressions(untranslatedExpressionList: List<Expression>, oldVarsToNewVars: Map<String, Expression.Variable>): List<Expression> {
     return untranslatedExpressionList.map { expression ->
         replaceSomeExpressionsPostvisit(expression, fun(expr: Expression): Expression? {
             if (expr is Expression.Variable) {
@@ -92,6 +137,8 @@ fun translateExpressions(untranslatedExpressionList: List<Expression>, oldVarsTo
         })
     }
 }
+
+private data class IffyNormalFormContents(val components: List<Expression>, val ifBlockContents: Map<IfBlockAwareLocation, Expression>)
 
 /**
  * Represents the "normal form" of a function. This is an alternative representation of the
