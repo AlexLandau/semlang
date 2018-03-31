@@ -7,11 +7,6 @@ Major near-term projects:
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors
 - Sem1 vs. sem0 separation and Try notation
-- JavaScript-environment interpreter and/or transpiler
-
-Intended near-term refactors and changes:
-- Turn Natural into a "restruct" of Integer
-  - I need a better, or at least, consistent name for these that isn't as corny as "restruct"...
 
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
@@ -24,25 +19,12 @@ Intended near-term refactors and changes:
 - Fix the mess of locations on unvalidated code objects
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
-- Sort out the distinction between native functions, the standard library, and "in-between"
-  - There are methods we'll want in the standard library that we'll want native implementations of anyway, when they are
-    used.
+- Continue to shrink the set of native functions where possible
 - Sem0: Link native types (structs, perhaps some library functions) into sem0 code
-- Thoughts on code corpus:
-  - These are groups of code that include annotations or comments with their intended output for given inputs
-  - Thus, any implementation can use them as a test of that implementation
-  - One corpus for the language basics and required native methods
-  - Another corpus for the "standard library"
-  - These can get their own semantic versioning; essentially, adding tests is a patch version change,
-    adding a new feature to be implemented is a minor version change, and breaking the API is a major
-    version change (so basically, give it the same version as the API itself)
-  - In turn, we probably want to have a standard artifact format (even if it's just a .tgz or .zip
-    of the source files) for ease of distribution via a Maven-like system
-  - Should probably find a more pleasant-sounding word than "corpus"
+- Versioned publication of code corpuses
 - Validation-time "requires" checking for extended literals
-- Lambda expressions
 - Add ability for modules to re-export their imports (probably just specified in the config file for now)
-- Have a list somewhere of the exposed methods that are intentionally "API"-ish
+- Have a list somewhere of the exposed methods that are intentionally "API"-ish in the Kotlin code
 - Validator: Write more simple positive tests and negative tests
   - Try to squeeze out the obvious possibilities of wrongness
 - Backwards-chaining interpreter; performance testing and output comparisons for forward, backward interpreters
@@ -53,8 +35,7 @@ Intended near-term refactors and changes:
   - Make code style more consistent
 - Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
-- Convert Natural to a restricted struct (restruct?) of Integer
-- Additional primitive types (N-bit integers, floating-point numbers, rationals?)
+- Additional primitive-ish types in the standard library (N-bit integers, floating-point numbers, rationals?)
 - Other native-y types: Set, UniqueList, Map, Symbol, Snow?
 - Try error tracking
 - Mock tests in other environments
