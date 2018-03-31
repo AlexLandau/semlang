@@ -143,7 +143,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { errors.add(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
-        context.structs.forEach { struct ->
+        for (struct in context.structs) {
             val id = struct.id
             seenTypeIds.add(id)
             seenFunctionIds.add(id)
@@ -180,7 +180,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
 
-        context.interfaces.forEach { interfac ->
+        for (interfac in context.interfaces) {
             seenTypeIds.add(interfac.id)
             seenFunctionIds.add(interfac.id)
             seenTypeIds.add(interfac.adapterId)
@@ -224,7 +224,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
 
-        context.functions.forEach { function ->
+        for (function in context.functions) {
             val id = function.id
             seenFunctionIds.add(id)
 
@@ -279,23 +279,23 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         // TODO: Fix this to use nativeModuleVersion
         val nativeModuleId = CURRENT_NATIVE_MODULE_ID
-        getNativeStructs().values.forEach { struct ->
+        for (struct in getNativeStructs().values) {
             val ref = ResolvedEntityRef(nativeModuleId, struct.id)
             upstreamTypes.put(ref, getTypeInfo(struct, null))
         }
-        getNativeInterfaces().values.forEach { interfac ->
+        for (interfac in getNativeInterfaces().values) {
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamTypes.put(ref, getTypeInfo(interfac, null))
             val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
             upstreamTypes.put(adapterRef, getTypeInfo(interfac.getAdapterStruct(), null))
         }
 
-        upstreamModules.forEach { module ->
-            module.getAllExportedStructs().values.forEach { struct ->
+        for (module in upstreamModules) {
+            for (struct in module.getAllExportedStructs().values) {
                 val ref = ResolvedEntityRef(module.id, struct.id)
                 upstreamTypes.put(ref, getTypeInfo(struct, null))
             }
-            module.getAllExportedInterfaces().values.forEach { interfac ->
+            for (interfac in module.getAllExportedInterfaces().values) {
                 val ref = ResolvedEntityRef(module.id, interfac.id)
                 upstreamTypes.put(ref, getTypeInfo(interfac, null))
                 val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
@@ -313,33 +313,33 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         // TODO: Fix this to use nativeModuleVersion
         val nativeModuleId = CURRENT_NATIVE_MODULE_ID
-        getNativeStructs().values.forEach { struct ->
+        for (struct in getNativeStructs().values) {
             val ref = ResolvedEntityRef(nativeModuleId, struct.id)
             upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
         }
-        getNativeInterfaces().values.forEach { interfac ->
+        for (interfac in getNativeInterfaces().values) {
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
             val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
             upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
         }
-        getNativeFunctionOnlyDefinitions().values.forEach { function ->
+        for (function in getNativeFunctionOnlyDefinitions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, function.id)
             upstreamFunctions.put(ref, functionInfo(function))
         }
 
-        upstreamModules.forEach { module ->
-            module.getAllExportedStructs().values.forEach { struct ->
+        for (module in upstreamModules) {
+            for (struct in module.getAllExportedStructs().values) {
                 val ref = ResolvedEntityRef(module.id, struct.id)
                 upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
             }
-            module.getAllExportedInterfaces().values.forEach { interfac ->
+            for (interfac in module.getAllExportedInterfaces().values) {
                 val ref = ResolvedEntityRef(module.id, interfac.id)
                 upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
                 val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
                 upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
             }
-            module.getAllExportedFunctions().values.forEach { function ->
+            for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)
                 upstreamFunctions.put(ref, functionInfo(function.getTypeSignature()))
             }
@@ -349,7 +349,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateFunctions(functions: List<Function>, typeInfo: AllTypeInfo): Map<EntityId, ValidatedFunction> {
         val validatedFunctions = HashMap<EntityId, ValidatedFunction>()
-        functions.forEach { function ->
+        for (function in functions) {
             val validatedFunction = validateFunction(function, typeInfo)
             if (validatedFunction != null && !typeInfo.duplicateLocalFunctionIds.contains(validatedFunction.id)) {
                 validatedFunctions.put(function.id, validatedFunction)
@@ -547,7 +547,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
         val validatedAssignments = ArrayList<ValidatedAssignment>()
-        block.assignments.forEach { assignment ->
+        for (assignment in block.assignments) {
             if (variableTypes.containsKey(assignment.name)) {
                 errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.nameLocation, IssueLevel.ERROR))
             }
@@ -815,7 +815,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
 
         val arguments = ArrayList<TypedExpression>()
-        expression.arguments.forEach { untypedArgument ->
+        for (untypedArgument in expression.arguments) {
             val argument = validateExpression(untypedArgument, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
             arguments.add(argument)
         }
@@ -844,7 +844,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
 
         val arguments = ArrayList<TypedExpression>()
-        expression.arguments.forEach { untypedArgument ->
+        for (untypedArgument in expression.arguments) {
             val argument = validateExpression(untypedArgument, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
             arguments.add(argument)
         }
@@ -958,7 +958,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val contents = expression.contents.map { item ->
             validateExpression(item, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
         }
-        contents.forEach { item ->
+        for (item in contents) {
             if (item.type != chosenParameter) {
                 error("Put an expression $item of type ${item.type} in a list literal of type ${listType}")
             }

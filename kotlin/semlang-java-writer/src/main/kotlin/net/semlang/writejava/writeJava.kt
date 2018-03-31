@@ -107,7 +107,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val classMap = HashMap<ClassName, TypeSpec.Builder>()
         namedFunctionCallStrategies.putAll(getNativeFunctionCallStrategies())
 
-        module.ownStructs.values.forEach { struct ->
+        for (struct in module.ownStructs.values) {
             val className = getOwnTypeClassName(struct.id)
             val structClassBuilder = writeStructClass(struct, className)
 
@@ -119,7 +119,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Enable calls to struct constructors
         addStructConstructorFunctionCallStrategies(module.getAllInternalStructs().values)
 
-        module.ownInterfaces.values.forEach { interfac ->
+        for (interfac in module.ownInterfaces.values) {
             val className = getOwnTypeClassName(interfac.id)
             val interfaceBuilder = writeInterface(interfac, className)
 
@@ -132,8 +132,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
         addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
 
-        module.ownFunctions.values.forEach { function ->
-
+        for (function in module.ownFunctions.values) {
             val method = writeMethod(function)
 
             val className = getContainingClassName(function.id)
@@ -143,7 +142,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             classMap[className]!!.addMethod(method)
 
             // Write unit tests for @Test annotations
-            function.annotations.forEach { annotation ->
+            for (annotation in function.annotations) {
                 if (annotation.name == EntityId.of("Test")) {
                     val testContents = verifyTestAnnotationContents(annotation.values, function)
 
@@ -228,7 +227,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-        interfaces.forEach { interfac ->
+        for (interfac in interfaces) {
             // Check to avoid overriding special cases
             if (!namedFunctionCallStrategies.containsKey(interfac.id)) {
                 namedFunctionCallStrategies[interfac.id] = object : FunctionCallStrategy {
@@ -244,7 +243,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-        interfaces.forEach { interfac ->
+        for (interfac in interfaces) {
             // Check to avoid overriding special cases
             if (!namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
                 val instanceClassName = getOwnTypeClassName(interfac.id)
@@ -293,8 +292,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                                                 dataType: Type, interfaceParameters: List<Type>, dataVarName: String): TypeSpec {
         val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
 
-        interfac.methods.zip(constructorArgs).forEach { (method, constructorArg) ->
-
+        for ((method, constructorArg) in interfac.methods.zip(constructorArgs)) {
             val typeReplacements = interfac.typeParameters.map{s -> Type.ParameterType(s) as Type}.zip(interfaceParameters).toMap()
             val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
             methodBuilder.addAnnotation(Override::class.java)
@@ -304,7 +302,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     val callArgs = ArrayList<TypedExpression>()
                     callArgs.add(TypedExpression.Variable(dataType, dataVarName))
 
-                    method.arguments.zip(constructorArg.bindings).forEach { (methodArg, binding) ->
+                    for ((methodArg, binding) in method.arguments.zip(constructorArg.bindings)) {
                         if (binding == null) {
                             callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
                         } else {
@@ -325,7 +323,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     val callArgs = ArrayList<TypedExpression>()
                     callArgs.add(TypedExpression.Variable(dataType, dataVarName))
 
-                    method.arguments.forEach { methodArg ->
+                    for (methodArg in method.arguments) {
                         callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
                     }
 
@@ -350,7 +348,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
-        struct.members.forEach { member ->
+        for (member in struct.members) {
             val javaType = getType(member.type, false)
             builder.addField(javaType, member.name, Modifier.PUBLIC, Modifier.FINAL)
 
@@ -363,7 +361,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (struct.typeParameters.isNotEmpty()) {
             createMethod.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
         }
-        struct.members.forEach { member ->
+        for (member in struct.members) {
             val javaType = getType(member.type, false)
             createMethod.addParameter(javaType, member.name)
         }
@@ -426,7 +424,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         builder.addTypeVariables(interfac.typeParameters.map { name -> TypeVariableName.get(name) })
 
-        interfac.methods.forEach { method ->
+        for (method in interfac.methods) {
             builder.addMethod(writeInterfaceMethod(method).build())
         }
 
@@ -443,7 +441,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             TODO()
         }
 
-        method.arguments.forEach { argument ->
+        for (argument in method.arguments) {
             builder.addParameter(getType(argument.type.replacingParameters(typeReplacements), false), argument.name)
         }
         builder.returns(getType(method.returnType.replacingParameters(typeReplacements), false))
@@ -460,7 +458,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             builder.addTypeVariable(TypeVariableName.get(typeParameter))
         }
 
-        function.arguments.forEach { argument ->
+        for (argument in function.arguments) {
             builder.addParameter(getType(argument.type, false), argument.name)
             addToVariableScope(argument.name)
         }
@@ -482,7 +480,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeBlock(block: TypedBlock, varToAssign: String?): CodeBlock {
         val builder = CodeBlock.builder()
 
-        block.assignments.forEach { (name, type, expression) ->
+        for ((name, type, expression) in block.assignments) {
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
             if (expression is TypedExpression.IfThen) {
                 // The variable gets added to our scope early in this case
@@ -506,8 +504,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             builder.addStatement("\$L = \$L", varToAssign, writeExpression(block.returnedExpression))
         }
 
-        block.assignments.forEach { (name) ->
-            removeFromVariableScope(name)
+        for (assignment in block.assignments) {
+            removeFromVariableScope(assignment.name)
         }
 
         return builder.build()
@@ -707,7 +705,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
         val builder = CodeBlock.builder()
         builder.add("\$L", writeExpression(arguments[0]))
-        arguments.drop(1).forEach { argument ->
+        for (argument in arguments.drop(1)) {
             builder.add(", \$L", writeExpression(argument))
         }
         return builder.build()
@@ -962,7 +960,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun writePreparedJUnitTests(newTestSrcDir: File) {
-        testClassBuilders.entries.forEach { (testClassName, builder) ->
+        for ((testClassName, builder) in testClassBuilders.entries) {
             val testClass = builder.build()
 
             val javaFile = JavaFile.builder(testClassName.packageName(), testClass).build()

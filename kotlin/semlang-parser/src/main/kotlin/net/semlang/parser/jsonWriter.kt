@@ -46,7 +46,7 @@ fun toJson(module: ValidatedModule): JsonNode {
 private fun <T> addArray(objectNode: ObjectNode, name: String,
                          elements: Collection<T>, addElement: (node: ObjectNode, elem: T) -> Unit) {
     val arrayNode = objectNode.putArray(name)
-    elements.forEach { element ->
+    for (element in elements) {
         addElement(arrayNode.addObject(), element)
     }
 }
@@ -152,7 +152,7 @@ private fun toTypeNode(type: Type): JsonNode {
         is Type.FunctionType -> {
             val node = ObjectNode(factory)
             val argsArray = node.putArray("from")
-            type.argTypes.forEach { argType ->
+            for (argType in type.argTypes) {
                 argsArray.add(toTypeNode(argType))
             }
             node.set("to", toTypeNode(type.outputType))
@@ -163,7 +163,7 @@ private fun toTypeNode(type: Type): JsonNode {
             node.put("name", (if (type.isThreaded()) "~" else "") + type.originalRef.toString())
             if (type.parameters.isNotEmpty()) {
                 val paramsArray = node.putArray("params")
-                type.parameters.forEach { parameter ->
+                for (parameter in type.parameters) {
                     paramsArray.add(toTypeNode(parameter))
                 }
             }
@@ -345,7 +345,7 @@ private fun parseFunction(node: JsonNode): Function {
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
-    block.assignments.forEach { assignment ->
+    for (assignment in block.assignments) {
         addAssignment(node.addObject(), assignment)
     }
     val returnNode = node.addObject()
@@ -452,7 +452,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
 }
 
 fun addBindings(bindingsArray: ArrayNode, bindings: List<TypedExpression?>) {
-    bindings.forEach { binding ->
+    for (binding in bindings) {
         if (binding != null) {
             addBinding(bindingsArray.addObject(), binding)
         } else {
@@ -556,7 +556,7 @@ private fun addBinding(node: ObjectNode, binding: TypedExpression?) {
 }
 
 private fun addChosenParameters(node: ArrayNode, chosenParameters: List<Type>) {
-    chosenParameters.forEach { parameter ->
+    for (parameter in chosenParameters) {
         node.add(toTypeNode(parameter))
     }
 }
@@ -574,7 +574,7 @@ private fun parseArgument(node: JsonNode): UnvalidatedArgument {
 }
 
 private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {
-    typeParameters.forEach { typeParameter ->
+    for (typeParameter in typeParameters) {
         node.add(typeParameter)
     }
 }

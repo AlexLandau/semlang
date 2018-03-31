@@ -10,7 +10,7 @@ fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
 }
 
 fun collectVars(varsReferenced: MutableCollection<String>, block: TypedBlock) {
-    block.assignments.forEach { assignment ->
+    for (assignment in block.assignments) {
         collectVars(varsReferenced, assignment.expression)
     }
     collectVars(varsReferenced, block.returnedExpression)
@@ -27,24 +27,24 @@ fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpr
             collectVars(varsReferenced, expression.elseBlock)
         }
         is TypedExpression.NamedFunctionCall -> {
-            expression.arguments.forEach { argument ->
+            for (argument in expression.arguments) {
                 collectVars(varsReferenced, argument)
             }
         }
         is TypedExpression.ExpressionFunctionCall -> {
             collectVars(varsReferenced, expression.functionExpression)
-            expression.arguments.forEach { argument ->
+            for (argument in expression.arguments) {
                 collectVars(varsReferenced, argument)
             }
         }
         is TypedExpression.Literal -> {}
         is TypedExpression.ListLiteral -> {
-            expression.contents.forEach { item ->
+            for (item in expression.contents) {
                 collectVars(varsReferenced, item)
             }
         }
         is TypedExpression.NamedFunctionBinding -> {
-            expression.bindings.forEach { binding ->
+            for (binding in expression.bindings) {
                 if (binding != null) {
                     collectVars(varsReferenced, binding)
                 }
@@ -52,7 +52,7 @@ fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpr
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             collectVars(varsReferenced, expression.functionExpression)
-            expression.bindings.forEach { binding ->
+            for (binding in expression.bindings) {
                 if (binding != null) {
                     collectVars(varsReferenced, binding)
                 }

@@ -26,13 +26,13 @@ fun write(module: ValidatedModule, writer: Writer) {
 }
 
 fun write(context: RawContext, writer: Writer) {
-    context.structs.forEach { struct ->
+    for (struct in context.structs) {
         writeStruct(struct, writer)
     }
-    context.interfaces.forEach { interfac ->
+    for (interfac in context.interfaces) {
         writeInterface(interfac, writer)
     }
-    context.functions.forEach { function ->
+    for (function in context.functions) {
         writeFunction(function, writer)
     }
 }
