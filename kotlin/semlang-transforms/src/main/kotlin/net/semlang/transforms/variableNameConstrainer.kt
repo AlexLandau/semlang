@@ -57,7 +57,7 @@ private fun renameWithinFunction(function: ValidatedFunction, rename: VariableRe
     val originalVarsInFunction = getAllDeclaredVarNames(function)
     val allVarsInFunction = HashSet<String>(originalVarsInFunction)
     val renamingMap = HashMap<String, String>()
-    originalVarsInFunction.forEach { varName ->
+    for (varName in originalVarsInFunction) {
         val newName = rename(varName, allVarsInFunction)
         renamingMap.put(varName, newName)
         allVarsInFunction.add(newName)

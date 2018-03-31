@@ -77,7 +77,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
     }
 
     private fun generateReplacementEntities() {
-        context.interfaces.forEach { interfac ->
+        for (interfac in context.interfaces) {
             generateInstanceStruct(interfac)
             generateAdapterStruct(interfac)
             generateAdaptFunction(interfac)

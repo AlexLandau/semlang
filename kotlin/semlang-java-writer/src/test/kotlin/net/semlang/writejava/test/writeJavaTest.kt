@@ -97,7 +97,7 @@ class WriteJavaTest(private val file: File, private val libraries: List<Validate
         while (!stack.isEmpty()) {
             val curFile = stack.pop()
             if (curFile.isDirectory()) {
-                curFile.listFiles().forEach { file ->
+                for (file in curFile.listFiles()) {
                     stack.push(file)
                 }
             } else {

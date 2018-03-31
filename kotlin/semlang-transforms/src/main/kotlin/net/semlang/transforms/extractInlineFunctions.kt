@@ -112,10 +112,10 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
 
                 // Bindings: Explicit arguments come first and are blank
                 val bindings = ArrayList<Expression?>()
-                expression.arguments.forEach { _ ->
+                for (argument in expression.arguments) {
                     bindings.add(null)
                 }
-                expression.boundVars.forEach { (name, type) ->
+                for ((name) in expression.boundVars) {
                     bindings.add(Expression.Variable(name, null))
                 }
 

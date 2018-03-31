@@ -14,8 +14,8 @@ private val MOCK_TEST_ANNOTATION_NAME = EntityId.of("Test", "Mock")
  */
 fun runAnnotationTests(module: ValidatedModule, options: InterpreterOptions = InterpreterOptions()): Int {
     var testCount = 0
-    module.ownFunctions.values.forEach { function ->
-        function.annotations.forEach { annotation ->
+    for (function in module.ownFunctions.values) {
+        for (annotation in function.annotations) {
             if (annotation.name == TEST_ANNOTATION_NAME) {
                 doTest(function, module, annotation.values, options)
                 testCount++

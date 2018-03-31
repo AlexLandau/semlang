@@ -5,7 +5,7 @@ import net.semlang.api.Function
 
 fun getAllDeclaredVarNames(function: ValidatedFunction): Set<String> {
     val varNames = LinkedHashSet<String>()
-    function.arguments.forEach { argument ->
+    for (argument in function.arguments) {
         varNames.add(argument.name)
     }
     addAllDeclaredVarNames(invalidate(function.block), varNames)
@@ -19,7 +19,9 @@ fun getAllDeclaredVarNames(block: Block): Set<String> {
 }
 
 private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
-    block.assignments.forEach { addAllDeclaredVarNames(it, varNames) }
+    for (assignment in block.assignments) {
+        addAllDeclaredVarNames(assignment, varNames)
+    }
     addAllDeclaredVarNames(block.returnedExpression, varNames)
 }
 
@@ -30,23 +32,31 @@ private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<Str
             addAllDeclaredVarNames(expression.elseBlock, varNames)
         }
         is Expression.InlineFunction -> {
-            expression.arguments.forEach { varNames.add(it.name) }
+            for (argument in expression.arguments) {
+                varNames.add(argument.name)
+            }
             addAllDeclaredVarNames(expression.block, varNames)
         }
         is Expression.Variable -> {}
         is Expression.NamedFunctionCall -> {
-            expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
+            for (argument in expression.arguments) {
+                addAllDeclaredVarNames(argument, varNames)
+            }
         }
         is Expression.ExpressionFunctionCall -> {
             addAllDeclaredVarNames(expression.functionExpression, varNames)
-            expression.arguments.forEach { addAllDeclaredVarNames(it, varNames) }
+            for (argument in expression.arguments) {
+                addAllDeclaredVarNames(argument, varNames)
+            }
         }
         is Expression.Literal -> {}
         is Expression.ListLiteral -> {
-            expression.contents.forEach { addAllDeclaredVarNames(it, varNames) }
+            for (item in expression.contents) {
+                addAllDeclaredVarNames(item, varNames)
+            }
         }
         is Expression.NamedFunctionBinding -> {
-            expression.bindings.forEach { binding ->
+            for (binding in expression.bindings) {
                 if (binding != null) {
                     addAllDeclaredVarNames(binding, varNames)
                 }
@@ -54,7 +64,7 @@ private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<Str
         }
         is Expression.ExpressionFunctionBinding -> {
             addAllDeclaredVarNames(expression.functionExpression, varNames)
-            expression.bindings.forEach { binding ->
+            for (binding in expression.bindings) {
                 if (binding != null) {
                     addAllDeclaredVarNames(binding, varNames)
                 }

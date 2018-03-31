@@ -157,7 +157,7 @@ class SourcesFolderModel(private val folderUri: URI,
             }
         }
 
-        sourcesUsedForParsingResults.keys.forEach { fileName ->
+        for (fileName in sourcesUsedForParsingResults.keys) {
             if (!folderState.openFiles.containsKey(fileName) && !folderState.otherFiles.containsKey(fileName)) {
                 System.err.println("$fileName needs reparsing based on lack of any known files")
                 sourcesNeedingReparsing.add(fileName)
@@ -178,7 +178,7 @@ class SourcesFolderModel(private val folderUri: URI,
     private fun getReparseAndRevalidateTask(sourcesNeedingReparsing: Set<String>): () -> Unit {
         return fun() {
             val folderState = this.folderState
-            sourcesNeedingReparsing.forEach { fileName ->
+            for (fileName in sourcesNeedingReparsing) {
                 val openFileText = folderState.openFiles[fileName]
                 // Null if the file doesn't exist (can't be accessed, etc.)
                 val fileText: String? = if (openFileText != null) {
