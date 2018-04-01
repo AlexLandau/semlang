@@ -89,8 +89,8 @@ private class InterfaceToStructConverter(private val context: RawContext) {
         val dataParameterType = UnvalidatedType.NamedType.forParameter(interfac.getAdapterStruct().typeParameters[0])
         val adapterType = UnvalidatedType.NamedType(interfac.adapterId.asRef(), false, interfac.getAdapterStruct().typeParameters.map { param -> UnvalidatedType.NamedType.forParameter(param) })
         val arguments = listOf(
-            UnvalidatedArgument("data", dataParameterType, null),
-            UnvalidatedArgument("adapter", adapterType, null)
+            UnvalidatedArgument("data", dataParameterType),
+            UnvalidatedArgument("adapter", adapterType)
         )
         val instanceType = UnvalidatedType.NamedType(interfac.id.asRef(), false, interfac.typeParameters.map { param -> UnvalidatedType.NamedType.forParameter(param) })
         val block = Block(listOf(),
@@ -101,11 +101,11 @@ private class InterfaceToStructConverter(private val context: RawContext) {
                                     method.returnType)
                             Expression.ExpressionFunctionBinding(
                                     Expression.Follow(
-                                            Expression.Variable("adapter", null),
+                                            Expression.Variable("adapter"),
                                             method.name,
                                             null
                                     ),
-                                    listOf(Expression.Variable("data", null))
+                                    listOf(Expression.Variable("data"))
                                             + method.arguments.map { argument -> null },
                                     listOf(),
                                     null
@@ -118,7 +118,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
                 null
         )
         val function = Function(adaptFunctionId, interfac.getAdapterStruct().typeParameters, arguments,
-                instanceType, block, listOf(), null, null)
+                instanceType, block, listOf())
         newFunctions.add(function)
         functionReplacementsToMake[interfac.id] = adaptFunctionId
     }
@@ -132,7 +132,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
             UnvalidatedMember(method.name, method.functionType)
         }
         val struct = UnvalidatedStruct(interfac.id, interfac.typeParameters,
-                members, null, interfac.annotations, null)
+                members, null, interfac.annotations)
         newStructs.add(struct)
     }
 }

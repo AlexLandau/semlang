@@ -75,7 +75,7 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations, null)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {
@@ -284,7 +284,7 @@ private fun parseInterface(node: JsonNode): UnvalidatedInterface {
     val methods = parseMethods(node["methods"] ?: error("Interfaces must have a 'methods' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return UnvalidatedInterface(id, typeParameters, methods, annotations, null)
+    return UnvalidatedInterface(id, typeParameters, methods, annotations)
 }
 
 private fun parseMethods(node: JsonNode): List<UnvalidatedMethod> {
@@ -341,7 +341,7 @@ private fun parseFunction(node: JsonNode): Function {
     val block = parseBlock(node["block"] ?: error("Functions must have a 'block' array"))
     val annotations = parseAnnotations(node["annotations"])
 
-    return Function(id, typeParameters, arguments, returnType, block, annotations, null, null)
+    return Function(id, typeParameters, arguments, returnType, block, annotations)
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
@@ -365,7 +365,7 @@ private fun parseBlock(node: JsonNode): Block {
     }
     val returnedExpression = parseExpression(node.last()["return"])
 
-    return Block(assignments, returnedExpression, null)
+    return Block(assignments, returnedExpression)
 }
 
 private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {
@@ -379,7 +379,7 @@ private fun parseAssignment(node: JsonNode): Assignment {
     val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
     val expression = parseExpression(node["be"] ?: error("Assignments should have a '=' field indicating the expression"))
 
-    return Assignment(name, null, expression, null)
+    return Assignment(name, null, expression)
 }
 
 private fun addExpression(node: ObjectNode, expression: TypedExpression) {
@@ -469,7 +469,7 @@ private fun parseExpression(node: JsonNode): Expression {
     return when (type) {
         "var" -> {
             val name = node["var"]?.textValue() ?: error("Variable expressions must have a 'var' text field")
-            return Expression.Variable(name, location = null)
+            return Expression.Variable(name)
         }
         "ifThen" -> {
             val condition = parseExpression(node["if"])
@@ -572,7 +572,7 @@ private fun parseArgument(node: JsonNode): UnvalidatedArgument {
     if (!node.isObject()) error("Arguments should be objects")
     val name = node["name"].textValue() ?: error("Arguments should have a 'name' textual value")
     val type = parseType(node["type"] ?: error("Arguments should have a 'type' value"))
-    return UnvalidatedArgument(name, type, null)
+    return UnvalidatedArgument(name, type)
 }
 
 private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {

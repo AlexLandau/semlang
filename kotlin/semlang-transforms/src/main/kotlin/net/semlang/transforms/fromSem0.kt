@@ -25,7 +25,7 @@ private class Sem0To1Converter(val input: S0Context) {
         val returnType = apply(function.returnType)
         val block = apply(function.block)
         val annotations = function.annotations.map(this::apply)
-        return Function(id, function.typeParameters, arguments, returnType, block, annotations, null, null)
+        return Function(id, function.typeParameters, arguments, returnType, block, annotations)
     }
 
     private fun apply(struct: S0Struct): UnvalidatedStruct {
@@ -33,7 +33,7 @@ private class Sem0To1Converter(val input: S0Context) {
         val members = struct.members.map(this::apply)
         val requires = struct.requires?.let(this::apply)
         val annotations = struct.annotations.map(this::apply)
-        return UnvalidatedStruct(id, struct.typeParameters, members, requires, annotations, null)
+        return UnvalidatedStruct(id, struct.typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: S0Member): UnvalidatedMember {
@@ -59,67 +59,67 @@ private class Sem0To1Converter(val input: S0Context) {
     private fun apply(block: S0Block): Block {
         val assignments = block.assignments.map(this::apply)
         val returnedExpression = apply(block.returnedExpression)
-        return Block(assignments, returnedExpression, null)
+        return Block(assignments, returnedExpression)
     }
 
     private fun apply(expression: S0Expression): Expression {
         return when (expression) {
             is S0Expression.Variable -> {
-                Expression.Variable(expression.name, null)
+                Expression.Variable(expression.name)
             }
             is S0Expression.IfThen -> {
                 val condition = convertVarName(expression.conditionVarName)
                 val thenBlock = apply(expression.thenBlock)
                 val elseBlock = apply(expression.elseBlock)
-                Expression.IfThen(condition, thenBlock, elseBlock, null)
+                Expression.IfThen(condition, thenBlock, elseBlock)
             }
             is S0Expression.NamedFunctionCall -> {
                 val functionRef = convertRef(expression.functionId)
                 val arguments = expression.argumentVarNames.map(this::convertVarName)
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, null, null)
+                Expression.NamedFunctionCall(functionRef, arguments, chosenParameters)
             }
             is S0Expression.ExpressionFunctionCall -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val arguments = expression.argumentVarNames.map(this::convertVarName)
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is S0Expression.Literal -> {
                 val type = apply(expression.type)
-                Expression.Literal(type, expression.literal, null)
+                Expression.Literal(type, expression.literal)
             }
             is S0Expression.ListLiteral -> {
                 val contents = expression.itemVarNames.map(this::convertVarName)
                 val chosenParameter = apply(expression.chosenParameter)
-                Expression.ListLiteral(contents, chosenParameter, null)
+                Expression.ListLiteral(contents, chosenParameter)
             }
             is S0Expression.NamedFunctionBinding -> {
                 val functionRef = convertRef(expression.functionId)
                 val bindings = expression.bindingVarNames.map { if (it == null) null else convertVarName(it) }
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, null)
+                Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
             }
             is S0Expression.ExpressionFunctionBinding -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val bindings = expression.bindingVarNames.map { if (it == null) null else convertVarName(it) }
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is S0Expression.Follow -> {
                 val structureExpression = convertVarName(expression.structureVarName)
-                Expression.Follow(structureExpression, expression.name, null)
+                Expression.Follow(structureExpression, expression.name)
             }
         }
     }
 
     private fun convertVarName(expressionVarName: String): Expression {
-        return Expression.Variable(expressionVarName, null)
+        return Expression.Variable(expressionVarName)
     }
 
     private fun apply(assignment: S0Assignment): Assignment {
         val expression = apply(assignment.expression)
-        return Assignment(assignment.name, null, expression, null)
+        return Assignment(assignment.name, null, expression)
     }
 
     private fun apply(type: S0Type): UnvalidatedType {
@@ -156,6 +156,6 @@ private class Sem0To1Converter(val input: S0Context) {
 
     private fun apply(argument: S0Argument): UnvalidatedArgument {
         val type = apply(argument.type)
-        return UnvalidatedArgument(argument.name, type, null)
+        return UnvalidatedArgument(argument.name, type)
     }
 }

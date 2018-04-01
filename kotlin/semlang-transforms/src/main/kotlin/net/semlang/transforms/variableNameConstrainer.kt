@@ -75,66 +75,66 @@ private fun renameWithinFunction(function: Function, renamingMap: Map<String, St
 private fun renameBlock(block: Block, renamingMap: Map<String, String>): Block {
     val assignments = block.assignments.map { assignment -> renameWithinAssignment(assignment, renamingMap) }
     val returnedExpression = renameWithinExpression(block.returnedExpression, renamingMap)
-    return Block(assignments, returnedExpression, null)
+    return Block(assignments, returnedExpression)
 }
 
 private fun renameWithinAssignment(assignment: Assignment, renamingMap: Map<String, String>): Assignment {
     val newName = renamingMap[assignment.name] ?: error("Bug in renaming")
     val expression = renameWithinExpression(assignment.expression, renamingMap)
-    return Assignment(newName, assignment.type, expression, null)
+    return Assignment(newName, assignment.type, expression)
 }
 
 private fun renameWithinExpression(expression: Expression, renamingMap: Map<String, String>): Expression {
     return when (expression) {
         is Expression.Variable -> {
             val newName = renamingMap[expression.name] ?: error("Bug in renaming")
-            Expression.Variable(newName, null)
+            Expression.Variable(newName)
         }
         is Expression.IfThen -> {
             val condition = renameWithinExpression(expression.condition, renamingMap)
             val thenBlock = renameBlock(expression.thenBlock, renamingMap)
             val elseBlock = renameBlock(expression.elseBlock, renamingMap)
-            Expression.IfThen(condition, thenBlock, elseBlock, null)
+            Expression.IfThen(condition, thenBlock, elseBlock)
         }
         is Expression.NamedFunctionCall -> {
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters, null, null)
+            Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters)
         }
         is Expression.ExpressionFunctionCall -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, null)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters)
         }
         is Expression.Literal -> {
             expression
         }
         is Expression.ListLiteral -> {
             val contents = expression.contents.map { item -> renameWithinExpression(item, renamingMap) }
-            Expression.ListLiteral(contents, expression.chosenParameter, null)
+            Expression.ListLiteral(contents, expression.chosenParameter)
         }
         is Expression.Follow -> {
             val structureExpression = renameWithinExpression(expression.structureExpression, renamingMap)
-            Expression.Follow(structureExpression, expression.name, null)
+            Expression.Follow(structureExpression, expression.name)
         }
         is Expression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters)
         }
         is Expression.ExpressionFunctionBinding -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters)
         }
         is Expression.InlineFunction -> {
             val arguments = expression.arguments.map { argument -> renameArgument(argument, renamingMap) }
             val block = renameBlock(expression.block, renamingMap)
-            Expression.InlineFunction(arguments, expression.returnType, block, null)
+            Expression.InlineFunction(arguments, expression.returnType, block)
         }
     }
 }
 
 private fun renameArgument(argument: UnvalidatedArgument, renamingMap: Map<String, String>): UnvalidatedArgument {
-    return UnvalidatedArgument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type, null)
+    return UnvalidatedArgument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type)
 }
 
 typealias VariableRenamingStrategy = (varName: String, allVarNamesPresent: Set<String>) -> String

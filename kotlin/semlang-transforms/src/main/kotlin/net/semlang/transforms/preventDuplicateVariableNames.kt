@@ -20,7 +20,7 @@ fun preventDuplicateVariableNames(context: RawContext): RawContext {
 private fun renameVariablesUniquely(function: Function): Function {
     val argumentNames = function.arguments.map { it.name }
     val block = UniqueVariableRenamer(function.block, argumentNames).apply()
-    return Function(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations, null, null)
+    return Function(function.id, function.typeParameters, function.arguments, function.returnType, block, function.annotations)
 }
 
 private fun renameVariablesUniquely(struct: UnvalidatedStruct): UnvalidatedStruct {
@@ -28,7 +28,7 @@ private fun renameVariablesUniquely(struct: UnvalidatedStruct): UnvalidatedStruc
         val memberNames = struct.members.map { it.name }
         UniqueVariableRenamer(requires, memberNames).apply()
     }
-    return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations, null)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations)
 }
 
 private val endingNumberPattern = Pattern.compile("_([0-9]+)$")
@@ -47,10 +47,10 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
             val newVarName = ensureUnusedVarName(originalVarName)
             varTransformations[originalVarName] = newVarName
             alreadyUsedNames.add(newVarName)
-            Assignment(newVarName, assignment.type, expression, null)
+            Assignment(newVarName, assignment.type, expression)
         }
         val returnedExpression = applyTransformations(block.returnedExpression, varTransformations)
-        return Block(assignments, returnedExpression, null)
+        return Block(assignments, returnedExpression)
     }
 
     private fun ensureUnusedVarName(originalVarName: String): String {
@@ -92,41 +92,41 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
     private fun applyTransformations(expression: Expression, varTransformations: MutableMap<String, String>): Expression {
         return when (expression) {
             is Expression.Variable -> {
-                varTransformations[expression.name]?.let { Expression.Variable(it, null) } ?: expression
+                varTransformations[expression.name]?.let { Expression.Variable(it) } ?: expression
             }
             is Expression.IfThen -> {
                 val condition = applyTransformations(expression.condition, varTransformations)
                 // Copy here to fix the scope
                 val thenBlock = apply(expression.thenBlock, HashMap(varTransformations))
                 val elseBlock = apply(expression.elseBlock, HashMap(varTransformations))
-                Expression.IfThen(condition, thenBlock, elseBlock, null)
+                Expression.IfThen(condition, thenBlock, elseBlock)
             }
             is Expression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map { applyTransformations(it, varTransformations) }
-                Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters, null, null)
+                Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters)
             }
             is Expression.ExpressionFunctionCall -> {
                 val functionExpression = applyTransformations(expression.functionExpression, varTransformations)
                 val arguments = expression.arguments.map { applyTransformations(it, varTransformations) }
-                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, null)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters)
             }
             is Expression.Literal -> expression
             is Expression.ListLiteral -> {
                 val contents = expression.contents.map { applyTransformations(it, varTransformations) }
-                Expression.ListLiteral(contents, expression.chosenParameter, null)
+                Expression.ListLiteral(contents, expression.chosenParameter)
             }
             is Expression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map { if (it == null) null else applyTransformations(it, varTransformations) }
-                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
+                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val functionExpression = applyTransformations(expression.functionExpression, varTransformations)
                 val bindings = expression.bindings.map { if (it == null) null else applyTransformations(it, varTransformations) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters)
             }
             is Expression.Follow -> {
                 val structureExpression = applyTransformations(expression.structureExpression, varTransformations)
-                Expression.Follow(structureExpression, expression.name, null)
+                Expression.Follow(structureExpression, expression.name)
             }
             is Expression.InlineFunction -> {
                 val transformationsForInlineFunction = HashMap(varTransformations)
@@ -135,10 +135,10 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
                     val newVarName = ensureUnusedVarName(originalVarName)
                     transformationsForInlineFunction[originalVarName] = newVarName
                     alreadyUsedNames.add(newVarName)
-                    UnvalidatedArgument(newVarName, argument.type, null)
+                    UnvalidatedArgument(newVarName, argument.type)
                 }
                 val block = apply(expression.block, transformationsForInlineFunction)
-                Expression.InlineFunction(arguments, expression.returnType, block, null)
+                Expression.InlineFunction(arguments, expression.returnType, block)
             }
         }
     }

@@ -396,17 +396,17 @@ sealed class AmbiguousExpression {
 // Post-scoping, pre-type-analysis
 sealed class Expression {
     abstract val location: Location?
-    data class Variable(val name: String, override val location: Location?): Expression()
-    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location?): Expression()
-    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location?, val functionRefLocation: Location?): Expression()
+    data class Variable(val name: String, override val location: Location? = null): Expression()
+    data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location? = null): Expression()
+    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
     //TODO: Make position of chosenParamters consistent with bindings below
-    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location?): Expression()
-    data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location?): Expression()
-    data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location?): Expression()
-    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location?): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location?): Expression()
-    data class Follow(val structureExpression: Expression, val name: String, override val location: Location?): Expression()
-    data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location?): Expression()
+    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
+    data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location? = null): Expression()
+    data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location? = null): Expression()
+    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
+    data class Follow(val structureExpression: Expression, val name: String, override val location: Location? = null): Expression()
+    data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
 }
 // Post-type-analysis
 sealed class TypedExpression {
@@ -424,14 +424,14 @@ sealed class TypedExpression {
 }
 
 data class AmbiguousAssignment(val name: String, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
-data class Assignment(val name: String, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location?)
+data class Assignment(val name: String, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
 data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
-data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location?)
+data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
-data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location?)
+data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location?, val returnTypeLocation: Location?) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getTypeSignature(): UnvalidatedTypeSignature {
         return UnvalidatedTypeSignature(id,
                 arguments.map(UnvalidatedArgument::type),
@@ -448,7 +448,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map(UnvalidatedType.NamedType.Companion::forParameter)
@@ -491,7 +491,7 @@ interface TopLevelEntity: HasId {
 data class UnvalidatedMember(val name: String, val type: UnvalidatedType)
 data class Member(val name: String, val type: Type)
 
-data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location?) : TopLevelEntity {
+data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
     val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter)

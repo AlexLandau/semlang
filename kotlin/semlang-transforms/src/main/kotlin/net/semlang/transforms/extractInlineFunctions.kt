@@ -36,7 +36,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     private fun transformStruct(struct: Struct): UnvalidatedStruct {
         val members = struct.members.map(::invalidate)
         val requires = struct.requires?.let { transformBlock(it) }
-        return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations, null)
+        return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
     }
 
     private fun transformFunctions(functions: Map<EntityId, ValidatedFunction>): List<Function> {
@@ -47,60 +47,60 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         val arguments = function.arguments.map(::invalidate)
         val block = transformBlock(function.block)
         val returnType = invalidate(function.returnType)
-        return Function(function.id, function.typeParameters, arguments, returnType, block, function.annotations, null, null)
+        return Function(function.id, function.typeParameters, arguments, returnType, block, function.annotations)
     }
 
     private fun transformBlock(block: TypedBlock): Block {
         val assignments = block.assignments.map { assignment ->
-            Assignment(assignment.name, invalidate(assignment.type), transformExpression(assignment.expression), null)
+            Assignment(assignment.name, invalidate(assignment.type), transformExpression(assignment.expression))
         }
         val returnedExpression = transformExpression(block.returnedExpression)
-        return Block(assignments, returnedExpression, null)
+        return Block(assignments, returnedExpression)
     }
 
     private fun transformExpression(expression: TypedExpression): Expression {
         return when (expression) {
             is TypedExpression.Variable -> {
-                Expression.Variable(expression.name, null)
+                Expression.Variable(expression.name)
             }
             is TypedExpression.IfThen -> {
                 val condition = transformExpression(expression.condition)
                 val thenBlock = transformBlock(expression.thenBlock)
                 val elseBlock = transformBlock(expression.elseBlock)
-                Expression.IfThen(condition, thenBlock, elseBlock, null)
+                Expression.IfThen(condition, thenBlock, elseBlock)
             }
             is TypedExpression.NamedFunctionCall -> {
                 val arguments = expression.arguments.map(this::transformExpression)
                 val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters, null, null)
+                Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val arguments = expression.arguments.map(this::transformExpression)
                 val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is TypedExpression.Literal -> {
-                Expression.Literal(invalidate(expression.type), expression.literal, null)
+                Expression.Literal(invalidate(expression.type), expression.literal)
             }
             is TypedExpression.ListLiteral -> {
                 val contents = expression.contents.map(this::transformExpression)
-                Expression.ListLiteral(contents, invalidate(expression.chosenParameter), null)
+                Expression.ListLiteral(contents, invalidate(expression.chosenParameter))
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
                 val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters, null)
+                Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
                 val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = transformExpression(expression.structureExpression)
-                Expression.Follow(structureExpression, expression.name, null)
+                Expression.Follow(structureExpression, expression.name)
             }
             is TypedExpression.InlineFunction -> {
                 // Create a new function
@@ -116,10 +116,10 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                     bindings.add(null)
                 }
                 for ((name) in expression.boundVars) {
-                    bindings.add(Expression.Variable(name, null))
+                    bindings.add(Expression.Variable(name))
                 }
 
-                Expression.NamedFunctionBinding(newFunctionId.asRef(), bindings, chosenParameters, null)
+                Expression.NamedFunctionBinding(newFunctionId.asRef(), bindings, chosenParameters)
             }
         }
     }
@@ -132,14 +132,14 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
 
         // We need to include both implicit and explicit parameters
         val explicitArguments = inlineFunction.arguments.map(::invalidate)
-        val implicitArguments = inlineFunction.boundVars.map { (name, type) -> UnvalidatedArgument(name, invalidate(type), null) }
+        val implicitArguments = inlineFunction.boundVars.map { (name, type) -> UnvalidatedArgument(name, invalidate(type)) }
         val arguments = explicitArguments + implicitArguments
 
         val block = invalidate(inlineFunction.block)
         val returnType = invalidate(inlineFunction.block.type)
         val annotations = listOf<Annotation>()
 
-        val function = Function(newId, typeParameters, arguments, returnType, block, annotations, null, null)
+        val function = Function(newId, typeParameters, arguments, returnType, block, annotations)
         extractedFunctions.add(function)
         return function
     }

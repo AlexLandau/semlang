@@ -73,7 +73,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val block = apply(function.block)
         val annotations = handleAnnotations(function.annotations, ref.module)
 
-        return Function(newId, function.typeParameters, arguments, returnType, block, annotations, null, null)
+        return Function(newId, function.typeParameters, arguments, returnType, block, annotations)
     }
 
     // Remove the "Export" annotation from entities not in the root module
@@ -87,73 +87,73 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     private fun apply(block: TypedBlock): Block {
         val assignments = block.assignments.map(this::apply)
         val returnedExpression = apply(block.returnedExpression)
-        return Block(assignments, returnedExpression, null)
+        return Block(assignments, returnedExpression)
     }
 
     private fun apply(assignment: ValidatedAssignment): Assignment {
         val expression = apply(assignment.expression)
-        return Assignment(assignment.name, null, expression, null)
+        return Assignment(assignment.name, null, expression)
     }
 
     private fun apply(expression: TypedExpression): Expression {
         return when (expression) {
             is TypedExpression.Variable -> {
-                Expression.Variable(expression.name, null)
+                Expression.Variable(expression.name)
             }
             is TypedExpression.IfThen -> {
                 val condition = apply(expression.condition)
                 val thenBlock = apply(expression.thenBlock)
                 val elseBlock = apply(expression.elseBlock)
-                Expression.IfThen(condition, thenBlock, elseBlock, null)
+                Expression.IfThen(condition, thenBlock, elseBlock)
             }
             is TypedExpression.NamedFunctionCall -> {
                 val functionRef = translateRef(expression.resolvedFunctionRef)
                 val arguments = expression.arguments.map(this::apply)
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, null, null)
+                Expression.NamedFunctionCall(functionRef, arguments, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = apply(expression.functionExpression)
                 val arguments = expression.arguments.map(this::apply)
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is TypedExpression.Literal -> {
                 val type = apply(expression.type)
-                Expression.Literal(type, expression.literal, null)
+                Expression.Literal(type, expression.literal)
             }
             is TypedExpression.ListLiteral -> {
                 val contents = expression.contents.map(this::apply)
                 val chosenParameter = apply(expression.chosenParameter)
-                Expression.ListLiteral(contents, chosenParameter, null)
+                Expression.ListLiteral(contents, chosenParameter)
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val functionRef = translateRef(expression.resolvedFunctionRef)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, null)
+                Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = apply(expression.functionExpression)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
                 val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = apply(expression.structureExpression)
-                Expression.Follow(structureExpression, expression.name, null)
+                Expression.Follow(structureExpression, expression.name)
             }
             is TypedExpression.InlineFunction -> {
                 val arguments = expression.arguments.map(this::apply)
                 val returnType = apply(expression.returnType)
                 val block = apply(expression.block)
-                Expression.InlineFunction(arguments, returnType, block, null)
+                Expression.InlineFunction(arguments, returnType, block)
             }
         }
     }
 
     private fun apply(argument: Argument): UnvalidatedArgument {
-        return UnvalidatedArgument(argument.name, apply(argument.type), null)
+        return UnvalidatedArgument(argument.name, apply(argument.type))
     }
 
     private fun apply(type: Type): UnvalidatedType {
@@ -185,7 +185,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val requires = struct.requires?.let(this::apply)
         val annotations = handleAnnotations(struct.annotations, struct.moduleId)
 
-        return UnvalidatedStruct(newId, struct.typeParameters, members, requires, annotations, null)
+        return UnvalidatedStruct(newId, struct.typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: Member): UnvalidatedMember {
@@ -198,7 +198,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val methods = interfac.methods.map(this::apply)
         val annotations = handleAnnotations(interfac.annotations, interfac.moduleId)
 
-        return UnvalidatedInterface(newId, interfac.typeParameters, methods, annotations, null)
+        return UnvalidatedInterface(newId, interfac.typeParameters, methods, annotations)
     }
 
     private fun apply(method: Method): UnvalidatedMethod {

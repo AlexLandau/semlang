@@ -13,7 +13,7 @@ fun invalidate(module: ValidatedModule): RawContext {
 
 fun invalidate(interfac: Interface): UnvalidatedInterface {
     val methods = interfac.methods.map(::invalidateMethod)
-    return UnvalidatedInterface(interfac.id, interfac.typeParameters, methods, interfac.annotations, null)
+    return UnvalidatedInterface(interfac.id, interfac.typeParameters, methods, interfac.annotations)
 }
 
 private fun invalidateMethod(method: Method): UnvalidatedMethod {
@@ -22,19 +22,19 @@ private fun invalidateMethod(method: Method): UnvalidatedMethod {
 }
 
 fun invalidate(argument: Argument): UnvalidatedArgument {
-    return UnvalidatedArgument(argument.name, invalidate(argument.type), null)
+    return UnvalidatedArgument(argument.name, invalidate(argument.type))
 }
 
 fun invalidate(struct: Struct): UnvalidatedStruct {
     val requires = struct.requires?.let { invalidate(it) }
     val members = struct.members.map(::invalidate)
-    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations, null)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
 }
 
 fun invalidate(block: TypedBlock): Block {
     val assignments = block.assignments.map(::invalidateAssignment)
     val returnedExpression = invalidateExpression(block.returnedExpression)
-    return Block(assignments, returnedExpression, null)
+    return Block(assignments, returnedExpression)
 }
 
 fun invalidate(type: Type): UnvalidatedType {
@@ -76,61 +76,61 @@ fun invalidate(member: Member): UnvalidatedMember {
 private fun invalidateExpression(expression: TypedExpression): Expression {
     return when (expression) {
         is TypedExpression.Variable -> {
-            Expression.Variable(expression.name, null)
+            Expression.Variable(expression.name)
         }
         is TypedExpression.IfThen -> {
             val condition = invalidateExpression(expression.condition)
             val thenBlock = invalidate(expression.thenBlock)
             val elseBlock = invalidate(expression.elseBlock)
-            Expression.IfThen(condition, thenBlock, elseBlock, null)
+            Expression.IfThen(condition, thenBlock, elseBlock)
         }
         is TypedExpression.NamedFunctionCall -> {
             val arguments = expression.arguments.map(::invalidateExpression)
             val chosenParameters = expression.chosenParameters.map(::invalidate)
-            Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters, null, null)
+            Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val arguments = expression.arguments.map(::invalidateExpression)
             val chosenParameters = expression.chosenParameters.map(::invalidate)
-            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, null)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is TypedExpression.Literal -> {
             val type = invalidate(expression.type)
-            Expression.Literal(type, expression.literal, null)
+            Expression.Literal(type, expression.literal)
         }
         is TypedExpression.ListLiteral -> {
             val contents = expression.contents.map(::invalidateExpression)
             val chosenParameter = invalidate(expression.chosenParameter)
-            Expression.ListLiteral(contents, chosenParameter, null)
+            Expression.ListLiteral(contents, chosenParameter)
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
             val chosenParameters = expression.chosenParameters.map(::invalidate)
-            Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters, null)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
             val chosenParameters = expression.chosenParameters.map(::invalidate)
-            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, null)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is TypedExpression.Follow -> {
             val structureExpression = invalidateExpression(expression.structureExpression)
-            Expression.Follow(structureExpression, expression.name, null)
+            Expression.Follow(structureExpression, expression.name)
         }
         is TypedExpression.InlineFunction -> {
             val arguments = expression.arguments.map(::invalidate)
             val returnType = invalidate(expression.returnType)
             val block = invalidate(expression.block)
-            Expression.InlineFunction(arguments, returnType, block, null)
+            Expression.InlineFunction(arguments, returnType, block)
         }
     }
 }
 
 private fun invalidateAssignment(assignment: ValidatedAssignment): Assignment {
     val expression = invalidateExpression(assignment.expression)
-    return Assignment(assignment.name, invalidate(assignment.type), expression, null)
+    return Assignment(assignment.name, invalidate(assignment.type), expression)
 }
 
 fun invalidate(function: ValidatedFunction): Function {
@@ -138,5 +138,5 @@ fun invalidate(function: ValidatedFunction): Function {
     val block = invalidate(function.block)
     val returnType = invalidate(function.returnType)
     return Function(function.id, function.typeParameters, arguments, returnType, block,
-            function.annotations, null, null)
+            function.annotations)
 }
