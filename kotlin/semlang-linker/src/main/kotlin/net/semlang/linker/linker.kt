@@ -254,7 +254,8 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
                 // TODO: Improve this by preferring group/module or module/version when possible
                 listOf(moduleId.group, moduleId.module, moduleId.version)
             }
-            modulePrefixes.put(moduleId, modulePrefix)
+            val sanitizedModulePrefix = modulePrefix.map(::sanitize)
+            modulePrefixes.put(moduleId, sanitizedModulePrefix)
         }
         return modulePrefixes
     }
@@ -286,6 +287,11 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
             suffixNumber++
         }
     }
+}
+
+// From module name to entityId portion
+fun sanitize(s: String): String {
+    return s.replace("-", "_").replace(".", "_")
 }
 
 private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {

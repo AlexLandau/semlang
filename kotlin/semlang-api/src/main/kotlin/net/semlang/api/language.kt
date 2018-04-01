@@ -9,10 +9,22 @@ data class EntityId(val namespacedName: List<String>) {
         if (namespacedName.isEmpty()) {
             error("Entity IDs must have at least one name component")
         }
-        // TODO: Whitelist characters in the name as well; disallow whitespace
         for (namePart in namespacedName) {
             if (namePart.isEmpty()) {
                 error("Entity IDs may not have empty name components")
+            }
+            var foundNonUnderscore = false
+            for (character in namePart) {
+                if (character in 'a'..'z' || character in 'A'..'Z' || character in '0'..'9') {
+                    foundNonUnderscore = true
+                } else if (character == '_') {
+                    // Do nothing
+                } else {
+                    error("Invalid character '$character' (code: ${character.toInt()}) in entity ID with components $namespacedName")
+                }
+            }
+            if (!foundNonUnderscore) {
+                error("Name components must contain non-underscore characters; bad entity ID components: $namespacedName")
             }
         }
     }
@@ -399,7 +411,6 @@ sealed class Expression {
     data class Variable(val name: String, override val location: Location? = null): Expression()
     data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location? = null): Expression()
     data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
-    //TODO: Make position of chosenParamters consistent with bindings below
     data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
     data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location? = null): Expression()
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location? = null): Expression()
