@@ -89,9 +89,9 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     }
     // Pre-processing steps
     // TODO: Combine variable renaming steps
-    val tempModule1 = constrainVariableNames(unprocessedModule, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
-    val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
-    val tempModule3 = extractInlineFunctions(tempModule2)
+    val tempModule1 = extractInlineFunctions(unprocessedModule)
+    val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies::avoidNumeralAtStartByPrependingUnderscores)
+    val tempModule3 = constrainVariableNames(tempModule2, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
     val tempModule4 = hoistMatchingExpressions(tempModule3, { it is Expression.IfThen })
     val tempModule5 = preventDuplicateVariableNames(tempModule4)
     val module = validateModule(tempModule5, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()

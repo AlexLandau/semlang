@@ -3,12 +3,12 @@ package net.semlang.transforms
 import net.semlang.api.*
 import net.semlang.api.Function
 
-fun getAllDeclaredVarNames(function: ValidatedFunction): Set<String> {
+fun getAllDeclaredVarNames(function: Function): Set<String> {
     val varNames = LinkedHashSet<String>()
     for (argument in function.arguments) {
         varNames.add(argument.name)
     }
-    addAllDeclaredVarNames(invalidate(function.block), varNames)
+    addAllDeclaredVarNames(function.block, varNames)
     return varNames
 }
 

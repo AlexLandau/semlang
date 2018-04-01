@@ -1,15 +1,16 @@
 package net.semlang.transforms
 
 import net.semlang.api.*
+import net.semlang.api.Function
 
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
  */
-// TODO: Return an unvalidated module, and if possible, use an unvalidated module as input
-fun constrainVariableNames(module: ValidatedModule, renamingStrategy: VariableRenamingStrategy): ValidatedModule {
+fun constrainVariableNames(context: RawContext, renamingStrategy: VariableRenamingStrategy): RawContext {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
-    return ValidatedModule.create(module.id, module.nativeModuleVersion, renameWithinFunctions(module.ownFunctions, validatingStrategy), module.ownStructs,
-            renameInterfaceArguments(module.ownInterfaces, validatingStrategy), module.upstreamModules.values)
+    val functions = renameWithinFunctions(context.functions, validatingStrategy)
+    val interfaces = renameInterfaceArguments(context.interfaces, validatingStrategy)
+    return RawContext(functions, context.structs, interfaces)
 }
 
 private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableRenamingStrategy {
@@ -29,31 +30,31 @@ private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableR
     }
 }
 
-private fun renameInterfaceArguments(ownInterfaces: Map<EntityId, Interface>, rename: VariableRenamingStrategy): Map<EntityId, Interface> {
-    return ownInterfaces.mapValues { (_, interfac) -> renameInterfaceArguments(interfac, rename) }
+private fun renameInterfaceArguments(interfaces: List<UnvalidatedInterface>, rename: VariableRenamingStrategy): List<UnvalidatedInterface> {
+    return interfaces.map { interfac -> renameInterfaceArguments(interfac, rename) }
 }
 
-private fun renameInterfaceArguments(interfac: Interface, rename: VariableRenamingStrategy): Interface {
+private fun renameInterfaceArguments(interfac: UnvalidatedInterface, rename: VariableRenamingStrategy): UnvalidatedInterface {
     val methods = interfac.methods.map { method -> renameMethodArguments(method, rename) }
     // TODO: Start using this pattern elsewhere, probably
     return interfac.copy(methods = methods)
 }
 
-private fun renameMethodArguments(method: Method, rename: VariableRenamingStrategy): Method {
+private fun renameMethodArguments(method: UnvalidatedMethod, rename: VariableRenamingStrategy): UnvalidatedMethod {
     val argumentNames = method.arguments.map { argument -> argument.name }.toSet()
     val arguments = method.arguments.map { argument -> renameArgument(argument, argumentNames, rename) }
     return method.copy(arguments = arguments)
 }
 
-private fun renameArgument(argument: Argument, otherVariables: Set<String>, rename: VariableRenamingStrategy): Argument {
+private fun renameArgument(argument: UnvalidatedArgument, otherVariables: Set<String>, rename: VariableRenamingStrategy): UnvalidatedArgument {
     return argument.copy(name = rename(argument.name, otherVariables))
 }
 
-private fun renameWithinFunctions(ownFunctionImplementations: Map<EntityId, ValidatedFunction>, rename: VariableRenamingStrategy): Map<EntityId, ValidatedFunction> {
-    return ownFunctionImplementations.mapValues { (_, function) -> renameWithinFunction(function, rename) }
+private fun renameWithinFunctions(functions: List<Function>, rename: VariableRenamingStrategy): List<Function> {
+    return functions.map { function -> renameWithinFunction(function, rename) }
 }
 
-private fun renameWithinFunction(function: ValidatedFunction, rename: VariableRenamingStrategy): ValidatedFunction {
+private fun renameWithinFunction(function: Function, rename: VariableRenamingStrategy): Function {
     val originalVarsInFunction = getAllDeclaredVarNames(function)
     val allVarsInFunction = HashSet<String>(originalVarsInFunction)
     val renamingMap = HashMap<String, String>()
@@ -65,76 +66,75 @@ private fun renameWithinFunction(function: ValidatedFunction, rename: VariableRe
     return renameWithinFunction(function, renamingMap)
 }
 
-private fun renameWithinFunction(function: ValidatedFunction, renamingMap: Map<String, String>): ValidatedFunction {
+private fun renameWithinFunction(function: Function, renamingMap: Map<String, String>): Function {
     val arguments = function.arguments.map { argument -> renameArgument(argument, renamingMap) }
     val block = renameBlock(function.block, renamingMap)
     return function.copy(arguments = arguments, block = block)
 }
 
-private fun renameBlock(block: TypedBlock, renamingMap: Map<String, String>): TypedBlock {
+private fun renameBlock(block: Block, renamingMap: Map<String, String>): Block {
     val assignments = block.assignments.map { assignment -> renameWithinAssignment(assignment, renamingMap) }
     val returnedExpression = renameWithinExpression(block.returnedExpression, renamingMap)
-    return TypedBlock(block.type, assignments, returnedExpression)
+    return Block(assignments, returnedExpression, null)
 }
 
-private fun renameWithinAssignment(assignment: ValidatedAssignment, renamingMap: Map<String, String>): ValidatedAssignment {
+private fun renameWithinAssignment(assignment: Assignment, renamingMap: Map<String, String>): Assignment {
     val newName = renamingMap[assignment.name] ?: error("Bug in renaming")
     val expression = renameWithinExpression(assignment.expression, renamingMap)
-    return ValidatedAssignment(newName, assignment.type, expression)
+    return Assignment(newName, assignment.type, expression, null)
 }
 
-private fun renameWithinExpression(expression: TypedExpression, renamingMap: Map<String, String>): TypedExpression {
+private fun renameWithinExpression(expression: Expression, renamingMap: Map<String, String>): Expression {
     return when (expression) {
-        is TypedExpression.Variable -> {
+        is Expression.Variable -> {
             val newName = renamingMap[expression.name] ?: error("Bug in renaming")
-            TypedExpression.Variable(expression.type, newName)
+            Expression.Variable(newName, null)
         }
-        is TypedExpression.IfThen -> {
+        is Expression.IfThen -> {
             val condition = renameWithinExpression(expression.condition, renamingMap)
             val thenBlock = renameBlock(expression.thenBlock, renamingMap)
             val elseBlock = renameBlock(expression.elseBlock, renamingMap)
-            TypedExpression.IfThen(expression.type, condition, thenBlock, elseBlock)
+            Expression.IfThen(condition, thenBlock, elseBlock, null)
         }
-        is TypedExpression.NamedFunctionCall -> {
+        is Expression.NamedFunctionCall -> {
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            TypedExpression.NamedFunctionCall(expression.type, expression.functionRef, expression.resolvedFunctionRef, arguments, expression.chosenParameters)
+            Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters, null, null)
         }
-        is TypedExpression.ExpressionFunctionCall -> {
+        is Expression.ExpressionFunctionCall -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            TypedExpression.ExpressionFunctionCall(expression.type, functionExpression, arguments, expression.chosenParameters)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, null)
         }
-        is TypedExpression.Literal -> {
+        is Expression.Literal -> {
             expression
         }
-        is TypedExpression.ListLiteral -> {
+        is Expression.ListLiteral -> {
             val contents = expression.contents.map { item -> renameWithinExpression(item, renamingMap) }
-            TypedExpression.ListLiteral(expression.type, contents, expression.chosenParameter)
+            Expression.ListLiteral(contents, expression.chosenParameter, null)
         }
-        is TypedExpression.Follow -> {
+        is Expression.Follow -> {
             val structureExpression = renameWithinExpression(expression.structureExpression, renamingMap)
-            TypedExpression.Follow(expression.type, structureExpression, expression.name)
+            Expression.Follow(structureExpression, expression.name, null)
         }
-        is TypedExpression.NamedFunctionBinding -> {
+        is Expression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            TypedExpression.NamedFunctionBinding(expression.type, expression.functionRef, expression.resolvedFunctionRef, bindings, expression.chosenParameters)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, null)
         }
-        is TypedExpression.ExpressionFunctionBinding -> {
+        is Expression.ExpressionFunctionBinding -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            TypedExpression.ExpressionFunctionBinding(expression.type, functionExpression, bindings, expression.chosenParameters)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, null)
         }
-        is TypedExpression.InlineFunction -> {
+        is Expression.InlineFunction -> {
             val arguments = expression.arguments.map { argument -> renameArgument(argument, renamingMap) }
-            val varsToBind = expression.boundVars.map { argument -> renameArgument(argument, renamingMap) }
             val block = renameBlock(expression.block, renamingMap)
-            TypedExpression.InlineFunction(expression.type, arguments, varsToBind, expression.returnType, block)
+            Expression.InlineFunction(arguments, expression.returnType, block, null)
         }
     }
 }
 
-private fun renameArgument(argument: Argument, renamingMap: Map<String, String>): Argument {
-    return Argument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type)
+private fun renameArgument(argument: UnvalidatedArgument, renamingMap: Map<String, String>): UnvalidatedArgument {
+    return UnvalidatedArgument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type, null)
 }
 
 typealias VariableRenamingStrategy = (varName: String, allVarNamesPresent: Set<String>) -> String
