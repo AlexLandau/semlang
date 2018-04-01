@@ -8,5 +8,5 @@ struct Foo {
 function fooTest(i: Natural): Try<Natural> {
     let foo: Try<Foo> = Foo(i)
     // This kind of shadowing is disallowed
-    Try.map<Foo, Natural>(foo, function(foo: Foo) { foo->natural })
+    Try.map<Foo, Natural>(foo, function(foo: Foo): Natural { foo->natural })
 }

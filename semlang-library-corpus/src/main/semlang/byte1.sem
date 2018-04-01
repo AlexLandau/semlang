@@ -5,7 +5,7 @@
 @Test(["511"], "failure")
 function byteTest(i: Natural): Try<Natural> {
     let byte: Try<Byte> = Byte(i)
-    Try.map<Byte, Natural>(byte, function(validByte: Byte) { validByte->natural })
+    Try.map<Byte, Natural>(byte, function(validByte: Byte): Natural { validByte->natural })
 }
 
 @Test([], "0")

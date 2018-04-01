@@ -78,7 +78,7 @@ function Natural.greater(left: Natural, right: Natural): Natural {
 @Export
 function Natural.max(naturals: List<Natural>): Try<Natural> {
   let firstValueMaybe = List.first<Natural>(naturals)
-  Try.map<Natural, Natural>(firstValueMaybe, function(firstValue: Natural) {
+  Try.map<Natural, Natural>(firstValueMaybe, function(firstValue: Natural): Natural {
     List.reduce<Natural, Natural>(naturals, firstValue, Natural.greater|(_, _))
   })
 }
@@ -108,7 +108,7 @@ function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
   }
   let actualNumBits = List.size<Bit>(allBits)
   let paddingNeededMaybe = Natural(Natural.minus(numBits, actualNumBits))
-  Try.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural) {
+  Try.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural): BitsBigEndian {
     let padding = List.nCopies<Bit>(paddingNeeded, Bit."0")
     BitsBigEndian(List.concatenate<Bit>(padding, allBits))
   })
@@ -137,7 +137,7 @@ function Natural.toBitsList(value: Natural): List<Bit> {
 // TODO: You really want this to be done natively...
 @Export
 function Natural.fromBits(bitsBigEndian: BitsBigEndian): Natural {
-  List.reduce<Bit, Natural>(bitsBigEndian->bits, Natural."0", function(valueSoFar: Natural, bit: Bit) {
+  List.reduce<Bit, Natural>(bitsBigEndian->bits, Natural."0", function(valueSoFar: Natural, bit: Bit): Natural {
     let doubledValue = Natural.times(valueSoFar, Natural."2")
     Natural.plus(doubledValue, bit->natural)
   })
@@ -152,7 +152,7 @@ function Natural.sum(numbers: List<Natural>): Natural {
 @Export
 function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
   let numberOfValuesMaybe = Natural(Natural.minus(Natural.plus(end, Natural."1"), start))
-  let rangeMaybe = Try.map<Natural, List<Natural>>(numberOfValuesMaybe, function(numValues: Natural) {
+  let rangeMaybe = Try.map<Natural, List<Natural>>(numberOfValuesMaybe, function(numValues: Natural): List<Natural> {
     Sequence.getRange<Natural>(Natural.arithmeticProgression(start, Natural."1"), numValues)
   })
   Try.orElse<List<Natural>>(rangeMaybe, []<Natural>)

@@ -81,7 +81,7 @@ private fun stripLocations(expression: Expression): Expression {
         is Expression.InlineFunction -> {
             val arguments = expression.arguments.map(::stripLocations)
             val block = stripLocations(expression.block)
-            Expression.InlineFunction(arguments, block, null)
+            Expression.InlineFunction(arguments, expression.returnType, block, null)
         }
     }
 }

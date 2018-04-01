@@ -165,7 +165,7 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
             }
             is Expression.InlineFunction -> {
                 val block = apply(expression.block)
-                Expression.InlineFunction(expression.arguments, block, expression.location)
+                Expression.InlineFunction(expression.arguments, expression.returnType, block, expression.location)
             }
         }
         val transformationOutput = transformation(withInnerTransformations)

@@ -328,6 +328,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 val scopedBlock = scopeBlock(varIdsOutsideBlock, expression.block)
                 Expression.InlineFunction(
                         expression.arguments,
+                        expression.returnType,
                         scopedBlock,
                         expression.location)
             }
@@ -386,8 +387,9 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
             if (expression.FUNCTION() != null) {
                 val arguments = parseFunctionArguments(expression.function_arguments())
+                val returnType = parseType(expression.type())
                 val block = parseBlock(expression.block(0))
-                return AmbiguousExpression.InlineFunction(arguments, block, locationOf(expression))
+                return AmbiguousExpression.InlineFunction(arguments, returnType, block, locationOf(expression))
             }
 
             if (expression.LITERAL() != null) {

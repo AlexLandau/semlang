@@ -29,7 +29,7 @@ function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List
   // TODO: Can do something better here
   // TODO: Should we switch Sequence back to a struct and get rid of map()?
   let initialValue = SequenceRangeElement<T>(Natural."0", []<T>)
-  let rangeSequence = Sequence.create<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>) {
+  let rangeSequence = Sequence.create<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>): SequenceRangeElement<T> {
     let curValue = sequence->get(rangeElement->indexToGet)
     let nextIndex = Natural.plus(rangeElement->indexToGet, Natural."1")
     let newValues = List.append<T>(rangeElement->accumulatedValues, curValue)

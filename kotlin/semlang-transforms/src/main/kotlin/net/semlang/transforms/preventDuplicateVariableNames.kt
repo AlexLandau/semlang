@@ -138,7 +138,7 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
                     UnvalidatedArgument(newVarName, argument.type, null)
                 }
                 val block = apply(expression.block, transformationsForInlineFunction)
-                Expression.InlineFunction(arguments, block, null)
+                Expression.InlineFunction(arguments, expression.returnType, block, null)
             }
         }
     }

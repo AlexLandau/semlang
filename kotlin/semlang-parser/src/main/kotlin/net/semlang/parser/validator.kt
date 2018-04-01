@@ -57,7 +57,13 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
         }
         is ModuleInfoParsingResult.Success -> {
             val semFiles = directory.listFiles { dir, name -> name.endsWith(".sem") }
-            val parsingResults = semFiles.map { parseFile(it) }
+            val parsingResults = semFiles.map { file ->
+                try {
+                    parseFile(file)
+                } catch (e: RuntimeException) {
+                    throw RuntimeException("Error parsing file $file", e)
+                }
+            }
             val combinedParsingResult = combineParsingResults(parsingResults)
 
             // TODO: Dependencies should figure in here at some point...
@@ -618,9 +624,14 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
 
+        val returnType = validateType(expression.returnType, typeInfo, typeParametersInScope) ?: return null
+        if (validatedBlock.type != returnType) {
+            errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
+        }
+
         val functionType = Type.FunctionType(validatedArguments.map(Argument::type), validatedBlock.type)
 
-        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, validatedBlock)
+        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
 
     private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {

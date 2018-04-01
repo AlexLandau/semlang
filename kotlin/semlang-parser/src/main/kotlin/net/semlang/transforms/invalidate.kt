@@ -121,8 +121,9 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.InlineFunction -> {
             val arguments = expression.arguments.map(::invalidate)
+            val returnType = invalidate(expression.returnType)
             val block = invalidate(expression.block)
-            Expression.InlineFunction(arguments, block, null)
+            Expression.InlineFunction(arguments, returnType, block, null)
         }
     }
 }

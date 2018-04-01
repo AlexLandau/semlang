@@ -145,8 +145,9 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             }
             is TypedExpression.InlineFunction -> {
                 val arguments = expression.arguments.map(this::apply)
+                val returnType = apply(expression.returnType)
                 val block = apply(expression.block)
-                Expression.InlineFunction(arguments, block, null)
+                Expression.InlineFunction(arguments, returnType, block, null)
             }
         }
     }

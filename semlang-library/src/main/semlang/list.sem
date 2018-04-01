@@ -13,7 +13,7 @@ function List.first<T>(list: List<T>): Try<T> {
 function List.last<T>(list: List<T>): Try<T> {
   let size = List.size<T>(list)
   let lastIndexMaybe: Try<Natural> = Natural(Natural.minus(size, Natural."1"))
-  Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural) {
+  Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural): Try<T> {
     List.get<T>(list, lastIndex)
   })
 }

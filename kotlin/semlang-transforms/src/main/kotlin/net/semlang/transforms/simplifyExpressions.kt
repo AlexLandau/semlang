@@ -145,7 +145,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
             }
             is Expression.InlineFunction -> {
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope, shouldHoist)
-                Expression.InlineFunction(expression.arguments, block, null)
+                Expression.InlineFunction(expression.arguments, expression.returnType, block, null)
             }
         }
     }
@@ -239,7 +239,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
             }
             is Expression.InlineFunction -> {
                 val block = hoistExpressionsInBlock(expression.block, varNamesInScope, shouldHoist)
-                Expression.InlineFunction(expression.arguments, block, null)
+                Expression.InlineFunction(expression.arguments, expression.returnType, block, null)
             }
         }
         return if (shouldHoist(expressionWithNewContents)) {

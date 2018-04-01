@@ -445,6 +445,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.InlineFunction -> {
             node.put("type", "inlineFunction")
             addArray(node, "arguments", expression.arguments, ::addFunctionArgument)
+            node.set("returnType", toTypeNode(expression.returnType))
             addBlock(node.putArray("body"), expression.block)
             return
         }
@@ -517,8 +518,9 @@ private fun parseExpression(node: JsonNode): Expression {
         }
         "inlineFunction" -> {
             val arguments = parseArguments(node["arguments"])
+            val returnType = parseType(node["returnType"])
             val block = parseBlock(node["body"])
-            return Expression.InlineFunction(arguments, block, location = null)
+            return Expression.InlineFunction(arguments, returnType, block, location = null)
         }
         else -> {
             error("Unknown expression type '$type'")
