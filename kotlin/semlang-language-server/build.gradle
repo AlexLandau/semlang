@@ -23,11 +23,11 @@ dependencies {
   compile 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.3.0'
 }
 
-// TODO: Make this its own subtask and define inputs/outputs
-tasks.build.doLast {
-  project.copy {
-    from 'build/libs/kotlin-language-server-all.jar'
-    into rootProject.file('typescript/semlang-code')
-    rename { 'semlang-language-server.jar' }
-  }
+task copyLanguageServerJarToCodePlugin(type: Copy) {
+  dependsOn shadowJar
+  from 'build/libs/semlang-language-server-all.jar'
+  into rootProject.file('typescript/semlang-code')
+  rename { 'semlang-language-server.jar' }
 }
+
+tasks.build.dependsOn copyLanguageServerJarToCodePlugin
