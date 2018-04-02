@@ -3,6 +3,7 @@ package net.semlang.transforms
 import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
+import java.util.*
 
 fun extractInlineFunctions(module: ValidatedModule): RawContext {
     val extractor = InlineFunctionExtractor(module)
@@ -10,7 +11,8 @@ fun extractInlineFunctions(module: ValidatedModule): RawContext {
 }
 
 private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
-    val extractedFunctions = ArrayList<Function>()
+    val rawExtractedFunctions = ArrayDeque<ValidatedFunction>()
+    val processedExtractedFunctions = ArrayList<Function>()
     val usedEntityIds = {
         val set = HashSet<EntityId>()
         set.addAll(inputModule.getAllInternalFunctions().keys)
@@ -26,7 +28,15 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     fun apply(): RawContext {
         val transformedFunctions = transformFunctions(inputModule.ownFunctions)
         val transformedStructs = transformStructs(inputModule.ownStructs)
-        return RawContext(transformedFunctions + extractedFunctions, transformedStructs, inputModule.ownInterfaces.values.toList().map(::invalidate))
+        processExtractedFunctions()
+        return RawContext(transformedFunctions + processedExtractedFunctions, transformedStructs, inputModule.ownInterfaces.values.toList().map(::invalidate))
+    }
+
+    private fun processExtractedFunctions() {
+        while (rawExtractedFunctions.isNotEmpty()) {
+            val toProcess = rawExtractedFunctions.remove()
+            processedExtractedFunctions.add(transformFunction(toProcess))
+        }
     }
 
     private fun transformStructs(structs: Map<EntityId, Struct>): List<UnvalidatedStruct> {
@@ -104,8 +114,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             }
             is TypedExpression.InlineFunction -> {
                 // Create a new function
-                val newFunction = addNewFunctionFromInlined(expression)
-                val newFunctionId = newFunction.id
+                val newFunctionId = addNewFunctionFromInlined(expression)
 
                 // TODO: Is this correct?
                 val chosenParameters = listOf<UnvalidatedType>()
@@ -124,24 +133,24 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         }
     }
 
-    private fun addNewFunctionFromInlined(inlineFunction: TypedExpression.InlineFunction): Function {
+    private fun addNewFunctionFromInlined(inlineFunction: TypedExpression.InlineFunction): EntityId {
         val newId = getUnusedEntityId()
 
         // TODO: Is this correct?
         val typeParameters = listOf<String>()
 
         // We need to include both implicit and explicit parameters
-        val explicitArguments = inlineFunction.arguments.map(::invalidate)
-        val implicitArguments = inlineFunction.boundVars.map { (name, type) -> UnvalidatedArgument(name, invalidate(type)) }
+        val explicitArguments = inlineFunction.arguments
+        val implicitArguments = inlineFunction.boundVars.map { (name, type) -> Argument(name, type) }
         val arguments = explicitArguments + implicitArguments
 
-        val block = invalidate(inlineFunction.block)
-        val returnType = invalidate(inlineFunction.block.type)
+        val block = inlineFunction.block
+        val returnType = inlineFunction.block.type
         val annotations = listOf<Annotation>()
 
-        val function = Function(newId, typeParameters, arguments, returnType, block, annotations)
-        extractedFunctions.add(function)
-        return function
+        val function = ValidatedFunction(newId, typeParameters, arguments, returnType, block, annotations)
+        rawExtractedFunctions.add(function)
+        return newId
     }
 
     private fun getUnusedEntityId(): EntityId {

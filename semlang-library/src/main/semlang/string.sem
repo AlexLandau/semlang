@@ -2,3 +2,8 @@
 function Unicode.String.length(string: Unicode.String): Natural {
   List.size<Unicode.CodePoint>(string->codePoints)
 }
+
+function String.appendFront(codePoint: Unicode.CodePoint, string: Unicode.String): Unicode.String {
+  let allCodePoints = List.appendFront<Unicode.CodePoint>(codePoint, string->codePoints)
+  Unicode.String(allCodePoints)
+}

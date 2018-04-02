@@ -126,6 +126,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseFunction(function: Sem1Parser.FunctionContext): Function {
+        // TODO: Frequently get "entity_id() must not be null" here when editing code
         val id: EntityId = parseEntityId(function.entity_id())
 
         val typeParameters: List<String> = if (function.cd_ids() != null) {

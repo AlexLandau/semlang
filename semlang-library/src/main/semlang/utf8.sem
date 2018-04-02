@@ -2,6 +2,184 @@
 // This could make an interesting test case for seeing if functions written to work on list-based
 // types can be automatically converted to work on streams instead.
 
+struct Utf8.CodePointByteCount {
+  integer: Integer
+  requires {
+    Boolean.and(
+      Integer.greaterThan(integer, Integer."0"),
+      Integer.lessThan(integer, Integer."5")
+    )
+  }
+}
+
+struct Utf8.CodePointBytes {
+  bytes: List<Byte>
+  requires {
+    Boolean.any([
+      Utf8.isValidOneByteCodePoint(bytes),
+      Utf8.isValidTwoByteCodePoint(bytes),
+      Utf8.isValidThreeByteCodePoint(bytes),
+      Utf8.isValidFourByteCodePoint(bytes)
+    ]<Boolean>)
+  }
+}
+
+function Utf8.getStartingCodePointBytes(bytes: List<Byte>): Try<Utf8.CodePointBytes> {
+  let lengthOneList = List.firstN<Byte>(bytes, Natural."1")
+  let sizeOneCodePoint = Utf8.CodePointBytes(lengthOneList)
+  if (Try.isSuccess<Utf8.CodePointBytes>(sizeOneCodePoint)) {
+    sizeOneCodePoint
+  } else {
+    let lengthTwoList = List.firstN<Byte>(bytes, Natural."2")
+    let sizeTwoCodePoint = Utf8.CodePointBytes(lengthTwoList)
+    if (Try.isSuccess<Utf8.CodePointBytes>(sizeTwoCodePoint)) {
+      sizeTwoCodePoint
+    } else {
+      let lengthThreeList = List.firstN<Byte>(bytes, Natural."3")
+      let sizeThreeCodePoint = Utf8.CodePointBytes(lengthThreeList)
+      if (Try.isSuccess<Utf8.CodePointBytes>(sizeThreeCodePoint)) {
+        sizeThreeCodePoint
+      } else {
+        let lengthFourList = List.firstN<Byte>(bytes, Natural."4")
+        let sizeFourCodePoint = Utf8.CodePointBytes(lengthFourList)
+        sizeFourCodePoint
+      }
+    }
+  }
+}
+
+function Utf8.isValidOneByteCodePoint(bytes: List<Byte>): Boolean {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."1")) {
+    let byte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byteBits = Byte.toBits(byte)
+    Bit.equals(Bit."0", ByteBits.get(byteBits, Byte.BitPosition."0"))
+  } else {
+    Boolean."false"
+  }
+}
+
+function Utf8.isValidTwoByteCodePoint(bytes: List<Byte>): Boolean {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."2")) {
+    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byteBits1 = Byte.toBits(byte1)
+    let byteBits2 = Byte.toBits(byte2)
+    Boolean.all([
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."0")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."1")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits1, Byte.BitPosition."2")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits2, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits2, Byte.BitPosition."1"))
+    ]<Boolean>)
+  } else {
+    Boolean."false"
+  }
+}
+
+function Utf8.isValidThreeByteCodePoint(bytes: List<Byte>): Boolean {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."3")) {
+    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+    let byteBits1 = Byte.toBits(byte1)
+    let byteBits2 = Byte.toBits(byte2)
+    let byteBits3 = Byte.toBits(byte3)
+    Boolean.all([
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."0")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."1")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."2")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits1, Byte.BitPosition."3")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits2, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits2, Byte.BitPosition."1")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits3, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits3, Byte.BitPosition."1"))
+    ]<Boolean>)
+  } else {
+    Boolean."false"
+  }
+}
+
+function Utf8.isValidFourByteCodePoint(bytes: List<Byte>): Boolean {
+  if (Natural.equals(List.size<Byte>(bytes), Natural."4")) {
+    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+    let byte4 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
+    let byteBits1 = Byte.toBits(byte1)
+    let byteBits2 = Byte.toBits(byte2)
+    let byteBits3 = Byte.toBits(byte3)
+    let byteBits4 = Byte.toBits(byte4)
+    Boolean.all([
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."0")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."1")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."2")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits1, Byte.BitPosition."3")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits1, Byte.BitPosition."4")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits2, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits2, Byte.BitPosition."1")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits3, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits3, Byte.BitPosition."1")),
+      Bit.equals(Bit."1", ByteBits.get(byteBits4, Byte.BitPosition."0")),
+      Bit.equals(Bit."0", ByteBits.get(byteBits4, Byte.BitPosition."1"))
+    ]<Boolean>)
+  } else {
+    Boolean."false"
+  }
+}
+
+function getByteCountGivenInitialByte(initialByte: Byte): Try<Utf8.CodePointByteCount> {
+  let bits = Byte.toBits(initialByte)
+  if (Bit.equals(Bit."0", ByteBits.get(bits, Byte.BitPosition."0"))) {
+    Try.success<Utf8.CodePointByteCount>(Utf8.CodePointByteCount."1")
+  } else {
+    Try.failure<Utf8.CodePointByteCount>()
+  }
+}
+
+function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): Unicode.CodePoint {
+  let bytes = codePointBytes->bytes
+  let length = List.size<Byte>(bytes)
+  let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+  Try.assume<Unicode.CodePoint>(
+    if (Natural.equals(length, Natural."1")) {
+      Unicode.CodePoint(byte1->natural)
+    } else {
+      let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+      let byteTwoContents = Try.assume<Natural>(Natural(Natural.minus(byte2->natural, Natural."128")))
+      if (Natural.equals(length, Natural."2")) {
+        let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."192")))
+        let byteOneContribution = Natural.times(byteOneContents, Natural."64")
+        let byteTwoContribution = byteTwoContents
+        Unicode.CodePoint(Natural.plus(byteOneContribution, byteTwoContribution))
+      } else {
+        let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+        let byteThreeContents = Try.assume<Natural>(Natural(Natural.minus(byte3->natural, Natural."128")))
+        if (Natural.equals(length, Natural."3")) {
+          let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."224")))
+          let byteOneContribution = Natural.times(byteOneContents, Natural."4096")
+          let byteTwoContribution = Natural.times(byteTwoContents, Natural."64")
+          let byteThreeContribution = byteThreeContents
+          let numericValue = Natural.sum([byteOneContribution, byteTwoContribution, byteThreeContribution]<Natural>)
+          Unicode.CodePoint(numericValue)
+        } else {
+          // Length is 4
+          let byte4 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
+          let byteFourContents = Try.assume<Natural>(Natural(Natural.minus(byte4->natural, Natural."128")))
+
+          let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."240")))
+          let byteOneContribution = Natural.times(byteOneContents, Natural."262144")
+          let byteTwoContribution = Natural.times(byteTwoContents, Natural."4096")
+          let byteThreeContribution = Natural.times(byteThreeContents, Natural."64")
+          let byteFourContribution = byteFourContents
+          
+          let numericValue = Natural.sum([byteOneContribution, byteTwoContribution, byteThreeContribution, byteFourContribution]<Natural>)
+          Unicode.CodePoint(numericValue)
+        }
+      }
+    }
+  )
+}
+
 /* This version of the function requires the bytes given to correspond exactly to a complete
  * string. If any part of the bytes are invalid, failure will be returned.
  *
@@ -14,46 +192,56 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
   if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
     Try.success<Unicode.String>(Unicode.String."")
   } else {
+    let firstCharMaybe = Utf8.getStartingCodePointBytes(bytes)
+    Try.flatMap<Utf8.CodePointBytes, Unicode.String>(firstCharMaybe, function (firstChar: Utf8.CodePointBytes): Try<Unicode.String> {
+      let unicodeValue = getUnicodeValue(firstChar)
+      let numBytesUsed = List.size<Byte>(firstChar->bytes)
+      let remainingBytes = List.drop<Byte>(bytes, numBytesUsed)
+      Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes), function (remainingString: Unicode.String): Unicode.String {
+        String.appendFront(unicodeValue, remainingString)
+      })
+    })
+
     // TODO: Convert to the newer bytes-to-bits approach
-    let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-    let firstByteBits = Byte.toBits(firstByte)
-    let 128bit = Byte.BitPosition."7"
-    if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
-      let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
-      let remainingBytes = List.drop<Byte>(bytes, Natural."1")
-      Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
-        function(remainingString: Unicode.String): Unicode.String {
-          let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
-          Unicode.String(allChars)
-        }
-      )
-    } else {
-      let 64bit = Byte.BitPosition."6"
-      let 32bit = Byte.BitPosition."5"
-      if (Boolean.and(
-        Bit.equals(Bit."1", ByteBits.get(firstByteBits, Byte.BitPosition."1")),
-        Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."2")),
-      )) {
-        // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
-        let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
-        let secondByteBits = Byte.toBits(secondByte)
-        let fullBits = BitsBigEndian(List.concatenate<Bit>(
-          List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),
-          List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural."6")
-        ))
-        let codePointValue = Natural.fromBits(fullBits)
-        let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
-        let remainingBytes = List.drop<Byte>(bytes, Natural."2")
-        Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
-          function(remainingString: Unicode.String): Unicode.String {
-            let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
-            Unicode.String(allChars)
-          }
-        )
-      } else {
-        // TODO: Implement
-        Try.failure<Unicode.String>()
-      }
-    }
+    // let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    // let firstByteBits = Byte.toBits(firstByte)
+    // let 128bit = Byte.BitPosition."7"
+    // if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
+    //   let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
+    //   let remainingBytes = List.drop<Byte>(bytes, Natural."1")
+    //   Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+    //     function(remainingString: Unicode.String): Unicode.String {
+    //       let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
+    //       Unicode.String(allChars)
+    //     }
+    //   )
+    // } else {
+    //   let 64bit = Byte.BitPosition."6"
+    //   let 32bit = Byte.BitPosition."5"
+    //   if (Boolean.and(
+    //     Bit.equals(Bit."1", ByteBits.get(firstByteBits, Byte.BitPosition."1")),
+    //     Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."2")),
+    //   )) {
+    //     // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
+    //     let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
+    //     let secondByteBits = Byte.toBits(secondByte)
+    //     let fullBits = BitsBigEndian(List.concatenate<Bit>(
+    //       List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),
+    //       List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural."6")
+    //     ))
+    //     let codePointValue = Natural.fromBits(fullBits)
+    //     let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
+    //     let remainingBytes = List.drop<Byte>(bytes, Natural."2")
+    //     Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+    //       function(remainingString: Unicode.String): Unicode.String {
+    //         let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
+    //         Unicode.String(allChars)
+    //       }
+    //     )
+    //   } else {
+    //     // TODO: Implement
+    //     Try.failure<Unicode.String>()
+    //   }
+    // }
   }
 }

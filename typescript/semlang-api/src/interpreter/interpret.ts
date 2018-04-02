@@ -459,7 +459,7 @@ function addVarNamesReferencedInExpression(expression: Expression, varNamesSet: 
     } else if (expression.type === "ifThen") {
         throw new Error(`TODO: Implement`);
     } else if (expression.type === "inlineFunction") {
-        throw new Error(`TODO: Implement`);
+        addVarNamesReferencedInBlock(expression.body, varNamesSet);
     } else if (expression.type === "list") {
         for (const item of expression.contents) {
             addVarNamesReferencedInExpression(item, varNamesSet);
