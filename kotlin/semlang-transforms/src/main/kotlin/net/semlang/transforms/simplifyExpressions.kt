@@ -7,7 +7,6 @@ typealias ExpressionPredicate = (Expression) -> Boolean
 
 // TODO: Test
 // TODO: Better document
-// TODO: Refactor into a version where we can pull out only those expressions matching certain criteria (e.g. all IfThens)
 fun simplifyAllExpressions(context: RawContext): RawContext {
     return ExpressionHoister(context, {true}).apply()
 }

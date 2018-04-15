@@ -1,6 +1,14 @@
 //The prime factors of 13195 are 5, 7, 13 and 29.
 //What is the largest prime factor of the number 600851475143 ?
 
+// Opportunities for optimization:
+// 1) The recursive getPrimeFactors() method calls getPrimes() at each level of recursion; since it's
+//    a constant function, the interpreter could reuse that sequence
+// 2) The implementation of isNotDivisibleByAny could short-circuit during the computation of the
+//    divisibilities
+// 3) When getPrimeFactors recurses, it could pass along a starting point among the primes
+//    (this would be hard to infer the correctness of and would be implemented in this code instead)
+
 function euler.getLargestPrimeFactor(n: Natural): Natural {
     let primeFactors: List<Natural> = getPrimeFactors(n)
     let largestPrimeFactor: Natural = Try.assume<Natural>(Natural.max(primeFactors))

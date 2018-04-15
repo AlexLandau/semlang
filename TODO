@@ -69,10 +69,10 @@ Major near-term projects:
   - Set up "normal" interpreter to record the results of specific functions; bridge into this after-the-fact analysis
     - (Record any non-determinism from monads while inside such a call)
 - Offer alternative syntax with even easier parsing (e.g. commas prepended to lists, dots prepended to IDs)
+  - Ideally this would also be designed to offer single-pass validation like WebAssembly
 - Start to create dialects with simpler syntax, type inference, etc.
-  - "sem1" vs. "sem0" for starters
   - Also type inference for parameters when calling functions, for types that can be inferred (can these be separated somehow?)
-  - Some sort of lambda expressions would be really nice...
+  - Operators for dealing more easily with Try types (e.g. Foo? instead of Try<Foo>, ?: operator, ? for conditional calls)
 - Semlang -> Semlang transformations, optimizations, etc.
   - Use only simple (non-nested) expressions
   - Remove redundant variables and reiterated definitions
@@ -168,12 +168,6 @@ Distinctions between possible sem0/sem1/sem2:
     - Overloaded function names
     - Default/named arguments
     - Imperative style: Reassignable variables, while/for loops
-
-- Candidates for lambda expression syntax:
-(foo: Integer, bar: Integer): Boolean -> { ... }
-function (foo: Integer, bar: Integer): Boolean { ... }
-- Actually, since we can determine the type of the block, we can just skip that:
-(foo: Integer, bar: Integer) -> { ... }
 
 Candidate monad semantics:
 - Real monads can't be created; they can only be introduced by the caller of the initial function. However, there should

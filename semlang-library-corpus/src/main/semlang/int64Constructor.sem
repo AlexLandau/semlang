@@ -1,0 +1,11 @@
+
+@Test(["0"], "success(0)")
+@Test(["1"], "success(1)")
+@Test(["-1"], "success(-1)")
+@Test(["-9223372036854775808"], "success(-9223372036854775808)")
+@Test(["-9223372036854775809"], "failure")
+@Test(["9223372036854775807"], "success(9223372036854775807)")
+@Test(["9223372036854775808"], "failure")
+function testInt64Constructor(int: Integer): Try<Int64> {
+  Int64(int)
+}

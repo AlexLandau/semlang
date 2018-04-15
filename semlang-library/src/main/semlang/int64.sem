@@ -1,0 +1,34 @@
+
+@Export
+struct Int64 {
+  integer: Integer
+  requires {
+    Boolean.and(
+      Integer.lessThan(Integer."-9223372036854775809", integer),
+      Integer.lessThan(integer, Integer."9223372036854775808")
+    )
+  }
+}
+
+// This version of plus allows silent overflow or underflow.
+@Export
+function Int64.plusUnsafe(left: Int64, right: Int64): Int64 {
+  let intValue = Integer.plus(left->integer, right->integer)
+  let correctedIntValue = if (Integer.lessThan(Integer."9223372036854775807", intValue)) {
+    Integer.minus(intValue, Integer."18446744073709551616")
+  } else {
+    if (Integer.lessThan(intValue, Integer."-9223372036854775808")) {
+      Integer.plus(intValue, Integer."18446744073709551616")
+    } else {
+      intValue
+    }
+  }
+  Try.assume<Int64>(Int64(correctedIntValue))
+}
+
+// This version of plus returns failure if an underflow would occur.
+@Export
+function Int64.plusSafe(left: Int64, right: Int64): Try<Int64> {
+  let intValue = Integer.plus(left->integer, right->integer)
+  Int64(intValue)
+}
