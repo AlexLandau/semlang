@@ -29,7 +29,11 @@ sealed class SemObject {
     data class Instance(val interfaceDef: net.semlang.api.Interface, val methods: List<SemObject.FunctionBinding>): SemObject()
     sealed class Try: SemObject() {
         data class Success(val contents: SemObject): Try()
-        object Failure: Try()
+        object Failure: Try() {
+            override fun toString(): String {
+                return "Failure"
+            }
+        }
     }
     data class SemList(val contents: List<SemObject>): SemObject() {
         override fun toString(): String {

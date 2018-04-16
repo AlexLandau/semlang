@@ -14,24 +14,32 @@ private val MOCK_TEST_ANNOTATION_NAME = EntityId.of("Test", "Mock")
  */
 fun runAnnotationTests(module: ValidatedModule, options: InterpreterOptions = InterpreterOptions()): Int {
     var testCount = 0
+    val errorCollector = ArrayList<String>()
     for (function in module.ownFunctions.values) {
         for (annotation in function.annotations) {
             if (annotation.name == TEST_ANNOTATION_NAME) {
-                doTest(function, module, annotation.values, options)
+                doTest(function, module, annotation.values, errorCollector, options)
                 testCount++
             } else if (annotation.name == MOCK_TEST_ANNOTATION_NAME) {
-                doMockTest(function, module, annotation.values, options)
+                doMockTest(function, module, annotation.values, errorCollector, options)
                 testCount++
             }
+        }
+    }
+    if (errorCollector.isNotEmpty()) {
+        if (errorCollector.size == 1) {
+            throw AssertionError(errorCollector[0])
+        } else {
+            throw AssertionError("Multiple tests had failures:\n * " + errorCollector.joinToString("\n * "))
         }
     }
     return testCount
 }
 
-private fun doMockTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>, options: InterpreterOptions) {
+private fun doMockTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
     val contents = verifyMockTestAnnotationContents(values, function)
 
-    runMockTest(function, contents, module, options)
+    runMockTest(function, contents, module, errorCollector, options)
 }
 
 sealed class MockArgument {
@@ -108,10 +116,15 @@ fun verifyMockTestAnnotationContents(inputs: List<AnnotationArgument>, function:
     return MockTestAnnotationContents(arguments, outputString, expectedCalls)
 }
 
-private fun doTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>, options: InterpreterOptions) {
-    val contents = verifyTestAnnotationContents(values, function)
+private fun doTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
+    val contents = try {
+        verifyTestAnnotationContents(values, function)
+    } catch (e: AssertionError) {
+        errorCollector.add(e.message!!)
+        return
+    }
 
-    runTest(function, contents, module, options)
+    runTest(function, contents, module, errorCollector, options)
 }
 
 data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
@@ -139,17 +152,17 @@ fun verifyTestAnnotationContents(inputs: List<AnnotationArgument>, function: Val
     return TestAnnotationContents(allArguments, output)
 }
 
-private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, module: ValidatedModule, options: InterpreterOptions) {
+private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, module: ValidatedModule, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
     val interpreter = SemlangForwardInterpreter(module, options)
     val arguments = instantiateArguments(function.arguments, contents.argLiterals, interpreter)
     val actualOutput = interpreter.interpret(function.id, arguments)
     val desiredOutput = interpreter.evaluateLiteral(function.returnType, contents.outputLiteral)
     if (!interpreter.areEqual(actualOutput, desiredOutput)) {
-        fail("For function ${function.id}, expected output with arguments ${contents.argLiterals} to be $desiredOutput, but was $actualOutput")
+        errorCollector.add("For function ${function.id}, expected output with arguments ${contents.argLiterals} to be $desiredOutput, but was $actualOutput")
     }
 }
 
-private fun runMockTest(function: ValidatedFunction, contents: MockTestAnnotationContents, module: ValidatedModule, options: InterpreterOptions) {
+private fun runMockTest(function: ValidatedFunction, contents: MockTestAnnotationContents, module: ValidatedModule, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
     val bootstrapInterpreter = SemlangForwardInterpreter(module, options)
     val optionsWithMocks = options.copy(mockCalls = translateMockCalls(contents.expectedCalls, bootstrapInterpreter))
 
@@ -161,7 +174,7 @@ private fun runMockTest(function: ValidatedFunction, contents: MockTestAnnotatio
         is MockArgument.Literal -> interpreter.evaluateLiteral(function.returnType, contents.output.value)
     }
     if (!interpreter.areEqual(actualOutput, desiredOutput)) {
-        fail("For function ${function.id}, expected output with arguments ${contents.args} to be $desiredOutput, but was $actualOutput")
+        errorCollector.add("For function ${function.id}, expected output with arguments ${contents.args} to be $desiredOutput, but was $actualOutput")
     }
 }
 

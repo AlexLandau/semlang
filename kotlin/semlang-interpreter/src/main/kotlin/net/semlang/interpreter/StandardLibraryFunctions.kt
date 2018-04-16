@@ -172,6 +172,29 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         }
     }))
 
+    // Int64.minusUnsafe
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "minusUnsafe"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        SemObject.Int64(left.value - right.value)
+    }))
+
+    // Int64.minusSafe
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "minusSafe"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        val l = left.value
+        val r = right.value
+        val diff = l - r
+        if (l >= 0 && r < 0 && diff < 0) {
+            SemObject.Try.Failure
+        } else if (l < 0 && r > 0 && diff >= 0) {
+            SemObject.Try.Failure
+        } else {
+            SemObject.Try.Success(SemObject.Int64(diff))
+        }
+    }))
+
     // Int64.timesUnsafe
     nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "timesUnsafe"), { args: List<SemObject>, _: InterpreterCallback ->
         val left = args[0] as? SemObject.Int64 ?: typeError()
