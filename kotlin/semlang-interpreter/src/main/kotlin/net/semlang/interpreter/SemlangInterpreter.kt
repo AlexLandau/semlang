@@ -21,6 +21,16 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 getOptimizedFunctions(mainModule)
             else
                 mapOf()
+    private val otherOptimizedStructConstructors: Map<ResolvedEntityRef, NativeFunction> =
+            if (options.useLibraryOptimizations)
+                getOptimizedStructConstructors(mainModule)
+            else
+                mapOf()
+    private val otherOptimizedStructLiteralParsers: Map<ResolvedEntityRef, (String) -> SemObject> =
+            if (options.useLibraryOptimizations)
+                getOptimizedStructLiteralParsers(mainModule)
+            else
+                mapOf()
 
     private val runCounts = HashMap<ResolvedEntityRef, Long>()
 
@@ -80,6 +90,11 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     return evaluateBlock(function.function.block, variableAssignments, function.module)
                 }
                 FunctionLikeType.STRUCT_CONSTRUCTOR -> {
+                    val optimizedImpl = otherOptimizedStructConstructors[entityResolution.entityRef]
+                    if (optimizedImpl != null) {
+                        return optimizedImpl.apply(arguments, this::interpretBinding)
+                    }
+
                     val struct: StructWithModule = referringModule.getInternalStruct(entityResolution.entityRef)
                     return evaluateStructConstructor(struct.struct, arguments, struct.module)
                 }
@@ -324,10 +339,17 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                         error("The only valid member in a Unicode.String is 'codePoints'")
                     }
                     // TODO: Cache this, or otherwise make it more efficient
-                    val codePointsList = innerResult.contents.codePoints().mapToObj { value -> SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(
-                            SemObject.Natural(BigInteger.valueOf(value.toLong()))))}
+                    val codePointsList = innerResult.contents.codePoints().mapToObj { value ->
+                        SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(
+                                SemObject.Natural(BigInteger.valueOf(value.toLong()))))
+                    }
                             .collect(Collectors.toList())
                     return SemObject.SemList(codePointsList)
+                } else if (innerResult is SemObject.Int64) {
+                    if (name != "integer") {
+                        error("The only valid member of an Int64 is 'integer'")
+                    }
+                    return SemObject.Integer(BigInteger.valueOf(innerResult.value))
                 } else {
                     throw IllegalStateException("Trying to use -> on a non-struct, non-interface object $innerResult")
                 }
@@ -430,6 +452,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
         val resolved = this.mainModule.resolve(type.ref) ?: error("Unhandled literal \"$literal\" of type $type")
         if (resolved.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
+            if (options.useLibraryOptimizations) {
+                val optimizedImpl = otherOptimizedStructLiteralParsers[resolved.entityRef]
+                if (optimizedImpl != null) {
+                    return optimizedImpl(literal)
+                }
+            }
+
+
             val struct = this.mainModule.getInternalStruct(resolved.entityRef)
 
             if (struct.struct.members.size != 1) {

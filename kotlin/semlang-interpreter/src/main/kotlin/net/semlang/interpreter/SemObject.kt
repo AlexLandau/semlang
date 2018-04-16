@@ -46,6 +46,9 @@ sealed class SemObject {
     data class TextOut(val out: PrintStream): SemObject()
     data class ListBuilder(val listSoFar: ArrayList<SemObject>): SemObject()
 
+    // Special cases for standard library optimizations
+    data class Int64(val value: Long): SemObject()
+
     // Used by mock tests to represent mocked objects of threaded types
     data class Mock(val name: String) : SemObject()
 }
