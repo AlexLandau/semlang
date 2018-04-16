@@ -32,3 +32,34 @@ function Int64.plusSafe(left: Int64, right: Int64): Try<Int64> {
   let intValue = Integer.plus(left->integer, right->integer)
   Int64(intValue)
 }
+
+// This version of times allows silent overflow or underflow.
+@Export
+function Int64.timesUnsafe(left: Int64, right: Int64): Int64 {
+  let intValue = Integer.times(left->integer, right->integer)
+
+  // TODO: This might do unnecessary work in some cases... maybe check up-front if it's safe?
+  let timesDividesInto2e64 = Try.assume<Integer>(Integer.dividedBy(intValue, Integer."18446744073709551616"))
+  let amountToSubtract = Integer.times(timesDividesInto2e64, Integer."18446744073709551616")
+
+  // This should get it within one "fix" of being correct
+  let approxIntValue = Integer.minus(intValue, amountToSubtract)
+
+  let correctedIntValue = if (Integer.lessThan(Integer."9223372036854775807", approxIntValue)) {
+    Integer.minus(approxIntValue, Integer."18446744073709551616")
+  } else {
+    if (Integer.lessThan(approxIntValue, Integer."-9223372036854775808")) {
+      Integer.plus(approxIntValue, Integer."18446744073709551616")
+    } else {
+      approxIntValue
+    }
+  }
+  Try.assume<Int64>(Int64(correctedIntValue))
+}
+
+// This version of times returns failure if an underflow would occur.
+@Export
+function Int64.timesSafe(left: Int64, right: Int64): Try<Int64> {
+  let intValue = Integer.times(left->integer, right->integer)
+  Int64(intValue)
+}
