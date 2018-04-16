@@ -172,6 +172,28 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         }
     }))
 
+    // Int64.timesUnsafe
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "timesUnsafe"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        SemObject.Int64(left.value * right.value)
+    }))
+
+    // Int64.timesSafe
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "timesSafe"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        val l = BigInteger.valueOf(left.value)
+        val r = BigInteger.valueOf(right.value)
+        val product = l.times(r)
+
+        if (product.bitLength() <= 63) {
+            SemObject.Try.Success(SemObject.Int64(product.longValueExact()))
+        } else {
+            SemObject.Try.Failure
+        }
+    }))
+
 
     // TODO: This only really works as intended if it's a struct/BasicSequence... (?) Maybe return Sequence to be a struct?
 //    nativeImplAdder.accept(NativeFunction(EntityId.of("Sequence", "getRange"), { args: List<SemObject>, apply: InterpreterCallback ->
