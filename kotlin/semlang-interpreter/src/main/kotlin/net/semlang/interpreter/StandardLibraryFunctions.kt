@@ -217,6 +217,27 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         }
     }))
 
+    // Int64.equals
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "equals"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        SemObject.Boolean(left.value == right.value)
+    }))
+
+    // Int64.lessThan
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "lessThan"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        SemObject.Boolean(left.value < right.value)
+    }))
+
+    // Int64.greaterThan
+    nativeImplAdder.accept(NativeFunction(EntityId.of("Int64", "greaterThan"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0] as? SemObject.Int64 ?: typeError()
+        val right = args[1] as? SemObject.Int64 ?: typeError()
+        SemObject.Boolean(left.value > right.value)
+    }))
+
 
     // TODO: This only really works as intended if it's a struct/BasicSequence... (?) Maybe return Sequence to be a struct?
 //    nativeImplAdder.accept(NativeFunction(EntityId.of("Sequence", "getRange"), { args: List<SemObject>, apply: InterpreterCallback ->

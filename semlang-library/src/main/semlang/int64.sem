@@ -86,3 +86,18 @@ function Int64.timesSafe(left: Int64, right: Int64): Try<Int64> {
   let intValue = Integer.times(left->integer, right->integer)
   Int64(intValue)
 }
+
+@Export
+function Int64.equals(left: Int64, right: Int64): Boolean {
+  Integer.equals(left->integer, right->integer)
+}
+
+@Export
+function Int64.lessThan(left: Int64, right: Int64): Boolean {
+  Integer.lessThan(left->integer, right->integer)
+}
+
+@Export
+function Int64.greaterThan(left: Int64, right: Int64): Boolean {
+  Integer.greaterThan(left->integer, right->integer)
+}

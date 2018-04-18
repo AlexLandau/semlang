@@ -1,0 +1,15 @@
+
+@Test(["0", "0"], "false")
+@Test(["32", "64"], "false")
+@Test(["64", "32"], "true")
+@Test(["-1000", "1000"], "false")
+@Test(["-2000", "1000"], "false")
+@Test(["1000", "-1000"], "true")
+@Test(["1000", "-2000"], "true")
+@Test(["-1000", "-1000"], "false")
+@Test(["8589934592", "17179869184"], "false")
+@Test(["17179869184", "8589934592"], "true")
+@Test(["17179869184", "17179869184"], "false")
+function testGreaterThan(left: Int64, right: Int64): Boolean {
+  Int64.greaterThan(left, right)
+}
