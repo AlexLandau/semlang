@@ -6,7 +6,22 @@ Major near-term projects:
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors
-- Sem1 vs. sem0 separation and Try notation
+- Sem2 and Try notation
+
+Stuff that feels blocked or hasn't been implemented:
+- Lemmas and proofs
+  - Needs more consideration of both the predicates we should be operating on (how to reference parts of code?) and syntax
+- Normal form
+  - Not fully useful yet, other than for transformations; and we may be able to do that part more simply without the full
+    normal form
+- Recursion transformation
+  - Needs something like the normal-form treatment to make function transformations easier, and might also need to be
+    combined with other optimizations to be actually useful
+  - Probably also needs test cases
+  - Tail-call recursion might be easier to try implementing initially?
+- Allow @Tests to have Lists as inputs or outputs
+  - This needs design, and it should probably be a holistic design that includes structs as well
+  - This is connected to the concept of allowing files to be reinterpreted as constant functions by the build system
 
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
@@ -15,10 +30,9 @@ Major near-term projects:
   - Use a code coverage tool for the Kotlin tests
   - Apply Kotlin style guide, and maybe add linting?
   - Add tslint?
-- Have more tests run against the standard library and its corpus, using the linker where necessary
-- Fix the mess of locations on unvalidated code objects
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
+- Can we change Sequence to be a struct rather than an interface again?
 - Continue to shrink the set of native functions where possible
 - Sem0: Link native types (structs, perhaps some library functions) into sem0 code
 - Versioned publication of code corpuses

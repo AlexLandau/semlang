@@ -475,52 +475,52 @@ private fun parseExpression(node: JsonNode): Expression {
             val condition = parseExpression(node["if"])
             val thenBlock = parseBlock(node["then"])
             val elseBlock = parseBlock(node["else"])
-            return Expression.IfThen(condition, thenBlock, elseBlock, location = null)
+            return Expression.IfThen(condition, thenBlock, elseBlock)
         }
         "namedCall" -> {
             val functionRef = parseEntityRef(node["function"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters, location = null, functionRefLocation = null)
+            return Expression.NamedFunctionCall(functionRef, arguments, chosenParameters)
         }
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
             val arguments = parseExpressionsArray(node["arguments"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters, location = null)
+            return Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         "literal" -> {
             val literalType = parseType(node["literalType"])
             val literal = node["value"]?.textValue() ?: error("Expected a literal expression to have a 'value' text field")
-            return Expression.Literal(literalType, literal, location = null)
+            return Expression.Literal(literalType, literal)
         }
         "list" -> {
             val contents = parseExpressionsArray(node["contents"])
             val chosenParameter = parseType(node["chosenParameter"])
-            return Expression.ListLiteral(contents, chosenParameter, location = null)
+            return Expression.ListLiteral(contents, chosenParameter)
         }
         "follow" -> {
             val innerExpression = parseExpression(node["expression"])
             val name = node["name"]?.textValue() ?: error("Expected a follow expression to have a 'name' text field")
-            return Expression.Follow(innerExpression, name, location = null)
+            return Expression.Follow(innerExpression, name)
         }
         "namedBinding" -> {
             val functionRef = parseEntityRef(node["function"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, location = null)
+            return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
         }
         "expressionBinding" -> {
             val functionExpression = parseExpression(node["expression"])
             val bindings = parseBindingsArray(node["bindings"])
             val chosenParameters = parseChosenParameters(node["chosenParameters"])
-            return Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters, location = null)
+            return Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         "inlineFunction" -> {
             val arguments = parseArguments(node["arguments"])
             val returnType = parseType(node["returnType"])
             val block = parseBlock(node["body"])
-            return Expression.InlineFunction(arguments, returnType, block, location = null)
+            return Expression.InlineFunction(arguments, returnType, block)
         }
         else -> {
             error("Unknown expression type '$type'")

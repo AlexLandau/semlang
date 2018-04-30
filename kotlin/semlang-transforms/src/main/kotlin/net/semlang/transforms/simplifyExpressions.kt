@@ -95,8 +95,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 Expression.IfThen(
                         conditionResult,
                         simplifiedThenBlock,
-                        simplifiedElseBlock,
-                        null)
+                        simplifiedElseBlock)
             }
             is Expression.ExpressionFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -189,8 +188,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                 Expression.IfThen(
                         subresult,
                         simplifiedThenBlock,
-                        simplifiedElseBlock,
-                        null)
+                        simplifiedElseBlock)
             }
             is Expression.ExpressionFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->

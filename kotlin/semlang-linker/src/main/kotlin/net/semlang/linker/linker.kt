@@ -487,6 +487,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 // TODO: This is probably wrong
                 interfacesQueue.add(resolved.entityRef)
             }
+            FunctionLikeType.OPAQUE_TYPE -> {
+                // Currently these are all native types
+            }
         }
         val moduleId = resolved.entityRef.module
         if (!isNativeModule(moduleId) && !allModules.containsKey(moduleId)) {
