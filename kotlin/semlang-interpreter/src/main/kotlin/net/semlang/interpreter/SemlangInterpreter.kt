@@ -383,7 +383,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     return SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef), module, bindings)
                 } else {
                     // TODO: Use a resolver for natives so this can also handle constructors
-                    EntityResolution(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, functionRef.id), FunctionLikeType.NATIVE_FUNCTION)
                     SemObject.FunctionBinding(FunctionBindingTarget.Named(functionRef), null, bindings)
                 }
             }

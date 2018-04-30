@@ -161,6 +161,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
         val id: EntityId = parseEntityId(ctx.entity_id())
 
+        val isMarkedThreaded = ctx.optional_tilde().TILDE() != null
+
         val typeParameters: List<String> = if (ctx.cd_ids() != null) {
             parseCommaDelimitedIds(ctx.cd_ids())
         } else {
@@ -175,7 +177,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val annotations = parseAnnotations(ctx.annotations())
 
-        return UnvalidatedStruct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
+        return UnvalidatedStruct(id, isMarkedThreaded, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
     }
 
     private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {

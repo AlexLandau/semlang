@@ -28,7 +28,7 @@ fun invalidate(argument: Argument): UnvalidatedArgument {
 fun invalidate(struct: Struct): UnvalidatedStruct {
     val requires = struct.requires?.let { invalidate(it) }
     val members = struct.members.map(::invalidate)
-    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.isThreaded, struct.typeParameters, members, requires, struct.annotations)
 }
 
 fun invalidate(block: TypedBlock): Block {

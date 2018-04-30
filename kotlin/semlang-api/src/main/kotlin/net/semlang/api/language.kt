@@ -459,7 +459,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map(UnvalidatedType.NamedType.Companion::forParameter)
@@ -471,7 +471,7 @@ data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -511,7 +511,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
             val methodType = method.functionType
             UnvalidatedMember(method.name, UnvalidatedType.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
         }
-        return UnvalidatedStruct(adapterId, listOf(dataTypeParameter) + typeParameters,
+        return UnvalidatedStruct(adapterId, false, listOf(dataTypeParameter) + typeParameters,
                 members, null, listOf(), idLocation)
     }
 
@@ -563,7 +563,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
             val methodType = method.functionType
             Member(method.name, Type.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
         }
-        return Struct(adapterId, moduleId, listOf(dataTypeParameter) + typeParameters,
+        return Struct(adapterId, false, moduleId, listOf(dataTypeParameter) + typeParameters,
                 members, null, listOf())
     }
 

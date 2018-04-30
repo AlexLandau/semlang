@@ -52,7 +52,7 @@ private fun <T> addArray(objectNode: ObjectNode, name: String,
 }
 
 private fun addStruct(node: ObjectNode, struct: Struct) {
-    node.put("id", struct.id.toString())
+    node.put("id", (if (struct.isThreaded) "~" else "") + struct.id.toString())
     if (struct.typeParameters.isNotEmpty()) {
         addTypeParameters(node.putArray("typeParameters"), struct.typeParameters)
     }
@@ -69,13 +69,19 @@ private fun addStruct(node: ObjectNode, struct: Struct) {
 private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     if (!node.isObject()) error("Expected a struct to be an object")
 
-    val id = parseEntityId(node["id"] ?: error("Structs must have an 'id' field"))
+    val idString = node["id"]?.asText() ?: error("Structs must have an 'id' field")
+    val isThreaded = idString.startsWith("~")
+    val id = if (isThreaded) {
+        parseEntityId(idString.drop(1))
+    } else {
+        parseEntityId(idString)
+    }
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, isThreaded, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {

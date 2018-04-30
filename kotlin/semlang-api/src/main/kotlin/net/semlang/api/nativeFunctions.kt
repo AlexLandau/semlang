@@ -232,6 +232,7 @@ object NativeStruct {
     private val typeU = Type.ParameterType("U")
     val NATURAL = Struct(
             EntityId.of("Natural"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -250,6 +251,7 @@ object NativeStruct {
     )
     val BASIC_SEQUENCE = Struct(
             EntityId.of("BasicSequence"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf("T"),
             listOf(
@@ -261,6 +263,7 @@ object NativeStruct {
     )
     val UNICODE_CODE_POINT = Struct(
             EntityId.of("Unicode", "CodePoint"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -283,6 +286,7 @@ object NativeStruct {
     )
     val UNICODE_STRING = Struct(
             EntityId.of("Unicode", "String"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -293,6 +297,7 @@ object NativeStruct {
     )
     val BIT = Struct(
             EntityId.of("Bit"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -333,6 +338,7 @@ object NativeStruct {
     )
     val BITS_BIG_ENDIAN = Struct(
             EntityId.of("BitsBigEndian"),
+            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(

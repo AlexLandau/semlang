@@ -92,7 +92,7 @@ private fun stripLocations(argument: UnvalidatedArgument): UnvalidatedArgument {
 
 private fun stripLocations(struct: UnvalidatedStruct): UnvalidatedStruct {
     val requires = struct.requires?.let(::stripLocations)
-    return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, struct.members, requires, struct.annotations)
 }
 
 private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface {

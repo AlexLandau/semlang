@@ -1,0 +1,9 @@
+@Export
+struct ~StringBuilder {
+  listBuilder: ~ListBuilder<Unicode.String>
+}
+
+function StringBuilder.append(builder: ~StringBuilder, value: Unicode.String): ~StringBuilder {
+  let updatedListBuilder = ListBuilder.append<Unicode.String>(builder->listBuilder, value)
+  StringBuilder(updatedListBuilder)
+}
