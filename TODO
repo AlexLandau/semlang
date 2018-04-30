@@ -22,6 +22,9 @@ Stuff that feels blocked or hasn't been implemented:
 - Allow @Tests to have Lists as inputs or outputs
   - This needs design, and it should probably be a holistic design that includes structs as well
   - This is connected to the concept of allowing files to be reinterpreted as constant functions by the build system
+- Write escape-rope code
+  - More String library functions are needed: contains, replaceAll, join, StringBuilder
+  - Interfaces don't work well yet when there's no data involved
 
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
