@@ -30,24 +30,24 @@ private fun stripLocations(function: Function): Function {
 
 private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
     return when (type) {
-        is UnvalidatedType.Integer -> UnvalidatedType.Integer(null)
-        is UnvalidatedType.Boolean -> UnvalidatedType.Boolean(null)
+        is UnvalidatedType.Integer -> UnvalidatedType.Integer()
+        is UnvalidatedType.Boolean -> UnvalidatedType.Boolean()
         is UnvalidatedType.List -> {
             val parameter = stripLocations(type.parameter)
-            UnvalidatedType.List(parameter, null)
+            UnvalidatedType.List(parameter)
         }
         is UnvalidatedType.Try -> {
             val parameter = stripLocations(type.parameter)
-            UnvalidatedType.Try(parameter, null)
+            UnvalidatedType.Try(parameter)
         }
         is UnvalidatedType.FunctionType -> {
             val argTypes = type.argTypes.map(::stripLocations)
             val outputType = stripLocations(type.outputType)
-            UnvalidatedType.FunctionType(argTypes, outputType, null)
+            UnvalidatedType.FunctionType(argTypes, outputType)
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)
-            UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters, null)
+            UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters)
         }
     }
 }

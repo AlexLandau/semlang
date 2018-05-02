@@ -192,8 +192,8 @@ private fun parseMember(node: JsonNode): UnvalidatedMember {
 private fun parseType(node: JsonNode): UnvalidatedType {
     if (node.isTextual()) {
         return when (node.textValue()) {
-            "Integer" -> UnvalidatedType.Integer(null)
-            "Boolean" -> UnvalidatedType.Boolean(null)
+            "Integer" -> UnvalidatedType.Integer()
+            "Boolean" -> UnvalidatedType.Boolean()
             else -> error("Unrecognized type string: ${node.textValue()}")
         }
     }
@@ -212,15 +212,15 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         } else {
             listOf()
         }
-        return UnvalidatedType.NamedType(id, isThreaded, parameters, null)
+        return UnvalidatedType.NamedType(id, isThreaded, parameters)
     } else if (node.has("from")) {
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])
-        return UnvalidatedType.FunctionType(argTypes, outputType, null)
+        return UnvalidatedType.FunctionType(argTypes, outputType)
     } else if (node.has("Try")) {
-        return UnvalidatedType.Try(parseType(node["Try"]), null)
+        return UnvalidatedType.Try(parseType(node["Try"]))
     } else if (node.has("List")) {
-        return UnvalidatedType.List(parseType(node["List"]), null)
+        return UnvalidatedType.List(parseType(node["List"]))
     }
     error("Unrecognized type: $node")
 }

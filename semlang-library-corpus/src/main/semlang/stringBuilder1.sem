@@ -1,12 +1,6 @@
 
 @Test([], "Hello, world!")
 function testStringBuilder(): Unicode.String {
-//  let builder1: ~ListBuilder<Integer> = ListBuilder.create<Integer>()
-//  let builder2 = ListBuilder.append<Integer>(builder1, Integer."1")
-//  let builder3 = ListBuilder.append<Integer>(builder2, Integer."4")
-//  let builder4 = ListBuilder.append<Integer>(builder3, Integer."9")
-//  let result: List<Integer> = ListBuilder.build<Integer>(builder4)
-
   let sb1 = StringBuilder.create()
   let sb2 = StringBuilder.append(sb1, Unicode.String."Hello, ")
   let sb3 = StringBuilder.append(sb2, Unicode.String."")
