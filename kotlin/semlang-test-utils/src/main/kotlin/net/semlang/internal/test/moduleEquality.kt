@@ -24,7 +24,32 @@ fun assertRawContextsEqual(expected: RawContext, actual: RawContext) {
 private fun stripLocations(function: Function): Function {
     val arguments = function.arguments.map(::stripLocations)
     val block = stripLocations(function.block)
-    return Function(function.id, function.typeParameters, arguments, function.returnType, block, function.annotations)
+    val returnType = stripLocations(function.returnType)
+    return Function(function.id, function.typeParameters, arguments, returnType, block, function.annotations)
+}
+
+private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
+    return when (type) {
+        is UnvalidatedType.Integer -> UnvalidatedType.Integer(null)
+        is UnvalidatedType.Boolean -> UnvalidatedType.Boolean(null)
+        is UnvalidatedType.List -> {
+            val parameter = stripLocations(type.parameter)
+            UnvalidatedType.List(parameter, null)
+        }
+        is UnvalidatedType.Try -> {
+            val parameter = stripLocations(type.parameter)
+            UnvalidatedType.Try(parameter, null)
+        }
+        is UnvalidatedType.FunctionType -> {
+            val argTypes = type.argTypes.map(::stripLocations)
+            val outputType = stripLocations(type.outputType)
+            UnvalidatedType.FunctionType(argTypes, outputType, null)
+        }
+        is UnvalidatedType.NamedType -> {
+            val parameters = type.parameters.map(::stripLocations)
+            UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters, null)
+        }
+    }
 }
 
 private fun stripLocations(block: Block): Block {
@@ -34,8 +59,9 @@ private fun stripLocations(block: Block): Block {
 }
 
 private fun stripLocations(assignment: Assignment): Assignment {
+    val type = assignment.type?.let(::stripLocations)
     val expression = stripLocations(assignment.expression)
-    return Assignment(assignment.name, assignment.type, expression)
+    return Assignment(assignment.name, type, expression)
 }
 
 private fun stripLocations(expression: Expression): Expression {
@@ -51,28 +77,34 @@ private fun stripLocations(expression: Expression): Expression {
         }
         is Expression.NamedFunctionCall -> {
             val arguments = expression.arguments.map(::stripLocations)
-            Expression.NamedFunctionCall(expression.functionRef, arguments, expression.chosenParameters)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters)
         }
         is Expression.ExpressionFunctionCall -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val arguments = expression.arguments.map(::stripLocations)
-            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is Expression.Literal -> {
-            Expression.Literal(expression.type, expression.literal)
+            val type = stripLocations(expression.type)
+            Expression.Literal(type, expression.literal)
         }
         is Expression.ListLiteral -> {
             val contents = expression.contents.map(::stripLocations)
-            Expression.ListLiteral(contents, expression.chosenParameter)
+            val chosenParameter = stripLocations(expression.chosenParameter)
+            Expression.ListLiteral(contents, chosenParameter)
         }
         is Expression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else stripLocations(it) }
-            Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is Expression.ExpressionFunctionBinding -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else stripLocations(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is Expression.Follow -> {
             val structureExpression = stripLocations(expression.structureExpression)
@@ -80,19 +112,22 @@ private fun stripLocations(expression: Expression): Expression {
         }
         is Expression.InlineFunction -> {
             val arguments = expression.arguments.map(::stripLocations)
+            val returnType = stripLocations(expression.returnType)
             val block = stripLocations(expression.block)
-            Expression.InlineFunction(arguments, expression.returnType, block)
+            Expression.InlineFunction(arguments, returnType, block)
         }
     }
 }
 
 private fun stripLocations(argument: UnvalidatedArgument): UnvalidatedArgument {
-    return UnvalidatedArgument(argument.name, argument.type)
+    val type = stripLocations(argument.type)
+    return UnvalidatedArgument(argument.name, type)
 }
 
 private fun stripLocations(struct: UnvalidatedStruct): UnvalidatedStruct {
     val requires = struct.requires?.let(::stripLocations)
-    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, struct.members, requires, struct.annotations)
+    val members = struct.members.map(::stripLocations)
+    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, members, requires, struct.annotations)
 }
 
 private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface {
@@ -102,5 +137,11 @@ private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface
 
 private fun stripLocations(method: UnvalidatedMethod): UnvalidatedMethod {
     val arguments = method.arguments.map(::stripLocations)
-    return UnvalidatedMethod(method.name, method.typeParameters, arguments, method.returnType)
+    val returnType = stripLocations(method.returnType)
+    return UnvalidatedMethod(method.name, method.typeParameters, arguments, returnType)
+}
+
+private fun stripLocations(member: UnvalidatedMember): UnvalidatedMember {
+    val type = stripLocations(member.type)
+    return UnvalidatedMember(member.name, type)
 }

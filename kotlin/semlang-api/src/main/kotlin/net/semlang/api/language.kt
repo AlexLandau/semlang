@@ -77,14 +77,15 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
     }
 }
 
-sealed class UnvalidatedType {
+sealed class UnvalidatedType() {
+    abstract val location: Location?
     abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
     abstract protected fun getTypeString(): String
     override fun toString(): String {
         return getTypeString()
     }
 
-    object INTEGER : UnvalidatedType() {
+    data class Integer(override val location: Location? = null) : UnvalidatedType() {
         override fun getTypeString(): String {
             return "Integer"
         }
@@ -92,8 +93,12 @@ sealed class UnvalidatedType {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
             return this
         }
+
+        override fun toString(): String {
+            return getTypeString()
+        }
     }
-    object BOOLEAN : UnvalidatedType() {
+    data class Boolean(override val location: Location? = null) : UnvalidatedType() {
         override fun getTypeString(): String {
             return "Boolean"
         }
@@ -101,11 +106,15 @@ sealed class UnvalidatedType {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
             return this
         }
+
+        override fun toString(): String {
+            return getTypeString()
+        }
     }
 
-    data class List(val parameter: UnvalidatedType): UnvalidatedType() {
+    data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return List(parameter.replacingParameters(parameterMap))
+            return List(parameter.replacingParameters(parameterMap), location)
         }
 
         override fun getTypeString(): String {
@@ -117,9 +126,9 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class Try(val parameter: UnvalidatedType): UnvalidatedType() {
+    data class Try(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return Try(parameter.replacingParameters(parameterMap))
+            return Try(parameter.replacingParameters(parameterMap), location)
         }
 
         override fun getTypeString(): String {
@@ -131,10 +140,11 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class FunctionType(val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType): UnvalidatedType() {
+    data class FunctionType(val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
             return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap))
+                    outputType.replacingParameters(parameterMap),
+                    location)
         }
 
         override fun getTypeString(): String {
@@ -149,10 +159,10 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, val isThreaded: Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf()): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
         companion object {
-            fun forParameter(name: String): NamedType {
-                return NamedType(EntityRef(null, EntityId(listOf(name))), false, listOf())
+            fun forParameter(name: String, location: Location? = null): NamedType {
+                return NamedType(EntityRef(null, EntityId(listOf(name))), false, listOf(), location)
             }
         }
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
@@ -163,7 +173,8 @@ sealed class UnvalidatedType {
             }
             return NamedType(ref,
                     isThreaded,
-                    parameters.map { it.replacingParameters(parameterMap) }
+                    parameters.map { it.replacingParameters(parameterMap) },
+                    location
             )
         }
 
@@ -375,7 +386,7 @@ sealed class Type {
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<String> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
-        return UnvalidatedType.FunctionType(argumentTypes, outputType)
+        return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
     }
 }
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<String> = listOf()): HasId
@@ -462,11 +473,11 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
 data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
-        val typeParameters = typeParameters.map(UnvalidatedType.NamedType.Companion::forParameter)
+        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), false, typeParameters)
+            UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), false, typeParameters))
+            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -505,11 +516,11 @@ data class Member(val name: String, val type: Type)
 data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
-    val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter)
+    val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
     fun getAdapterStruct(): UnvalidatedStruct {
         val members = methods.map { method ->
             val methodType = method.functionType
-            UnvalidatedMember(method.name, UnvalidatedType.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
+            UnvalidatedMember(method.name, UnvalidatedType.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType, idLocation))
         }
         return UnvalidatedStruct(adapterId, false, listOf(dataTypeParameter) + typeParameters,
                 members, null, listOf(), idLocation)
@@ -521,26 +532,26 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         val dataTypeParameter = allTypeParameters[0]
 
         val argumentTypes = ArrayList<UnvalidatedType>()
-        val dataStructType = UnvalidatedType.NamedType.forParameter(dataTypeParameter)
+        val dataStructType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
         argumentTypes.add(dataStructType)
 
-        val adapterType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, allTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val adapterType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, allTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
         argumentTypes.add(adapterType)
 
-        val outputType = UnvalidatedType.NamedType(this.id.asRef(), false, explicitTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val outputType = UnvalidatedType.NamedType(this.id.asRef(), false, explicitTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
 
         return UnvalidatedTypeSignature(this.id, argumentTypes, outputType, allTypeParameters)
     }
     fun getAdapterConstructorSignature(): UnvalidatedTypeSignature {
         val adapterTypeParameters = this.getAdapterStruct().typeParameters
-        val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0])
+        val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0], null)
 
         val argumentTypes = ArrayList<UnvalidatedType>()
         this.methods.forEach { method ->
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, adapterTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) })
+        val outputType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, adapterTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
 
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -598,7 +609,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     }
 }
 data class UnvalidatedMethod(val name: String, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
-    val functionType = UnvalidatedType.FunctionType(arguments.map { arg -> arg.type }, returnType)
+    val functionType = UnvalidatedType.FunctionType(arguments.map { arg -> arg.type }, returnType, null)
 }
 data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
@@ -625,7 +636,7 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: UnvalidatedType
         argTypes.add(argument.type)
     }
 
-    return UnvalidatedType.FunctionType(argTypes, method.returnType)
+    return UnvalidatedType.FunctionType(argTypes, method.returnType, null)
 }
 private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.ParameterType, method: Method): Type {
     val argTypes = ArrayList<Type>()

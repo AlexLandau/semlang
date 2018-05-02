@@ -14,7 +14,7 @@ package net.semlang.api
  */
 data class S0Context(val functions: List<S0Function>, val structs: List<S0Struct>)
 
-data class S0Struct(val id: String, val typeParameters: List<String>, val members: List<S0Member>, val requires: S0Block?, val annotations: List<S0Annotation>)
+data class S0Struct(val id: String, val markedAsThreaded: Boolean, val typeParameters: List<String>, val members: List<S0Member>, val requires: S0Block?, val annotations: List<S0Annotation>)
 
 data class S0Member(val name: String, val type: S0Type)
 

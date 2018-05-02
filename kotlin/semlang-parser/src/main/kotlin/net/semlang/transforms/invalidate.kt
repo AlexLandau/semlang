@@ -39,25 +39,25 @@ fun invalidate(block: TypedBlock): Block {
 
 fun invalidate(type: Type): UnvalidatedType {
     return when (type) {
-        Type.INTEGER -> UnvalidatedType.INTEGER
-        Type.BOOLEAN -> UnvalidatedType.BOOLEAN
+        Type.INTEGER -> UnvalidatedType.Integer(null)
+        Type.BOOLEAN -> UnvalidatedType.Boolean(null)
         is Type.List -> {
-            UnvalidatedType.List(invalidate(type.parameter))
+            UnvalidatedType.List(invalidate(type.parameter), null)
         }
         is Type.Try -> {
-            UnvalidatedType.Try(invalidate(type.parameter))
+            UnvalidatedType.Try(invalidate(type.parameter), null)
         }
         is Type.FunctionType -> {
             val argTypes = type.argTypes.map(::invalidate)
             val outputType = invalidate(type.outputType)
-            UnvalidatedType.FunctionType(argTypes, outputType)
+            UnvalidatedType.FunctionType(argTypes, outputType, null)
         }
         is Type.ParameterType -> {
-            UnvalidatedType.NamedType(EntityRef.of(type.name), false)
+            UnvalidatedType.NamedType(EntityRef.of(type.name), false, listOf(), null)
         }
         is Type.NamedType -> {
             val parameters = type.parameters.map(::invalidate)
-            UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
+            UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters, null)
         }
     }
 }

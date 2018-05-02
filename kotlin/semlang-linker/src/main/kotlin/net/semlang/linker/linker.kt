@@ -158,8 +158,8 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
 
     private fun apply(type: Type): UnvalidatedType {
         return when (type) {
-            Type.INTEGER -> UnvalidatedType.INTEGER
-            Type.BOOLEAN -> UnvalidatedType.BOOLEAN
+            Type.INTEGER -> UnvalidatedType.Integer()
+            Type.BOOLEAN -> UnvalidatedType.Boolean()
             is Type.List -> UnvalidatedType.List(apply(type.parameter))
             is Type.Try -> UnvalidatedType.Try(apply(type.parameter))
             is Type.FunctionType -> {
@@ -185,7 +185,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val requires = struct.requires?.let(this::apply)
         val annotations = handleAnnotations(struct.annotations, struct.moduleId)
 
-        return UnvalidatedStruct(newId, struct.typeParameters, members, requires, annotations)
+        return UnvalidatedStruct(newId, struct.isThreaded, struct.typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: Member): UnvalidatedMember {

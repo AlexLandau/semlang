@@ -384,8 +384,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateType(type: UnvalidatedType, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Type? {
         return when (type) {
-            UnvalidatedType.INTEGER -> Type.INTEGER
-            UnvalidatedType.BOOLEAN -> Type.BOOLEAN
+            is UnvalidatedType.Integer -> Type.INTEGER
+            is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null
                 if (parameter.isThreaded()) {
@@ -417,20 +417,17 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 } else {
                     val resolved = typeInfo.resolver.resolve(type.ref)
                     if (resolved == null) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Unresolved type reference: ${type.ref}", null, IssueLevel.ERROR))
+                        errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                         return null
                     }
                     val shouldBeThreaded = resolved.isThreaded
 
                     if (shouldBeThreaded && !type.isThreaded) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Type $type is threaded and should be marked as such with '~'", null, IssueLevel.ERROR))
+                        errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
                         return null
                     }
                     if (type.isThreaded && !shouldBeThreaded) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Type $type is not threaded and should not be marked with '~'", null, IssueLevel.ERROR))
+                        errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
                         return null
                     }
                     val parameters = type.parameters.map { parameter -> validateType(parameter, typeInfo, typeParametersInScope) ?: return null }
