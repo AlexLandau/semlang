@@ -16,4 +16,9 @@ public class ListBuilders {
         list.add(element);
         return list;
     }
+
+    public static <T> List<T> appendAll(List<T> list, List<T> toAdd) {
+        list.addAll(toAdd);
+        return list;
+    }
 }

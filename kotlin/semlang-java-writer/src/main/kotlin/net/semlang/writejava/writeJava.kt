@@ -1028,6 +1028,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaListBuilder = ClassName.bestGuess("net.semlang.java.ListBuilders")
         map.put(EntityId.of("ListBuilder", "create"), StaticFunctionCallStrategy(javaListBuilder, "create"))
         map.put(EntityId.of("ListBuilder", "append"), StaticFunctionCallStrategy(javaListBuilder, "append"))
+        map.put(EntityId.of("ListBuilder", "appendAll"), StaticFunctionCallStrategy(javaListBuilder, "appendAll"))
         map.put(EntityId.of("ListBuilder", "build"), PassedThroughVarFunctionCallStrategy)
 
         // Natural constructor
