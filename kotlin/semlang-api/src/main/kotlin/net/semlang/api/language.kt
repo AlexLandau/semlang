@@ -475,9 +475,9 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
+            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
+            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -489,7 +489,7 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
     }
 
     fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), false, typeParameters.map(Type::ParameterType))
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map(Type::ParameterType))
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -497,9 +497,9 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type::ParameterType)
         val outputType = if (requires == null) {
-            Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
+            Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters)
         } else {
-            Type.Try(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
+            Type.Try(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
         }
         return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }

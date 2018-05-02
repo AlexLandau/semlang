@@ -221,6 +221,11 @@ private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(listBuilderT, paramT),
             outputType = listBuilderT))
 
+    // ListBuilder.appendAll
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf("T"),
+            argumentTypes = listOf(listBuilderT, Type.List(paramT)),
+            outputType = listBuilderT))
+
     // ListBuilder.build
     definitions.add(TypeSignature(EntityId.of("ListBuilder", "build"), typeParameters = listOf("T"),
             argumentTypes = listOf(listBuilderT),

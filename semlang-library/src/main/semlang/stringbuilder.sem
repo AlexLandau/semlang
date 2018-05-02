@@ -1,9 +1,20 @@
 @Export
 struct ~StringBuilder {
-  listBuilder: ~ListBuilder<Unicode.String>
+  listBuilder: ~ListBuilder<Unicode.CodePoint>
 }
 
-function StringBuilder.append(builder: ~StringBuilder, value: Unicode.String): ~StringBuilder {
-  let updatedListBuilder = ListBuilder.append<Unicode.String>(builder->listBuilder, value)
+@Export
+function StringBuilder.create(): ~StringBuilder {
+  StringBuilder(ListBuilder.create<Unicode.CodePoint>())
+}
+
+@Export
+function StringBuilder.append(builder: ~StringBuilder, string: Unicode.String): ~StringBuilder {
+  let updatedListBuilder = ListBuilder.appendAll<Unicode.CodePoint>(builder->listBuilder, string->codePoints)
   StringBuilder(updatedListBuilder)
+}
+
+@Export
+function StringBuilder.build(builder: ~StringBuilder): Unicode.String {
+  Unicode.String(ListBuilder.build<Unicode.CodePoint>(builder->listBuilder))
 }
