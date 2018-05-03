@@ -78,6 +78,14 @@ public class Lists {
         return list.stream().map(function).collect(Collectors.toList());
     }
 
+    public static <T, U> List<U> flatMap(List<T> list, Function<T, List<U>> function) {
+        List<U> collector = new ArrayList<>();
+        for (T element : list) {
+            collector.addAll(function.apply(element));
+        }
+        return collector;
+    }
+
     public static <T, U> U reduce(List<T> list, U initialValue, BiFunction<U, T, U> reducer) {
         U curValue = initialValue;
         for (T element : list) {

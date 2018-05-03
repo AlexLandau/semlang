@@ -123,6 +123,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), paramU)),
             outputType = Type.List(paramU)))
 
+    // List.flatMap
+    definitions.add(TypeSignature(EntityId.of("List", "flatMap"), typeParameters = listOf("T", "U"),
+            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.List(paramU))),
+            outputType = Type.List(paramU)))
+
     // List.filter
     definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf("T"),
             argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.BOOLEAN)),

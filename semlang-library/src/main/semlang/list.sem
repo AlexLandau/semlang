@@ -52,3 +52,15 @@ function List.lastN<T>(list: List<T>, n: Natural): List<T> {
   let start = Try.orElse<Natural>(startMaybe, Natural."0")
   Try.assume<List<T>>(List.subList<T>(list, start, size))
 }
+
+@Export
+function List.interpose<T>(list: List<T>, interposer: T): List<T> {
+  if (List.isEmpty<T>(list)) {
+    []<T>
+  } else {
+    let listWithExtraTrailingItem = List.flatMap<T, T>(list, function (item: T): List<T> {
+      [item, interposer]<T>
+    })
+    List.dropLast<T>(listWithExtraTrailingItem, Natural."1")
+  }
+}

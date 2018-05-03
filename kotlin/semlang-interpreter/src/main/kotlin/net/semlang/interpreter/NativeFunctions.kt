@@ -229,6 +229,16 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         SemObject.SemList(mapped)
     }))
 
+    // List.flatMap
+    list.add(NativeFunction(listDot("flatMap"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val mapping = args[1] as? SemObject.FunctionBinding ?: typeError()
+        val mapped = list.contents.flatMap { semObject ->
+            (apply(mapping, listOf(semObject)) as? SemObject.SemList ?: typeError()).contents
+        }
+        SemObject.SemList(mapped)
+    }))
+
     // List.reduce
     list.add(NativeFunction(listDot("reduce"), { args: List<SemObject>, apply: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()

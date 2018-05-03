@@ -114,10 +114,9 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             }
             is TypedExpression.InlineFunction -> {
                 // Create a new function
-                val newFunctionId = addNewFunctionFromInlined(expression)
+                val newFunctionInfo = addNewFunctionFromInlined(expression)
 
-                // TODO: Is this correct?
-                val chosenParameters = listOf<UnvalidatedType>()
+                val chosenParameters = newFunctionInfo.typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
 
                 // Bindings: Explicit arguments come first and are blank
                 val bindings = ArrayList<Expression?>()
@@ -128,16 +127,17 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                     bindings.add(Expression.Variable(name))
                 }
 
-                Expression.NamedFunctionBinding(newFunctionId.asRef(), bindings, chosenParameters)
+                Expression.NamedFunctionBinding(newFunctionInfo.id.asRef(), bindings, chosenParameters)
             }
         }
     }
 
-    private fun addNewFunctionFromInlined(inlineFunction: TypedExpression.InlineFunction): EntityId {
+    private data class ExtractedFunctionInfo(val id: EntityId, val typeParameters: List<String>)
+
+    private fun addNewFunctionFromInlined(inlineFunction: TypedExpression.InlineFunction): ExtractedFunctionInfo {
         val newId = getUnusedEntityId()
 
-        // TODO: Is this correct?
-        val typeParameters = listOf<String>()
+        val typeParameters = collectTypeParameters(inlineFunction).toList()
 
         // We need to include both implicit and explicit parameters
         val explicitArguments = inlineFunction.arguments
@@ -150,7 +150,30 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
 
         val function = ValidatedFunction(newId, typeParameters, arguments, returnType, block, annotations)
         rawExtractedFunctions.add(function)
-        return newId
+        return ExtractedFunctionInfo(newId, typeParameters)
+    }
+
+    private fun collectTypeParameters(inlineFunction: TypedExpression.InlineFunction): Set<String> {
+        val typeParameters = HashSet<String>()
+
+        for (argument in inlineFunction.arguments) {
+            val type = argument.type
+            if (type is Type.ParameterType) {
+                typeParameters.add(type.name)
+            }
+        }
+        val functionReturnType = inlineFunction.returnType
+        if (functionReturnType is Type.ParameterType) {
+            typeParameters.add(functionReturnType.name)
+        }
+        for (boundVar in inlineFunction.boundVars) {
+            val type = boundVar.type
+            if (type is Type.ParameterType) {
+                typeParameters.add(type.name)
+            }
+        }
+
+        return typeParameters
     }
 
     private fun getUnusedEntityId(): EntityId {

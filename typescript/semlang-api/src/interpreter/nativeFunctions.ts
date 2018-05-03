@@ -181,6 +181,11 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.concatenate": (context: InterpreterContext, left: SemObject.List, right: SemObject.List): SemObject.List => {
         return listObject(left.contents.concat(right.contents));
     },
+    "List.flatMap": (context: InterpreterContext, list: SemObject.List, fn: SemObject.FunctionBinding): SemObject.List => {
+        const mappedToIndividualLists = list.contents.map(item => (context.evaluateBoundFunction(fn, [item]) as SemObject.List).contents);
+        const flattened = ([] as SemObject[]).concat(...mappedToIndividualLists);
+        return listObject(flattened);
+    },
     "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Try => {
         const i = index.value;
         if (i.lt(list.contents.length)) {

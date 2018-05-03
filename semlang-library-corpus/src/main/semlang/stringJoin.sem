@@ -1,0 +1,25 @@
+@Test([""], "")
+@Test([","], "")
+@Test([" "], "")
+@Test(["or anything else"], "")
+function testStringJoinEmptyList(separator: Unicode.String): Unicode.String {
+  Unicode.String.join([]<Unicode.String>, separator)
+}
+
+@Test(["Hello", ""], "Hello")
+@Test(["world", " "], "world")
+@Test(["ignore ", ","], "ignore ")
+@Test([" the ", "\\"], " the ")
+@Test([" separator", "blah"], " separator")
+function testStringJoinSingletonList(singleton: Unicode.String, separator: Unicode.String): Unicode.String {
+  Unicode.String.join([singleton]<Unicode.String>, separator)
+}
+
+@Test(["Hello", "world", ""], "Helloworld")
+@Test(["Hello", "world", " "], "Hello world")
+@Test(["Hello", "world", ","], "Hello,world")
+@Test(["Hello", "world", ", "], "Hello, world")
+@Test(["Hello", "world", " there, "], "Hello there, world")
+function testStringJoinPairList(first: Unicode.String, second: Unicode.String, separator: Unicode.String): Unicode.String {
+  Unicode.String.join([first, second]<Unicode.String>, separator)
+}
