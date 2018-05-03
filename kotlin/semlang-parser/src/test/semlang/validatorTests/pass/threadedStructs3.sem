@@ -1,0 +1,4 @@
+struct ~DoubleListBuilder<T> {
+  forwardBuilder: ~ListBuilder<T>
+  backwardsBuilder: ~ListBuilder<T>
+}

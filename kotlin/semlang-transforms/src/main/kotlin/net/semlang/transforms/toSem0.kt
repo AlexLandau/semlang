@@ -44,7 +44,7 @@ private class Sem1To0Converter(val input: RawContext) {
         val members = struct.members.map(this::apply)
         val requires = struct.requires?.let(this::apply)
         val annotations = struct.annotations.map(this::apply)
-        return S0Struct(id, struct.typeParameters, members, requires, annotations)
+        return S0Struct(id, struct.markedAsThreaded, struct.typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: UnvalidatedMember): S0Member {
@@ -74,8 +74,8 @@ private class Sem1To0Converter(val input: RawContext) {
 
     private fun apply(type: UnvalidatedType): S0Type {
         return when (type) {
-            UnvalidatedType.INTEGER -> S0Type.Integer
-            UnvalidatedType.BOOLEAN -> S0Type.Boolean
+            is UnvalidatedType.Integer -> S0Type.Integer
+            is UnvalidatedType.Boolean -> S0Type.Boolean
             is UnvalidatedType.List -> S0Type.List(apply(type.parameter))
             is UnvalidatedType.Try -> S0Type.Try(apply(type.parameter))
             is UnvalidatedType.FunctionType -> {

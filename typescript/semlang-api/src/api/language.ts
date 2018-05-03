@@ -32,6 +32,7 @@ export interface Argument {
 
 export interface Struct {
     id: string;
+    isThreaded?: boolean;
     typeParameters?: string[];
     annotations?: Annotation[];
     members: Member[];

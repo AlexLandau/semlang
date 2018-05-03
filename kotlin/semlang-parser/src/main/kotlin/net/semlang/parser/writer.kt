@@ -40,6 +40,7 @@ fun write(context: RawContext, writer: Writer) {
 private fun writeStruct(struct: UnvalidatedStruct, writer: Writer) {
     writeAnnotations(struct.annotations, writer)
     writer.append("struct ")
+            .append(if (struct.markedAsThreaded) "~" else "")
             .append(struct.id.toString())
     if (struct.typeParameters.isNotEmpty()) {
         writer.append("<")

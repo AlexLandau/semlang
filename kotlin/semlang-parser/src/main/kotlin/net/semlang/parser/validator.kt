@@ -133,7 +133,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val resolver = EntityResolver.create(moduleId,
                 nativeModuleVersion,
                 context.functions.map(Function::id),
-                context.structs.map(UnvalidatedStruct::id),
+                context.structs.associateBy { it.id }.mapValues { it.value.markedAsThreaded },
                 context.interfaces.map(UnvalidatedInterface::id),
                 upstreamModules)
 
@@ -384,8 +384,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateType(type: UnvalidatedType, typeInfo: AllTypeInfo, typeParametersInScope: Set<String>): Type? {
         return when (type) {
-            UnvalidatedType.INTEGER -> Type.INTEGER
-            UnvalidatedType.BOOLEAN -> Type.BOOLEAN
+            is UnvalidatedType.Integer -> Type.INTEGER
+            is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null
                 if (parameter.isThreaded()) {
@@ -417,20 +417,17 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 } else {
                     val resolved = typeInfo.resolver.resolve(type.ref)
                     if (resolved == null) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Unresolved type reference: ${type.ref}", null, IssueLevel.ERROR))
+                        errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                         return null
                     }
-                    // TODO: This will probably need to change; the resolver will probably need to know which types are threaded ahead of time
-                    val shouldBeThreaded = (resolved.type == FunctionLikeType.OPAQUE_TYPE)
+                    val shouldBeThreaded = resolved.isThreaded
+
                     if (shouldBeThreaded && !type.isThreaded) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Type is threaded and should be marked as such with '~'", null, IssueLevel.ERROR))
+                        errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
                         return null
                     }
                     if (type.isThreaded && !shouldBeThreaded) {
-                        // TODO: Give this a location (which probably requires putting locations on UnvalidatedTypes; try to make locations sane first)
-                        errors.add(Issue("Type is not threaded and should not be marked with '~'", null, IssueLevel.ERROR))
+                        errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
                         return null
                     }
                     val parameters = type.parameters.map { parameter -> validateType(parameter, typeInfo, typeParametersInScope) ?: return null }
@@ -1054,12 +1051,19 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
         if (requires != null && requires.type != Type.BOOLEAN) {
             val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
-            val position = struct.requires!!.location
-            val issue: Issue = Issue(message, position, IssueLevel.ERROR)
-            errors.add(issue)
+            val location = struct.requires!!.location
+            errors.add(Issue(message, location, IssueLevel.ERROR))
         }
 
-        return Struct(struct.id, moduleId, struct.typeParameters, members, requires, struct.annotations)
+        val anyMemberTypesAreThreaded = memberTypes.values.any(Type::isThreaded)
+        if (struct.markedAsThreaded && !anyMemberTypesAreThreaded) {
+            errors.add(Issue("Struct ${struct.id} is marked as threaded but has no members with threaded types", struct.idLocation, IssueLevel.ERROR))
+        }
+        if (!struct.markedAsThreaded && anyMemberTypesAreThreaded) {
+            errors.add(Issue("Struct ${struct.id} is not marked as threaded but has members with threaded types", struct.idLocation, IssueLevel.ERROR))
+        }
+
+        return Struct(struct.id, struct.markedAsThreaded, moduleId, struct.typeParameters, members, requires, struct.annotations)
     }
 
 
@@ -1077,10 +1081,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         return struct.members.map { member ->
             val type = validateType(member.type, typeInfo, typeParametersInScope) ?: return null
-            if (type.isThreaded()) {
-                // TODO: Improve position of message
-                errors.add(Issue("Structs cannot have members with threaded types", struct.idLocation, IssueLevel.ERROR))
-            }
             Member(member.name, type)
         }
     }

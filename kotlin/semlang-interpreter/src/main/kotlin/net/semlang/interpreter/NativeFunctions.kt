@@ -422,6 +422,14 @@ private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
         builder
     }))
 
+    // ListBuilder.appendAll
+    list.add(NativeFunction(EntityId.of("ListBuilder", "appendAll"), { args: List<SemObject>, _: InterpreterCallback ->
+        val builder = args[0] as? SemObject.ListBuilder ?: typeError()
+        val itemsToAdd = args[1] as? SemObject.SemList ?: typeError()
+        builder.listSoFar.addAll(itemsToAdd.contents)
+        builder
+    }))
+
     // ListBuilder.build
     list.add(NativeFunction(EntityId.of("ListBuilder", "build"), { args: List<SemObject>, _: InterpreterCallback ->
         val builder = args[0] as? SemObject.ListBuilder ?: typeError()

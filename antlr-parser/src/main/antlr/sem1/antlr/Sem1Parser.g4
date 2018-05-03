@@ -63,8 +63,9 @@ block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
-struct : annotations STRUCT entity_id LBRACE struct_members maybe_requires RBRACE
-  | annotations STRUCT entity_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
+struct : annotations STRUCT optional_tilde entity_id LBRACE struct_members maybe_requires RBRACE
+  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
+optional_tilde : | TILDE ;
 struct_members : | struct_member struct_members ;
 struct_member : ID COLON type ;
 maybe_requires : | REQUIRES block ;

@@ -53,6 +53,9 @@ private fun <T> addArray(objectNode: ObjectNode, name: String,
 
 private fun addStruct(node: ObjectNode, struct: Struct) {
     node.put("id", struct.id.toString())
+    if (struct.isThreaded) {
+        node.put("isThreaded", true)
+    }
     if (struct.typeParameters.isNotEmpty()) {
         addTypeParameters(node.putArray("typeParameters"), struct.typeParameters)
     }
@@ -69,13 +72,15 @@ private fun addStruct(node: ObjectNode, struct: Struct) {
 private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     if (!node.isObject()) error("Expected a struct to be an object")
 
-    val id = parseEntityId(node["id"] ?: error("Structs must have an 'id' field"))
+    val idString = node["id"]?.asText() ?: error("Structs must have an 'id' field")
+    val id = parseEntityId(idString)
+    val isThreaded = node["isThreaded"]?.asBoolean() ?: false
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, isThreaded, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<String> {
@@ -187,8 +192,8 @@ private fun parseMember(node: JsonNode): UnvalidatedMember {
 private fun parseType(node: JsonNode): UnvalidatedType {
     if (node.isTextual()) {
         return when (node.textValue()) {
-            "Integer" -> UnvalidatedType.INTEGER
-            "Boolean" -> UnvalidatedType.BOOLEAN
+            "Integer" -> UnvalidatedType.Integer()
+            "Boolean" -> UnvalidatedType.Boolean()
             else -> error("Unrecognized type string: ${node.textValue()}")
         }
     }

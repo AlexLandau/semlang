@@ -161,6 +161,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
         val id: EntityId = parseEntityId(ctx.entity_id())
 
+        val isMarkedThreaded = ctx.optional_tilde().TILDE() != null
+
         val typeParameters: List<String> = if (ctx.cd_ids() != null) {
             parseCommaDelimitedIds(ctx.cd_ids())
         } else {
@@ -175,7 +177,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val annotations = parseAnnotations(ctx.annotations())
 
-        return UnvalidatedStruct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
+        return UnvalidatedStruct(id, isMarkedThreaded, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
     }
 
     private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {
@@ -394,7 +396,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             }
 
             if (expression.LITERAL() != null) {
-                val type = parseTypeGivenParameters(expression.type_ref(), listOf())
+                val type = parseTypeGivenParameters(expression.type_ref(), listOf(), locationOf(expression.type_ref()))
                 val literal = parseLiteral(expression.LITERAL())
                 return AmbiguousExpression.Literal(type, literal, locationOf(expression))
             }
@@ -556,16 +558,16 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             //Function type
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return UnvalidatedType.FunctionType(argumentTypes, outputType)
+            return UnvalidatedType.FunctionType(argumentTypes, outputType, locationOf(type))
         }
 
         if (type.LESS_THAN() != null) {
             val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
-            return parseTypeGivenParameters(type.type_ref(), parameterTypes)
+            return parseTypeGivenParameters(type.type_ref(), parameterTypes, locationOf(type))
         }
 
         if (type.type_ref() != null) {
-            return parseTypeGivenParameters(type.type_ref(), listOf())
+            return parseTypeGivenParameters(type.type_ref(), listOf(), locationOf(type))
         }
         throw IllegalArgumentException("Unparsed type " + type.text)
     }
@@ -584,10 +586,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 this::parseType)
     }
 
-    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>): UnvalidatedType {
+    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {
         val isThreaded = type_ref.TILDE() != null
         if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isThreaded, parameters)
+            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isThreaded, parameters, typeLocation)
         }
 
         val typeId = type_ref.entity_id().ID().text
@@ -595,12 +597,12 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             if (isThreaded) {
                 throw LocationAwareParsingException("Integer is not a threaded type; remove the ~", locationOf(type_ref))
             }
-            return UnvalidatedType.INTEGER
+            return UnvalidatedType.Integer(typeLocation)
         } else if (typeId == "Boolean") {
             if (isThreaded) {
                 throw LocationAwareParsingException("Boolean is not a threaded type; remove the ~", locationOf(type_ref))
             }
-            return UnvalidatedType.BOOLEAN
+            return UnvalidatedType.Boolean(typeLocation)
         } else if (typeId == "List") {
             if (isThreaded) {
                 throw LocationAwareParsingException("List is not a threaded type; remove the ~", locationOf(type_ref))
@@ -608,7 +610,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
-            return UnvalidatedType.List(parameters[0])
+            return UnvalidatedType.List(parameters[0], typeLocation)
         } else if (typeId == "Try") {
             if (isThreaded) {
                 throw LocationAwareParsingException("Try is not a threaded type; remove the ~", locationOf(type_ref))
@@ -616,10 +618,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             if (parameters.size != 1) {
                 error("Try should only accept a single parameter; parameters were: $parameters")
             }
-            return UnvalidatedType.Try(parameters[0])
+            return UnvalidatedType.Try(parameters[0], typeLocation)
         }
 
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters)
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters, typeLocation)
     }
 
     private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {

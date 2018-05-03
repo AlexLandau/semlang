@@ -220,6 +220,12 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         builder.contents.push(item);
         return builder;
     },
+    "ListBuilder.appendAll": (context: InterpreterContext, builder: SemObject.ListBuilder, items: SemObject.List): SemObject.ListBuilder => {
+        for (const item of items.contents) {
+            builder.contents.push(item);
+        }
+        return builder;
+    },
     "ListBuilder.build": (context: InterpreterContext, builder: SemObject.ListBuilder): SemObject.List => {
         return listObject(builder.contents);
     },

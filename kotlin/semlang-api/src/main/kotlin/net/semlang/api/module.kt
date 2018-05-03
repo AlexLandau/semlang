@@ -52,56 +52,56 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
         fun create(ownModuleId: ModuleId,
                    nativeModuleVersion: String, // TODO: This is unused
                    ownFunctions: Collection<EntityId>,
-                   ownStructs: Collection<EntityId>,
+                   ownStructs: Map<EntityId, Boolean>,
                    ownInterfaces: Collection<EntityId>,
                    upstreamModules: Collection<ValidatedModule>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
-            val add = fun(id: EntityId, moduleId: ModuleId, type: FunctionLikeType) {
+            val add = fun(id: EntityId, moduleId: ModuleId, type: FunctionLikeType, isThreaded: Boolean) {
                 if (!idResolutions.containsKey(id)) {
                     idResolutions.put(id, HashSet<EntityResolution>(2))
                 }
-                idResolutions[id]!!.add(EntityResolution(ResolvedEntityRef(moduleId, id), type))
+                idResolutions[id]!!.add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isThreaded))
             }
 
             // TODO: Add different things based on the native version in use
             getNativeFunctionOnlyDefinitions().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.NATIVE_FUNCTION)
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.NATIVE_FUNCTION, false)
             }
             getNativeStructs().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR)
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
             }
             getNativeInterfaces().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR)
-                add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR)
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
             getNativeOpaqueTypes().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE)
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE, true)
             }
 
             ownFunctions.forEach { id ->
-                add(id, ownModuleId, FunctionLikeType.FUNCTION)
+                add(id, ownModuleId, FunctionLikeType.FUNCTION, false)
             }
 
-            ownStructs.forEach { id ->
-                add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR)
+            ownStructs.forEach { id, isThreaded ->
+                add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, isThreaded)
             }
 
             ownInterfaces.forEach { id ->
-                add(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR)
-                add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR)
+                add(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
 
             upstreamModules.forEach { module ->
                 module.getAllExportedFunctions().keys.forEach { id ->
-                    add(id, module.id, FunctionLikeType.FUNCTION)
+                    add(id, module.id, FunctionLikeType.FUNCTION, false)
                 }
-                module.getAllExportedStructs().keys.forEach { id ->
-                    add(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR)
+                module.getAllExportedStructs().forEach { id, struct ->
+                    add(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR, struct.isThreaded)
                 }
                 module.getAllExportedInterfaces().keys.forEach { id ->
-                    add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR)
-                    add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR)
+                    add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                    add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
                 }
             }
             return EntityResolver(idResolutions)
@@ -160,7 +160,7 @@ class ValidatedModule private constructor(val id: ModuleId,
             }
         }
     }
-    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.keys, ownInterfaces.keys, upstreamModules.values)
+    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, upstreamModules.values)
 
     companion object {
         fun create(id: ModuleId,
@@ -363,4 +363,4 @@ enum class FunctionLikeType {
     OPAQUE_TYPE
 }
 
-data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType)
+data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType, val isThreaded: Boolean)

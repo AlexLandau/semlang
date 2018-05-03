@@ -136,7 +136,7 @@ private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: I
     } else {
         listOf()
     }
-    return Struct(id, moduleId, listOf(), listOf(member), null, annotations)
+    return Struct(id, false, moduleId, listOf(), listOf(member), null, annotations)
 }
 
 private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Interface {

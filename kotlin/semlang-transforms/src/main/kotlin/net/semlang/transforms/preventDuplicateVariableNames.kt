@@ -28,7 +28,7 @@ private fun renameVariablesUniquely(struct: UnvalidatedStruct): UnvalidatedStruc
         val memberNames = struct.members.map { it.name }
         UniqueVariableRenamer(requires, memberNames).apply()
     }
-    return UnvalidatedStruct(struct.id, struct.typeParameters, struct.members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, struct.members, requires, struct.annotations)
 }
 
 private val endingNumberPattern = Pattern.compile("_([0-9]+)$")

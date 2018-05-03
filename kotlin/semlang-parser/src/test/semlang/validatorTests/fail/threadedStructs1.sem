@@ -1,0 +1,4 @@
+// Threaded structs must indicate themselves with ~
+struct StringBuilder {
+  listBuilder: ~ListBuilder<Unicode.String>
+}

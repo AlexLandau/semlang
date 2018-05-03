@@ -26,8 +26,7 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun test() {
-        val result = parseAndValidateFile(file)
-        Assert.assertTrue(result is ValidationResult.Success)
+        parseAndValidateFile(file).assumeSuccess()
     }
 
     @Test
