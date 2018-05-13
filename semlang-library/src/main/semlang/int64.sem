@@ -101,3 +101,9 @@ function Int64.lessThan(left: Int64, right: Int64): Boolean {
 function Int64.greaterThan(left: Int64, right: Int64): Boolean {
   Integer.greaterThan(left->integer, right->integer)
 }
+
+@Export
+function Int64.dividedBy(left: Int64, right: Int64): Try<Int64> {
+  let intValue = Integer.dividedBy(left->integer, right->integer)
+  Try.flatMap<Integer, Int64>(intValue, Int64|(_))
+}

@@ -1,0 +1,19 @@
+
+@Test(["0", "0"], "failure")
+@Test(["1", "0"], "failure")
+@Test(["-1", "0"], "failure")
+@Test(["99", "10"], "success(9)")
+@Test(["100", "10"], "success(10)")
+@Test(["101", "10"], "success(10)")
+@Test(["99", "-10"], "success(-9)")
+@Test(["100", "-10"], "success(-10)")
+@Test(["101", "-10"], "success(-10)")
+@Test(["-99", "10"], "success(-9)")
+@Test(["-100", "10"], "success(-10)")
+@Test(["-101", "10"], "success(-10)")
+@Test(["-99", "-10"], "success(9)")
+@Test(["-100", "-10"], "success(10)")
+@Test(["-101", "-10"], "success(10)")
+function testDividedBy(left: Int64, right: Int64): Try<Int64> {
+  Int64.dividedBy(left, right)
+}
