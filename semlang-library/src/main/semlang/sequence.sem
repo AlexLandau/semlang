@@ -51,11 +51,11 @@ function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
 
     let mappedSequence: MappedSequence<T, U> = MappedSequence<T, U>(sequence, fn)
 
-    Sequence<MappedSequence<T, U>, U>(mappedSequence, MappedSequence.getMappedSequenceAdapter<T, U>())
+    MappedSequence.getMappedSequenceAdapter<T, U>()(mappedSequence)
 }
 
 // TODO: Singleton candidate
-function MappedSequence.getMappedSequenceAdapter<T, U>(): Sequence.Adapter<MappedSequence<T, U>, U> {
+function MappedSequence.getMappedSequenceAdapter<T, U>(): (MappedSequence<T, U>) -> Sequence<U> {
     let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
     Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)

@@ -60,4 +60,5 @@ sealed class SemObject {
 sealed class FunctionBindingTarget {
     data class Named(val functionRef: ResolvedEntityRef): FunctionBindingTarget()
     data class Inline(val functionDef: TypedExpression.InlineFunction): FunctionBindingTarget()
+    data class InterfaceAdapter(val interfac: Interface): FunctionBindingTarget()
 }

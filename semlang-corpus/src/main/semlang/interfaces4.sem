@@ -20,12 +20,12 @@ function myCode.getNumberTwo(): Natural {
 
 function getSupplierFactory(n: Natural): SupplierFactory {
     let adapter = SupplierFactory.Adapter<Natural>(getSupplier|(_))
-    SupplierFactory<Natural>(n, adapter)
+    adapter(n)
 }
 
 function getSupplier(n: Natural): Supplier {
     let adapter = Supplier.Adapter<Natural>(identity|(_))
-    Supplier<Natural>(n, adapter)
+    adapter(n)
 }
 
 function identity(n: Natural): Natural {

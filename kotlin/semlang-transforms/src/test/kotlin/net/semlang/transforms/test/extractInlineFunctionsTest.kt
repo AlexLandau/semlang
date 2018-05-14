@@ -47,7 +47,11 @@ class ExtractInlineFunctionsTest(private val file: File, private val libraries: 
         }
 
         val withoutInlineFunctions = extractInlineFunctions(module)
-        val validated = validateModule(withoutInlineFunctions, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val validated = try {
+            validateModule(withoutInlineFunctions, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Validation after extraction failed; context was:\n" + writeToString(withoutInlineFunctions), e)
+        }
 
         fun verifyNoInlineFunctionsRemain(block: Block) {
             replaceSomeExpressionsPostvisit(block, { expression: Expression ->

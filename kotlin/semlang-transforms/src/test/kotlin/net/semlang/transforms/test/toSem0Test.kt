@@ -11,6 +11,7 @@ import org.junit.runners.Parameterized
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
+import net.semlang.parser.write
 import net.semlang.parser.writeToString
 import net.semlang.transforms.convertFromSem0
 import net.semlang.transforms.convertToSem0
@@ -34,7 +35,11 @@ class ToSem0Test(private val file: File, private val libraries: List<ValidatedMo
         // TODO: Do something with the converted module
         val afterRoundTrip = convertFromSem0(converted)
         // TODO: If/when sem0 includes linking in libraries, we shouldn't pass in libraries here
-        val revalidated = validateModule(afterRoundTrip, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val revalidated = try {
+            validateModule(afterRoundTrip, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Pre-converted module was:\n" + writeToString(module) + "\nPost-round-trip context was:\n" + writeToString(afterRoundTrip), e)
+        }
 
         try {
             try {
