@@ -551,6 +551,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
     val dataType = Type.ParameterType(dataTypeParameter)
     val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
+    val adapterType = Type.FunctionType(listOf(dataType), instanceType)
     fun getType(): Type.NamedType {
         return instanceType
     }
@@ -570,7 +571,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = Type.FunctionType(listOf(dataType), instanceType)
+        val outputType = adapterType
 
         return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
