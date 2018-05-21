@@ -1114,7 +1114,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-                val returnValue = convertBindingToCallReplacingFirstOpenBinding(adapterArgument, TypedExpression.Variable(dataType, "data"))
+                val returnValue = convertBindingToCallReplacingOnlyOpenBinding(adapterArgument, TypedExpression.Variable(dataType, "data"), method.arguments.map { TypedExpression.Variable(it.type, it.name) })
 
                 methodSpec.addStatement("return \$L", writeExpression(returnValue))
                 instanceAnonymousClass.addMethod(methodSpec.build())
@@ -1126,18 +1126,23 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    private fun convertBindingToCallReplacingFirstOpenBinding(binding: TypedExpression, openBindingReplacement: TypedExpression): TypedExpression {
+    // TODO: Name no longer fully covers what this is doing, refactor?
+    private fun convertBindingToCallReplacingOnlyOpenBinding(binding: TypedExpression, openBindingReplacement: TypedExpression, methodArguments: List<TypedExpression.Variable>): TypedExpression {
+        val outputType = (binding.type as Type.FunctionType).outputType
         return when (binding) {
-            is TypedExpression.Variable -> TODO()
+            is TypedExpression.Variable -> {
+                val arguments = listOf(openBindingReplacement) + methodArguments
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf())
+            }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
             is TypedExpression.ExpressionFunctionCall -> TODO()
             is TypedExpression.Literal -> TODO()
             is TypedExpression.ListLiteral -> TODO()
             is TypedExpression.NamedFunctionBinding -> {
+                // TODO: Do we need the openBindingReplacement here, too? Add a test for that
                 val arguments = binding.bindings.replacingFirst(null, openBindingReplacement)
                         .map { if (it == null) TODO() else it }
-                val outputType = (binding.type as Type.FunctionType).outputType
                 return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
