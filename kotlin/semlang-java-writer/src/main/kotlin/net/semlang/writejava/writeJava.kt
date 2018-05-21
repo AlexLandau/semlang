@@ -1092,22 +1092,25 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     inner private class AdapterFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
             val dataType = chosenTypes[0]
+            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.drop(1)).toMap()
+            val instanceType = interfac.instanceType.replacingParameters(parametersMap)
+
             val functionAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(Type.FunctionType(listOf(dataType), interfac.instanceType), false))
+                    .addSuperinterface(getType(Type.FunctionType(listOf(dataType), instanceType), false))
 
             val applyMethodSpec = MethodSpec.methodBuilder("apply")
                     .addParameter(getType(dataType, true), "data")
-                    .returns(getType(interfac.instanceType, true))
+                    .returns(getType(instanceType, true))
                     .addModifiers(Modifier.PUBLIC)
 
             val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(interfac.instanceType, false))
+                    .addSuperinterface(getType(instanceType, false))
             for ((method, adapterArgument) in interfac.methods.zip(arguments)) {
                 val methodSpec = MethodSpec.methodBuilder(method.name)
-                        .returns(getType(method.returnType, false))
+                        .returns(getType(method.returnType.replacingParameters(parametersMap), false))
                         .addModifiers(Modifier.PUBLIC)
                 for (arg in method.arguments) {
-                    methodSpec.addParameter(getType(arg.type, false), arg.name)
+                    methodSpec.addParameter(getType(arg.type.replacingParameters(parametersMap), false), arg.name)
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
