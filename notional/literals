@@ -1,0 +1,106 @@
+So you want to express data in the form of complex literals.
+
+Someday, I'd like to be able to have data available in the form of a file that the build system interprets into a constant
+function with a given name. This would be part of that.
+
+This is also, more pressingly, needed for tests that work with lists.
+
+One of the awkward bits about literals is that you want to have quotes possibly around the whole thing, but also for the
+lower-level constants:
+
+"["Hello, world!", "Goodbye, world!"]"
+
+Obviously one of these would be better:
+'["Hello, world!", "Goodbye, world!"]'
+"['Hello, world!', 'Goodbye, world!']"
+
+One way I've thought about dealing with that is having annotations use '' for their literals. Mostly I'm wondering whether
+it's more intuitive for the contents of simple literals to have the same outer expressions as complex literals, or their
+
+One other weirdness is that you want to have list nesting without "", implying that "" is not a list thing:
+[["1", "2"], ["3", "4"]]
+But then people might wonder why it's not just:
+[[1, 2], [3, 4]]
+
+Okay, supposing we put aside the '' vs. "" debate, what are the types we're supporting here?
+
+We're supporting the "data types", which means:
+* Integer
+* Boolean
+* String
+* Lists of data types
+* Tries of data types
+* Structs of data types
+* NOT any function types
+* NOT any threaded types
+* Likely other types that will be added in the future
+
+Integers, Booleans, and Strings already have rules for being literals, so no work is needed there.
+
+Lists will use [] and , as a delimiter. Per design decisions elsewhere in the language, trailing commas are allowed
+and optional. Given that this will be used in source files, we should also allow whitespace in between elements.
+
+It's worth noting here that in any situation where a complex literal is to be interpreted, the type should be known
+ahead of time. This does mean we can't really have data types of a List of a "supertype" or other union type yet; I'll
+consider whether the benefits of data type support mean I should consider adding ADT-style unions that can be data types.
+Those would likely look something like:
+
+(for notional type MyUnion)
+union MyUnion {
+  A
+  B(foo: Integer)
+  C(bar: Boolean, baz: String)
+}
+
+Candidates for a List<MyUnion> complex literal:
+[A, B("42"), C("true", "Hi there")] // ID restrictions mean we shouldn't need to put A, B, C in quotes
+[A, B{foo: "42"}, C{bar: "true", baz: "Hi there"}]
+[{A}, {B, foo: "42"}, {C, bar: "true", baz: "Hi there"}]
+[<A>, <B, "42">, <C, "true", "Hi there">]
+None of these feel obviously right or wrong to me yet.
+
+My point being: For Tries, it's very wordy to have success(foo) and failure, and in fact those are likely to not work
+any longer. By contrast, though, we could very easily use [foo] and [], or maybe <foo> and <>. Way more concise, and not
+that hard to understand.
+
+For structs, we probably want JSON-like {foo: "value", bar: ["1", "2", "3"]}. Restrictions on valid IDs means we should
+be able to get away with non-escaped keys (i.e. not put in quotes).
+
+Someday we'll also have sets and maps as well as lists. Those will likely use {"foo", "bar"} and
+{"foo": "bar", "bar": "baz"} as seen in other languages. UniqueLists would use [] like normal lists.
+
+Another consideration: To also avoid some of the issues JSON has had, parsing should deal with comments from the start.
+
+Additional question: What about single-element structs? Under the existing rules for literals, these can be written with
+the same literal value that their member would have. Three options here are to treat them like normal structs, to treat
+them like their member type, or to allow either. Allowing either seems like the wrong choice given the potential for
+ambiguity. I'm inclined to treat them like their member types to match the behavior we'd want for normal, simple literals.
+
+An additional consideration is that due to requires blocks, literals will have to be validated afterwards.
+
+Okay, question about semlang as it currently exists: Can I put a literal of a given type in its own requires block?
+
+struct Foo {
+  value: Integer
+  requires {
+    // Case 1: "10" is a valid value if and only if "10" is a valid value
+    Integer.equals(value, Foo."10"->value)
+  }
+}
+
+struct Foo {
+  value: Integer
+  requires {
+    // Case 2: "10" is a valid value if and only if "10" is NOT a valid value
+    let ten: Try<Foo> = Foo."10"
+    // Notional function calls
+    // If "10" is an invalid value, "ten" will fail and this will return true.
+    // If "10" is a valid value, "ten" will be 10 and this will return false.
+    Try.mapOrElseTrue(ten, Integer.notEquals|(value, _))
+  }
+}
+
+Basically, we need to add some checks to disallow infinite loops. Of course, people can still write code that ends up
+looping infinitely; but we should at least protect the compiler from hitting these cases when running these checks, as
+it will need to do. (This includes not just self-references to the type itself, but also calling other functions that
+happen to loop infinitely.)
