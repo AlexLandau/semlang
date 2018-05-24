@@ -127,7 +127,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             classMap[className] = interfaceBuilder
         }
         // Enable calls to instance and adapter constructors
-//        addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
+        addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
         addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
 
         for (function in module.ownFunctions.values) {
@@ -156,14 +156,21 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return WrittenJavaInfo(testClassCounts.keys.toList())
     }
 
+    private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
+        for (interfac in interfaces) {
+            if (namedFunctionCallStrategies.containsKey(interfac.id)) {
+                error("Already have a call strategy for ${interfac.id}")
+            }
+
+            namedFunctionCallStrategies.put(interfac.id, InstanceFunctionCallStrategy(interfac))
+        }
+    }
+
     private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
         for (interfac in interfaces) {
-            // We are trying to create a call strategy here...
             if (namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
                 error("Already have a call strategy for ${interfac.adapterId}")
             }
-
-//            val adapterCallStrategy =
 
             namedFunctionCallStrategies.put(interfac.adapterId, AdapterFunctionCallStrategy(interfac))
         }
@@ -1089,6 +1096,33 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
+    inner private class InstanceFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes).toMap()
+            val instanceType = interfac.instanceType.replacingParameters(parametersMap)
+
+            val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
+                    .addSuperinterface(getType(instanceType, false))
+            for ((method, constructorArgument) in interfac.methods.zip(arguments)) {
+                val methodSpec = MethodSpec.methodBuilder(method.name)
+                        // TODO: This "isParameter" fix is probably needed in a lot of places
+                        .returns(getType(method.returnType.replacingParameters(parametersMap), method.returnType in parametersMap.keys))
+                        .addModifiers(Modifier.PUBLIC)
+                for (arg in method.arguments) {
+                    methodSpec.addParameter(getType(arg.type.replacingParameters(parametersMap), false), arg.name)
+                }
+
+                // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
+                val returnValue = convertBindingToCall(constructorArgument, method.arguments.map { TypedExpression.Variable(it.type, it.name) })
+
+                methodSpec.addStatement("return \$L", writeExpression(returnValue))
+                instanceAnonymousClass.addMethod(methodSpec.build())
+            }
+
+            return CodeBlock.of("\$L", instanceAnonymousClass.build())
+        }
+    }
+
     inner private class AdapterFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
             val dataType = chosenTypes[0]
@@ -1123,6 +1157,27 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             applyMethodSpec.addStatement("return \$L", instanceAnonymousClass.build())
             functionAnonymousClass.addMethod(applyMethodSpec.build())
             return CodeBlock.of("\$L", functionAnonymousClass.build())
+        }
+    }
+
+    private fun convertBindingToCall(binding: TypedExpression, methodArguments: List<TypedExpression.Variable>): TypedExpression {
+        val outputType = (binding.type as Type.FunctionType).outputType
+        return when (binding) {
+            is TypedExpression.Variable -> {
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf())
+            }
+            is TypedExpression.IfThen -> TODO()
+            is TypedExpression.NamedFunctionCall -> TODO()
+            is TypedExpression.ExpressionFunctionCall -> TODO()
+            is TypedExpression.Literal -> TODO()
+            is TypedExpression.ListLiteral -> TODO()
+            is TypedExpression.NamedFunctionBinding -> {
+                val arguments = binding.bindings.map { if (it == null) TODO() else it }
+                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters)
+            }
+            is TypedExpression.ExpressionFunctionBinding -> TODO()
+            is TypedExpression.Follow -> TODO()
+            is TypedExpression.InlineFunction -> TODO()
         }
     }
 
