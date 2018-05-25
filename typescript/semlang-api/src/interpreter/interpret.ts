@@ -80,39 +80,20 @@ export class InterpreterContext {
 
         const theInterface = this.module.interfaces[functionName];
         if (theInterface !== undefined) {
-            if (args.length !== 2) {
-                throw new Error(`Expected two arguments to an interface constructor`);
-            }
-            const dataObject = args[0];
-            const adapterObject = args[1];
-            if (adapterObject.type !== "struct") {
-                throw new Error(`Was expecting an adapter struct`);
-            }
-            const adapterMembers = adapterObject.members;
-            if (adapterMembers.length !== theInterface.methods.length) {
-                throw new Error(`Adapter members length doesn't match interface methods length`);
-            }
-            const reboundMethods = [] as SemObject.FunctionBinding[];
-            for (let i = 0; i < adapterMembers.length; i++) {
-                const adapterMember = adapterMembers[i];
-                const method = theInterface.methods[i];
-                if (!isFunctionBinding(adapterMember)) {
-                    throw new Error(`Adapter member was a non-binding type`);
+            // Direct interface instance constructor
+            const methods: SemObject.FunctionBinding[] = args.map(object => {
+                if (!isFunctionBinding(object)) {
+                    throw new Error(`All arguments to interfaces should be function bindings, but was: ${object}`);
                 }
-                const fixedBindings = adapterMember.bindings.slice();
-                if (fixedBindings[0] !== undefined) {
-                    throw new Error(`Expected an undefined binding for the 0th element`);
-                }
-                fixedBindings[0] = dataObject;
-                const reboundMethod = {...adapterMember, bindings: fixedBindings};
-                reboundMethods.push(reboundMethod);
-            }
+                return object;
+            });
 
-            return instanceObject(theInterface, reboundMethods);
+            return instanceObject(theInterface, methods);
         }
 
         const theAdaptedInterface = this.module.interfacesByAdapterId[functionName];
         if (theAdaptedInterface !== undefined) {
+            // Function result of an interface adapter method
             const adapterStruct = getAdapterStruct(theAdaptedInterface);
             return structObject(adapterStruct, args);
         }
