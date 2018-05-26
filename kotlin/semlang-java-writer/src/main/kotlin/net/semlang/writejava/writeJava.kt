@@ -244,120 +244,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-//    private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-//        for (interfac in interfaces) {
-//            // Check to avoid overriding special cases
-//            if (!namedFunctionCallStrategies.containsKey(interfac.id)) {
-//                namedFunctionCallStrategies[interfac.id] = object : FunctionCallStrategy {
-//                    override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-//                        if (arguments.size != 2) {
-//                            error("Interface constructors should have exactly 2 arguments")
-//                        }
-//                        return CodeBlock.of("\$L.from(\$L)", writeExpression(arguments[1]), writeExpression(arguments[0]))
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-//    private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-//        for (interfac in interfaces) {
-//            // Check to avoid overriding special cases
-//            if (!namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
-//                val instanceClassName = getOwnTypeClassName(interfac.id)
-//                val javaAdapterClassName = ClassName.bestGuess("net.semlang.java.Adapter")
-//
-//                namedFunctionCallStrategies[interfac.adapterId] = object : FunctionCallStrategy {
-//                    override fun apply(chosenTypes: List<Type>, constructorArgs: List<TypedExpression>): CodeBlock {
-//                        if (chosenTypes.isEmpty()) {
-//                            error("")
-//                        }
-//                        val dataType = chosenTypes[0]
-//                        val dataTypeName = getType(dataType, true)
-//                        val dataVarName = ensureUnusedVariable("data")
-//                        val interfaceParameters = chosenTypes.drop(1)
-//                        val interfaceParameterNames = interfaceParameters.map { this@JavaCodeWriter.getType(it, true) }
-//
-//                        val instanceType = if (interfaceParameters.isEmpty()) {
-//                            instanceClassName
-//                        } else {
-//                            ParameterizedTypeName.get(instanceClassName, *interfaceParameterNames.toTypedArray())
-//                        }
-//
-//                        val instanceInnerClass = getInstanceInnerClassForAdapter(instanceType, interfac, constructorArgs,
-//                                dataType, interfaceParameters, dataVarName)
-//
-//                        val javaAdapterTypeName = ParameterizedTypeName.get(javaAdapterClassName, instanceType, dataTypeName)
-//
-//                        val adapterInnerClass = TypeSpec.anonymousClassBuilder("").addSuperinterface(javaAdapterTypeName)
-//
-//                        val fromMethodBuilder = MethodSpec.methodBuilder("from").addModifiers(Modifier.PUBLIC)
-//                                .addAnnotation(Override::class.java)
-//                                .addParameter(dataTypeName, dataVarName)
-//                                .returns(instanceType)
-//                                .addStatement("return \$L", instanceInnerClass)
-//
-//                        adapterInnerClass.addMethod(fromMethodBuilder.build())
-//
-//                        return CodeBlock.of("\$L", adapterInnerClass.build())
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-//    private fun getInstanceInnerClassForAdapter(instanceClassName: TypeName, interfac: Interface, constructorArgs: List<TypedExpression>,
-//                                                dataType: Type, interfaceParameters: List<Type>, dataVarName: String): TypeSpec {
-//        val builder = TypeSpec.anonymousClassBuilder("").addSuperinterface(instanceClassName)
-//
-//        for ((method, constructorArg) in interfac.methods.zip(constructorArgs)) {
-//            val typeReplacements = interfac.typeParameters.map{s -> Type.ParameterType(s) as Type}.zip(interfaceParameters).toMap()
-//            val methodBuilder = writeInterfaceMethod(method, false, typeReplacements)
-//            methodBuilder.addAnnotation(Override::class.java)
-//
-//            when (constructorArg) {
-//                is TypedExpression.NamedFunctionBinding -> {
-//                    val callArgs = ArrayList<TypedExpression>()
-//                    callArgs.add(TypedExpression.Variable(dataType, dataVarName))
-//
-//                    for ((methodArg, binding) in method.arguments.zip(constructorArg.bindings)) {
-//                        if (binding == null) {
-//                            callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
-//                        } else {
-//                            callArgs.add(binding)
-//                        }
-//                    }
-//
-//                    val functionCallStrategy = getNamedFunctionCallStrategy(constructorArg.functionRef)
-//                    val functionCall = functionCallStrategy.apply(constructorArg.chosenParameters, callArgs)
-//                    methodBuilder.addStatement("return \$L", functionCall)
-//                }
-//                is TypedExpression.ExpressionFunctionBinding -> {
-//                    TODO()
-//                }
-//                else -> {
-//                    val functionCallStrategy = getExpressionFunctionCallStrategy(constructorArg)
-//                    // In this case, we pass through the args as-is
-//                    val callArgs = ArrayList<TypedExpression>()
-//                    callArgs.add(TypedExpression.Variable(dataType, dataVarName))
-//
-//                    for (methodArg in method.arguments) {
-//                        callArgs.add(TypedExpression.Variable(methodArg.type, methodArg.name))
-//                    }
-//
-//                    val functionCall = functionCallStrategy.apply(listOf(), callArgs)
-//
-//                    methodBuilder.addStatement("return \$L", functionCall)
-//                }
-//            }
-//
-//            builder.addMethod(methodBuilder.build())
-//        }
-//
-//        val instanceConstructor = builder.build()
-//        return instanceConstructor
-//    }
-
     private fun writeStructClass(struct: Struct, className: ClassName): TypeSpec.Builder {
         val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 
@@ -656,11 +542,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 module.getInternalStruct(resolved.entityRef).struct.getConstructorSignature()
             }
             FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
-//                module.getInternalInterface(resolved.entityRef).interfac.getInstanceConstructorSignature()
                 TODO()
             }
             FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-//                module.getInternalInterfaceByAdapterId(resolved.entityRef).interfac.getAdapterConstructorSignature()
                 TODO()
             }
             FunctionLikeType.OPAQUE_TYPE -> {
