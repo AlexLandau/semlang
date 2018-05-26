@@ -1,0 +1,19 @@
+interface Supplier {
+  getValue(): Natural
+}
+
+@Test([], "1")
+function myCode.getNumberOne(): Natural {
+  let mySupplier = Supplier(function(): Natural { Natural."1" })
+  mySupplier->getValue()
+}
+
+@Test([], "2")
+function myCode.getNumberTwo(): Natural {
+  let mySupplier = Supplier(returnTwo|())
+  mySupplier->getValue()
+}
+
+function returnTwo(): Natural {
+  Natural."2"
+}

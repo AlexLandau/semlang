@@ -189,7 +189,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         for (interfac in context.interfaces) {
             seenTypeIds.add(interfac.id)
             seenFunctionIds.add(interfac.id)
-            seenTypeIds.add(interfac.adapterId)
             seenFunctionIds.add(interfac.adapterId)
 
             // Check for duplicate declarations
@@ -222,11 +221,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             if (!duplicateLocalFunctionIds.contains(interfac.id)) {
                 localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idLocation))
             }
-            if (!duplicateLocalTypeIds.contains(interfac.adapterId)) {
-                localTypes.put(interfac.adapterId, getTypeInfo(interfac.getAdapterStruct()))
-            }
             if (!duplicateLocalFunctionIds.contains(interfac.adapterId)) {
-                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterConstructorSignature(), interfac.idLocation))
+                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterFunctionSignature(), interfac.idLocation))
             }
         }
 
@@ -292,8 +288,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         for (interfac in getNativeInterfaces().values) {
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamTypes.put(ref, getTypeInfo(interfac, null))
-            val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
-            upstreamTypes.put(adapterRef, getTypeInfo(interfac.getAdapterStruct(), null))
         }
 
         for (module in upstreamModules) {
@@ -304,8 +298,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             for (interfac in module.getAllExportedInterfaces().values) {
                 val ref = ResolvedEntityRef(module.id, interfac.id)
                 upstreamTypes.put(ref, getTypeInfo(interfac, null))
-                val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
-                upstreamTypes.put(adapterRef, getTypeInfo(interfac.getAdapterStruct(), null))
             }
         }
         return upstreamTypes
@@ -327,7 +319,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
             val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
-            upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
+            upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterFunctionSignature()))
         }
         for (function in getNativeFunctionOnlyDefinitions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, function.id)
@@ -343,7 +335,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val ref = ResolvedEntityRef(module.id, interfac.id)
                 upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
                 val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
-                upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterConstructorSignature()))
+                upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterFunctionSignature()))
             }
             for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)

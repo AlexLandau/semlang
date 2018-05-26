@@ -1,0 +1,55 @@
+struct myCode.Operator<T> {
+    getIdentity: () -> T
+    apply: (T, T) -> T
+}
+
+function myCode.Operator.Adapter<A, T>(getIdentity: (A) -> T, apply: (A, T, T) -> T): (A) -> myCode.Operator<T> {
+    function (data: A): myCode.Operator<T> {
+        myCode.Operator<T>(
+            getIdentity|(data),
+            apply|(data, _, _)
+        )
+    }
+}
+
+function implPlus(identity: Integer, left: Integer, right: Integer): Integer {
+    Integer.plus(left, right)
+}
+
+function getTimesOperator(): myCode.Operator<Integer> {
+    getOperatorAdapter(implTimes|(_, _, _))(Integer."1")
+}
+
+function getOperatorAdapter(applyMethod: (Integer, Integer, Integer) -> Integer): (Integer) -> myCode.Operator<Integer> {
+    myCode.Operator.Adapter<Integer, Integer>(implGetIdentity|(_), applyMethod)
+}
+
+function getPlusOperator(): myCode.Operator<Integer> {
+    getOperatorAdapter(implPlus|(_, _, _))(Integer."0")
+}
+
+function selfApply(operator: myCode.Operator<Integer>, value: Integer): Integer {
+    let applyOnce: (Integer) -> Integer = operator->apply|(value, _)
+    applyOnce(value)
+}
+
+function implGetIdentity(identity: Integer): Integer {
+    identity
+}
+
+function implTimes(identity: Integer, left: Integer, right: Integer): Integer {
+    Integer.times(left, right)
+}
+
+@Test(["1", "1"], "2")
+@Test(["3", "6"], "45")
+@Test(["9", "0"], "81")
+@Test(["6", "8"], "100")
+@Test(["2", "5"], "29")
+function myCode.squareDistance(a: Integer, b: Integer): Integer {
+    let plusOperator: myCode.Operator<Integer> = getPlusOperator()
+    let timesOperator: myCode.Operator<Integer> = getTimesOperator()
+    let aSquared: Integer = timesOperator->apply(a, a)
+    let bSquared: Integer = selfApply(timesOperator, b)
+    plusOperator->apply(aSquared, bSquared)
+}

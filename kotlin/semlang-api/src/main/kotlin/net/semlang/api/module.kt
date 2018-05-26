@@ -331,7 +331,7 @@ class ValidatedModule private constructor(val id: ModuleId,
 
         for (interfac in interfaces.values) {
             allSignatures.put(interfac.id, interfac.getInstanceConstructorSignature())
-            allSignatures.put(interfac.adapterId, interfac.getAdapterConstructorSignature())
+            allSignatures.put(interfac.adapterId, interfac.getAdapterFunctionSignature())
         }
 
         return allSignatures

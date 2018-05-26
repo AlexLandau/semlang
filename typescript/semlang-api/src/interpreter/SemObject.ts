@@ -64,7 +64,16 @@ export namespace SemObject {
         block: Block;
         bindings: Array<SemObject | undefined>;
     }
-    export type FunctionBinding = NamedFunctionBinding | InlineFunctionBinding;
+    export interface InterfaceAdapterFunctionBinding {
+        type: "interfaceAdapterBinding";
+        interface: Interface;
+        /**
+         * Note: This should always be a SemObject.FunctionBinding[], but doing this makes working with
+         * the general FunctionBinding type easier.
+         */
+        bindings: Array<SemObject | undefined>;
+    }
+    export type FunctionBinding = NamedFunctionBinding | InlineFunctionBinding | InterfaceAdapterFunctionBinding;
     export interface ListBuilder {
         type: "ListBuilder";
         contents: SemObject[];
@@ -163,6 +172,14 @@ export function inlineBindingObject(argumentNames: string[], bindings: Array<Sem
     }
 }
 
+export function interfaceAdapterBindingObject(interfaceDef: Interface, bindings: SemObject.FunctionBinding[]): SemObject.InterfaceAdapterFunctionBinding {
+    return {
+        type: "interfaceAdapterBinding",
+        bindings,
+        interface: interfaceDef
+    }
+}
+
 export function isFunctionBinding(object: SemObject): object is SemObject.FunctionBinding {
-    return object.type === "namedBinding" || object.type === "inlineBinding";
+    return object.type === "namedBinding" || object.type === "inlineBinding" || object.type === "interfaceAdapterBinding";
 }

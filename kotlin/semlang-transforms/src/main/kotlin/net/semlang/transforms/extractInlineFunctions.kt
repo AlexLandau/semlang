@@ -157,23 +157,41 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         val typeParameters = HashSet<String>()
 
         for (argument in inlineFunction.arguments) {
-            val type = argument.type
-            if (type is Type.ParameterType) {
-                typeParameters.add(type.name)
-            }
+            addTypeParameters(typeParameters, argument.type)
         }
-        val functionReturnType = inlineFunction.returnType
-        if (functionReturnType is Type.ParameterType) {
-            typeParameters.add(functionReturnType.name)
-        }
+        addTypeParameters(typeParameters, inlineFunction.returnType)
         for (boundVar in inlineFunction.boundVars) {
-            val type = boundVar.type
-            if (type is Type.ParameterType) {
-                typeParameters.add(type.name)
-            }
+            addTypeParameters(typeParameters, boundVar.type)
         }
 
         return typeParameters
+    }
+
+    private fun addTypeParameters(set: MutableSet<String>, type: Type) {
+        val unused: Any = when (type) {
+            Type.INTEGER -> { /* Do nothing */ }
+            Type.BOOLEAN -> { /* Do nothing */ }
+            is Type.List -> {
+                addTypeParameters(set, type.parameter)
+            }
+            is Type.Try -> {
+                addTypeParameters(set, type.parameter)
+            }
+            is Type.FunctionType -> {
+                for (argType in type.argTypes) {
+                    addTypeParameters(set, argType)
+                }
+                addTypeParameters(set, type.outputType)
+            }
+            is Type.ParameterType -> {
+                set.add(type.name)
+            }
+            is Type.NamedType -> {
+                for (parameter in type.parameters) {
+                    addTypeParameters(set, parameter)
+                }
+            }
+        }
     }
 
     private fun getUnusedEntityId(): EntityId {

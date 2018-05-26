@@ -26,7 +26,7 @@ fun getAllNativeFunctionLikeDefinitions(): Map<EntityId, TypeSignature> {
 
     getNativeInterfaces().values.forEach { interfac ->
         definitions.add(interfac.getInstanceConstructorSignature())
-        definitions.add(interfac.getAdapterConstructorSignature())
+        definitions.add(interfac.getAdapterFunctionSignature())
     }
 
     return toMap(definitions)

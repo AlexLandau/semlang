@@ -517,41 +517,25 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
     val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
-    fun getAdapterStruct(): UnvalidatedStruct {
-        val members = methods.map { method ->
-            val methodType = method.functionType
-            UnvalidatedMember(method.name, UnvalidatedType.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType, idLocation))
-        }
-        return UnvalidatedStruct(adapterId, false, listOf(dataTypeParameter) + typeParameters,
-                members, null, listOf(), idLocation)
-    }
+
+    val instanceType = UnvalidatedType.NamedType(this.id.asRef(), false, typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
 
     fun getInstanceConstructorSignature(): UnvalidatedTypeSignature {
-        val explicitTypeParameters = this.typeParameters
-        val allTypeParameters = this.getAdapterStruct().typeParameters
-        val dataTypeParameter = allTypeParameters[0]
+        val typeParameters = this.typeParameters
+        val argumentTypes = this.methods.map(UnvalidatedMethod::functionType)
 
-        val argumentTypes = ArrayList<UnvalidatedType>()
-        val dataStructType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
-        argumentTypes.add(dataStructType)
-
-        val adapterType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, allTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
-        argumentTypes.add(adapterType)
-
-        val outputType = UnvalidatedType.NamedType(this.id.asRef(), false, explicitTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
-
-        return UnvalidatedTypeSignature(this.id, argumentTypes, outputType, allTypeParameters)
+        return UnvalidatedTypeSignature(this.id, argumentTypes, instanceType, typeParameters)
     }
-    fun getAdapterConstructorSignature(): UnvalidatedTypeSignature {
-        val adapterTypeParameters = this.getAdapterStruct().typeParameters
-        val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0], null)
+    fun getAdapterFunctionSignature(): UnvalidatedTypeSignature {
+        val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
+        val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0], null)
         val argumentTypes = ArrayList<UnvalidatedType>()
         this.methods.forEach { method ->
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = UnvalidatedType.NamedType(this.adapterId.asRef(), false, adapterTypeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
+        val outputType = UnvalidatedType.FunctionType(listOf(dataType), instanceType)
 
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -562,48 +546,32 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
         return methods.indexOfFirst { method -> method.name == name }
     }
 
-    fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), false, typeParameters.map(Type::ParameterType))
-    }
 
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
     val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
     val dataType = Type.ParameterType(dataTypeParameter)
-    fun getAdapterStruct(): Struct {
-        val members = methods.map { method ->
-            val methodType = method.functionType
-            Member(method.name, Type.FunctionType(listOf(dataType) + methodType.argTypes, methodType.outputType))
-        }
-        return Struct(adapterId, false, moduleId, listOf(dataTypeParameter) + typeParameters,
-                members, null, listOf())
+    val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
+    val adapterType = Type.FunctionType(listOf(dataType), instanceType)
+    fun getType(): Type.NamedType {
+        return instanceType
     }
 
     fun getInstanceConstructorSignature(): TypeSignature {
-        val explicitTypeParameters = this.typeParameters
-        val allTypeParameters = this.getAdapterStruct().typeParameters
-        val dataTypeParameter = allTypeParameters[0]
+        val typeParameters = this.typeParameters
+        val argumentTypes = this.methods.map(Method::functionType)
 
-        val argumentTypes = ArrayList<Type>()
-        val dataStructType = Type.ParameterType(dataTypeParameter)
-        argumentTypes.add(dataStructType)
-
-        val adapterType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), false, allTypeParameters.map { name -> Type.ParameterType(name) })
-        argumentTypes.add(adapterType)
-
-        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.id), this.id.asRef(), false, explicitTypeParameters.map { name -> Type.ParameterType(name) })
-
-        return TypeSignature(this.id, argumentTypes, outputType, allTypeParameters)
+        return TypeSignature(this.id, argumentTypes, instanceType, typeParameters)
     }
-    fun getAdapterConstructorSignature(): TypeSignature {
-        val adapterTypeParameters = this.getAdapterStruct().typeParameters
-        val dataStructType = Type.ParameterType(adapterTypeParameters[0])
+    fun getAdapterFunctionSignature(): TypeSignature {
+        val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
+        val dataStructType = Type.ParameterType(adapterTypeParameters[0])
         val argumentTypes = ArrayList<Type>()
         this.methods.forEach { method ->
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = Type.NamedType(ResolvedEntityRef(moduleId, this.adapterId), this.adapterId.asRef(), false, adapterTypeParameters.map { name -> Type.ParameterType(name) })
+        val outputType = adapterType
 
         return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }

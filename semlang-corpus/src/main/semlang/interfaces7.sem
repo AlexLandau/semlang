@@ -8,13 +8,13 @@ interface SupplierFactory<T> {
 
 @Test([], "1")
 function myCode.getNumberOne(): Natural {
-    let supplierFactory: SupplierFactory<Natural> = SupplierFactory<Natural, Natural>(Natural."1", SupplierFactory.Adapter<Natural, Natural>(getSupplier<Natural>|(_)))
+    let supplierFactory: SupplierFactory<Natural> = SupplierFactory.Adapter<Natural, Natural>(getSupplier<Natural>|(_))(Natural."1")
     supplierFactory->getFactory()->getValue()
 }
 
 function getSupplier<T>(value: T): Supplier<T> {
     let adapter = Supplier.Adapter<T, T>(identity<T>|(_))
-    Supplier<T, T>(value, adapter)
+    adapter(value)
 }
 
 function identity<T>(value: T): T {

@@ -3,17 +3,22 @@ package net.semlang.transforms
 import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
+import net.semlang.parser.validate
+import net.semlang.parser.validateModule
 
 // TODO: Test this on multi-module cases
 fun convertToSem0(module: ValidatedModule): S0Context {
     // TODO: Link non-native modules
 
     // Apply some pre-transformations...
-    val v2 = extractInlineFunctions(module)
+    val v2 = invalidate(module)
     val v3 = transformInterfacesToStructs(v2)
-    val v4 = simplifyAllExpressions(v3)
+    // TODO: Find a way to simplify and avoid re-validating here
+    val v4 = validateModule(v3, module.id, module.nativeModuleVersion, module.upstreamModules.values.toList()).assumeSuccess()
+    val v5 = extractInlineFunctions(v4)
+    val v6 = simplifyAllExpressions(v5)
 
-    return Sem1To0Converter(v4).apply()
+    return Sem1To0Converter(v6).apply()
 }
 
 private class Sem1To0Converter(val input: RawContext) {

@@ -218,6 +218,17 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
                 return evaluateBlock(target.functionDef.block, variableAssignments, functionBinding.containingModule)
             }
+            is FunctionBindingTarget.InterfaceAdapter -> {
+                val dataObject = args.single()
+
+                val reboundBindings = functionBinding.bindings.map { adapterArgumentOrNull ->
+                    val adapterArgument = adapterArgumentOrNull as? SemObject.FunctionBinding ?: error("Arguments to interface adapters should be function bindings")
+                    val bindingsWithDataObject = adapterArgument.bindings.replaceFirstNullWith(dataObject)
+                    adapterArgument.copy(bindings = bindingsWithDataObject)
+                }
+
+                return SemObject.Instance(target.interfac, reboundBindings)
+            }
         }
     }
 
@@ -270,27 +281,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         if (arguments.size != interfaceDef.methods.size) {
             throw IllegalArgumentException("Wrong number of arguments for adapter constructor " + interfaceDef.adapterId)
         }
-        return SemObject.Struct(interfaceDef.getAdapterStruct(), arguments)
+
+        val target = FunctionBindingTarget.InterfaceAdapter(interfaceDef)
+        return SemObject.FunctionBinding(target, interfaceModule, arguments)
     }
 
     private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
-        if (arguments.size != 2) {
-            throw IllegalArgumentException("Wrong number of arguments for interface constructor " + interfaceDef.id)
-        }
-        val dataObject = arguments[0]
-        val adapter = arguments[1] as? SemObject.Struct ?: error("Passed a non-adapter object to an instance constructor")
-        val fixedBindings = adapter.objects.stream()
-                .map { obj -> obj as? SemObject.FunctionBinding ?: error("Non-function binding argument for a method in an adapter") }
-                .map { binding -> if (binding.bindings[0] != null) {
-                        error("Was expecting a null binding for the first element")
-                    } else {
-                        val newBindings = ArrayList(binding.bindings)
-                        newBindings[0] = dataObject
-                        binding.copy(bindings = newBindings)
-                    }
-                }
-                .collect(Collectors.toList())
-        return SemObject.Instance(interfaceDef, fixedBindings)
+        val bindings = arguments.map { it as? SemObject.FunctionBinding ?: error("Every argument to an interface constructor must be a function binding") }
+        return SemObject.Instance(interfaceDef, bindings)
     }
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
@@ -495,6 +493,16 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         }
         throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
     }
+}
+
+private fun <E> List<E?>.replaceFirstNullWith(replacement: E): List<E?> {
+    val newList = this.toMutableList()
+    val firstNullIndex = newList.indexOf(null)
+    if (firstNullIndex < 0) {
+        error("Expected a null element in $this")
+    }
+    newList.set(firstNullIndex, replacement)
+    return newList
 }
 
 fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {

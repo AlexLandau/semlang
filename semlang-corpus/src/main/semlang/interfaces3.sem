@@ -27,7 +27,7 @@ function selfApply(operator: myCode.Operator<Integer>, value: Integer): Integer 
 }
 
 function getPlusOperator(): myCode.Operator<Integer> {
-    myCode.Operator<Integer, Integer>(Integer."0", getOperatorAdapter(implPlus|(_, _, _)))
+    getOperatorAdapter(implPlus|(_, _, _))(Integer."0")
 }
 
 // TODO: Someday add a library function for this?
@@ -41,10 +41,10 @@ function implPlus(identity: Integer, left: Integer, right: Integer): Integer {
 }
 
 function getTimesOperator(): myCode.Operator<Integer> {
-    myCode.Operator<Integer, Integer>(Integer."1", getOperatorAdapter(implTimes|(_, _, _)))
+    getOperatorAdapter(implTimes|(_, _, _))(Integer."1")
 }
 
-function getOperatorAdapter(applyMethod: (Integer, Integer, Integer) -> Integer): myCode.Operator.Adapter<Integer, Integer> {
+function getOperatorAdapter(applyMethod: (Integer, Integer, Integer) -> Integer): (Integer) -> myCode.Operator<Integer> {
     myCode.Operator.Adapter<Integer, Integer>(implGetIdentity|(_), applyMethod)
 }
 

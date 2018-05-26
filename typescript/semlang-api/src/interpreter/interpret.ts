@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument } from "../api/language";
-import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject } from "./SemObject";
+import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 
@@ -80,41 +80,28 @@ export class InterpreterContext {
 
         const theInterface = this.module.interfaces[functionName];
         if (theInterface !== undefined) {
-            if (args.length !== 2) {
-                throw new Error(`Expected two arguments to an interface constructor`);
-            }
-            const dataObject = args[0];
-            const adapterObject = args[1];
-            if (adapterObject.type !== "struct") {
-                throw new Error(`Was expecting an adapter struct`);
-            }
-            const adapterMembers = adapterObject.members;
-            if (adapterMembers.length !== theInterface.methods.length) {
-                throw new Error(`Adapter members length doesn't match interface methods length`);
-            }
-            const reboundMethods = [] as SemObject.FunctionBinding[];
-            for (let i = 0; i < adapterMembers.length; i++) {
-                const adapterMember = adapterMembers[i];
-                const method = theInterface.methods[i];
-                if (!isFunctionBinding(adapterMember)) {
-                    throw new Error(`Adapter member was a non-binding type`);
+            // Direct interface instance constructor
+            const methods: SemObject.FunctionBinding[] = args.map(object => {
+                if (!isFunctionBinding(object)) {
+                    throw new Error(`All arguments to interfaces should be function bindings, but was: ${object}`);
                 }
-                const fixedBindings = adapterMember.bindings.slice();
-                if (fixedBindings[0] !== undefined) {
-                    throw new Error(`Expected an undefined binding for the 0th element`);
-                }
-                fixedBindings[0] = dataObject;
-                const reboundMethod = {...adapterMember, bindings: fixedBindings};
-                reboundMethods.push(reboundMethod);
-            }
+                return object;
+            });
 
-            return instanceObject(theInterface, reboundMethods);
+            return instanceObject(theInterface, methods);
         }
 
         const theAdaptedInterface = this.module.interfacesByAdapterId[functionName];
         if (theAdaptedInterface !== undefined) {
-            const adapterStruct = getAdapterStruct(theAdaptedInterface);
-            return structObject(adapterStruct, args);
+            // Function result of an interface adapter method
+            const datalessBindings: SemObject.FunctionBinding[] = args.map(object => {
+                if (!isFunctionBinding(object)) {
+                    throw new Error(`All arguments to interfaces should be function bindings, but was: ${object}`);
+                }
+                return object;
+            });
+
+            return interfaceAdapterBindingObject(theAdaptedInterface, datalessBindings);
         }
 
         throw new Error(`Couldn't find the function ${functionName}`);
@@ -125,6 +112,8 @@ export class InterpreterContext {
             return this.evaluateNamedBinding(functionBinding, args);
         } else if (functionBinding.type === "inlineBinding") {
             return this.evaluateInlineBinding(functionBinding, args);
+        } else if (functionBinding.type === "interfaceAdapterBinding") {
+            return this.evaluateInterfaceAdapterBinding(functionBinding, args);
         } else {
             throw assertNever(functionBinding);
         }
@@ -145,6 +134,22 @@ export class InterpreterContext {
         }
         const boundVars = getBoundVarsForArgs(functionBinding.argumentNames, fullyBoundArguments);
         return this.evaluateBlock(functionBinding.block, boundVars);
+    }
+
+    private evaluateInterfaceAdapterBinding(functionBinding: SemObject.InterfaceAdapterFunctionBinding, args: SemObject[]): SemObject {
+        if (args.length !== 1) {
+            throw new Error(`Bindings from interface adapter calls are supposed to have only one argument, but got ${JSON.stringify(args)}`);
+        }
+        const dataObject = args[0];
+        const reboundMethods = functionBinding.bindings.map(semiBoundMethod => {
+            if (semiBoundMethod === undefined || !isFunctionBinding(semiBoundMethod)) {
+                throw new Error(`Arguments of interface adapters are supposed to be bindings, but was: ${JSON.stringify(semiBoundMethod)}`);
+            }
+            const fullyBoundMethod = replaceFirstUnboundBindingWith(semiBoundMethod, dataObject);
+            return fullyBoundMethod;
+        });
+
+        return instanceObject(functionBinding.interface, reboundMethods);
     }
 
     private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
@@ -512,4 +517,14 @@ function combineBindings(originalBinding: SemObject.FunctionBinding, explicitBin
         throw new Error(`Binding length mismatch`);
     }
     return combinedBindings;
+}
+
+function replaceFirstUnboundBindingWith(originalBinding: SemObject.FunctionBinding, replacement: SemObject): SemObject.FunctionBinding {
+    const newBindings = originalBinding.bindings.slice(); // Make a copy
+    const firstUnboundIndex = newBindings.indexOf(undefined);
+    if (firstUnboundIndex < 0) {
+        throw new Error(`This was supposed to have an unbound index`);
+    }
+    newBindings[firstUnboundIndex] = replacement;
+    return {...originalBinding, bindings: newBindings};
 }
