@@ -145,7 +145,6 @@ export class InterpreterContext {
             if (semiBoundMethod === undefined || !isFunctionBinding(semiBoundMethod)) {
                 throw new Error(`Arguments of interface adapters are supposed to be bindings, but was: ${JSON.stringify(semiBoundMethod)}`);
             }
-            // Need some way to modify the bindings of a semiBoundMethod...
             const fullyBoundMethod = replaceFirstUnboundBindingWith(semiBoundMethod, dataObject);
             return fullyBoundMethod;
         });
