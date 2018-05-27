@@ -94,6 +94,26 @@ class ComplexLiteralsPositiveTest {
         val result = parseComplexLiteral("[[],]").assumeSuccess()
         check(result, squareList(squareList()))
     }
+
+    @Test
+    fun testDeeperSquareNesting() {
+        val result = parseComplexLiteral("['a', [['b'], 'c', 'd', ['e', [],], 'f'],]").assumeSuccess()
+        check(result, squareList(
+                literal("a"),
+                squareList(
+                        squareList(
+                                literal("b")
+                        ),
+                        literal("c"),
+                        literal("d"),
+                        squareList(
+                                literal("e"),
+                                squareList()
+                        ),
+                        literal("f")
+                )
+        ))
+    }
 }
 
 class ComplexLiteralsNegativeTest {
@@ -122,6 +142,11 @@ class ComplexLiteralsNegativeTest {
     @Test
     fun testIncompleteSquareList3() {
         assertInvalid("]")
+    }
+
+    @Test
+    fun testIncompleteSquareList4() {
+        assertInvalid("['")
     }
 
     @Test

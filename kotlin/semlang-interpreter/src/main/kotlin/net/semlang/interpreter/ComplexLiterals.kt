@@ -3,15 +3,23 @@ package net.semlang.interpreter
 import java.util.*
 
 sealed class ComplexLiteralNode {
-    data class Literal(val contents: String): ComplexLiteralNode()
-    data class SquareList(val contents: List<ComplexLiteralNode>): ComplexLiteralNode()
+    data class Literal(val contents: String): ComplexLiteralNode() {
+        override fun toString(): String {
+            return "'$contents'"
+        }
+    }
+    data class SquareList(val contents: List<ComplexLiteralNode>): ComplexLiteralNode() {
+        override fun toString(): String {
+            return "[" + contents.joinToString(", ") + "]"
+        }
+    }
     data class CurlyList(val contents: List<CurlyNode>): ComplexLiteralNode()
     data class AngleList(val contents: List<ComplexLiteralNode>): ComplexLiteralNode()
 }
 
 sealed class CurlyNode {
     data class Singleton(val item: ComplexLiteralNode): CurlyNode()
-    data class Pair(val left: ComplexLiteralNode, val right: ComplexLiteralNode): CurlyNode()
+    data class Pair(val key: String, val value: ComplexLiteralNode): CurlyNode()
 }
 
 sealed class ComplexLiteralParsingResult {
