@@ -430,11 +430,51 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         return when (type) {
             Type.INTEGER -> evaluateIntegerLiteral(literal)
             Type.BOOLEAN -> evaluateBooleanLiteral(literal)
-            is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            is Type.List -> evaluateComplexLiteral(type, literal)
             is Type.Try -> evaluateTryLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
             is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+        }
+    }
+
+    private fun evaluateComplexLiteral(type: Type, literal: String): SemObject {
+        val parseResult = parseComplexLiteral(literal)
+        return when (parseResult) {
+            is ComplexLiteralParsingResult.Failure -> {
+                throw IllegalArgumentException("Complex literal parsing failed for literal $literal: ${parseResult.errorMessage}")
+            }
+            is ComplexLiteralParsingResult.Success -> {
+                evaluateComplexLiteralNode(type, parseResult.node)
+            }
+        }
+    }
+
+    private fun evaluateComplexLiteralNode(type: Type, node: ComplexLiteralNode): SemObject {
+        return when (type) {
+            Type.INTEGER -> {
+                if (node !is ComplexLiteralNode.Literal) {
+                    error("Integers are expected to be simple literals")
+                }
+                evaluateIntegerLiteral(node.contents)
+            }
+            Type.BOOLEAN -> {
+                if (node !is ComplexLiteralNode.Literal) {
+                    error("Booleans are expected to be simple literals")
+                }
+                evaluateBooleanLiteral(node.contents)
+            }
+            is Type.List -> {
+                if (node !is ComplexLiteralNode.SquareList) {
+                    error("Lists are expected to be in square brackets")
+                }
+                val contents = node.contents.map { evaluateComplexLiteralNode(type.parameter, it) }
+                SemObject.SemList(contents)
+            }
+            is Type.Try -> TODO()
+            is Type.FunctionType -> TODO()
+            is Type.ParameterType -> TODO()
+            is Type.NamedType -> TODO()
         }
     }
 
