@@ -1,9 +1,10 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument } from "../api/language";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
+import { parseComplexLiteral, ComplexLiteralNode, isLiteralNode, isSquareListNode } from "./ComplexLiteral";
 
 export function evaluateLiteral(module: Module, type: Type, value: string): SemObject {
     const context = new InterpreterContext(module);
@@ -326,6 +327,9 @@ export class InterpreterContext {
             throw new Error(`Unexpected Boolean literal ${value}`);
         } else if (type === "Integer") {
             return integerObject(bigInt(value));
+        } else if (isListType(type)) {
+            // Note: This is currently only intended for @Test cases
+            return this.evaluateComplexLiteralString(type, value);
         } else if (isTryType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
@@ -381,6 +385,28 @@ export class InterpreterContext {
                 }
             }
             throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
+        }
+    }
+
+    private evaluateComplexLiteralString(type: Type, value: string): SemObject {
+        const node = parseComplexLiteral(value);
+        return this.evaluateComplexLiteralNode(type, node);
+    }
+
+    private evaluateComplexLiteralNode(type: Type, node: ComplexLiteralNode): SemObject {
+        if (type === "Integer" || type === "Boolean") {
+            if (!isLiteralNode(node)) {
+                throw new Error();
+            }
+            return this.evaluateLiteral(type, node);
+        } else if (isListType(type)) {
+            if (!isSquareListNode(node)) {
+                throw new Error();
+            }
+            const contents = node.square.map((innerNode) => this.evaluateComplexLiteralNode(type.List, innerNode));
+            return listObject(contents);
+        } else {
+            throw new Error("Unsupported complex literal type " + type);
         }
     }
 

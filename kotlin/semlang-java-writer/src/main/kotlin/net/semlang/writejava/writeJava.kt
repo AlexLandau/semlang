@@ -4,7 +4,10 @@ import com.squareup.javapoet.*
 import net.semlang.api.*
 import net.semlang.internal.test.TestAnnotationContents
 import net.semlang.internal.test.verifyTestAnnotationContents
+import net.semlang.interpreter.ComplexLiteralNode
+import net.semlang.interpreter.ComplexLiteralParsingResult
 import net.semlang.interpreter.evaluateStringLiteral
+import net.semlang.interpreter.parseComplexLiteral
 import net.semlang.parser.validateModule
 import net.semlang.transforms.*
 import java.io.File
@@ -602,15 +605,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getArgumentsBlock(arguments: List<TypedExpression>): CodeBlock {
-        if (arguments.isEmpty()) {
-            return CodeBlock.of("")
-        }
-        val builder = CodeBlock.builder()
-        builder.add("\$L", writeExpression(arguments[0]))
-        for (argument in arguments.drop(1)) {
-            builder.add(", \$L", writeExpression(argument))
-        }
-        return builder.build()
+        return arguments.map { writeExpression(it) }.joinToArgumentsList()
     }
 
     // This gets populated early on in the write() method.
@@ -687,7 +682,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             Type.BOOLEAN -> {
                 CodeBlock.of("\$L", literal)
             }
-            is Type.List -> error("List literals not supported")
+            is Type.List -> writeComplexLiteralExpression(type, literal)
             is Type.Try -> {
                 // We need to support this for unit tests, specifically
                 if (literal == "failure") {
@@ -732,6 +727,37 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.ParameterType -> {
                 error("Literals not supported for parameter type $type")
             }
+        }
+    }
+
+    private fun writeComplexLiteralExpression(type: Type, literal: String): CodeBlock {
+        val parsingResult = parseComplexLiteral(literal)
+        return when (parsingResult) {
+            is ComplexLiteralParsingResult.Success -> writeComplexLiteralExpression(type, parsingResult.node)
+            is ComplexLiteralParsingResult.Failure -> error("Could not parse complex literal $literal: ${parsingResult.errorMessage}")
+        }
+    }
+    private fun writeComplexLiteralExpression(type: Type, node: ComplexLiteralNode): CodeBlock {
+        return when (type) {
+            Type.INTEGER -> {
+                val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
+                writeLiteralExpression(type, literal.contents)
+            }
+            Type.BOOLEAN -> {
+                val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
+                writeLiteralExpression(type, literal.contents)
+            }
+            is Type.List -> {
+                val squareList = node as? ComplexLiteralNode.SquareList ?: error("Type mismatch")
+                val contentsCode = squareList.contents.map {
+                    writeComplexLiteralExpression(type.parameter, it)
+                }.joinToArgumentsList()
+                CodeBlock.of("\$T.asList(\$L)", Arrays::class.java, contentsCode)
+            }
+            is Type.Try -> TODO()
+            is Type.FunctionType -> TODO()
+            is Type.ParameterType -> TODO()
+            is Type.NamedType -> TODO()
         }
     }
 
@@ -1233,4 +1259,16 @@ private fun isDataStruct(struct: Struct, containingModule: ValidatedModule?): Bo
         }
     }
     return true
+}
+
+private fun List<CodeBlock>.joinToArgumentsList(): CodeBlock {
+    if (this.isEmpty()) {
+        return CodeBlock.of("")
+    }
+    val builder = CodeBlock.builder()
+    builder.add("\$L", (this[0]))
+    for (argument in this.drop(1)) {
+        builder.add(", \$L", argument)
+    }
+    return builder.build()
 }
