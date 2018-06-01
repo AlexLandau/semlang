@@ -405,8 +405,16 @@ export class InterpreterContext {
             }
             const contents = node.square.map((innerNode) => this.evaluateComplexLiteralNode(type.List, innerNode));
             return listObject(contents);
+        } else if (isNamedType(type)) {
+            if (type.name === "Natural") {
+                if (!isLiteralNode(node)) {
+                    throw new Error();
+                }
+                return naturalObject(bigInt(node));
+            }
+            throw new Error("Unsupported complex literal type " + JSON.stringify(type));
         } else {
-            throw new Error("Unsupported complex literal type " + type);
+            throw new Error("Unsupported complex literal type " + JSON.stringify(type));
         }
     }
 
@@ -484,7 +492,10 @@ function addVarNamesReferencedInExpression(expression: Expression, varNamesSet: 
             }
         }
     } else if (expression.type === "expressionCall") {
-        throw new Error(`TODO: Implement`);
+        addVarNamesReferencedInExpression(expression.expression, varNamesSet);
+        for (const argument of expression.arguments) {
+            addVarNamesReferencedInExpression(argument, varNamesSet);
+        }
     } else if (expression.type === "follow") {
         addVarNamesReferencedInExpression(expression.expression, varNamesSet);
     } else if (expression.type === "ifThen") {

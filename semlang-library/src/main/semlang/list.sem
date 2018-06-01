@@ -64,3 +64,14 @@ function List.interpose<T>(list: List<T>, interposer: T): List<T> {
     List.dropLast<T>(listWithExtraTrailingItem, Natural."1")
   }
 }
+
+@Export
+function List.getIndices<T>(list: List<T>): List<Natural> {
+  let size = List.size<T>(list)
+  if (Natural.equals(size, Natural."0")) {
+    []<Natural>
+  } else {
+    let lastIndex = Try.assume<Natural>(Natural(Natural.minus(size, Natural."1")))
+    Natural.rangeInclusive(Natural."0", lastIndex)
+  }
+}

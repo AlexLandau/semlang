@@ -474,7 +474,43 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             is Type.Try -> TODO()
             is Type.FunctionType -> TODO()
             is Type.ParameterType -> TODO()
-            is Type.NamedType -> TODO()
+            is Type.NamedType -> {
+                // Special cases for special SemObjects...
+                if (isNativeModule(type.ref.module)) {
+                    if (type.ref.id == NativeStruct.NATURAL.id) {
+                        val literal = (node as? ComplexLiteralNode.Literal ?: error("Type error")).contents
+                        return evaluateNaturalLiteral(literal)
+                    }
+                    if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
+                        val literal = (node as? ComplexLiteralNode.Literal ?: error("Type error")).contents
+                        return evaluateStringLiteral(literal)
+                    }
+                }
+
+                val nameResolution = mainModule.resolve(type.ref) ?: error("No resolution found for ${type.ref}")
+                if (nameResolution.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
+                    //Handle structs
+                    val (struct, structModule) = mainModule.getInternalStruct(type.ref)
+                    if (struct.members.size == 1) {
+                        // When there's a single member, we use its literal representation directly
+                        val member = struct.members.single()
+                        val memberValue = evaluateComplexLiteralNode(member.type, node)
+                        val requiresBlock = struct.requires
+                        if (requiresBlock != null) {
+                            val initialAssignments = mapOf(member.name to memberValue)
+                            val validationResult = evaluateBlock(requiresBlock, initialAssignments, structModule) as? SemObject.Boolean ?: error("Type error")
+                            if (!validationResult.value) {
+                                error("Literal value does not satisfy the requires block of type ${struct.id}: \"$node\"")
+                            }
+                        }
+                        return SemObject.Struct(struct, listOf(memberValue))
+                    } else {
+                        TODO()
+                    }
+                } else {
+                    TODO()
+                }
+            }
         }
     }
 

@@ -700,10 +700,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 val resolvedType = this.module.resolve(type.ref) ?: error("Unresolved type ${type.ref}")
                 if (isNativeModule(resolvedType.entityRef.module))  {
                     if (resolvedType.entityRef.id == NativeStruct.NATURAL.id) {
-                        return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+                        return writeNaturalLiteral(literal)
                     }
                     if (resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
-                        return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+                        return writeUnicodeStringLiteral(literal)
                     }
                 }
 
@@ -728,6 +728,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 error("Literals not supported for parameter type $type")
             }
         }
+    }
+
+    private fun writeUnicodeStringLiteral(literal: String): CodeBlock {
+        return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
+    }
+
+    private fun writeNaturalLiteral(literal: String): CodeBlock {
+        return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
     }
 
     private fun writeComplexLiteralExpression(type: Type, literal: String): CodeBlock {
@@ -757,7 +765,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.Try -> TODO()
             is Type.FunctionType -> TODO()
             is Type.ParameterType -> TODO()
-            is Type.NamedType -> TODO()
+            is Type.NamedType -> {
+                if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL.id) {
+                    val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
+                    writeNaturalLiteral(literal.contents)
+                } else if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
+                    val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
+                    writeUnicodeStringLiteral(literal.contents)
+                } else {
+                    TODO()
+                }
+            }
         }
     }
 
