@@ -1,0 +1,9 @@
+@Test([], "failure")
+function testFailure1(): Try<Integer> {
+    Try.failure<Integer>()
+}
+
+@Test([], "failure")
+function testFailure2(): Try<Boolean> {
+    Try.failure<Boolean>()
+}

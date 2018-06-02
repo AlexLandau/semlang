@@ -1,3 +1,4 @@
+@Test([], "['1', '4', '9']")
 function buildListUsingBuilder(): List<Integer> {
   let builder1: ~ListBuilder<Integer> = ListBuilder.create<Integer>()
   let builder2 = armsLengthAppend(builder1, Integer."1")
@@ -9,21 +10,4 @@ function buildListUsingBuilder(): List<Integer> {
 
 function armsLengthAppend(builder: ~ListBuilder<Integer>, value: Integer): ~ListBuilder<Integer> {
   ListBuilder.append<Integer>(builder, value)
-}
-
-@Test([], "3")
-function testSize(): Natural {
-  List.size<Integer>(buildListUsingBuilder())
-}
-
-@Test([], "true")
-function testExpectedValues(): Boolean {
-  let list = buildListUsingBuilder()
-  Boolean.and(
-    Integer.equals(Integer."1", Try.assume<Integer>(List.get<Integer>(list, Natural."0"))),
-    Boolean.and(
-      Integer.equals(Integer."4", Try.assume<Integer>(List.get<Integer>(list, Natural."1"))),
-      Integer.equals(Integer."9", Try.assume<Integer>(List.get<Integer>(list, Natural."2"))),
-    )
-  )
 }
