@@ -7,6 +7,10 @@ Major near-term projects:
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors
 - Sem2 and Try notation
+  - Call functions like they were on the relevant objects (with IDE autocomplete support)
+  - Standard operators
+  - Consider a return keyword and similar imperative control structures?
+- We're close to needing data-only parameter types to support Set, Map, and UniqueList, as well as Data.equals
 
 Stuff that feels blocked or hasn't been implemented:
 - Lemmas and proofs
@@ -19,14 +23,12 @@ Stuff that feels blocked or hasn't been implemented:
     combined with other optimizations to be actually useful
   - Probably also needs test cases
   - Tail-call recursion might be easier to try implementing initially?
-- Allow @Tests to have Lists as inputs or outputs
-  - This needs design, and it should probably be a holistic design that includes structs as well
-  - This is connected to the concept of allowing files to be reinterpreted as constant functions by the build system
 - Write escape-rope code
   - More String library functions are needed: contains, replaceAll, join, StringBuilder
-  - Interfaces don't work well yet when there's no data involved
+  - We still need to connect this to the standard library
 
 - There should be a way to easily reference "get a given element of a struct type" as a function binding
+  - It also feels like there should be a slightly easier way to do a fully-unbound function reference
 - Fix the bug with the post-linker extractInlineFunctionsTest
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
