@@ -9,4 +9,6 @@ tasks.test.inputs.files(fileTree("../semlang-library/src/main/semlang"))
 tasks.test.inputs.files(fileTree("src/test/semlang"))
 
 // Make sure the standard library has been published before running the test
+// TODO: Currently, this causes project-euler to be rerun if the tests for the standard library are rerun. We should
+// change this to only rerun when the library itself changes.
 tasks.test.dependsOn ":kotlin:semlang-standard-library-test:test"

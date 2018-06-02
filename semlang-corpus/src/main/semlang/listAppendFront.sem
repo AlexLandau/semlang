@@ -4,3 +4,17 @@
 function testAppendFront(list: List<Integer>, newItem: Integer): List<Integer> {
   List.appendFront<Integer>(list, newItem)
 }
+
+// Check that implementations don't get lazy and mutate the original list
+@Test(["[]", "30", "false"], "['30']")
+@Test(["[]", "30", "true"], "[]")
+@Test(["['14']", "8", "true"], "['14']")
+@Test(["['1', '2', '3', '4']", "3", "true"], "['1', '2', '3', '4']")
+function testAppendFrontDoesNotMutate(list: List<Integer>, newItem: Integer, returnOriginalList: Boolean): List<Integer> {
+  let appendedList = List.appendFront<Integer>(list, newItem)
+  if (returnOriginalList) {
+    list
+  } else {
+    appendedList
+  }
+}
