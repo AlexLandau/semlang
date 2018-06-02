@@ -182,8 +182,8 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 
     // List.appendFront
     list.add(NativeFunction(listDot("appendFront"), { args: List<SemObject>, _: InterpreterCallback ->
-        val item = args[0]
-        val list = args[1] as? SemObject.SemList ?: typeError()
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val item = args[1]
         SemObject.SemList(listOf(item) + list.contents)
     }))
 

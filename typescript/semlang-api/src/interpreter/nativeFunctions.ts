@@ -175,7 +175,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.append": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject(list.contents.concat(newElem));
     },
-    "List.appendFront": (context: InterpreterContext, newElem: SemObject, list: SemObject.List): SemObject.List => {
+    "List.appendFront": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject([newElem].concat(list.contents));
     },
     "List.concatenate": (context: InterpreterContext, left: SemObject.List, right: SemObject.List): SemObject.List => {

@@ -198,7 +198,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
       let numBytesUsed = List.size<Byte>(firstChar->bytes)
       let remainingBytes = List.drop<Byte>(bytes, numBytesUsed)
       Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes), function (remainingString: Unicode.String): Unicode.String {
-        Unicode.String.appendFront(unicodeValue, remainingString)
+        Unicode.String.appendFront(remainingString, unicodeValue)
       })
     })
 

@@ -105,7 +105,7 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 
     // List.appendFront
     definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf("T"),
-            argumentTypes = listOf(paramT, Type.List(paramT)),
+            argumentTypes = listOf(Type.List(paramT), paramT),
             outputType = Type.List(paramT)))
 
     // List.concatenate

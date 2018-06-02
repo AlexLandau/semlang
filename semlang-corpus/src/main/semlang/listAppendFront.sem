@@ -1,0 +1,6 @@
+@Test(["[]", "30"], "['30']")
+@Test(["['14']", "8"], "['8', '14']")
+@Test(["['1', '2', '3', '4']", "3"], "['3', '1', '2', '3', '4']")
+function testAppendFront(list: List<Integer>, newItem: Integer): List<Integer> {
+  List.appendFront<Integer>(list, newItem)
+}

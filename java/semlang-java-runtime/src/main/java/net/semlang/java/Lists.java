@@ -25,7 +25,7 @@ public class Lists {
         return newList;
     }
 
-    public static <T> List<T> appendFront(T element, List<T> existingList) {
+    public static <T> List<T> appendFront(List<T> existingList, T element) {
         List<T> newList = new ArrayList<T>(existingList.size() + 1);
         newList.add(element);
         newList.addAll(existingList);

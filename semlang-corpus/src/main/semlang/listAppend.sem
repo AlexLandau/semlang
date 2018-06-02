@@ -1,0 +1,6 @@
+@Test(["[]", "30"], "['30']")
+@Test(["['14']", "8"], "['14', '8']")
+@Test(["['1', '2', '3', '4']", "3"], "['1', '2', '3', '4', '3']")
+function testAppend(list: List<Integer>, newItem: Integer): List<Integer> {
+  List.append<Integer>(list, newItem)
+}
