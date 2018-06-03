@@ -62,7 +62,8 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             // would be totally obnoxious
             return EntityRef(null, ref.id)
         } else {
-            return EntityRef(null, newNames[ref]!!)
+            val newName = newNames[ref] ?: error("There was no new name specified for $ref")
+            return EntityRef(null, newName)
         }
     }
 
@@ -224,6 +225,16 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
                 allNewNames.add(ref.id)
             }
         }
+        for ((ref, interfac) in relevantEntities.interfaces) {
+            if (ref.module == rootModuleId) {
+                val adapterId = interfac.adapterId
+                if (allNewNames.contains(adapterId)) {
+                    error("EntityId collision in the root module: $adapterId")
+                }
+                newNameMap.put(ref.copy(id = adapterId), adapterId)
+                allNewNames.add(adapterId)
+            }
+        }
 
         val modulePrefixes = assignModulePrefixes()
 
@@ -239,6 +250,19 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
             }
             newNameMap.put(ref, finalName)
             allNewNames.add(finalName)
+            // TODO: Rewrite this to be more efficient? Or can we get rid of adapter functions?
+            val interfaceMaybe = relevantEntities.interfaces[ref]
+            if (interfaceMaybe != null) {
+                val oldAdapterId = interfaceMaybe.adapterId
+                val adapterRef = ref.copy(id = oldAdapterId)
+                val finalAdapterName = EntityId(finalName.namespacedName + "Adapter")
+                if (allNewNames.contains(finalAdapterName)) {
+                    error("Chose $finalName as the new name for interface $ref, but we're already using the adapter name $finalAdapterName")
+                }
+
+                newNameMap.put(adapterRef, finalAdapterName)
+                allNewNames.add(finalAdapterName)
+            }
         }
         return NameAssignment(newNameMap, rootModuleId)
     }
@@ -485,7 +509,10 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
                 // TODO: This is probably wrong
-                interfacesQueue.add(resolved.entityRef)
+                val adapterId = resolved.entityRef.id
+                val interfaceId = EntityId(adapterId.namespacedName.dropLast(1))
+                val interfaceRef = resolved.entityRef.copy(id = interfaceId)
+                interfacesQueue.add(interfaceRef)
             }
             FunctionLikeType.OPAQUE_TYPE -> {
                 // Currently these are all native types

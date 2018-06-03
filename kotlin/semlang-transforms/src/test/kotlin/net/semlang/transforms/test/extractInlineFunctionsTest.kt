@@ -33,11 +33,10 @@ class ExtractInlineFunctionsTest(private val file: File, private val libraries: 
         testExtraction(false)
     }
 
-    // TODO: This exposes some other bug; fix that bug and re-enable
-//    @Test
-//    fun testLinkedExtraction() {
-//        testExtraction(true)
-//    }
+    @Test
+    fun testLinkedExtraction() {
+        testExtraction(true)
+    }
 
     private fun testExtraction(linked: Boolean) {
         var module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()

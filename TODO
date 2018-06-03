@@ -29,7 +29,6 @@ Stuff that feels blocked or hasn't been implemented:
 
 - There should be a way to easily reference "get a given element of a struct type" as a function binding
   - It also feels like there should be a slightly easier way to do a fully-unbound function reference
-- Fix the bug with the post-linker extractInlineFunctionsTest
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Turn NativeFunctions into library code written in semlang where possible
