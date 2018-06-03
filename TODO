@@ -13,6 +13,15 @@ Major near-term projects:
 - We're close to needing data-only parameter types to support Set, Map, and UniqueList, as well as Data.equals
 
 Stuff that feels blocked or hasn't been implemented:
+- Modules still need some rethinking and design work
+  - I don't have an answer for the diamond dependency problem yet: If two modules we're depending on both incorporate
+    the same third module as a dependency, but they depend on slightly different versions, how do we reconcile those
+    versions in our code? Related question: can we update the version of one of our transitive dependencies without
+    republishing the direct dependency that pulls it in?
+  - I have some vague ideas here around API-only modules, which might be needed only in the case where modules are
+    reexporting parts of other modules (and not where those modules are used purely for their implementations, though
+    those might also be candidates for updates-by-consumer in cases like time zones)
+  - How do other languages currently deal with this?
 - Lemmas and proofs
   - Needs more consideration of both the predicates we should be operating on (how to reference parts of code?) and syntax
 - Normal form
