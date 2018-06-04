@@ -7,7 +7,7 @@ import net.semlang.modules.parser.parseAndValidateModuleDirectory
 
 fun main(args: Array<String>) {
     val standardLibraryFolder = File("../../semlang-library/src/main/semlang")
-    val standardLibraryModule = parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+    val standardLibraryModule = parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION, getDefaultLocalRepository()).assumeSuccess()
 
     val localRepository = getDefaultLocalRepository()
     localRepository.unpublishIfPresent(standardLibraryModule.id)

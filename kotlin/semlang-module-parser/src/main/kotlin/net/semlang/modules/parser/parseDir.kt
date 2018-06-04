@@ -1,9 +1,10 @@
 package net.semlang.modules.parser
 
+import net.semlang.modules.ModuleRepository
 import net.semlang.parser.*
 import java.io.File
 
-fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String): ValidationResult {
+fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String, repository: ModuleRepository): ValidationResult {
     val configFile = File(directory, "module.conf")
     val parsedConfig = parseConfigFile(configFile)
     return when (parsedConfig) {
@@ -22,8 +23,12 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
             }
             val combinedParsingResult = combineParsingResults(parsingResults)
 
+            val dependencies = parsedConfig.info.dependencies.map { dependencyId ->
+                repository.loadModule(dependencyId)
+            }
+
             // TODO: Dependencies should figure in here at some point...
-            validate(combinedParsingResult, parsedConfig.info.id, nativeModuleVersion, listOf())
+            validate(combinedParsingResult, parsedConfig.info.id, nativeModuleVersion, dependencies)
         }
     }
 }

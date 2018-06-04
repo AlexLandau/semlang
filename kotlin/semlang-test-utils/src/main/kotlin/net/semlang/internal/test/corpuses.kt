@@ -2,6 +2,7 @@ package net.semlang.internal.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ValidatedModule
+import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.modules.parser.parseAndValidateModuleDirectory
 import java.io.File
 
@@ -76,5 +77,5 @@ fun getCompilableFilesWithAssociatedLibraries(): Collection<Array<Any?>> {
 
 fun validateStandardLibraryModule(): ValidatedModule {
     val standardLibraryFolder = File("../../semlang-library/src/main/semlang")
-    return parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+    return parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION, getDefaultLocalRepository()).assumeSuccess()
 }

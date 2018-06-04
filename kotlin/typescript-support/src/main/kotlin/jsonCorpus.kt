@@ -1,6 +1,7 @@
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.linker.linkModuleWithDependencies
+import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.modules.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseAndValidateFile
 import net.semlang.parser.toJsonText
@@ -52,7 +53,7 @@ fun linkAndTranslateStandardLibraryCorpus() {
     }
     outputDir.mkdirs()
 
-    val standardLibrary = parseAndValidateModuleDirectory(File("../../semlang-library/src/main/semlang"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+    val standardLibrary = parseAndValidateModuleDirectory(File("../../semlang-library/src/main/semlang"), CURRENT_NATIVE_MODULE_VERSION, getDefaultLocalRepository()).assumeSuccess()
 
     for (sourceFile in sourcesDir.listFiles()) {
         val module = parseAndValidateFile(sourceFile, ModuleId("semlang-test", sourceFile.nameWithoutExtension, "develop"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibrary)).assumeSuccess()

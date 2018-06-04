@@ -6,12 +6,16 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 
+interface ModuleRepository {
+    fun loadModule(id: ModuleId): ValidatedModule
+}
+
 /*
  * Larger design question: Do we treat the contents of the repository as validated or unvalidated?
  * For now, will treat as unvalidated for safety's sake (and because we'll catch more bugs that way)
  */
 // TODO: This should be made thread-safe
-class LocalRepository(private val rootDirectory: File) {
+class LocalRepository(private val rootDirectory: File): ModuleRepository {
     init {
         if (!rootDirectory.exists()) {
             rootDirectory.mkdirs()
@@ -34,7 +38,7 @@ class LocalRepository(private val rootDirectory: File) {
         return UnvalidatedModule(moduleInfo, rawContents)
     }
 
-    fun loadModule(id: ModuleId): ValidatedModule {
+    override fun loadModule(id: ModuleId): ValidatedModule {
         return loadModuleInternal(id, HashSet())
     }
     private fun loadModuleInternal(id: ModuleId, alreadyLoading: Set<ModuleId>): ValidatedModule {
