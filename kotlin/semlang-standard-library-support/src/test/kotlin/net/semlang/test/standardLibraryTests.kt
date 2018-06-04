@@ -12,7 +12,6 @@ import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.interpreter.InterpreterOptions
-import net.semlang.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
 import net.semlang.parser.parseFiles
 import net.semlang.parser.validateModule

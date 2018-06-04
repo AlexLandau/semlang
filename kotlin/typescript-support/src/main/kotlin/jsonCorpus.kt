@@ -1,8 +1,8 @@
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.linker.linkModuleWithDependencies
+import net.semlang.modules.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseAndValidateFile
-import net.semlang.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.toJsonText
 import net.semlang.parser.validateModule
 import java.io.File

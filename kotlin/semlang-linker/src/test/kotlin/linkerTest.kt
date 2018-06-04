@@ -8,11 +8,9 @@ import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.parseAndValidateFile
-import net.semlang.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
 import net.semlang.parser.validateModule
 import org.junit.Assert
-import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -80,8 +78,8 @@ class StandardLibraryTests(private val file: File) {
     }
 
     private fun parseAndValidateFile(file: File): ValidatedModule {
-        val standardLibraryFolder = File("../../semlang-library/src/main/semlang")
-        val standardLibraryModule = parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+        val standardLibraryModuleId = ModuleId("semlang", "standard-library", "develop")
+        val standardLibraryModule = getDefaultLocalRepository().loadModule(standardLibraryModuleId)
 
         val unvalidatedContext = parseFile(file).assumeSuccess()
         return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryModule)).assumeSuccess()
