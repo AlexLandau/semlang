@@ -1,0 +1,21 @@
+dependencies {
+  compile project(":kotlin:semlang-module-repository")
+  compile project(":kotlin:semlang-parser")
+  testCompile project(":kotlin:semlang-interpreter")
+  testCompile project(":kotlin:semlang-test-utils")
+}
+
+File semlangFolder = new File(System.getProperty("user.home"), ".semlang")
+File repoFolder = new File(semlangFolder, "repo-0")
+File publishedModuleLocation = new File(repoFolder, "semlang/standard-library/develop")
+
+task publishModuleLocally(type: JavaExec) {
+  inputs.dir rootProject.file('semlang-library/src/main/semlang')
+  outputs.dir publishedModuleLocation
+  main = 'net.semlang.support.standardlibrary.PublishDevelopVersionKt'
+  classpath = sourceSets.main.runtimeClasspath
+}
+
+tasks.test.dependsOn(publishModuleLocally)
+tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))
+tasks.test.inputs.dir publishedModuleLocation

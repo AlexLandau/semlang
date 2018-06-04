@@ -1,8 +1,0 @@
-dependencies {
-  testCompile project(":kotlin:semlang-module-repository")
-  testCompile project(":kotlin:semlang-interpreter")
-  testCompile project(":kotlin:semlang-test-utils")
-}
-
-tasks.test.inputs.files(fileTree("../../semlang-library/src/main/semlang"))
-tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))

@@ -27,19 +27,8 @@ class StandardLibraryTests(private val file: File) {
             return getSemlangStandardLibraryCorpusFiles()
         }
 
-        var libraryModuleId: ModuleId? = null
-
-        @BeforeClass
-        @JvmStatic
-        fun publishStandardLibrary() {
-            val standardLibraryFolder = File("../../semlang-library/src/main/semlang")
-            val standardLibraryModule = parseAndValidateModuleDirectory(standardLibraryFolder, CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
-            this.libraryModuleId = standardLibraryModule.id
-
-            val localRepository = getDefaultLocalRepository()
-            localRepository.unpublishIfPresent(standardLibraryModule.id)
-            localRepository.publish(standardLibraryModule)
-        }
+        // TODO: Can we get this from the semlang-standard-library-support project? Or should it be "too standard to fail"?
+        val libraryModuleId: ModuleId = ModuleId("semlang", "standard-library", "develop")
     }
 
 
@@ -63,7 +52,7 @@ class StandardLibraryTests(private val file: File) {
 
     private fun parseAndValidateFile(file: File): ValidatedModule {
         val localRepository = getDefaultLocalRepository()
-        val libraryModule = localRepository.loadModule(libraryModuleId!!)
+        val libraryModule = localRepository.loadModule(libraryModuleId)
 
         val unvalidatedContext = parseFile(file).assumeSuccess()
         return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule)).assumeSuccess()
