@@ -2,6 +2,7 @@ package net.semlang.languageserver
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
+import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
@@ -240,7 +241,12 @@ class SourcesFolderModel(private val folderUri: URI,
             } else {
                 // We have a single module with a valid config
                 val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
-                val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION, listOf())
+                // TODO: We need dependencies here
+                val repository = getDefaultLocalRepository()
+                // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
+                // TODO: Also catch and deal with errors here
+                val loadedDependencies = moduleInfo.dependencies.map { repository.loadModule(it) }
+                val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
 
                 val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
                 val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
