@@ -1,0 +1,3 @@
+function dataEqualsWrapper<T: Data>(left: T, right: T): Boolean {
+  Data.equals<T>(left, right)
+}

@@ -41,6 +41,7 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
     addListFunctions(definitions)
     addTryFunctions(definitions)
     addSequenceFunctions(definitions)
+    addDataFunctions(definitions)
     addThreadedFunctions(definitions)
 
     return toMap(definitions)
@@ -95,118 +96,134 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.ParameterType("T")
-    val paramU = Type.ParameterType("U")
+    val t = TypeParameter("T", null)
+    val u = TypeParameter("U", null)
+    val typeT = Type.ParameterType(t)
+    val typeU = Type.ParameterType(u)
 
     // List.append
-    definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), paramT),
-            outputType = Type.List(paramT)))
+    definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), typeT),
+            outputType = Type.List(typeT)))
 
     // List.appendFront
-    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), paramT),
-            outputType = Type.List(paramT)))
+    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), typeT),
+            outputType = Type.List(typeT)))
 
     // List.concatenate
-    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), Type.List(paramT)),
-            outputType = Type.List(paramT)))
+    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), Type.List(typeT)),
+            outputType = Type.List(typeT)))
 
     // List.subList
-    definitions.add(TypeSignature(EntityId.of("List", "subList"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
-            outputType = Type.Try(Type.List(paramT))))
+    definitions.add(TypeSignature(EntityId.of("List", "subList"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
+            outputType = Type.Try(Type.List(typeT))))
 
     // List.map
-    definitions.add(TypeSignature(EntityId.of("List", "map"), typeParameters = listOf("T", "U"),
-            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), paramU)),
-            outputType = Type.List(paramU)))
+    definitions.add(TypeSignature(EntityId.of("List", "map"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), typeU)),
+            outputType = Type.List(typeU)))
 
     // List.flatMap
-    definitions.add(TypeSignature(EntityId.of("List", "flatMap"), typeParameters = listOf("T", "U"),
-            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.List(paramU))),
-            outputType = Type.List(paramU)))
+    definitions.add(TypeSignature(EntityId.of("List", "flatMap"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), Type.List(typeU))),
+            outputType = Type.List(typeU)))
 
     // List.filter
-    definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), Type.FunctionType(listOf(paramT), Type.BOOLEAN)),
-            outputType = Type.List(paramT)))
+    definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), Type.BOOLEAN)),
+            outputType = Type.List(typeT)))
 
     // List.reduce
-    definitions.add(TypeSignature(EntityId.of("List", "reduce"), typeParameters = listOf("T", "U"),
-            argumentTypes = listOf(Type.List(paramT), paramU, Type.FunctionType(listOf(paramU, paramT), paramU)),
-            outputType = paramU))
+    definitions.add(TypeSignature(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType(listOf(typeU, typeT), typeU)),
+            outputType = typeU))
 
     // List.size
-    definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT)),
+    definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT)),
             outputType = NativeStruct.NATURAL.getType()))
 
     // List.get
-    definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.List(paramT), NativeStruct.NATURAL.getType()),
-            outputType = Type.Try(paramT)))
+    definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType()),
+            outputType = Type.Try(typeT)))
 }
 
 private fun addTryFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.ParameterType("T")
-    val paramU = Type.ParameterType("U")
+    val t = TypeParameter("T", null)
+    val u = TypeParameter("U", null)
+    val typeT = Type.ParameterType(t)
+    val typeU = Type.ParameterType(u)
 
     // Try.success
-    definitions.add(TypeSignature(EntityId.of("Try", "success"), typeParameters = listOf("T"),
-            argumentTypes = listOf(paramT),
-            outputType = Type.Try(paramT)))
+    definitions.add(TypeSignature(EntityId.of("Try", "success"), typeParameters = listOf(t),
+            argumentTypes = listOf(typeT),
+            outputType = Type.Try(typeT)))
 
     // Try.failure
-    definitions.add(TypeSignature(EntityId.of("Try", "failure"), typeParameters = listOf("T"),
+    definitions.add(TypeSignature(EntityId.of("Try", "failure"), typeParameters = listOf(t),
             argumentTypes = listOf(),
-            outputType = Type.Try(paramT)))
+            outputType = Type.Try(typeT)))
 
     // Try.assume
-    definitions.add(TypeSignature(EntityId.of("Try", "assume"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.Try(paramT)),
-            outputType = paramT))
+    definitions.add(TypeSignature(EntityId.of("Try", "assume"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.Try(typeT)),
+            outputType = typeT))
 
 
     // Try.isSuccess
-    definitions.add(TypeSignature(EntityId.of("Try", "isSuccess"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.Try(paramT)),
+    definitions.add(TypeSignature(EntityId.of("Try", "isSuccess"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.Try(typeT)),
             outputType = Type.BOOLEAN))
 
     // Try.map
-    definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf("T", "U"),
-            argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), paramU)),
-            outputType = Type.Try(paramU)))
+    definitions.add(TypeSignature(EntityId.of("Try", "map"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.Try(typeT), Type.FunctionType(listOf(typeT), typeU)),
+            outputType = Type.Try(typeU)))
 
     // Try.flatMap
-    definitions.add(TypeSignature(EntityId.of("Try", "flatMap"), typeParameters = listOf("T", "U"),
-            argumentTypes = listOf(Type.Try(paramT), Type.FunctionType(listOf(paramT), Type.Try(paramU))),
-            outputType = Type.Try(paramU)))
+    definitions.add(TypeSignature(EntityId.of("Try", "flatMap"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.Try(typeT), Type.FunctionType(listOf(typeT), Type.Try(typeU))),
+            outputType = Type.Try(typeU)))
 
     // Try.orElse
-    definitions.add(TypeSignature(EntityId.of("Try", "orElse"), typeParameters = listOf("T"),
-            argumentTypes = listOf(Type.Try(paramT), paramT),
-            outputType = paramT))
+    definitions.add(TypeSignature(EntityId.of("Try", "orElse"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.Try(typeT), typeT),
+            outputType = typeT))
 
 }
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.ParameterType("T")
+    val t = TypeParameter("T", null)
+    val typeT = Type.ParameterType(t)
 
     val sequenceT = NativeInterface.SEQUENCE.getType()
 
     // Sequence.create
     // TODO: This should be library code in semlang in most cases, not native
-    definitions.add(TypeSignature(EntityId.of("Sequence", "create"), typeParameters = listOf("T"),
-            argumentTypes = listOf(paramT, Type.FunctionType(listOf(paramT), paramT)),
+    definitions.add(TypeSignature(EntityId.of("Sequence", "create"), typeParameters = listOf(t),
+            argumentTypes = listOf(typeT, Type.FunctionType(listOf(typeT), typeT)),
             outputType = sequenceT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
 }
 
+private fun addDataFunctions(definitions: ArrayList<TypeSignature>) {
+    val t = TypeParameter("T", TypeClass.Data)
+    val typeT = Type.ParameterType(t)
+
+    // Data.equals
+    definitions.add(TypeSignature(EntityId.of("Data", "equals"), typeParameters = listOf(t),
+            argumentTypes = listOf(typeT, typeT),
+            outputType = Type.BOOLEAN))
+}
+
 private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
-    val paramT = Type.ParameterType("T")
+    val t = TypeParameter("T", null)
+    val typeT = Type.ParameterType(t)
 
     // TextOut.print
     definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
@@ -217,29 +234,31 @@ private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "create"), typeParameters = listOf("T"),
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "create"), typeParameters = listOf(t),
             argumentTypes = listOf(),
             outputType = listBuilderT))
 
     // ListBuilder.append
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "append"), typeParameters = listOf("T"),
-            argumentTypes = listOf(listBuilderT, paramT),
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "append"), typeParameters = listOf(t),
+            argumentTypes = listOf(listBuilderT, typeT),
             outputType = listBuilderT))
 
     // ListBuilder.appendAll
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf("T"),
-            argumentTypes = listOf(listBuilderT, Type.List(paramT)),
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
+            argumentTypes = listOf(listBuilderT, Type.List(typeT)),
             outputType = listBuilderT))
 
     // ListBuilder.build
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "build"), typeParameters = listOf("T"),
+    definitions.add(TypeSignature(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT),
-            outputType = Type.List(paramT)))
+            outputType = Type.List(typeT)))
 }
 
 object NativeStruct {
-    private val typeT = Type.ParameterType("T")
-    private val typeU = Type.ParameterType("U")
+    private val t = TypeParameter("T", null)
+    private val u = TypeParameter("U", null)
+    private val typeT = Type.ParameterType(t)
+    private val typeU = Type.ParameterType(u)
     val NATURAL = Struct(
             EntityId.of("Natural"),
             false,
@@ -263,7 +282,7 @@ object NativeStruct {
             EntityId.of("BasicSequence"),
             false,
             CURRENT_NATIVE_MODULE_ID,
-            listOf("T"),
+            listOf(t),
             listOf(
                     Member("base", typeT),
                     Member("successor", Type.FunctionType(listOf(typeT), typeT))
@@ -373,11 +392,12 @@ fun getNativeStructs(): Map<EntityId, Struct> {
 }
 
 object NativeInterface {
-    private val typeT = Type.ParameterType("T")
+    private val t = TypeParameter("T", null)
+    private val typeT = Type.ParameterType(t)
     val SEQUENCE = Interface(
             EntityId.of("Sequence"),
             CURRENT_NATIVE_MODULE_ID,
-            listOf("T"),
+            listOf(t),
             listOf(
                     Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL.getType())), typeT),
                     Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
@@ -395,11 +415,13 @@ fun getNativeInterfaces(): Map<EntityId, Interface> {
 }
 
 object NativeThreadedType {
+    private val t = TypeParameter("T", null)
+
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
 
     private val listBuilderId = EntityId.of("ListBuilder")
-    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType("T")))
+    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType(t)))
 }
 
 /**

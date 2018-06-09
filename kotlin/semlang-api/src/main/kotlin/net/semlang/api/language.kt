@@ -161,8 +161,12 @@ sealed class UnvalidatedType() {
 
     data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
         companion object {
+            // TODO: remove?
             fun forParameter(name: String, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(name))), false, listOf(), location)
+            }
+            fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
+                return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
             }
         }
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
@@ -294,7 +298,7 @@ sealed class Type {
         }
     }
 
-    data class ParameterType(val name: String): Type() {
+    data class ParameterType(val parameter: TypeParameter): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
@@ -305,11 +309,11 @@ sealed class Type {
         }
 
         override fun getTypeString(): String {
-            return name
+            return parameter.name
         }
 
         override fun toString(): String {
-            return name
+            return parameter.name
         }
     }
 
@@ -383,13 +387,27 @@ sealed class Type {
 
 }
 
+enum class TypeClass {
+    Data,
+}
+
+data class TypeParameter(val name: String, val typeClass: TypeClass?) {
+    override fun toString(): String {
+        if (typeClass == null) {
+            return name
+        } else {
+            return "$name: $typeClass"
+        }
+    }
+}
+
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
-data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<String> = listOf()): HasId {
+data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
     }
 }
-data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<String> = listOf()): HasId
+data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
 
 data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
 data class Range(val start: Position, val end: Position)
@@ -453,7 +471,7 @@ data class Argument(val name: String, val type: Type)
 data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getTypeSignature(): UnvalidatedTypeSignature {
         return UnvalidatedTypeSignature(id,
                 arguments.map(UnvalidatedArgument::type),
@@ -461,7 +479,7 @@ data class Function(override val id: EntityId, val typeParameters: List<String>,
                 typeParameters)
     }
 }
-data class ValidatedFunction(override val id: EntityId, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
+data class ValidatedFunction(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
         return TypeSignature(id,
                 arguments.map(Argument::type),
@@ -470,7 +488,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<String>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
@@ -482,7 +500,7 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<String>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -513,9 +531,9 @@ interface TopLevelEntity: HasId {
 data class UnvalidatedMember(val name: String, val type: UnvalidatedType)
 data class Member(val name: String, val type: Type)
 
-data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<String>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
+data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<TypeParameter>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
+    val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
     val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
 
     val instanceType = UnvalidatedType.NamedType(this.id.asRef(), false, typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
@@ -540,7 +558,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
-data class Interface(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<String>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Interface(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
@@ -548,7 +566,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
 
 
     val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val dataTypeParameter = getUnusedTypeParameterName(typeParameters)
+    val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
     val dataType = Type.ParameterType(dataTypeParameter)
     val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
     val adapterType = Type.FunctionType(listOf(dataType), instanceType)
@@ -576,21 +594,22 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
         return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
-data class UnvalidatedMethod(val name: String, val typeParameters: List<String>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
+data class UnvalidatedMethod(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
     val functionType = UnvalidatedType.FunctionType(arguments.map { arg -> arg.type }, returnType, null)
 }
-data class Method(val name: String, val typeParameters: List<String>, val arguments: List<Argument>, val returnType: Type) {
+data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
 
-private fun getUnusedTypeParameterName(explicitTypeParameters: List<String>): String {
-    if (!explicitTypeParameters.contains("A")) {
+private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParameter>): String {
+    val typeParameterNames = explicitTypeParameters.map(TypeParameter::name)
+    if (!typeParameterNames.contains("A")) {
         return "A"
     }
     var index = 2
     while (true) {
         val name = "A" + index
-        if (!explicitTypeParameters.contains(name)) {
+        if (!typeParameterNames.contains(name)) {
             return name
         }
         index++

@@ -1,0 +1,12 @@
+struct MyStruct {
+  a: Integer
+  b: Boolean
+}
+
+@Test(["0", "false", "0", "false"], "true")
+@Test(["0", "true", "0", "true"], "true")
+@Test(["0", "true", "0", "false"], "false")
+@Test(["0", "true", "30", "true"], "false")
+function testDataEquals(a1: Integer, b1: Boolean, a2: Integer, b2: Boolean): Boolean {
+  Data.equals<MyStruct>(MyStruct(a1, b1), MyStruct(a2, b2))
+}
