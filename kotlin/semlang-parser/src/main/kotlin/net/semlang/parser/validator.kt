@@ -512,6 +512,67 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 upstreamFunctions[resolvedRef]
             }
         }
+        fun isDataType(type: Type): Boolean {
+            return when (type) {
+                Type.INTEGER -> true
+                Type.BOOLEAN -> true
+                is Type.List -> isDataType(type.parameter)
+                is Type.Try -> isDataType(type.parameter)
+                is Type.FunctionType -> false
+                is Type.ParameterType -> {
+                    val typeClass = type.parameter.typeClass
+                    if (typeClass == null) {
+                        false
+                    } else {
+                        // TODO: May need to refine this in the future
+                        typeClass == TypeClass.Data
+                    }
+                }
+                is Type.NamedType -> {
+                    // TODO: We might want some caching here
+                    if (type.threaded) {
+                        false
+                    } else {
+                        val typeInfo = getTypeInfo(type.ref)!!
+                        when (typeInfo) {
+                            is Validator.TypeInfo.Struct -> {
+                                // TODO: Need to handle recursive references; perhaps precomputing this across the whole type graph would be preferable (or do lazy computation and caching...)
+                                // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
+                                typeInfo.memberTypes.values.all { isDataType(it) }
+                            }
+                            is Validator.TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
+                        }
+                    }
+                }
+            }
+        }
+        // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
+        private fun isDataType(type: UnvalidatedType): Boolean {
+            return when (type) {
+                is UnvalidatedType.Integer -> true
+                is UnvalidatedType.Boolean -> true
+                is UnvalidatedType.List -> isDataType(type.parameter)
+                is UnvalidatedType.Try -> isDataType(type.parameter)
+                is UnvalidatedType.FunctionType -> false
+                is UnvalidatedType.NamedType -> {
+                    // TODO: We might want some caching here
+                    if (type.isThreaded) {
+                        false
+                    } else {
+                        val resolvedRef = resolver.resolve(type.ref)!!
+                        val typeInfo = getTypeInfo(resolvedRef.entityRef)!!
+                        when (typeInfo) {
+                            is Validator.TypeInfo.Struct -> {
+                                // TODO: Need to handle recursive references; perhaps precomputing this across the whole type graph would be preferable (or do lazy computation and caching...)
+                                // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
+                                typeInfo.memberTypes.values.all { isDataType(it) }
+                            }
+                            is Validator.TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
@@ -837,17 +898,33 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
-        for (chosenParameter in chosenParameters) {
-            if (chosenParameter.isThreaded()) {
-                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
-            }
+        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
+            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
         }
+
+
         val functionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
         if (argumentTypes != functionType.argTypes) {
             errors.add(Issue("The function $functionRef expects argument types ${functionType.argTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
         }
 
         return TypedExpression.NamedFunctionCall(functionType.outputType, functionRef, functionResolvedRef.entityRef, arguments, chosenParameters)
+    }
+
+    private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?, typeInfo: AllTypeInfo) {
+        if (chosenType.isThreaded()) {
+            errors.add(Issue("Threaded types cannot be used as parameters", location, IssueLevel.ERROR))
+        }
+        val typeClass = typeParameter.typeClass
+        if (typeClass != null) {
+            val unused: Any = when (typeClass) {
+                TypeClass.Data -> {
+                    if (!typeInfo.isDataType(chosenType)) {
+                        errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but $chosenType is not a data type", location, IssueLevel.ERROR))
+                    } else {}
+                }
+            }
+        }
     }
 
     private fun parameterizeAndValidateSignature(signature: UnvalidatedTypeSignature, chosenParameters: List<Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
