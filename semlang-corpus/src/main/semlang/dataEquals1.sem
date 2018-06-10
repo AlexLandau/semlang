@@ -2,6 +2,6 @@
 @Test(["-30", "-30"], "true")
 @Test(["-1", "1"], "false")
 @Test(["111", "110"], "false")
-function testDataEquals(int1: Integer, int2: Integer): Boolean {
-  Data.equals<Integer>(int1, int2)
+function testDataEquals(left: Integer, right: Integer): Boolean {
+  Data.equals<Integer>(left, right)
 }

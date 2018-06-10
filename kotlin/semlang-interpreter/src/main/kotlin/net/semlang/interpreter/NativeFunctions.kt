@@ -426,7 +426,7 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
         is SemObject.Struct -> {
             if (right !is SemObject.Struct) typeError()
             if (left.struct != right.struct) typeError()
-            left.objects.zip(right.objects).all { (l, r) -> dataEquals(l, r) }
+            dataListsEqual(left.objects, right.objects)
         }
         is SemObject.Instance -> typeError()
         is SemObject.Try.Success -> {
@@ -439,7 +439,7 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
         }
         is SemObject.SemList -> {
             if (right !is SemObject.SemList) typeError()
-            left.contents.zip(right.contents).all { (l, r) -> dataEquals(l, r) }
+            dataListsEqual(left.contents, right.contents)
         }
         is SemObject.UnicodeString -> {
             if (right !is SemObject.UnicodeString) typeError()
@@ -454,6 +454,13 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
         }
         is SemObject.Mock -> typeError()
     }
+}
+
+private fun dataListsEqual(left: List<SemObject>, right: List<SemObject>): Boolean {
+    if (left.size != right.size) {
+        return false
+    }
+    return left.zip(right).all { (l, r) -> dataEquals(l, r) }
 }
 
 private fun addDataFunctions(list: MutableList<NativeFunction>) {

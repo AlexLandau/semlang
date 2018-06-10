@@ -1016,7 +1016,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val left = writeExpression(arguments[0])
             val right = writeExpression(arguments[1])
             // TODO: We may need to vary this based on the chosen type in the future
-            return CodeBlock.of("\$L.equals(\$L)", left, right)
+            val type = chosenTypes[0]
+            if (type == Type.BOOLEAN) {
+                return CodeBlock.of("(\$L == \$L)", left, right)
+            } else {
+                return CodeBlock.of("\$L.equals(\$L)", left, right)
+            }
         }
     }
 
