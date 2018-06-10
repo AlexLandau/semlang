@@ -965,6 +965,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
+        map.put(EntityId.of("Data", "equals"), DataEqualsFunctionCallStrategy)
+
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
@@ -1006,6 +1008,15 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
             if (arguments.size != 1) error("")
             return writeExpression(arguments[0])
+        }
+    }
+
+    val DataEqualsFunctionCallStrategy = object: FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            val left = writeExpression(arguments[0])
+            val right = writeExpression(arguments[1])
+            // TODO: We may need to vary this based on the chosen type in the future
+            return CodeBlock.of("\$L.equals(\$L)", left, right)
         }
     }
 
