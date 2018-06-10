@@ -161,10 +161,6 @@ sealed class UnvalidatedType() {
 
     data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
         companion object {
-            // TODO: remove?
-            fun forParameter(name: String, location: Location? = null): NamedType {
-                return NamedType(EntityRef(null, EntityId(listOf(name))), false, listOf(), location)
-            }
             fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
             }
