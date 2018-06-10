@@ -14,9 +14,15 @@ package net.semlang.api
  */
 data class S0Context(val functions: List<S0Function>, val structs: List<S0Struct>)
 
-data class S0Struct(val id: String, val markedAsThreaded: Boolean, val typeParameters: List<String>, val members: List<S0Member>, val requires: S0Block?, val annotations: List<S0Annotation>)
+data class S0Struct(val id: String, val markedAsThreaded: Boolean, val typeParameters: List<S0TypeParameter>, val members: List<S0Member>, val requires: S0Block?, val annotations: List<S0Annotation>)
 
 data class S0Member(val name: String, val type: S0Type)
+
+enum class S0TypeClass {
+    Data
+}
+
+data class S0TypeParameter(val name: String, val typeClass: S0TypeClass?)
 
 sealed class S0Type {
     object Integer: S0Type()
@@ -27,7 +33,7 @@ sealed class S0Type {
     data class NamedType(val id: String, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
 }
 
-data class S0Function(val id: String, val typeParameters: List<String>, val arguments: List<S0Argument>, val returnType: S0Type, val block: S0Block, val annotations: List<S0Annotation>)
+data class S0Function(val id: String, val typeParameters: List<S0TypeParameter>, val arguments: List<S0Argument>, val returnType: S0Type, val block: S0Block, val annotations: List<S0Annotation>)
 
 data class S0Argument(val name: String, val type: S0Type)
 

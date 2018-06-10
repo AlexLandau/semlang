@@ -21,19 +21,36 @@ private class Sem0To1Converter(val input: S0Context) {
 
     private fun apply(function: S0Function): Function {
         val id = convertId(function.id)
+        val typeParameters = function.typeParameters.map(this::apply)
         val arguments = function.arguments.map(this::apply)
         val returnType = apply(function.returnType)
         val block = apply(function.block)
         val annotations = function.annotations.map(this::apply)
-        return Function(id, function.typeParameters, arguments, returnType, block, annotations)
+        return Function(id, typeParameters, arguments, returnType, block, annotations)
+    }
+
+    private fun apply(typeParameter: S0TypeParameter): TypeParameter {
+        val typeClass = apply(typeParameter.typeClass)
+        return TypeParameter(typeParameter.name, typeClass)
+    }
+
+    private fun apply(typeClass: S0TypeClass?): TypeClass? {
+        return if (typeClass == null) {
+            null
+        } else {
+            when (typeClass) {
+                S0TypeClass.Data -> TypeClass.Data
+            }
+        }
     }
 
     private fun apply(struct: S0Struct): UnvalidatedStruct {
         val id = convertId(struct.id)
+        val typeParameters = struct.typeParameters.map(this::apply)
         val members = struct.members.map(this::apply)
         val requires = struct.requires?.let(this::apply)
         val annotations = struct.annotations.map(this::apply)
-        return UnvalidatedStruct(id, struct.markedAsThreaded, struct.typeParameters, members, requires, annotations)
+        return UnvalidatedStruct(id, struct.markedAsThreaded, typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: S0Member): UnvalidatedMember {

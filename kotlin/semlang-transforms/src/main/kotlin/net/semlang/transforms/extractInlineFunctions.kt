@@ -132,7 +132,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         }
     }
 
-    private data class ExtractedFunctionInfo(val id: EntityId, val typeParameters: List<String>)
+    private data class ExtractedFunctionInfo(val id: EntityId, val typeParameters: List<TypeParameter>)
 
     private fun addNewFunctionFromInlined(inlineFunction: TypedExpression.InlineFunction): ExtractedFunctionInfo {
         val newId = getUnusedEntityId()
@@ -153,8 +153,8 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         return ExtractedFunctionInfo(newId, typeParameters)
     }
 
-    private fun collectTypeParameters(inlineFunction: TypedExpression.InlineFunction): Set<String> {
-        val typeParameters = HashSet<String>()
+    private fun collectTypeParameters(inlineFunction: TypedExpression.InlineFunction): Set<TypeParameter> {
+        val typeParameters = HashSet<TypeParameter>()
 
         for (argument in inlineFunction.arguments) {
             addTypeParameters(typeParameters, argument.type)
@@ -167,7 +167,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         return typeParameters
     }
 
-    private fun addTypeParameters(set: MutableSet<String>, type: Type) {
+    private fun addTypeParameters(set: MutableSet<TypeParameter>, type: Type) {
         val unused: Any = when (type) {
             Type.INTEGER -> { /* Do nothing */ }
             Type.BOOLEAN -> { /* Do nothing */ }
@@ -184,7 +184,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                 addTypeParameters(set, type.outputType)
             }
             is Type.ParameterType -> {
-                set.add(type.name)
+                set.add(type.parameter)
             }
             is Type.NamedType -> {
                 for (parameter in type.parameters) {
