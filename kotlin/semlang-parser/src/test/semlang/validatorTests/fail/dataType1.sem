@@ -1,4 +1,5 @@
 // Data.equals requires the parameter type passed in to be of type class Data
 function dataEqualsWrapper<T>(left: T, right: T): Boolean {
+  // Named function call
   Data.equals<T>(left, right)
 }

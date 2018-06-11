@@ -724,10 +724,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         if (chosenParameters.size != signature.typeParameters.size) {
             fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
         }
-        for (chosenParameter in chosenParameters) {
-            if (chosenParameter.isThreaded()) {
-                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
-            }
+        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
+            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
         }
 
         val expectedFunctionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
