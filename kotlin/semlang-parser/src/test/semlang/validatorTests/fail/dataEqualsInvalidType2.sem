@@ -1,0 +1,8 @@
+struct Foo {
+  bar: (Integer) -> Boolean
+}
+
+// Structs containing function types are not data types
+function areStructsEqual(foo1: Foo, foo2: Foo): Boolean {
+  Data.equals<Foo>(foo1, foo2)
+}

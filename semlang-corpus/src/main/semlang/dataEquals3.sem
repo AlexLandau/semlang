@@ -1,0 +1,7 @@
+@Test(["true", "true"], "true")
+@Test(["true", "false"], "false")
+@Test(["false", "true"], "false")
+@Test(["false", "false"], "true")
+function testDataEquals(left: Boolean, right: Boolean): Boolean {
+  Data.equals<Boolean>(left, right)
+}

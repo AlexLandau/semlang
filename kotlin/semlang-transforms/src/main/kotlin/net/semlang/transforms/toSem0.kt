@@ -33,23 +33,40 @@ private class Sem1To0Converter(val input: RawContext) {
 
     private fun apply(function: Function): S0Function {
         val id = convertId(function.id)
+        val typeParameters = function.typeParameters.map(this::apply)
         val arguments = function.arguments.map(this::apply)
         val returnType = apply(function.returnType)
         val block = apply(function.block)
         val annotations = function.annotations.map(this::apply)
-        return S0Function(id, function.typeParameters, arguments, returnType, block, annotations)
+        return S0Function(id, typeParameters, arguments, returnType, block, annotations)
     }
 
     private fun convertId(id: EntityId): String {
         return id.toString()
     }
 
+    private fun apply(typeParameter: TypeParameter): S0TypeParameter {
+        val typeClass = apply(typeParameter.typeClass)
+        return S0TypeParameter(typeParameter.name, typeClass)
+    }
+
+    private fun apply(typeClass: TypeClass?): S0TypeClass? {
+        return if (typeClass == null) {
+            null
+        } else {
+            when (typeClass) {
+                TypeClass.Data -> S0TypeClass.Data
+            }
+        }
+    }
+
     private fun apply(struct: UnvalidatedStruct): S0Struct {
         val id = convertId(struct.id)
+        val typeParameters = struct.typeParameters.map(this::apply)
         val members = struct.members.map(this::apply)
         val requires = struct.requires?.let(this::apply)
         val annotations = struct.annotations.map(this::apply)
-        return S0Struct(id, struct.markedAsThreaded, struct.typeParameters, members, requires, annotations)
+        return S0Struct(id, struct.markedAsThreaded, typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: UnvalidatedMember): S0Member {

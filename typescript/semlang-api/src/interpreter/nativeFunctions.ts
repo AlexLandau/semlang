@@ -4,6 +4,7 @@ import * as UtfString from "utfstring";
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject } from "./SemObject";
 import { Struct, Type, Interface, isTryType } from "../api/language";
 import { InterpreterContext } from "./interpret";
+import { assertNever } from "./util";
 
 const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
@@ -122,6 +123,9 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     },
     "Boolean.or": (context: InterpreterContext, a: SemObject.Boolean, b: SemObject.Boolean): SemObject.Boolean => {
         return booleanObject(a.value || b.value);
+    },
+    "Data.equals": (context: InterpreterContext, left: SemObject, right: SemObject): SemObject.Boolean => {
+        return booleanObject(dataEquals(left, right));
     },
     "Integer.equals": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
         return booleanObject(left.value.equals(right.value));
@@ -315,6 +319,53 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         const length = UtfString.length(string.value);
         return naturalObject(bigInt(length));
     },
+}
+
+function dataEquals(left: SemObject, right: SemObject): boolean {
+    if (left.type === "struct") {
+        if (right.type !== "struct") throw new Error();
+        if (left.struct.id !== right.struct.id) throw new Error();
+        return dataArrayEquals(left.members, right.members);
+    } else if (left.type === "Integer") {
+        if (right.type !== "Integer") throw new Error();
+        return left.value.equals(right.value);
+    } else if (left.type === "Natural") {
+        if (right.type !== "Natural") throw new Error();
+        return left.value.equals(right.value);
+    } else if (left.type === "List") {
+        if (right.type !== "List") throw new Error();
+        return dataArrayEquals(left.contents, right.contents);
+    } else if (left.type === "String") {
+        if (right.type !== "String") throw new Error();
+        return left.value === right.value;
+    } else if (left.type === "Boolean") {
+        if (right.type !== "Boolean") throw new Error();
+        return left.value === right.value;
+    } else if (left.type === "Try.Success" || left.type === "Try.Failure") {
+        if (right.type !== "Try.Success" && right.type !== "Try.Failure") throw new Error();
+        return (left.type === "Try.Failure" && right.type === "Try.Failure") ||
+               (left.type === "Try.Success" && right.type === "Try.Success" && dataEquals(left.value, right.value));
+    } else if (isFunctionBinding(left)) {
+        throw new Error();
+    } else if (left.type === "instance") {
+        throw new Error();
+    } else if (left.type === "ListBuilder") {
+        throw new Error();
+    } else {
+        throw assertNever(left);
+    }
+}
+
+function dataArrayEquals(left: SemObject[], right: SemObject[]): boolean {
+    if (left.length !== right.length) {
+        return false;
+    }
+    for (let i = 0; i < left.length; i++) {
+        if (!dataEquals(left[i], right[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function bit(value: BigInteger): SemObject.Struct {

@@ -1,0 +1,4 @@
+function dataEqualsWrapper<T: Data>(left: T, right: T): Boolean {
+  // Named function call
+  Data.equals<T>(left, right)
+}

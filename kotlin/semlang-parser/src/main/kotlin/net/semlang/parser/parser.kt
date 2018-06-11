@@ -129,15 +129,15 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         // TODO: Frequently get "entity_id() must not be null" here when editing code
         val id: EntityId = parseEntityId(function.entity_id())
 
-        val typeParameters: List<String> = if (function.cd_ids() != null) {
-            parseCommaDelimitedIds(function.cd_ids())
+        val typeParameters: List<TypeParameter> = if (function.cd_type_parameters() != null) {
+            parseTypeParameters(function.cd_type_parameters())
         } else {
             listOf()
         }
         if (function.function_arguments() == null) {
             error("function_arguments() is null: " + function.getText()
                     + "\n entity_id: " + function.entity_id()
-                    + "\n cd_ids: " + function.cd_ids()
+                    + "\n cd_type_parameters: " + function.cd_type_parameters()
                     + "\n function_arguments: " + function.function_arguments()
                     + "\n type:" + function.type()
                     + "\n block:" + function.block()
@@ -163,8 +163,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val isMarkedThreaded = ctx.optional_tilde().TILDE() != null
 
-        val typeParameters: List<String> = if (ctx.cd_ids() != null) {
-            parseCommaDelimitedIds(ctx.cd_ids())
+        val typeParameters: List<TypeParameter> = if (ctx.cd_type_parameters() != null) {
+            parseTypeParameters(ctx.cd_type_parameters())
         } else {
             listOf()
         }
@@ -183,7 +183,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {
         val id = parseEntityId(interfac.entity_id())
         val typeParameters = if (interfac.GREATER_THAN() != null) {
-            parseCommaDelimitedIds(interfac.cd_ids())
+            parseTypeParameters(interfac.cd_type_parameters())
         } else {
             listOf()
         }
@@ -339,11 +339,27 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
 
-    private fun parseCommaDelimitedIds(cd_ids: Sem1Parser.Cd_idsContext): List<String> {
-        return parseLinkedList(cd_ids,
-                Sem1Parser.Cd_idsContext::ID,
-                Sem1Parser.Cd_idsContext::cd_ids,
-                TerminalNode::getText)
+    private fun parseTypeParameters(cd_type_parameters: Sem1Parser.Cd_type_parametersContext): List<TypeParameter> {
+        return parseLinkedList(cd_type_parameters,
+                Sem1Parser.Cd_type_parametersContext::type_parameter,
+                Sem1Parser.Cd_type_parametersContext::cd_type_parameters,
+                this::parseTypeParameter)
+    }
+
+    private fun parseTypeParameter(type_parameter: Sem1Parser.Type_parameterContext): TypeParameter {
+        val name = type_parameter.ID().text
+        val typeClass = parseTypeClass(type_parameter.type_class())
+        return TypeParameter(name, typeClass)
+    }
+
+    private fun parseTypeClass(type_class: Sem1Parser.Type_classContext?): TypeClass? {
+        if (type_class == null) {
+            return null
+        }
+        if (type_class.ID().text == "Data") {
+            return TypeClass.Data
+        }
+        throw IllegalArgumentException("Couldn't parse type class: ${type_class}")
     }
 
     private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<UnvalidatedMember> {
@@ -634,7 +650,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseMethod(method: Sem1Parser.MethodContext): UnvalidatedMethod {
         val name = method.ID().text
         val typeParameters = if (method.GREATER_THAN() != null) {
-            parseCommaDelimitedIds(method.cd_ids())
+            parseTypeParameters(method.cd_type_parameters())
         } else {
             listOf()
         }

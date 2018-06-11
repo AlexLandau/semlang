@@ -53,7 +53,7 @@ fun invalidate(type: Type): UnvalidatedType {
             UnvalidatedType.FunctionType(argTypes, outputType)
         }
         is Type.ParameterType -> {
-            UnvalidatedType.NamedType(EntityRef.of(type.name), false)
+            UnvalidatedType.NamedType(EntityRef.of(type.parameter.name), false)
         }
         is Type.NamedType -> {
             val parameters = type.parameters.map(::invalidate)

@@ -162,7 +162,6 @@ What a Gradle plugin for this would do:
   - The plugin will probably depend on published jars containing the Kotlin parser, validator, and interpreter
 
 Design choices to reconsider:
-- Figure out what to do about recursive function calls
 - Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions
@@ -171,7 +170,7 @@ Design choices to reconsider:
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
-- Probably rename the existing "Package" concept to "Namespace"
+- Consider renaming the current "Try" type to "Maybe"
 
 Errors I've made in writing things:
 - (2) Used . in place of ->

@@ -251,7 +251,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 
         if (struct.typeParameters.isNotEmpty()) {
-            builder.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
+            builder.addTypeVariables(struct.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) })
         }
 
         val constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
@@ -266,7 +266,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val createMethod = MethodSpec.methodBuilder("create").addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         if (struct.typeParameters.isNotEmpty()) {
-            createMethod.addTypeVariables(struct.typeParameters.map { paramName -> TypeVariableName.get(paramName) })
+            createMethod.addTypeVariables(struct.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) })
         }
         for (member in struct.members) {
             val javaType = getType(member.type, false)
@@ -327,7 +327,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Interface types become Java interfaces
         val builder = TypeSpec.interfaceBuilder(className).addModifiers(Modifier.PUBLIC)
 
-        builder.addTypeVariables(interfac.typeParameters.map { name -> TypeVariableName.get(name) })
+        builder.addTypeVariables(interfac.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) })
 
         for (method in interfac.methods) {
             builder.addMethod(writeInterfaceMethod(method).build())
@@ -360,7 +360,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 
         for (typeParameter in function.typeParameters) {
-            builder.addTypeVariable(TypeVariableName.get(typeParameter))
+            builder.addTypeVariable(TypeVariableName.get(typeParameter.name))
         }
 
         for (argument in function.arguments) {
@@ -791,7 +791,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
-            is Type.ParameterType -> TypeVariableName.get(semlangType.name)
+            is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
         }
     }
 
@@ -965,6 +965,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
         map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
 
+        map.put(EntityId.of("Data", "equals"), DataEqualsFunctionCallStrategy)
+
         val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
         map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
         map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
@@ -1006,6 +1008,20 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
             if (arguments.size != 1) error("")
             return writeExpression(arguments[0])
+        }
+    }
+
+    val DataEqualsFunctionCallStrategy = object: FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            val left = writeExpression(arguments[0])
+            val right = writeExpression(arguments[1])
+            // TODO: We may need to vary this based on the chosen type in the future
+            val type = chosenTypes[0]
+            if (type == Type.BOOLEAN) {
+                return CodeBlock.of("(\$L == \$L)", left, right)
+            } else {
+                return CodeBlock.of("\$L.equals(\$L)", left, right)
+            }
         }
     }
 

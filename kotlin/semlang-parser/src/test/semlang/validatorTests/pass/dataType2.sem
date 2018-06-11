@@ -1,0 +1,4 @@
+function dataEqualsWrapper<T: Data>(): (T, T) -> Boolean {
+  // Named function binding
+  Data.equals<T>|(_, _)
+}

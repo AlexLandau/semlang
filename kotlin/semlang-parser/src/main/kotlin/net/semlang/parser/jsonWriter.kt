@@ -83,13 +83,23 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
     return UnvalidatedStruct(id, isThreaded, typeParameters, members, requires, annotations)
 }
 
-private fun parseTypeParameters(node: JsonNode?): List<String> {
+private fun parseTypeParameters(node: JsonNode?): List<TypeParameter> {
     if (node == null) {
         //Omitted when there are no type parameters
         return listOf()
     }
     if (!node.isArray()) error("Type parameters should be in an array")
-    return node.map { typeParamNode -> typeParamNode.textValue() ?: error("Type parameters should be stored as text") }
+    return node.map { typeParamNode ->
+        if (typeParamNode.isTextual) {
+            TypeParameter(typeParamNode.textValue(), null)
+        } else if (typeParamNode.isObject) {
+            val name = typeParamNode["name"].textValue()
+            val typeClass = TypeClass.valueOf(typeParamNode["class"].textValue())
+            TypeParameter(name, typeClass)
+        } else {
+            error("Type parameters should be stored as text or objects")
+        }
+    }
 }
 
 private fun parseAnnotations(node: JsonNode?): List<Annotation> {
@@ -177,7 +187,7 @@ private fun toTypeNode(type: Type): JsonNode {
         is Type.ParameterType -> {
             // Note: We currently treat this the same as named types
             val node = ObjectNode(factory)
-            node.put("name", type.name)
+            node.put("name", type.parameter.name)
             node
         }
     }
@@ -580,9 +590,15 @@ private fun parseArgument(node: JsonNode): UnvalidatedArgument {
     return UnvalidatedArgument(name, type)
 }
 
-private fun addTypeParameters(node: ArrayNode, typeParameters: List<String>) {
+private fun addTypeParameters(node: ArrayNode, typeParameters: List<TypeParameter>) {
     for (typeParameter in typeParameters) {
-        node.add(typeParameter)
+        if (typeParameter.typeClass == null) {
+            node.add(typeParameter.name)
+        } else {
+            val typeParameterNode = node.addObject()
+            typeParameterNode.put("name", typeParameter.name)
+            typeParameterNode.put("class", typeParameter.typeClass.toString())
+        }
     }
 }
 

@@ -58,13 +58,13 @@ module_id : ID | ID HYPHEN module_id | ID UNDERSCORE module_id | ID DOT module_i
 top_level_entities : | function top_level_entities | struct top_level_entities | interfac top_level_entities ;
 
 function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
-         | annotations FUNCTION entity_id LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
+         | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
 block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
 struct : annotations STRUCT optional_tilde entity_id LBRACE struct_members maybe_requires RBRACE
-  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_ids GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
+  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
 optional_tilde : | TILDE ;
 struct_members : | struct_member struct_members ;
 struct_member : ID COLON type ;
@@ -72,10 +72,10 @@ maybe_requires : | REQUIRES block ;
 
 // TODO: Is there a better solution for this than mangling the name?
 interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
-  | annotations INTERFACE entity_id LESS_THAN cd_ids GREATER_THAN LBRACE methods RBRACE ;
+  | annotations INTERFACE entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE methods RBRACE ;
 methods : | method methods ;
 method : ID LPAREN function_arguments RPAREN COLON type
-  | ID LESS_THAN cd_ids GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
+  | ID LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
 
 annotations : | annotation annotations ;
 annotation : annotation_name
@@ -84,8 +84,10 @@ annotation_name : AT entity_id ;
 annotation_contents_list : | annotation_item | annotation_item COMMA | annotation_item COMMA annotation_contents_list ;
 annotation_item : LITERAL | LBRACKET annotation_contents_list RBRACKET ;
 
-// cd_ids is nonempty
-cd_ids : ID | ID COMMA | ID COMMA cd_ids ;
+// cd_type_parameters is nonempty
+cd_type_parameters : type_parameter | type_parameter COMMA | type_parameter COMMA cd_type_parameters ;
+type_parameter : ID | ID COLON type_class ;
+type_class : ID ;
 
 assignments : | assignment assignments ;
 assignment : LET ID ASSIGN expression

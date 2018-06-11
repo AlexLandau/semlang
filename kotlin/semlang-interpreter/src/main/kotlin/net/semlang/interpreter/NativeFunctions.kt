@@ -16,6 +16,7 @@ fun getNativeFunctions(): Map<EntityId, NativeFunction> {
     addListFunctions(list)
     addTryFunctions(list)
     addSequenceFunctions(list)
+    addDataFunctions(list)
     addNativeThreadedFunctions(list)
 
     return toMap(list)
@@ -406,7 +407,70 @@ private fun addSequenceFunctions(list: MutableList<NativeFunction>) {
         }
         error("Unreachable") // TODO: Better way to make Kotlin compile here?
     }))
+}
 
+private fun dataEquals(left: SemObject, right: SemObject): Boolean {
+    return when (left) {
+        is SemObject.Integer -> {
+            if (right !is SemObject.Integer) typeError()
+            left.value == right.value
+        }
+        is SemObject.Natural -> {
+            if (right !is SemObject.Natural) typeError()
+            left.value == right.value
+        }
+        is SemObject.Boolean -> {
+            if (right !is SemObject.Boolean) typeError()
+            left.value == right.value
+        }
+        is SemObject.Struct -> {
+            if (right !is SemObject.Struct) typeError()
+            if (left.struct != right.struct) typeError()
+            dataListsEqual(left.objects, right.objects)
+        }
+        is SemObject.Instance -> typeError()
+        is SemObject.Try.Success -> {
+            if (right !is SemObject.Try) typeError()
+            right is SemObject.Try.Success && dataEquals(left.contents, right.contents)
+        }
+        SemObject.Try.Failure -> {
+            if (right !is SemObject.Try) typeError()
+            right is SemObject.Try.Failure
+        }
+        is SemObject.SemList -> {
+            if (right !is SemObject.SemList) typeError()
+            dataListsEqual(left.contents, right.contents)
+        }
+        is SemObject.UnicodeString -> {
+            if (right !is SemObject.UnicodeString) typeError()
+            left.contents == right.contents
+        }
+        is SemObject.FunctionBinding -> typeError()
+        is SemObject.TextOut -> typeError()
+        is SemObject.ListBuilder -> typeError()
+        is SemObject.Int64 -> {
+            if (right !is SemObject.Int64) typeError()
+            left.value == right.value
+        }
+        is SemObject.Mock -> typeError()
+    }
+}
+
+private fun dataListsEqual(left: List<SemObject>, right: List<SemObject>): Boolean {
+    if (left.size != right.size) {
+        return false
+    }
+    return left.zip(right).all { (l, r) -> dataEquals(l, r) }
+}
+
+private fun addDataFunctions(list: MutableList<NativeFunction>) {
+    // Data.equals
+    list.add(NativeFunction(EntityId.of("Data", "equals"), { args: List<SemObject>, _: InterpreterCallback ->
+        val left = args[0]
+        val right = args[1]
+        val areEqual = dataEquals(left, right)
+        SemObject.Boolean(areEqual)
+    }))
 }
 
 private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
