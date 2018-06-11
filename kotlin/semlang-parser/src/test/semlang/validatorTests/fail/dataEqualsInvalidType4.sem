@@ -1,0 +1,8 @@
+interface Foo {
+  bar(input: Integer): Boolean
+}
+
+// Interface instances are not data types
+function areInstancesEqual(foo1: Foo, foo2: Foo): Boolean {
+  Data.equals<Foo>(foo1, foo2)
+}

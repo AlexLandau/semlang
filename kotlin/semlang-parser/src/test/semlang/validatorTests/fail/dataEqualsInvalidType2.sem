@@ -3,6 +3,6 @@ struct Foo {
 }
 
 // Structs containing function types are not data types
-function areFunctionsEqual(foo1: Foo, foo2: Foo): Boolean {
+function areStructsEqual(foo1: Foo, foo2: Foo): Boolean {
   Data.equals<Foo>(foo1, foo2)
 }
