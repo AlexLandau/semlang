@@ -3,6 +3,7 @@ Major near-term projects:
   - Ability to test functions involving threaded objects
   - Threaded structs
     - Destructuring statements
+  - Threaded parameter types (think e.g. having ~T and then a function that accepts ~T)
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors
@@ -10,7 +11,6 @@ Major near-term projects:
   - Call functions like they were on the relevant objects (with IDE autocomplete support)
   - Standard operators
   - Consider a return keyword and similar imperative control structures?
-- We're close to needing data-only parameter types to support Set, Map, and UniqueList, as well as Data.equals
 
 Stuff that feels blocked or hasn't been implemented:
 - Modules still need some rethinking and design work
