@@ -76,24 +76,46 @@ function List.getIndices<T>(list: List<T>): List<Natural> {
   }
 }
 
-@Export
-function List.firstIndexWith<T>(list: List<T>, predicate: (T) -> Boolean): Try<Natural> {
-  // TODO: Rewrite this to be iterative
-  List.firstIndexWith.helper<T>(list, predicate, Natural."0")
+// TODO: Consider exporting some version of this
+function List.getItemsSequence<T>(list: List<T>): Sequence<Try<IndexedItem<T>>> {
+  let firstItemMaybe = List.get<T>(list, Natural."0")
+  let firstIndexedItem = Try.map<T, IndexedItem<T>>(firstItemMaybe, function (item: T): IndexedItem<T> { IndexedItem<T>(Natural."0", item) })
+  Sequence.create<Try<IndexedItem<T>>>(firstIndexedItem, function (lastIndexedItemMaybe: Try<IndexedItem<T>>): Try<IndexedItem<T>> {
+    Try.flatMap<IndexedItem<T>, IndexedItem<T>>(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Try<IndexedItem<T>> {
+      let lastIndex = lastIndexedItem->index
+      let curIndex = Natural.plus(lastIndex, Natural."1")
+      let itemMaybe = List.get<T>(list, curIndex)
+      Try.map<T, IndexedItem<T>>(itemMaybe, IndexedItem<T>|(curIndex, _))
+    })
+  })
 }
-function List.firstIndexWith.helper<T>(list: List<T>, predicate: (T) -> Boolean, curIndex: Natural): Try<Natural> {
-  let itemMaybe = List.get<T>(list, curIndex)
-  Try.flatMap<T, Natural>(itemMaybe, function (item: T): Try<Natural> {
-    if (predicate(item)) {
-      Try.success<Natural>(curIndex)
+
+@Export
+struct IndexedItem<T> {
+  index: Natural
+  item: T
+}
+
+@Export
+function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Try<IndexedItem<T>> {
+  List.getItemsSequence<T>(list)->first(function (indexedItemMaybe: Try<IndexedItem<T>>): Boolean {
+    if (Try.isSuccess<IndexedItem<T>>(indexedItemMaybe)) {
+      let indexedItem = Try.assume<IndexedItem<T>>(indexedItemMaybe)
+      predicate(indexedItem->item)
     } else {
-      let nextIndex = Natural.plus(curIndex, Natural."1")
-      List.firstIndexWith.helper<T>(list, predicate, nextIndex)
+      // End the search by returning true
+      Boolean."true"
     }
   })
 }
 
 @Export
 function List.firstIndexOf<T: Data>(list: List<T>, object: T): Try<Natural> {
-  List.firstIndexWith<T>(list, Data.equals<T>|(object, _))
+  Try.map<IndexedItem<T>, Natural>(
+    List.firstWith<T>(list, Data.equals<T>|(object, _)),
+    // TODO: Function reference for follows
+    function(indexedItem: IndexedItem<T>): Natural {
+      indexedItem->index
+    }
+  )
 }

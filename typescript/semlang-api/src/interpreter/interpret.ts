@@ -511,7 +511,11 @@ function addVarNamesReferencedInExpression(expression: Expression, varNamesSet: 
     } else if (expression.type === "literal") {
         // Do nothing
     } else if (expression.type === "namedBinding") {
-        throw new Error(`TODO: Implement`);
+        for (const binding of expression.bindings) {
+            if (binding !== null) {
+                addVarNamesReferencedInExpression(binding, varNamesSet);
+            }
+        }
     } else if (expression.type === "namedCall") {
         for (const argument of expression.arguments) {
             addVarNamesReferencedInExpression(argument, varNamesSet);
