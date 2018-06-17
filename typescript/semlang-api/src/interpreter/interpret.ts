@@ -499,7 +499,9 @@ function addVarNamesReferencedInExpression(expression: Expression, varNamesSet: 
     } else if (expression.type === "follow") {
         addVarNamesReferencedInExpression(expression.expression, varNamesSet);
     } else if (expression.type === "ifThen") {
-        throw new Error(`TODO: Implement`);
+        addVarNamesReferencedInExpression(expression.if, varNamesSet);
+        addVarNamesReferencedInBlock(expression.then, varNamesSet);
+        addVarNamesReferencedInBlock(expression.else, varNamesSet);
     } else if (expression.type === "inlineFunction") {
         addVarNamesReferencedInBlock(expression.body, varNamesSet);
     } else if (expression.type === "list") {
