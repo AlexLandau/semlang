@@ -4,9 +4,6 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:8
-#    machine:
-#      environment:
-#        TERM: dumb
     steps:
       - checkout
       - run: ./gradlew build
@@ -14,8 +11,6 @@ jobs:
       - run: find . -type f -regex ".*/build/test-results/test/.*xml" -exec cp {} circle-test-results/junit/ \;
       - run: mkdir -p circle-test-results/jest/
       - run: find . -type f -regex ".*/build/test-results/jest/.*xml" -exec cp {} circle-test-results/jest/ \;
-      - run: pwd
-      - run: ls circle-test-results/junit/
       - store_test_results:
           path: circle-test-results
 
@@ -24,23 +19,3 @@ workflows:
   build:
     jobs:
       - build
-
-#machine:
-#  environment:
-#    TERM: dumb
-
-#dependencies:
-#  override:
-#    - ./gradlew downloadDependencies
-#    - ./gradlew yarn_install
-#  cache_directories:
-#    - ~/.cache/yarn
-#
-#test:
-#  override:
-#    - ./gradlew test -Dorg.gradle.parallel=false
-#  post:
-#    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
-#    - find . -type f -regex ".*/build/test-results/test/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/junit/ \;
-#    - mkdir -p $CIRCLE_TEST_REPORTS/jest/
-#    - find . -type f -regex ".*/build/test-results/jest/.*xml" -exec cp {} $CIRCLE_TEST_REPORTS/jest/ \;
