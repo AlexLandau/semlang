@@ -2,9 +2,11 @@ version: 2
 
 jobs:
   build:
-    machine:
-      environment:
-        TERM: dumb
+    docker:
+      - image: circleci/openjdk:8
+#    machine:
+#      environment:
+#        TERM: dumb
     steps:
       - checkout
       - run: ./gradlew build
