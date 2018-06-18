@@ -2,6 +2,9 @@ version: 2
 
 jobs:
   build:
+    machine:
+      environment:
+        TERM: dumb
     steps:
       - checkout
       - run: ./gradlew build
