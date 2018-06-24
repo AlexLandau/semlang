@@ -1,7 +1,6 @@
-// TODO: This should be a validator error, not a parser error
 // Threaded objects shouldn't be bound as arguments to functions (currently)
 function bindTextOut(out: ~TextOut): () -> ~TextOut {
-  function () {
+  function (): ~TextOut {
     TextOut.print(out, Unicode.String."Hello, world!\n")
   }
 }
