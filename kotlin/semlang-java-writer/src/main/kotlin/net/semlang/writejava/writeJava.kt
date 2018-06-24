@@ -962,8 +962,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Try", "flatMap"), MethodFunctionCallStrategy("flatMap"))
         map.put(EntityId.of("Try", "orElse"), MethodFunctionCallStrategy("orElse"))
 
-        val javaSequences = ClassName.bestGuess("net.semlang.java.Sequences")
-        map.put(EntityId.of("Sequence", "create"), StaticFunctionCallStrategy(javaSequences, "create"))
+        val javaSequence = ClassName.bestGuess("net.semlang.java.Sequence")
+        // Sequence constructor
+        map.put(EntityId.of("Sequence"), StaticFunctionCallStrategy(javaSequence, "create"))
+        map.put(EntityId.of("Sequence", "get"), MethodFunctionCallStrategy("get"))
+        map.put(EntityId.of("Sequence", "first"), MethodFunctionCallStrategy("first"))
 
         map.put(EntityId.of("Data", "equals"), DataEqualsFunctionCallStrategy)
 
@@ -1266,8 +1269,8 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
         is Type.ParameterType -> false // Might have cases in the future where a parameter can be restricted to be data
         is Type.NamedType -> {
             if (containingModule == null) {
-                // TODO: For now we assume these are all data other than BasicSequence
-                return getNativeStructs().containsKey(type.ref.id) && type.ref.id != NativeStruct.BASIC_SEQUENCE.id
+                // TODO: For now we assume these are all data other than Sequence
+                return getNativeStructs().containsKey(type.ref.id) && type.ref.id != NativeStruct.SEQUENCE.id
             }
             val entityResolution = containingModule.resolve(type.ref) ?: error("failed entityResolution for ${type.ref}")
             when (entityResolution.type) {

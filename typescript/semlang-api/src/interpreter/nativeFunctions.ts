@@ -62,8 +62,8 @@ export const NativeStructs: { [structName: string]: Struct } = {
             }
         ],
     },
-    "BasicSequence": {
-        id: "BasicSequence",
+    "Sequence": {
+        id: "Sequence",
         typeParameters: ['T'],
         members: [
             { name: "base", type: typeT },
@@ -73,48 +73,9 @@ export const NativeStructs: { [structName: string]: Struct } = {
 };
 
 export const NativeInterfaces: { [interfaceName: string]: Interface } = {
-    "Sequence": {
-        id: "Sequence",
-        typeParameters: ['T'],
-        methods: [
-            { name: "get", arguments: [{name: "index", type: {name: "Natural"}}], returnType: typeT },
-            { name: "first", arguments: [{name: "condition", type: { from: [typeT], to: "Boolean" }}], returnType: typeT },
-        ],
-    },
 };
 
 export const NativeFunctions: { [functionName: string]: Function } = {
-    "BasicSequence.first": (context: InterpreterContext, basicSequence: SemObject.Struct, predicate: SemObject.FunctionBinding): SemObject => {
-        const base = basicSequence.members[0];
-        const successor = basicSequence.members[1];
-        if (!isFunctionBinding(successor)) {
-            throw new Error(`Expected a BasicSequence successor to be a function binding`);
-        }
-        let curValue: SemObject = base;
-        while (true) {
-            const isSatisfying = context.evaluateBoundFunction(predicate, [curValue]);
-            if (isSatisfying.type !== "Boolean") {
-                throw new Error(`Expected boolean output from a Sequence.first predicate, but was ${JSON.stringify(isSatisfying)}`);
-            }
-            if (isSatisfying.value) {
-                return curValue;
-            } else {
-                curValue = context.evaluateBoundFunction(successor, [curValue]);
-            }
-        }
-    },
-    "BasicSequence.get": (context: InterpreterContext, basicSequence: SemObject.Struct, index: SemObject.Natural): SemObject => {
-        const base = basicSequence.members[0];
-        const successor = basicSequence.members[1];
-        if (!isFunctionBinding(successor)) {
-            throw new Error(`Expected a BasicSequence successor to be a function binding`);
-        }
-        let curValue: SemObject = base;
-        for (let i = bigInt.zero; index.value.gt(i); i = i.next()) {
-            curValue = context.evaluateBoundFunction(successor, [curValue]);
-        }
-        return curValue;
-    },
     "Boolean.and": (context: InterpreterContext, a: SemObject.Boolean, b: SemObject.Boolean): SemObject.Boolean => {
         return booleanObject(a.value && b.value);
     },
@@ -249,19 +210,36 @@ export const NativeFunctions: { [functionName: string]: Function } = {
             return successObject(naturalObject(value));
         }
     },
-    "Sequence.create": (context: InterpreterContext, base: SemObject, successor: SemObject.FunctionBinding): SemObject => {
-        const sequenceInterface = NativeInterfaces["Sequence"];
-        const dataObject = structObject(NativeStructs["BasicSequence"], [
-            base,
-            successor
-        ]);
-
-        const boundMethods = [
-            namedBindingObject("BasicSequence.get", [dataObject, undefined]),
-            namedBindingObject("BasicSequence.first", [dataObject, undefined]),
-        ];
-
-        return instanceObject(sequenceInterface, boundMethods);
+    "Sequence.first": (context: InterpreterContext, sequence: SemObject.Struct, predicate: SemObject.FunctionBinding): SemObject => {
+        const base = sequence.members[0];
+        const successor = sequence.members[1];
+        if (!isFunctionBinding(successor)) {
+            throw new Error(`Expected a Sequence successor to be a function binding`);
+        }
+        let curValue: SemObject = base;
+        while (true) {
+            const isSatisfying = context.evaluateBoundFunction(predicate, [curValue]);
+            if (isSatisfying.type !== "Boolean") {
+                throw new Error(`Expected boolean output from a Sequence.first predicate, but was ${JSON.stringify(isSatisfying)}`);
+            }
+            if (isSatisfying.value) {
+                return curValue;
+            } else {
+                curValue = context.evaluateBoundFunction(successor, [curValue]);
+            }
+        }
+    },
+    "Sequence.get": (context: InterpreterContext, sequence: SemObject.Struct, index: SemObject.Natural): SemObject => {
+        const base = sequence.members[0];
+        const successor = sequence.members[1];
+        if (!isFunctionBinding(successor)) {
+            throw new Error(`Expected a Sequence successor to be a function binding`);
+        }
+        let curValue: SemObject = base;
+        for (let i = bigInt.zero; index.value.gt(i); i = i.next()) {
+            curValue = context.evaluateBoundFunction(successor, [curValue]);
+        }
+        return curValue;
     },
     "Try.assume": (context: InterpreterContext, theTry: SemObject.Try): SemObject => {
         if (theTry.type === "Try.Success") {

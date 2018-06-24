@@ -160,10 +160,10 @@ function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
 
 @Export
 function Natural.sequence(): Sequence<Natural> {
-  Sequence.create<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
+  Sequence<Natural>(Natural."0", Natural.plus|(_, Natural."1"))
 }
 
 @Export
 function Natural.arithmeticProgression(initialValue: Natural, increment: Natural): Sequence<Natural> {
-  Sequence.create<Natural>(initialValue, Natural.plus|(_, increment))
+  Sequence<Natural>(initialValue, Natural.plus|(_, increment))
 }

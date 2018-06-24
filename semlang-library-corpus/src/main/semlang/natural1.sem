@@ -29,7 +29,7 @@ function Natural.equalsTest(left: Natural, right: Natural): Boolean {
 @Test(["1"], "1")
 @Test(["7"], "7")
 function sequenceTest(index: Natural): Natural {
-    Natural.sequence()->get(index)
+    Sequence.get<Natural>(Natural.sequence(), index)
 }
 
 @Test(["0"], "1")

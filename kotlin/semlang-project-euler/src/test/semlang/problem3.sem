@@ -16,7 +16,7 @@ function euler.getLargestPrimeFactor(n: Natural): Natural {
 }
 
 function getPrimeFactors(n: Natural): List<Natural> {
-    let primes: Sequence<Natural> = getPrimes()
+    let primes: SequenceLike<Natural> = getPrimes()
     let firstPrimeDivisor: Natural = primes->first(dividesEvenly|(_, n))
     if (Natural.equals(n, firstPrimeDivisor)) {
         [n]<Natural>
@@ -28,7 +28,7 @@ function getPrimeFactors(n: Natural): List<Natural> {
 }
 
 // Library candidate for a non-standard library?
-function getPrimes(): Sequence<Natural> {
+function getPrimes(): SequenceLike<Natural> {
     let 2: Natural = Natural."2"
     Sequence.createAccumulating<Natural>(2, getNextPrime|(_))
 }
@@ -37,7 +37,7 @@ function getNextPrime(allPreviousPrimes: List<Natural>): Natural {
     let lastPrime: Natural = Try.assume<Natural>(List.last<Natural>(allPreviousPrimes))
     let firstCandidate: Natural = Natural.plus(lastPrime, Natural."1")
     let candidates: Sequence<Natural> = Natural.arithmeticProgression(firstCandidate, Natural."1")
-    candidates->first(isNotDivisibleByAny|(_, allPreviousPrimes))
+    Sequence.first<Natural>(candidates, isNotDivisibleByAny|(_, allPreviousPrimes))
 }
 
 function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Boolean {

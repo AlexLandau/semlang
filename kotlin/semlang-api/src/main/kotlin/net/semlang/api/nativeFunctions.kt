@@ -200,13 +200,17 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.ParameterType(t)
 
-    val sequenceT = NativeInterface.SEQUENCE.getType()
+    val sequenceT = NativeStruct.SEQUENCE.getType()
 
-    // Sequence.create
-    // TODO: This should be library code in semlang in most cases, not native
-    definitions.add(TypeSignature(EntityId.of("Sequence", "create"), typeParameters = listOf(t),
-            argumentTypes = listOf(typeT, Type.FunctionType(listOf(typeT), typeT)),
-            outputType = sequenceT))
+    // Sequence.get
+    definitions.add(TypeSignature(EntityId.of("Sequence", "get"), typeParameters = listOf(t),
+            argumentTypes = listOf(sequenceT, NativeStruct.NATURAL.getType()),
+            outputType = typeT))
+
+    // Sequence.first
+    definitions.add(TypeSignature(EntityId.of("Sequence", "first"), typeParameters = listOf(t),
+            argumentTypes = listOf(sequenceT, Type.FunctionType(listOf(typeT), Type.BOOLEAN)),
+            outputType = typeT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
 }
@@ -278,8 +282,8 @@ object NativeStruct {
             )),
             listOf()
     )
-    val BASIC_SEQUENCE = Struct(
-            EntityId.of("BasicSequence"),
+    val SEQUENCE = Struct(
+            EntityId.of("Sequence"),
             false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(t),
@@ -382,7 +386,7 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     val structs = ArrayList<Struct>()
 
     structs.add(NativeStruct.NATURAL)
-    structs.add(NativeStruct.BASIC_SEQUENCE)
+    structs.add(NativeStruct.SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
     structs.add(NativeStruct.BIT)
@@ -392,24 +396,10 @@ fun getNativeStructs(): Map<EntityId, Struct> {
 }
 
 object NativeInterface {
-    private val t = TypeParameter("T", null)
-    private val typeT = Type.ParameterType(t)
-    val SEQUENCE = Interface(
-            EntityId.of("Sequence"),
-            CURRENT_NATIVE_MODULE_ID,
-            listOf(t),
-            listOf(
-                    Method("get", listOf(), listOf(Argument("index", NativeStruct.NATURAL.getType())), typeT),
-                    Method("first", listOf(), listOf(Argument("condition", Type.FunctionType(listOf(typeT), Type.BOOLEAN))), typeT)
-            ),
-            listOf()
-    )
 }
 
 fun getNativeInterfaces(): Map<EntityId, Interface> {
     val interfaces = ArrayList<Interface>()
-
-    interfaces.add(NativeInterface.SEQUENCE)
 
     return toMap(interfaces)
 }

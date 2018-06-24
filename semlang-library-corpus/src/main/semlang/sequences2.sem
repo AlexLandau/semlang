@@ -12,8 +12,8 @@ struct TwoNaturals {
 function myStuff.gcd(n1: Natural, n2: Natural): Natural {
   let base: TwoNaturals = TwoNaturals(n1, n2)
   let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
-  let euclidSeq: Sequence<TwoNaturals> = Sequence.create<TwoNaturals>(base, next)
-  euclidSeq->first(TwoNaturals.equal|(_))->left
+  let euclidSeq: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
+  Sequence.first<TwoNaturals>(euclidSeq, TwoNaturals.equal|(_))->left
 }
 
 function TwoNaturals.equal(pair: TwoNaturals): Boolean {

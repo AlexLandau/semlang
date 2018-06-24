@@ -5,13 +5,28 @@ struct AccumulatingSequenceElement<T> {
     curValue: T
     accumulatedValues: List<T>
 }
+
 @Export
-function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): Sequence<T> {
-    let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence.create<AccumulatingSequenceElement<T>>(
+interface SequenceLike<T> {
+    get(index: Natural): T
+    first(predicate: (T) -> Boolean): T
+}
+
+function Sequence.asSequenceLike<T>(sequence: Sequence<T>): SequenceLike<T> {
+    SequenceLike<T>(
+        Sequence.get<T>|(sequence, _),
+        Sequence.first<T>|(sequence, _)
+    )
+}
+
+@Export
+function Sequence.createAccumulating<T>(initialValue: T, nextValueFunction: (List<T>) -> T): SequenceLike<T> {
+    let accumulatingSequence: Sequence<AccumulatingSequenceElement<T>> = Sequence<AccumulatingSequenceElement<T>>(
         AccumulatingSequenceElement<T>(initialValue, [initialValue]<T>),
         Sequence.internal.accumulatingSequenceNext<T>|(_, nextValueFunction)
     )
-    Sequence.map<AccumulatingSequenceElement<T>, T>(accumulatingSequence, Sequence.internal.fromAccumulatingSequenceElement<T>|(_))
+    let accumulatingSequenceLike = Sequence.asSequenceLike<AccumulatingSequenceElement<T>>(accumulatingSequence)
+    SequenceLike.map<AccumulatingSequenceElement<T>, T>(accumulatingSequenceLike, Sequence.internal.fromAccumulatingSequenceElement<T>|(_))
 }
 function Sequence.internal.accumulatingSequenceNext<T>(previous: AccumulatingSequenceElement<T>, nextValueFunction: (List<T>) -> T): AccumulatingSequenceElement<T> {
     let newValue: T = nextValueFunction(previous->accumulatedValues)
@@ -29,13 +44,13 @@ function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List
   // TODO: Can do something better here
   // TODO: Should we switch Sequence back to a struct and get rid of map()?
   let initialValue = SequenceRangeElement<T>(Natural."0", []<T>)
-  let rangeSequence = Sequence.create<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>): SequenceRangeElement<T> {
-    let curValue = sequence->get(rangeElement->indexToGet)
+  let rangeSequence = Sequence<SequenceRangeElement<T>>(initialValue, function(rangeElement: SequenceRangeElement<T>): SequenceRangeElement<T> {
+    let curValue = Sequence.get<T>(sequence, rangeElement->indexToGet)
     let nextIndex = Natural.plus(rangeElement->indexToGet, Natural."1")
     let newValues = List.append<T>(rangeElement->accumulatedValues, curValue)
     SequenceRangeElement<T>(nextIndex, newValues)
   })
-  rangeSequence->get(numElements)->accumulatedValues
+  Sequence.get<SequenceRangeElement<T>>(rangeSequence, numElements)->accumulatedValues
 }
 struct SequenceRangeElement<T> {
   indexToGet: Natural
@@ -43,7 +58,7 @@ struct SequenceRangeElement<T> {
 }
 
 @Export
-function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
+function SequenceLike.map<T, U>(sequence: SequenceLike<T>, fn: (T) -> U): SequenceLike<U> {
     // This is actually hard to do here...
     // I think we need Sequence to be either a native type or an interface (that does NOT expose getSuccessor())
     // so that the return type of e.g. get() differs from the stored type
@@ -55,10 +70,10 @@ function Sequence.map<T, U>(sequence: Sequence<T>, fn: (T) -> U): Sequence<U> {
 }
 
 // TODO: Singleton candidate
-function MappedSequence.getMappedSequenceAdapter<T, U>(): (MappedSequence<T, U>) -> Sequence<U> {
+function MappedSequence.getMappedSequenceAdapter<T, U>(): (MappedSequence<T, U>) -> SequenceLike<U> {
     let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
-    Sequence.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
+    SequenceLike.Adapter<MappedSequence<T, U>, U>(getBinding, firstBinding)
 }
 
 function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {
@@ -76,6 +91,6 @@ function MappedSequence.first<T, U>(sequence: MappedSequence<T, U>, predicate: (
 }
 
 struct MappedSequence<T, U> {
-    sequence: Sequence<T>
+    sequence: SequenceLike<T>
     mapping: (T) -> U
 }
