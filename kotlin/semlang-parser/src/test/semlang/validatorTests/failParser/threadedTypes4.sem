@@ -1,3 +1,4 @@
+// TODO: This should be a validator error, not a parser error
 // Incorrectly marks Integer as threaded
 function increment(value: ~Integer): ~Integer {
   Integer.plus(value, Integer."1")

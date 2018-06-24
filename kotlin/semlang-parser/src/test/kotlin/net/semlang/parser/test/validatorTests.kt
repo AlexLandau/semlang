@@ -69,12 +69,12 @@ class ValidatorPositiveTests(private val file: File) {
 }
 
 @RunWith(Parameterized::class)
-class ValidatorNegativeTests(private val file: File) {
+class ParserNegativeTests(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("src/test/semlang/validatorTests/fail")
+            val folder = File("src/test/semlang/validatorTests/failParser")
             return folder.listFiles().map { file ->
                 arrayOf(file as Any?)
             }
@@ -83,7 +83,35 @@ class ValidatorNegativeTests(private val file: File) {
 
     @Test
     fun test() {
-        val result = parseAndValidateFile(file)
+        val result = parseFile(file)
+        if (result is ParsingResult.Failure) {
+            Assert.assertNotEquals(0, result.errors.size)
+        } else {
+            throw AssertionError("File ${file.absolutePath} should have failed parsing, but passed")
+        }
+    }
+}
+
+@RunWith(Parameterized::class)
+class ValidatorNegativeTests(private val file: File) {
+    companion object ParametersSource {
+        @Parameterized.Parameters(name = "{0}")
+        @JvmStatic
+        fun data(): Collection<Array<Any?>> {
+            val folder = File("src/test/semlang/validatorTests/failValidator")
+            return folder.listFiles().map { file ->
+                arrayOf(file as Any?)
+            }
+        }
+    }
+
+    @Test
+    fun test() {
+        val parsingResult = parseFile(file)
+        if (parsingResult is ParsingResult.Failure) {
+            throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead")
+        }
+        val result = validate(parsingResult, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
         if (result is ValidationResult.Failure) {
             Assert.assertNotEquals(0, result.errors.size)
         } else {
