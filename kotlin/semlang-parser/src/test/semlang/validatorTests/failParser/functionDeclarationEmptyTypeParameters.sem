@@ -1,0 +1,5 @@
+// (This is a candidate for becoming a validator error)
+// Empty list of type parameters
+function doSomething<>(): Integer {
+  Integer."1"
+}
