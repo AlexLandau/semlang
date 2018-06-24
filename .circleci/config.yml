@@ -6,7 +6,7 @@ jobs:
       - image: circleci/openjdk:8
     steps:
       - checkout
-      - run: ./gradlew build
+      - run: ./gradlew build --max-workers=2
       - run: mkdir -p circle-test-results/junit/
       - run: find . -type f -regex ".*/build/test-results/test/.*xml" -exec cp {} circle-test-results/junit/ \;
       - run: mkdir -p circle-test-results/jest/
