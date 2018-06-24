@@ -47,7 +47,6 @@ Stuff that feels blocked or hasn't been implemented:
   - Add tslint?
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
-- Can we change Sequence to be a struct rather than an interface again?
 - Continue to shrink the set of native functions where possible
 - Sem0: Link native types (structs, perhaps some library functions) into sem0 code
 - Versioned publication of code corpuses
