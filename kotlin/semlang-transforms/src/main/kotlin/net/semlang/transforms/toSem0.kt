@@ -110,6 +110,8 @@ private class Sem1To0Converter(val input: RawContext) {
                 val parameters = type.parameters.map(this::apply)
                 S0Type.NamedType(id, type.isThreaded, parameters)
             }
+            is UnvalidatedType.Invalid.ThreadedInteger -> error("Invalid type ~Integer")
+            is UnvalidatedType.Invalid.ThreadedBoolean -> error("Invalid type ~Boolean")
         }
     }
 

@@ -49,6 +49,8 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             val parameters = type.parameters.map(::stripLocations)
             UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters)
         }
+        is UnvalidatedType.Invalid.ThreadedInteger -> UnvalidatedType.Invalid.ThreadedInteger()
+        is UnvalidatedType.Invalid.ThreadedBoolean -> UnvalidatedType.Invalid.ThreadedBoolean()
     }
 }
 

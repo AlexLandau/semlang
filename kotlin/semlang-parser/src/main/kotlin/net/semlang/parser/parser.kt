@@ -611,12 +611,12 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val typeId = type_ref.entity_id().ID().text
         if (typeId == "Integer") {
             if (isThreaded) {
-                throw LocationAwareParsingException("Integer is not a threaded type; remove the ~", locationOf(type_ref))
+                return UnvalidatedType.Invalid.ThreadedInteger(typeLocation)
             }
             return UnvalidatedType.Integer(typeLocation)
         } else if (typeId == "Boolean") {
             if (isThreaded) {
-                throw LocationAwareParsingException("Boolean is not a threaded type; remove the ~", locationOf(type_ref))
+                return UnvalidatedType.Invalid.ThreadedBoolean(typeLocation)
             }
             return UnvalidatedType.Boolean(typeLocation)
         } else if (typeId == "List") {

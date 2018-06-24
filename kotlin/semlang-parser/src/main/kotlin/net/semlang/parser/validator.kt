@@ -401,6 +401,14 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                     Type.NamedType(resolved.entityRef, type.ref, type.isThreaded, parameters)
                 }
             }
+            is UnvalidatedType.Invalid.ThreadedInteger -> {
+                errors.add(Issue("Integer is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+                null
+            }
+            is UnvalidatedType.Invalid.ThreadedBoolean -> {
+                errors.add(Issue("Boolean is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+                null
+            }
         }
     }
 
@@ -571,6 +579,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                         }
                     }
                 }
+                is UnvalidatedType.Invalid.ThreadedInteger -> false
+                is UnvalidatedType.Invalid.ThreadedBoolean -> false
             }
         }
     }

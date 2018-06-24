@@ -85,6 +85,38 @@ sealed class UnvalidatedType() {
         return getTypeString()
     }
 
+    // This contains some types that are inherently invalid, but should be returned by the parser so the error messages
+    // can be left to the validator
+    object Invalid {
+        data class ThreadedInteger(override val location: Location? = null) : UnvalidatedType() {
+            override fun getTypeString(): String {
+                return "~Integer"
+            }
+
+            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+                return this
+            }
+
+            override fun toString(): String {
+                return getTypeString()
+            }
+        }
+
+        data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
+            override fun getTypeString(): String {
+                return "~Boolean"
+            }
+
+            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
+                return this
+            }
+
+            override fun toString(): String {
+                return getTypeString()
+            }
+        }
+    }
+
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
         override fun getTypeString(): String {
             return "Integer"
