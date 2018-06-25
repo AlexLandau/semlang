@@ -13,6 +13,7 @@ import net.semlang.api.Function
 import net.semlang.api.Annotation
 import java.io.File
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 private fun parseLiteral(literalFromParser: TerminalNode): String {
     val innerString = literalFromParser.text.drop(1).dropLast(1)
@@ -669,7 +670,12 @@ sealed class ParsingResult {
             return context
         }
     }
-    data class Failure(val errors: List<Issue>): ParsingResult() {
+    data class Failure(val errors: List<Issue>, val partialContext: RawContext): ParsingResult() {
+        init {
+            if (errors.isEmpty()) {
+                error("We are reporting a parsing failure, but no errors were recorded")
+            }
+        }
         override fun assumeSuccess(): RawContext {
             error("Parsing was not successful. Errors: $errors")
         }
@@ -689,12 +695,17 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
             allInterfaces.addAll(rawContext.interfaces)
         } else if (parsingResult is ParsingResult.Failure) {
             allErrors.addAll(parsingResult.errors)
+            val context = parsingResult.partialContext
+            allFunctions.addAll(context.functions)
+            allStructs.addAll(context.structs)
+            allInterfaces.addAll(context.interfaces)
         }
     }
+    val combinedContext = RawContext(allFunctions, allStructs, allInterfaces)
     if (allErrors.isEmpty()) {
-        return ParsingResult.Success(RawContext(allFunctions, allStructs, allInterfaces))
+        return ParsingResult.Success(combinedContext)
     } else {
-        return ParsingResult.Failure(allErrors)
+        return ParsingResult.Failure(allErrors, combinedContext)
     }
 }
 
@@ -721,7 +732,8 @@ fun parseString(text: String, documentUri: String): ParsingResult {
     return parseANTLRStreamInner(stream, documentUri)
 }
 
-private class ErrorListener(val documentId: String, val errorsFound: ArrayList<Issue> = ArrayList<Issue>()): ANTLRErrorListener {
+private class ErrorListener(val documentId: String): ANTLRErrorListener {
+    val errorsFound: ArrayList<Issue> = ArrayList<Issue>()
     override fun syntaxError(recognizer: Recognizer<*, *>?, offendingSymbol: Any?, line: Int, charPositionInLine: Int, msg: String?, e: RecognitionException?) {
         val message = msg ?: "Error with no message"
         val location = if (offendingSymbol is Token) {
@@ -747,6 +759,7 @@ private class ErrorListener(val documentId: String, val errorsFound: ArrayList<I
     }
 }
 
+class CancelParsingCurrentTopLevelElementException: Exception()
 class LocationAwareParsingException(message: String, val location: Location, cause: Exception? = null): Exception(message, cause)
 
 private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String): ParsingResult {
@@ -762,13 +775,14 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), e.location, IssueLevel.ERROR)))
-    }
-
-    if (!errorListener.errorsFound.isEmpty()) {
-        return ParsingResult.Failure(errorListener.errorsFound)
+        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), e.location, IssueLevel.ERROR)), partialContext)
     }
 
     val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+    if (!errorListener.errorsFound.isEmpty()) {
+        return ParsingResult.Failure(errorListener.errorsFound, context)
+    }
+
     return ParsingResult.Success(context)
 }

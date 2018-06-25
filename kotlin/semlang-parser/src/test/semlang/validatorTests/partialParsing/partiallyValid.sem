@@ -1,0 +1,14 @@
+// Valid function declaration
+function foo(): Natural {
+  Natural."1"
+}
+
+// Invalid function declaration (parsing error)
+function bar(,): Natural {
+  badCall)
+}
+
+// Valid function declaration
+function baz(): Natural {
+  Natural."3"
+}

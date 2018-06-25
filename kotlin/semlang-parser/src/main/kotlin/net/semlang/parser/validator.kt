@@ -32,7 +32,15 @@ fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersi
             validateModule(parsingResult.context, moduleId, nativeModuleVersion, upstreamModules)
         }
         is ParsingResult.Failure -> {
-            ValidationResult.Failure(parsingResult.errors, listOf())
+            val validationResult = validateModule(parsingResult.partialContext, moduleId, nativeModuleVersion, upstreamModules)
+            when (validationResult) {
+                is ValidationResult.Success -> {
+                    ValidationResult.Failure(parsingResult.errors, validationResult.warnings)
+                }
+                is ValidationResult.Failure -> {
+                    ValidationResult.Failure(parsingResult.errors + validationResult.errors, validationResult.warnings)
+                }
+            }
         }
     }
 }
