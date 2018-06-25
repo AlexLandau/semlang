@@ -1,4 +1,4 @@
-// (This is a candidate for becoming a validator error)
+// (This is a candidate for becoming a validator error or warning)
 // Empty list of type parameters
 function doSomething<>(): Integer {
   Integer."1"
