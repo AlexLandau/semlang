@@ -31,5 +31,5 @@ function myCode.addThreeV4(n: Natural): Natural {
 }
 
 function Natural.plus(left: Natural, right: Natural): Natural {
-  Try.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
+  Maybe.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
 }

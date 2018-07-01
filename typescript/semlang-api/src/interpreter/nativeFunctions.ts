@@ -2,7 +2,7 @@ import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
 import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject } from "./SemObject";
-import { Struct, Type, Interface, isTryType } from "../api/language";
+import { Struct, Type, Interface, isMaybeType } from "../api/language";
 import { InterpreterContext } from "./interpret";
 import { assertNever } from "./util";
 
@@ -119,13 +119,13 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Integer.times": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Integer => {
         return integerObject(left.value.times(right.value));
     },
-    "Integer.dividedBy": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+    "Integer.dividedBy": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Maybe => {
         if (right.value.equals(0)) {
             return failureObject();
         }
         return successObject(integerObject(left.value.divide(right.value)));
     },
-    "Integer.modulo": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Try => {
+    "Integer.modulo": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Maybe => {
         if (right.value.lesser(1)) {
             return failureObject();
         }
@@ -151,7 +151,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         const flattened = ([] as SemObject[]).concat(...mappedToIndividualLists);
         return listObject(flattened);
     },
-    "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Try => {
+    "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Maybe => {
         const i = index.value;
         if (i.lt(list.contents.length)) {
             // TODO: We lose precision here. Any way to stop that, or crash on that?
@@ -178,7 +178,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.size": (context: InterpreterContext, list: SemObject.List): SemObject.Natural => {
         return naturalObject(bigInt(list.contents.length));
     },
-    "List.subList": (context: InterpreterContext, list: SemObject.List, start: SemObject.Natural, end: SemObject.Natural): SemObject.Try => {
+    "List.subList": (context: InterpreterContext, list: SemObject.List, start: SemObject.Natural, end: SemObject.Natural): SemObject.Maybe => {
         const startInt = start.value.toJSNumber();
         const endInt = end.value.toJSNumber();
         if (startInt > endInt || endInt > list.contents.length) {
@@ -202,7 +202,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "ListBuilder.create": (context: InterpreterContext): SemObject.ListBuilder => {
         return listBuilderObject([]);
     },
-    "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Try => {
+    "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Maybe => {
         const value = integer.value;
         if (value.isNegative()) {
             return failureObject();
@@ -241,48 +241,48 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         }
         return curValue;
     },
-    "Try.assume": (context: InterpreterContext, theTry: SemObject.Try): SemObject => {
-        if (theTry.type === "Try.Success") {
-            return theTry.value;
-        } else if (theTry.type === "Try.Failure") {
-            throw new Error(`A Try.assume() call failed`);
+    "Maybe.assume": (context: InterpreterContext, theMaybe: SemObject.Maybe): SemObject => {
+        if (theMaybe.type === "Maybe.Success") {
+            return theMaybe.value;
+        } else if (theMaybe.type === "Maybe.Failure") {
+            throw new Error(`A Maybe.assume() call failed`);
         } else {
-            throw new Error(`Type error in Try.assume: Got ${JSON.stringify(theTry)} instead of a Try`);
+            throw new Error(`Type error in Maybe.assume: Got ${JSON.stringify(theMaybe)} instead of a Maybe`);
         }
     },
-    "Try.failure": (context: InterpreterContext): SemObject.Try.Failure => {
+    "Maybe.failure": (context: InterpreterContext): SemObject.Maybe.Failure => {
         return failureObject();
     },
-    "Try.flatMap": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
-        if (theTry.type === "Try.Success") {
-            const value = theTry.value;
-            const result = context.evaluateBoundFunction(fn, [value]) as SemObject.Try;
+    "Maybe.flatMap": (context: InterpreterContext, theMaybe: SemObject.Maybe, fn: SemObject.FunctionBinding): SemObject.Maybe => {
+        if (theMaybe.type === "Maybe.Success") {
+            const value = theMaybe.value;
+            const result = context.evaluateBoundFunction(fn, [value]) as SemObject.Maybe;
             return result;
         } else {
-            return theTry;
+            return theMaybe;
         }
     },
-    "Try.isSuccess": (context: InterpreterContext, theTry: SemObject.Try): SemObject.Boolean => {
-        const isSuccess = theTry.type === "Try.Success"
+    "Maybe.isSuccess": (context: InterpreterContext, theMaybe: SemObject.Maybe): SemObject.Boolean => {
+        const isSuccess = theMaybe.type === "Maybe.Success"
         return booleanObject(isSuccess);
     },
-    "Try.map": (context: InterpreterContext, theTry: SemObject.Try, fn: SemObject.FunctionBinding): SemObject.Try => {
-        if (theTry.type === "Try.Success") {
-            const value = theTry.value;
+    "Maybe.map": (context: InterpreterContext, theMaybe: SemObject.Maybe, fn: SemObject.FunctionBinding): SemObject.Maybe => {
+        if (theMaybe.type === "Maybe.Success") {
+            const value = theMaybe.value;
             const result = context.evaluateBoundFunction(fn, [value]);
             return successObject(result);
         } else {
-            return theTry;
+            return theMaybe;
         }
     },
-    "Try.orElse": (context: InterpreterContext, theTry: SemObject.Try, alternative: SemObject): SemObject => {
-        if (theTry.type === "Try.Success") {
-            return theTry.value;
+    "Maybe.orElse": (context: InterpreterContext, theMaybe: SemObject.Maybe, alternative: SemObject): SemObject => {
+        if (theMaybe.type === "Maybe.Success") {
+            return theMaybe.value;
         } else {
             return alternative;
         }
     },
-    "Try.success": (context: InterpreterContext, object: SemObject): SemObject.Try.Success => {
+    "Maybe.success": (context: InterpreterContext, object: SemObject): SemObject.Maybe.Success => {
         return successObject(object);
     },
     "Unicode.String": (context: InterpreterContext, codePointObjects: SemObject.List): SemObject.String => {
@@ -319,10 +319,10 @@ function dataEquals(left: SemObject, right: SemObject): boolean {
     } else if (left.type === "Boolean") {
         if (right.type !== "Boolean") throw new Error();
         return left.value === right.value;
-    } else if (left.type === "Try.Success" || left.type === "Try.Failure") {
-        if (right.type !== "Try.Success" && right.type !== "Try.Failure") throw new Error();
-        return (left.type === "Try.Failure" && right.type === "Try.Failure") ||
-               (left.type === "Try.Success" && right.type === "Try.Success" && dataEquals(left.value, right.value));
+    } else if (left.type === "Maybe.Success" || left.type === "Maybe.Failure") {
+        if (right.type !== "Maybe.Success" && right.type !== "Maybe.Failure") throw new Error();
+        return (left.type === "Maybe.Failure" && right.type === "Maybe.Failure") ||
+               (left.type === "Maybe.Success" && right.type === "Maybe.Success" && dataEquals(left.value, right.value));
     } else if (isFunctionBinding(left)) {
         throw new Error();
     } else if (left.type === "instance") {

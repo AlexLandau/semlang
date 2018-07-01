@@ -10,6 +10,6 @@
 @Test(["5", "3"], "success(2)")
 @Test(["10", "3"], "success(1)")
 @Test(["123456781234567812345678", "2"], "success(0)")
-function testModulo(left: Natural, right: Natural): Try<Natural> {
+function testModulo(left: Natural, right: Natural): Maybe<Natural> {
   Natural.modulo(left, right)
 }

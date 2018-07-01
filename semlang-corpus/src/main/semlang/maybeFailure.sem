@@ -1,0 +1,9 @@
+@Test([], "failure")
+function testFailure1(): Maybe<Integer> {
+    Maybe.failure<Integer>()
+}
+
+@Test([], "failure")
+function testFailure2(): Maybe<Boolean> {
+    Maybe.failure<Boolean>()
+}

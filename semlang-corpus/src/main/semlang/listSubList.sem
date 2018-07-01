@@ -1,4 +1,4 @@
-// TODO: This works for now, but consider a complex literal approach for Try later
+// TODO: This works for now, but consider a complex literal approach for Maybe later
 @Test(["0", "0"], "success([])")
 @Test(["0", "1"], "success(['3'])")
 @Test(["0", "2"], "success(['3', '77'])")
@@ -15,6 +15,6 @@
 @Test(["4", "4"], "success([])")
 @Test(["5", "4"], "failure")
 @Test(["5", "5"], "failure")
-function List.testSubList(start: Natural, end: Natural): Try<List<Integer>> {
+function List.testSubList(start: Natural, end: Natural): Maybe<List<Integer>> {
   List.subList<Integer>([Integer."3", Integer."77", Integer."49", Integer."20"]<Integer>, start, end)
 }

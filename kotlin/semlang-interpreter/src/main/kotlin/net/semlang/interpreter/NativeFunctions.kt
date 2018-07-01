@@ -14,7 +14,7 @@ fun getNativeFunctions(): Map<EntityId, NativeFunction> {
     addBooleanFunctions(list)
     addIntegerFunctions(list)
     addListFunctions(list)
-    addTryFunctions(list)
+    addMaybeFunctions(list)
     addSequenceFunctions(list)
     addDataFunctions(list)
     addNativeThreadedFunctions(list)
@@ -109,9 +109,9 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Integer ?: typeError()
         val right = args[1] as? SemObject.Integer ?: typeError()
         if (right.value == BigInteger.ZERO) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
-            SemObject.Try.Success(SemObject.Integer(left.value / right.value))
+            SemObject.Maybe.Success(SemObject.Integer(left.value / right.value))
         }
     }))
 
@@ -120,9 +120,9 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         val left = args[0] as? SemObject.Integer ?: typeError()
         val right = args[1] as? SemObject.Integer ?: typeError()
         if (right.value < BigInteger.ONE) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
-            SemObject.Try.Success(SemObject.Integer(left.value.mod(right.value)))
+            SemObject.Maybe.Success(SemObject.Integer(left.value.mod(right.value)))
         }
     }))
 
@@ -202,10 +202,10 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         val endExclusive = (args[2] as? SemObject.Natural)?.value?.intValueExact() ?: typeError()
 
         if (startInclusive > endExclusive || endExclusive > list.contents.size) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
             val sublist = list.contents.subList(startInclusive, endExclusive)
-            SemObject.Try.Success(SemObject.SemList(sublist))
+            SemObject.Maybe.Success(SemObject.SemList(sublist))
         }
     }))
 
@@ -262,9 +262,9 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         val list = args[0] as? SemObject.SemList ?: typeError()
         val index = args[1] as? SemObject.Natural ?: typeError()
         try {
-            SemObject.Try.Success(list.contents[index.value.toInt()])
+            SemObject.Maybe.Success(list.contents[index.value.toInt()])
         } catch (e: IndexOutOfBoundsException) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         }
     }))
 
@@ -290,65 +290,65 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 
 }
 
-private fun addTryFunctions(list: MutableList<NativeFunction>) {
-    val tryDot = fun(name: String) = EntityId.of("Try", name)
+private fun addMaybeFunctions(list: MutableList<NativeFunction>) {
+    val maybeDot = fun(name: String) = EntityId.of("Maybe", name)
 
-    // Try.success
-    list.add(NativeFunction(tryDot("success"), { args: List<SemObject>, _: InterpreterCallback ->
-        SemObject.Try.Success(args[0])
+    // Maybe.success
+    list.add(NativeFunction(maybeDot("success"), { args: List<SemObject>, _: InterpreterCallback ->
+        SemObject.Maybe.Success(args[0])
     }))
 
-    // Try.failure
-    list.add(NativeFunction(tryDot("failure"), { _: List<SemObject>, _: InterpreterCallback ->
-        SemObject.Try.Failure
+    // Maybe.failure
+    list.add(NativeFunction(maybeDot("failure"), { _: List<SemObject>, _: InterpreterCallback ->
+        SemObject.Maybe.Failure
     }))
 
-    // Try.assume
-    list.add(NativeFunction(tryDot("assume"), { args: List<SemObject>, _: InterpreterCallback ->
-        val theTry = args[0] as? SemObject.Try ?: typeError()
-        val success = theTry as? SemObject.Try.Success ?: throw IllegalStateException("Try.assume assumed incorrectly")
+    // Maybe.assume
+    list.add(NativeFunction(maybeDot("assume"), { args: List<SemObject>, _: InterpreterCallback ->
+        val theMaybe = args[0] as? SemObject.Maybe ?: typeError()
+        val success = theMaybe as? SemObject.Maybe.Success ?: throw IllegalStateException("Try.assume assumed incorrectly")
         success.contents
     }))
 
-    // Try.isSuccess
-    list.add(NativeFunction(tryDot("isSuccess"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val theTry = args[0] as? SemObject.Try ?: typeError()
-        SemObject.Boolean(theTry is SemObject.Try.Success)
+    // Maybe.isSuccess
+    list.add(NativeFunction(maybeDot("isSuccess"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theMaybe = args[0] as? SemObject.Maybe ?: typeError()
+        SemObject.Boolean(theMaybe is SemObject.Maybe.Success)
     }))
 
-    // Try.map
-    list.add(NativeFunction(tryDot("map"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val theTry = args[0] as? SemObject.Try ?: typeError()
+    // Maybe.map
+    list.add(NativeFunction(maybeDot("map"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theMaybe = args[0] as? SemObject.Maybe ?: typeError()
         val theFunction = args[1] as? SemObject.FunctionBinding ?: typeError()
-        when (theTry) {
-            is SemObject.Try.Success -> {
-                SemObject.Try.Success(apply(theFunction, listOf(theTry.contents)))
+        when (theMaybe) {
+            is SemObject.Maybe.Success -> {
+                SemObject.Maybe.Success(apply(theFunction, listOf(theMaybe.contents)))
             }
-            is SemObject.Try.Failure -> theTry
+            is SemObject.Maybe.Failure -> theMaybe
         }
     }))
 
-    // Try.flatMap
-    list.add(NativeFunction(tryDot("flatMap"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val theTry = args[0] as? SemObject.Try ?: typeError()
+    // Maybe.flatMap
+    list.add(NativeFunction(maybeDot("flatMap"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theMaybe = args[0] as? SemObject.Maybe ?: typeError()
         val theFunction = args[1] as? SemObject.FunctionBinding ?: typeError()
-        when (theTry) {
-            is SemObject.Try.Success -> {
-                apply(theFunction, listOf(theTry.contents))
+        when (theMaybe) {
+            is SemObject.Maybe.Success -> {
+                apply(theFunction, listOf(theMaybe.contents))
             }
-            is SemObject.Try.Failure -> theTry
+            is SemObject.Maybe.Failure -> theMaybe
         }
     }))
 
-    // Try.orElse
-    list.add(NativeFunction(tryDot("orElse"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val theTry = args[0] as? SemObject.Try ?: typeError()
+    // Maybe.orElse
+    list.add(NativeFunction(maybeDot("orElse"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val theMaybe = args[0] as? SemObject.Maybe ?: typeError()
         val alternative = args[1]
-        when (theTry) {
-            is SemObject.Try.Success -> {
-                theTry.contents
+        when (theMaybe) {
+            is SemObject.Maybe.Success -> {
+                theMaybe.contents
             }
-            is SemObject.Try.Failure -> alternative
+            is SemObject.Maybe.Failure -> alternative
         }
     }))
 }
@@ -412,13 +412,13 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
             dataListsEqual(left.objects, right.objects)
         }
         is SemObject.Instance -> typeError()
-        is SemObject.Try.Success -> {
-            if (right !is SemObject.Try) typeError()
-            right is SemObject.Try.Success && dataEquals(left.contents, right.contents)
+        is SemObject.Maybe.Success -> {
+            if (right !is SemObject.Maybe) typeError()
+            right is SemObject.Maybe.Success && dataEquals(left.contents, right.contents)
         }
-        SemObject.Try.Failure -> {
-            if (right !is SemObject.Try) typeError()
-            right is SemObject.Try.Failure
+        SemObject.Maybe.Failure -> {
+            if (right !is SemObject.Maybe) typeError()
+            right is SemObject.Maybe.Failure
         }
         is SemObject.SemList -> {
             if (right !is SemObject.SemList) typeError()

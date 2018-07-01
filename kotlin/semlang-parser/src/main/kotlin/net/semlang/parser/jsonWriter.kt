@@ -161,8 +161,8 @@ private fun toTypeNode(type: Type): JsonNode {
         is Type.List -> {
             ObjectNode(factory).set("List", toTypeNode(type.parameter))
         }
-        is Type.Try -> {
-            ObjectNode(factory).set("Try", toTypeNode(type.parameter))
+        is Type.Maybe -> {
+            ObjectNode(factory).set("Maybe", toTypeNode(type.parameter))
         }
         is Type.FunctionType -> {
             val node = ObjectNode(factory)
@@ -227,8 +227,8 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])
         return UnvalidatedType.FunctionType(argTypes, outputType)
-    } else if (node.has("Try")) {
-        return UnvalidatedType.Try(parseType(node["Try"]))
+    } else if (node.has("Maybe")) {
+        return UnvalidatedType.Maybe(parseType(node["Maybe"]))
     } else if (node.has("List")) {
         return UnvalidatedType.List(parseType(node["List"]))
     }

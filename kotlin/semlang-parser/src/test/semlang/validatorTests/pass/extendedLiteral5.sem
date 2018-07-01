@@ -8,7 +8,7 @@ struct Digit {
 struct EvenDigit {
   digit: Digit
   requires {
-    Integer.equals(Integer."0", Try.assume<Integer>(Integer.modulo(digit->natural->integer, Integer."2")))
+    Integer.equals(Integer."0", Maybe.assume<Integer>(Integer.modulo(digit->natural->integer, Integer."2")))
   }
 }
 

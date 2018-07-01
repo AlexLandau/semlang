@@ -158,13 +158,13 @@ sealed class UnvalidatedType() {
         }
     }
 
-    data class Try(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+    data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return Try(parameter.replacingParameters(parameterMap), location)
+            return Maybe(parameter.replacingParameters(parameterMap), location)
         }
 
         override fun getTypeString(): String {
-            return "Try<$parameter>"
+            return "Maybe<$parameter>"
         }
 
         override fun toString(): String {
@@ -286,17 +286,17 @@ sealed class Type {
         }
     }
 
-    data class Try(val parameter: Type): Type() {
+    data class Maybe(val parameter: Type): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
 
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return Try(parameter.replacingParameters(parameterMap))
+            return Maybe(parameter.replacingParameters(parameterMap))
         }
 
         override fun getTypeString(): String {
-            return "Try<$parameter>"
+            return "Maybe<$parameter>"
         }
 
         override fun toString(): String {
@@ -523,7 +523,7 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         val outputType = if (requires == null) {
             UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Try(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
+            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -545,7 +545,7 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         val outputType = if (requires == null) {
             Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters)
         } else {
-            Type.Try(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
+            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
         }
         return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }

@@ -628,14 +628,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
             return UnvalidatedType.List(parameters[0], typeLocation)
-        } else if (typeId == "Try") {
+        } else if (typeId == "Maybe") {
             if (isThreaded) {
-                throw LocationAwareParsingException("Try is not a threaded type; remove the ~", locationOf(type_ref))
+                throw LocationAwareParsingException("Maybe is not a threaded type; remove the ~", locationOf(type_ref))
             }
             if (parameters.size != 1) {
-                error("Try should only accept a single parameter; parameters were: $parameters")
+                error("Maybe should only accept a single parameter; parameters were: $parameters")
             }
-            return UnvalidatedType.Try(parameters[0], typeLocation)
+            return UnvalidatedType.Maybe(parameters[0], typeLocation)
         }
 
         return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters, typeLocation)

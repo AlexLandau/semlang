@@ -7,6 +7,6 @@
 @Test(["-9223372036854775808", "-9223372036854775808"], "failure")
 @Test(["9223372036854775807", "-9223372036854775808"], "success(-1)")
 @Test(["6000000000000000000", "6000000000000000000"], "failure")
-function testPlusSafe(left: Int64, right: Int64): Try<Int64> {
+function testPlusSafe(left: Int64, right: Int64): Maybe<Int64> {
   Int64.plusSafe(left, right)
 }

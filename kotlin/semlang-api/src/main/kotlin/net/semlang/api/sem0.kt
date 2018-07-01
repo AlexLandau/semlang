@@ -28,7 +28,7 @@ sealed class S0Type {
     object Integer: S0Type()
     object Boolean: S0Type()
     data class List(val parameter: S0Type): S0Type()
-    data class Try(val parameter: S0Type): S0Type()
+    data class Maybe(val parameter: S0Type): S0Type()
     data class FunctionType(val argTypes: kotlin.collections.List<S0Type>, val outputType: S0Type): S0Type()
     data class NamedType(val id: String, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
 }

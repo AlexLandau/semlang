@@ -108,9 +108,9 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         val left = args[0] as? SemObject.Natural ?: typeError()
         val right = args[1] as? SemObject.Natural ?: typeError()
         if (right.value < BigInteger.ONE) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
-            SemObject.Try.Success(SemObject.Natural(left.value.mod(right.value)))
+            SemObject.Maybe.Success(SemObject.Natural(left.value.mod(right.value)))
         }
     }))
 
@@ -164,11 +164,11 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         val r = right.value
         val sum = l + r
         if (l >= 0 && r >= 0 && sum < 0) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else if (l < 0 && r < 0 && sum >= 0) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
-            SemObject.Try.Success(SemObject.Int64(sum))
+            SemObject.Maybe.Success(SemObject.Int64(sum))
         }
     }))
 
@@ -187,11 +187,11 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         val r = right.value
         val diff = l - r
         if (l >= 0 && r < 0 && diff < 0) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else if (l < 0 && r > 0 && diff >= 0) {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         } else {
-            SemObject.Try.Success(SemObject.Int64(diff))
+            SemObject.Maybe.Success(SemObject.Int64(diff))
         }
     }))
 
@@ -211,9 +211,9 @@ private fun addStandardLibraryFunctions(nativeImplAdder: Consumer<NativeFunction
         val product = l.times(r)
 
         if (product.bitLength() <= 63) {
-            SemObject.Try.Success(SemObject.Int64(product.longValueExact()))
+            SemObject.Maybe.Success(SemObject.Int64(product.longValueExact()))
         } else {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         }
     }))
 
@@ -263,9 +263,9 @@ private fun addStandardLibraryStructConstructors(nativeImplAdder: Consumer<Nativ
 
         val bigInt = integer.value
         if (bigInt.bitLength() <= 63) {
-            SemObject.Try.Success(SemObject.Int64(bigInt.toLong()))
+            SemObject.Maybe.Success(SemObject.Int64(bigInt.toLong()))
         } else {
-            SemObject.Try.Failure
+            SemObject.Maybe.Failure
         }
     }))
 

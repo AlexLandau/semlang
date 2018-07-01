@@ -5,5 +5,5 @@
 @Test(["['1', '2', '4', '8']", "3"], "8")
 @Test(["['42']", "0"], "42")
 function listGet(list: List<Integer>, index: Natural): Integer {
-  Try.assume<Integer>(List.get<Integer>(list, index))
+  Maybe.assume<Integer>(List.get<Integer>(list, index))
 }

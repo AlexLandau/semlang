@@ -51,7 +51,7 @@ fun getTypeValidatorFor(type: Type): LiteralValidator? {
             null
         }
         is Type.FunctionType -> null
-        is Type.Try -> null
+        is Type.Maybe -> null
         is Type.ParameterType -> null
     }
 }

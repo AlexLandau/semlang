@@ -6,14 +6,14 @@ struct Foo {
   }
 }
 
-function addFoo(foo: Try<Foo>): Integer {
-  let it = Try.assume<Foo>(foo)
+function addFoo(foo: Maybe<Foo>): Integer {
+  let it = Maybe.assume<Foo>(foo)
   Integer.plus(it->bar, it->baz)
 }
 
 @Test(["-1"], "1")
 @Test(["2"], "4")
 function myCode.addThreeV1(n: Integer): Integer {
-  let fooMaker: (Integer) -> Try<Foo> = Foo|(_, Integer."2")
+  let fooMaker: (Integer) -> Maybe<Foo> = Foo|(_, Integer."2")
   addFoo(fooMaker(n))
 }

@@ -27,9 +27,9 @@ sealed class SemObject {
     }
     // An instance of an interface.
     data class Instance(val interfaceDef: net.semlang.api.Interface, val methods: List<SemObject.FunctionBinding>): SemObject()
-    sealed class Try: SemObject() {
-        data class Success(val contents: SemObject): Try()
-        object Failure: Try() {
+    sealed class Maybe: SemObject() {
+        data class Success(val contents: SemObject): Maybe()
+        object Failure: Maybe() {
             override fun toString(): String {
                 return "Failure"
             }

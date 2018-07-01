@@ -5,15 +5,15 @@ function List.isEmpty<T>(list: List<T>): Boolean {
 }
 
 @Export
-function List.first<T>(list: List<T>): Try<T> {
+function List.first<T>(list: List<T>): Maybe<T> {
   List.get<T>(list, Natural."0")
 }
 
 @Export
-function List.last<T>(list: List<T>): Try<T> {
+function List.last<T>(list: List<T>): Maybe<T> {
   let size = List.size<T>(list)
-  let lastIndexMaybe: Try<Natural> = Natural(Natural.minus(size, Natural."1"))
-  Try.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural): Try<T> {
+  let lastIndexMaybe: Maybe<Natural> = Natural(Natural.minus(size, Natural."1"))
+  Maybe.flatMap<Natural, T>(lastIndexMaybe, function(lastIndex: Natural): Maybe<T> {
     List.get<T>(list, lastIndex)
   })
 }
@@ -29,28 +29,28 @@ function List.nCopies<T>(n: Natural, value: T): List<T> {
 function List.drop<T>(list: List<T>, n: Natural): List<T> {
   let end = List.size<T>(list)
   let start = Natural.lesser(n, end)
-  Try.assume<List<T>>(List.subList<T>(list, start, end))
+  Maybe.assume<List<T>>(List.subList<T>(list, start, end))
 }
 
 @Export
 function List.dropLast<T>(list: List<T>, n: Natural): List<T> {
   let endMaybe = Natural(Natural.minus(List.size<T>(list), n))
-  let end = Try.orElse<Natural>(endMaybe, Natural."0")
-  Try.assume<List<T>>(List.subList<T>(list, Natural."0", end))
+  let end = Maybe.orElse<Natural>(endMaybe, Natural."0")
+  Maybe.assume<List<T>>(List.subList<T>(list, Natural."0", end))
 }
 
 @Export
 function List.firstN<T>(list: List<T>, n: Natural): List<T> {
   let end = Natural.lesser(n, List.size<T>(list))
-  Try.assume<List<T>>(List.subList<T>(list, Natural."0", end))
+  Maybe.assume<List<T>>(List.subList<T>(list, Natural."0", end))
 }
 
 @Export
 function List.lastN<T>(list: List<T>, n: Natural): List<T> {
   let size = List.size<T>(list)
   let startMaybe = Natural(Natural.minus(size, n))
-  let start = Try.orElse<Natural>(startMaybe, Natural."0")
-  Try.assume<List<T>>(List.subList<T>(list, start, size))
+  let start = Maybe.orElse<Natural>(startMaybe, Natural."0")
+  Maybe.assume<List<T>>(List.subList<T>(list, start, size))
 }
 
 @Export
@@ -71,21 +71,21 @@ function List.getIndices<T>(list: List<T>): List<Natural> {
   if (Natural.equals(size, Natural."0")) {
     []<Natural>
   } else {
-    let lastIndex = Try.assume<Natural>(Natural(Natural.minus(size, Natural."1")))
+    let lastIndex = Maybe.assume<Natural>(Natural(Natural.minus(size, Natural."1")))
     Natural.rangeInclusive(Natural."0", lastIndex)
   }
 }
 
 // TODO: Consider exporting some version of this
-function List.getItemsSequence<T>(list: List<T>): Sequence<Try<IndexedItem<T>>> {
+function List.getItemsSequence<T>(list: List<T>): Sequence<Maybe<IndexedItem<T>>> {
   let firstItemMaybe = List.get<T>(list, Natural."0")
-  let firstIndexedItem = Try.map<T, IndexedItem<T>>(firstItemMaybe, function (item: T): IndexedItem<T> { IndexedItem<T>(Natural."0", item) })
-  Sequence<Try<IndexedItem<T>>>(firstIndexedItem, function (lastIndexedItemMaybe: Try<IndexedItem<T>>): Try<IndexedItem<T>> {
-    Try.flatMap<IndexedItem<T>, IndexedItem<T>>(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Try<IndexedItem<T>> {
+  let firstIndexedItem = Maybe.map<T, IndexedItem<T>>(firstItemMaybe, function (item: T): IndexedItem<T> { IndexedItem<T>(Natural."0", item) })
+  Sequence<Maybe<IndexedItem<T>>>(firstIndexedItem, function (lastIndexedItemMaybe: Maybe<IndexedItem<T>>): Maybe<IndexedItem<T>> {
+    Maybe.flatMap<IndexedItem<T>, IndexedItem<T>>(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Maybe<IndexedItem<T>> {
       let lastIndex = lastIndexedItem->index
       let curIndex = Natural.plus(lastIndex, Natural."1")
       let itemMaybe = List.get<T>(list, curIndex)
-      Try.map<T, IndexedItem<T>>(itemMaybe, IndexedItem<T>|(curIndex, _))
+      Maybe.map<T, IndexedItem<T>>(itemMaybe, IndexedItem<T>|(curIndex, _))
     })
   })
 }
@@ -97,10 +97,10 @@ struct IndexedItem<T> {
 }
 
 @Export
-function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Try<IndexedItem<T>> {
-  Sequence.first<Try<IndexedItem<T>>>(List.getItemsSequence<T>(list), function (indexedItemMaybe: Try<IndexedItem<T>>): Boolean {
-    if (Try.isSuccess<IndexedItem<T>>(indexedItemMaybe)) {
-      let indexedItem = Try.assume<IndexedItem<T>>(indexedItemMaybe)
+function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Maybe<IndexedItem<T>> {
+  Sequence.first<Maybe<IndexedItem<T>>>(List.getItemsSequence<T>(list), function (indexedItemMaybe: Maybe<IndexedItem<T>>): Boolean {
+    if (Maybe.isSuccess<IndexedItem<T>>(indexedItemMaybe)) {
+      let indexedItem = Maybe.assume<IndexedItem<T>>(indexedItemMaybe)
       predicate(indexedItem->item)
     } else {
       // End the search by returning true
@@ -110,8 +110,8 @@ function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Try<Indexe
 }
 
 @Export
-function List.firstIndexOf<T: Data>(list: List<T>, object: T): Try<Natural> {
-  Try.map<IndexedItem<T>, Natural>(
+function List.firstIndexOf<T: Data>(list: List<T>, object: T): Maybe<Natural> {
+  Maybe.map<IndexedItem<T>, Natural>(
     List.firstWith<T>(list, Data.equals<T>|(object, _)),
     // TODO: Function reference for follows
     function(indexedItem: IndexedItem<T>): Natural {

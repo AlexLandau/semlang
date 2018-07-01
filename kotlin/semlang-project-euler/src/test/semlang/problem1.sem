@@ -6,7 +6,7 @@ function euler.problem1(): Natural {
 }
 
 function euler.multiplesFilter(n: Natural): Boolean {
-  let multipleOfThree: Boolean = Natural.equals(Natural."0", Try.assume<Natural>(Natural.modulo(n, Natural."3")))
-  let multipleOfFive: Boolean = Natural.equals(Natural."0", Try.assume<Natural>(Natural.modulo(n, Natural."5")))
+  let multipleOfThree: Boolean = Natural.equals(Natural."0", Maybe.assume<Natural>(Natural.modulo(n, Natural."3")))
+  let multipleOfFive: Boolean = Natural.equals(Natural."0", Maybe.assume<Natural>(Natural.modulo(n, Natural."5")))
   Boolean.or(multipleOfThree, multipleOfFive)
 }

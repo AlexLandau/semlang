@@ -99,7 +99,7 @@ private class Sem1To0Converter(val input: RawContext) {
             is UnvalidatedType.Integer -> S0Type.Integer
             is UnvalidatedType.Boolean -> S0Type.Boolean
             is UnvalidatedType.List -> S0Type.List(apply(type.parameter))
-            is UnvalidatedType.Try -> S0Type.Try(apply(type.parameter))
+            is UnvalidatedType.Maybe -> S0Type.Maybe(apply(type.parameter))
             is UnvalidatedType.FunctionType -> {
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)

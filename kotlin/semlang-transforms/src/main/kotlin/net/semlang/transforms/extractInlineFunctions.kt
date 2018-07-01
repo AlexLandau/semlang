@@ -174,7 +174,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is Type.List -> {
                 addTypeParameters(set, type.parameter)
             }
-            is Type.Try -> {
+            is Type.Maybe -> {
                 addTypeParameters(set, type.parameter)
             }
             is Type.FunctionType -> {

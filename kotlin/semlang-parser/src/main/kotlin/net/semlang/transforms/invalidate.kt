@@ -44,8 +44,8 @@ fun invalidate(type: Type): UnvalidatedType {
         is Type.List -> {
             UnvalidatedType.List(invalidate(type.parameter))
         }
-        is Type.Try -> {
-            UnvalidatedType.Try(invalidate(type.parameter))
+        is Type.Maybe -> {
+            UnvalidatedType.Maybe(invalidate(type.parameter))
         }
         is Type.FunctionType -> {
             val argTypes = type.argTypes.map(::invalidate)

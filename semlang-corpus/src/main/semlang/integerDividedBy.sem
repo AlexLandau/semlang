@@ -17,6 +17,6 @@
 @Test(["10", "-3"], "success(-3)")
 @Test(["-10", "-3"], "success(3)")
 @Test(["123456781234567812345678", "1"], "success(123456781234567812345678)")
-function testDividedBy(left: Integer, right: Integer): Try<Integer> {
+function testDividedBy(left: Integer, right: Integer): Maybe<Integer> {
   Integer.dividedBy(left, right)
 }

@@ -6,6 +6,6 @@
 @Test(["-9223372036854775809"], "failure")
 @Test(["9223372036854775807"], "success(9223372036854775807)")
 @Test(["9223372036854775808"], "failure")
-function testInt64Follow(int: Integer): Try<Integer> {
-  Try.map<Int64, Integer>(Int64(int), function (int64: Int64): Integer { int64->integer })
+function testInt64Follow(int: Integer): Maybe<Integer> {
+  Maybe.map<Int64, Integer>(Int64(int), function (int64: Int64): Integer { int64->integer })
 }

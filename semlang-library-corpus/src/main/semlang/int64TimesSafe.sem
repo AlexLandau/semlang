@@ -41,6 +41,6 @@
 @Test(["9223372036854775807", "-9223372036854775808"], "failure")
 @Test(["6000000000000000000", "6000000000000000000"], "failure")
 @Test(["12345678901", "12345678901"], "failure") // non-obvious overflow case
-function testTimesSafe(left: Int64, right: Int64): Try<Int64> {
+function testTimesSafe(left: Int64, right: Int64): Maybe<Int64> {
   Int64.timesSafe(left, right)
 }

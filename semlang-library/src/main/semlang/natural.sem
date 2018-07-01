@@ -1,6 +1,6 @@
 @Export
 function Natural.plus(left: Natural, right: Natural): Natural {
-  Try.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
+  Maybe.assume<Natural>(Natural(Integer.plus(left->integer, right->integer)))
 }
 
 @Export
@@ -10,19 +10,19 @@ function Natural.minus(left: Natural, right: Natural): Integer {
 
 @Export
 function Natural.times(left: Natural, right: Natural): Natural {
-  Try.assume<Natural>(Natural(Integer.times(left->integer, right->integer)))
+  Maybe.assume<Natural>(Natural(Integer.times(left->integer, right->integer)))
 }
 
 @Export
-function Natural.dividedBy(left: Natural, right: Natural): Try<Natural> {
-  let divisionResult: Try<Integer> = Integer.dividedBy(left->integer, right->integer)
-  Try.flatMap<Integer, Natural>(divisionResult, Natural|(_))
+function Natural.dividedBy(left: Natural, right: Natural): Maybe<Natural> {
+  let divisionResult: Maybe<Integer> = Integer.dividedBy(left->integer, right->integer)
+  Maybe.flatMap<Integer, Natural>(divisionResult, Natural|(_))
 }
 
 @Export
-function Natural.modulo(left: Natural, right: Natural): Try<Natural> {
-  let moduloResult: Try<Integer> = Integer.modulo(left->integer, right->integer)
-  Try.flatMap<Integer, Natural>(moduloResult, Natural|(_))
+function Natural.modulo(left: Natural, right: Natural): Maybe<Natural> {
+  let moduloResult: Maybe<Integer> = Integer.modulo(left->integer, right->integer)
+  Maybe.flatMap<Integer, Natural>(moduloResult, Natural|(_))
 }
 
 @Export
@@ -76,9 +76,9 @@ function Natural.greater(left: Natural, right: Natural): Natural {
 }
 
 @Export
-function Natural.max(naturals: List<Natural>): Try<Natural> {
+function Natural.max(naturals: List<Natural>): Maybe<Natural> {
   let firstValueMaybe = List.first<Natural>(naturals)
-  Try.map<Natural, Natural>(firstValueMaybe, function(firstValue: Natural): Natural {
+  Maybe.map<Natural, Natural>(firstValueMaybe, function(firstValue: Natural): Natural {
     List.reduce<Natural, Natural>(naturals, firstValue, Natural.greater|(_, _))
   })
 }
@@ -96,11 +96,11 @@ function Natural.absoluteValue(integer: Integer): Natural {
   } else {
     integer
   }
-  Try.assume<Natural>(Natural(integerValue))
+  Maybe.assume<Natural>(Natural(integerValue))
 }
 
 @Export
-function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
+function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian> {
   let allBits = if (Natural.equals(value, Natural."0")) {
     []<Bit>
   } else {
@@ -108,7 +108,7 @@ function Natural.toNBits(value: Natural, numBits: Natural): Try<BitsBigEndian> {
   }
   let actualNumBits = List.size<Bit>(allBits)
   let paddingNeededMaybe = Natural(Natural.minus(numBits, actualNumBits))
-  Try.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural): BitsBigEndian {
+  Maybe.map<Natural, BitsBigEndian>(paddingNeededMaybe, function(paddingNeeded: Natural): BitsBigEndian {
     let padding = List.nCopies<Bit>(paddingNeeded, Bit."0")
     BitsBigEndian(List.concatenate<Bit>(padding, allBits))
   })
@@ -128,8 +128,8 @@ function Natural.toBitsList(value: Natural): List<Bit> {
   if (Natural.equals(value, Natural."0")) {
     []<Bit>
   } else {
-    let listWithoutLastBit = Natural.toBitsList(Try.assume<Natural>(Natural.dividedBy(value, Natural."2")))
-    let curBit = Try.assume<Bit>(Bit(Try.assume<Natural>(Natural.modulo(value, Natural."2"))))
+    let listWithoutLastBit = Natural.toBitsList(Maybe.assume<Natural>(Natural.dividedBy(value, Natural."2")))
+    let curBit = Maybe.assume<Bit>(Bit(Maybe.assume<Natural>(Natural.modulo(value, Natural."2"))))
     List.append<Bit>(listWithoutLastBit, curBit)
   }
 }
@@ -152,10 +152,10 @@ function Natural.sum(numbers: List<Natural>): Natural {
 @Export
 function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
   let numberOfValuesMaybe = Natural(Natural.minus(Natural.plus(end, Natural."1"), start))
-  let rangeMaybe = Try.map<Natural, List<Natural>>(numberOfValuesMaybe, function(numValues: Natural): List<Natural> {
+  let rangeMaybe = Maybe.map<Natural, List<Natural>>(numberOfValuesMaybe, function(numValues: Natural): List<Natural> {
     Sequence.getRange<Natural>(Natural.arithmeticProgression(start, Natural."1"), numValues)
   })
-  Try.orElse<List<Natural>>(rangeMaybe, []<Natural>)
+  Maybe.orElse<List<Natural>>(rangeMaybe, []<Natural>)
 }
 
 @Export

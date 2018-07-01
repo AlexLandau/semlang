@@ -146,8 +146,8 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Type.List -> {
                 UnvalidatedType.List(apply(type.parameter))
             }
-            is S0Type.Try -> {
-                UnvalidatedType.Try(apply(type.parameter))
+            is S0Type.Maybe -> {
+                UnvalidatedType.Maybe(apply(type.parameter))
             }
             is S0Type.FunctionType -> {
                 val argTypes = type.argTypes.map(this::apply)

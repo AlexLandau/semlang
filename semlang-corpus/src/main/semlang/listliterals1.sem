@@ -10,7 +10,7 @@ function myCode.listLiteralSize(): Natural {
 @Test(["2"], "success(42)")
 @Test(["3"], "failure")
 @Test(["4"], "failure")
-function myCode.listGet(index: Natural): Try<Natural> {
+function myCode.listGet(index: Natural): Maybe<Natural> {
   let list = [Natural."23", Natural."17", Natural."42"]<Natural>
   List.get<Natural>(list, index)
 }

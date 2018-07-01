@@ -6,7 +6,7 @@ export type SemObject = SemObject.Integer
  | SemObject.Natural
  | SemObject.Boolean
  | SemObject.List
- | SemObject.Try
+ | SemObject.Maybe
  | SemObject.String
  | SemObject.Struct
  | SemObject.Instance
@@ -29,14 +29,14 @@ export namespace SemObject {
         type: "List";
         contents: SemObject[];
     }
-    export type Try = Try.Success | Try.Failure;
-    export namespace Try {
+    export type Maybe = Maybe.Success | Maybe.Failure;
+    export namespace Maybe {
         export interface Success {
-            type: "Try.Success";
+            type: "Maybe.Success";
             value: SemObject;
         }
         export interface Failure {
-            type: "Try.Failure";
+            type: "Maybe.Failure";
         }
     }
     export interface String {
@@ -118,17 +118,17 @@ export function listBuilderObject(contents: SemObject[]): SemObject.ListBuilder 
     };
 }
 
-export function successObject(innerValue: SemObject): SemObject.Try.Success {
+export function successObject(innerValue: SemObject): SemObject.Maybe.Success {
     return {
-        type: "Try.Success",
+        type: "Maybe.Success",
         value: innerValue,
     }
 }
 
-const FAILURE: SemObject.Try.Failure = {
-    type: "Try.Failure",
+const FAILURE: SemObject.Maybe.Failure = {
+    type: "Maybe.Failure",
 };
-export function failureObject(): SemObject.Try.Failure {
+export function failureObject(): SemObject.Maybe.Failure {
     return FAILURE;
 }
 

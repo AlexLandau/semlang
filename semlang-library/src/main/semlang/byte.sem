@@ -25,11 +25,11 @@ struct Byte.BitPosition {
 
 @Export
 function Byte.toBits(byte: Byte): ByteBits {
-  let bits = Try.assume<BitsBigEndian>(Natural.toNBits(byte->natural, Natural."8"))
-  Try.assume<ByteBits>(ByteBits(bits))
+  let bits = Maybe.assume<BitsBigEndian>(Natural.toNBits(byte->natural, Natural."8"))
+  Maybe.assume<ByteBits>(ByteBits(bits))
 }
 
 @Export
 function ByteBits.get(bits: ByteBits, bitPosition: Byte.BitPosition): Bit {
-  Try.assume<Bit>(List.get<Bit>(bits->bitsBigEndian->bits, bitPosition->natural))
+  Maybe.assume<Bit>(List.get<Bit>(bits->bitsBigEndian->bits, bitPosition->natural))
 }

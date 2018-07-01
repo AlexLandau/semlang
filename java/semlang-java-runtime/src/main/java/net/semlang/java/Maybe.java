@@ -3,8 +3,8 @@ package net.semlang.java;
 import java.util.Optional;
 import java.util.function.Function;
 
-public class Tries {
-    private Tries() {
+public class Maybe {
+    private Maybe() {
         // Not instantiable
     }
 

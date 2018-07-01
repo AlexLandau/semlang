@@ -21,7 +21,7 @@ function exponentiateInefficiently(base: Natural, power: Natural): Natural {
     let addend1 = multiplicand1
     applyNTimes(multiplicand2, Natural."0", function(addend2: Natural): Natural {
       applyNTimes(addend2, addend1, function(toIncrement: Natural): Natural {
-        Try.assume<Natural>(Natural(Integer.plus(toIncrement->integer, Integer."1")))
+        Maybe.assume<Natural>(Natural(Integer.plus(toIncrement->integer, Integer."1")))
       })
     })
   })

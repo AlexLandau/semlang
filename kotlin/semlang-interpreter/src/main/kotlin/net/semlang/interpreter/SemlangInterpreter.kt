@@ -241,9 +241,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             val semInteger = arguments[0] as? SemObject.Integer ?: error("Type error when constructing a Natural")
             val value = semInteger.value
             if (value >= BigInteger.ZERO) {
-                return SemObject.Try.Success(SemObject.Natural(semInteger.value))
+                return SemObject.Maybe.Success(SemObject.Natural(semInteger.value))
             } else {
-                return SemObject.Try.Failure
+                return SemObject.Maybe.Failure
             }
         }
 
@@ -270,9 +270,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             val variableAssignments = struct.members.map(Member::name).zip(arguments).toMap()
             val success = evaluateBlock(requiresBlock, variableAssignments, structModule) as? SemObject.Boolean ?: error("Non-boolean output of a requires block at runtime")
             if (success.value) {
-                return SemObject.Try.Success(SemObject.Struct(struct, arguments))
+                return SemObject.Maybe.Success(SemObject.Struct(struct, arguments))
             } else {
-                return SemObject.Try.Failure
+                return SemObject.Maybe.Failure
             }
         }
     }
@@ -431,7 +431,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             Type.INTEGER -> evaluateIntegerLiteral(literal)
             Type.BOOLEAN -> evaluateBooleanLiteral(literal)
             is Type.List -> evaluateComplexLiteral(type, literal)
-            is Type.Try -> evaluateTryLiteral(type, literal)
+            is Type.Maybe -> evaluateMaybeLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
             is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
@@ -471,7 +471,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 val contents = node.contents.map { evaluateComplexLiteralNode(type.parameter, it) }
                 SemObject.SemList(contents)
             }
-            is Type.Try -> TODO()
+            is Type.Maybe -> TODO()
             is Type.FunctionType -> TODO()
             is Type.ParameterType -> TODO()
             is Type.NamedType -> {
@@ -558,14 +558,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
      * Note: Currently this can be used by things like @Test, but trying to invoke this directly in a
      * Semlang function will fail.
      */
-    private fun evaluateTryLiteral(type: Type.Try, literal: String): SemObject {
+    private fun evaluateMaybeLiteral(type: Type.Maybe, literal: String): SemObject {
         if (literal == "failure") {
-            return SemObject.Try.Failure
+            return SemObject.Maybe.Failure
         }
         if (literal.startsWith("success(") && literal.endsWith(")")) {
             val innerType = type.parameter
             val innerLiteral = literal.substring("success(".length, literal.length - ")".length)
-            return SemObject.Try.Success(evaluateLiteralImpl(innerType, innerLiteral))
+            return SemObject.Maybe.Success(evaluateLiteralImpl(innerType, innerLiteral))
         }
         throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
     }

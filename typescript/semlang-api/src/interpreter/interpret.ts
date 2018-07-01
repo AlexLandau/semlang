@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isTryType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
+import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isMaybeType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -330,15 +330,15 @@ export class InterpreterContext {
         } else if (isListType(type)) {
             // Note: This is currently only intended for @Test cases
             return this.evaluateComplexLiteralString(type, value);
-        } else if (isTryType(type)) {
+        } else if (isMaybeType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
                 return failureObject();
             } else {
                 if (value.substr(0, 8) !== "success(" || value.charAt(value.length - 1) !== ")") {
-                    throw new Error(`Try literal format error; was ${value}`);
+                    throw new Error(`Maybe literal format error; was ${value}`);
                 }
-                const innerType = type.Try;
+                const innerType = type.Maybe;
                 const innerValue = value.substr(8, value.length - 9);
                 const innerObject = this.evaluateLiteral(innerType, innerValue);
                 return successObject(innerObject);

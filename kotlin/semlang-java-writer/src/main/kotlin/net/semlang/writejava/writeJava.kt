@@ -683,7 +683,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 CodeBlock.of("\$L", literal)
             }
             is Type.List -> writeComplexLiteralExpression(type, literal)
-            is Type.Try -> {
+            is Type.Maybe -> {
                 // We need to support this for unit tests, specifically
                 if (literal == "failure") {
                     return CodeBlock.of("\$T.empty()", java.util.Optional::class.java)
@@ -762,7 +762,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }.joinToArgumentsList()
                 CodeBlock.of("\$T.asList(\$L)", Arrays::class.java, contentsCode)
             }
-            is Type.Try -> TODO()
+            is Type.Maybe -> TODO()
             is Type.FunctionType -> TODO()
             is Type.ParameterType -> TODO()
             is Type.NamedType -> {
@@ -788,7 +788,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             Type.INTEGER -> ClassName.get(BigInteger::class.java)
             Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
-            is Type.Try -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
+            is Type.Maybe -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
@@ -953,14 +953,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Integer", "greaterThan"), StaticFunctionCallStrategy(javaIntegers, "greaterThan"))
         map.put(EntityId.of("Integer", "sum"), StaticFunctionCallStrategy(javaIntegers, "sum"))
 
-        val javaTries = ClassName.bestGuess("net.semlang.java.Tries")
-        map.put(EntityId.of("Try", "failure"), StaticFunctionCallStrategy(javaTries, "failure"))
-        map.put(EntityId.of("Try", "success"), StaticFunctionCallStrategy(javaTries, "success"))
-        map.put(EntityId.of("Try", "isSuccess"), StaticFunctionCallStrategy(javaTries, "isSuccess"))
-        map.put(EntityId.of("Try", "assume"), StaticFunctionCallStrategy(javaTries, "assume"))
-        map.put(EntityId.of("Try", "map"), MethodFunctionCallStrategy("map"))
-        map.put(EntityId.of("Try", "flatMap"), MethodFunctionCallStrategy("flatMap"))
-        map.put(EntityId.of("Try", "orElse"), MethodFunctionCallStrategy("orElse"))
+        val javaMaybe = ClassName.bestGuess("net.semlang.java.Maybe")
+        map.put(EntityId.of("Maybe", "failure"), StaticFunctionCallStrategy(javaMaybe, "failure"))
+        map.put(EntityId.of("Maybe", "success"), StaticFunctionCallStrategy(javaMaybe, "success"))
+        map.put(EntityId.of("Maybe", "isSuccess"), StaticFunctionCallStrategy(javaMaybe, "isSuccess"))
+        map.put(EntityId.of("Maybe", "assume"), StaticFunctionCallStrategy(javaMaybe, "assume"))
+        map.put(EntityId.of("Maybe", "map"), MethodFunctionCallStrategy("map"))
+        map.put(EntityId.of("Maybe", "flatMap"), MethodFunctionCallStrategy("flatMap"))
+        map.put(EntityId.of("Maybe", "orElse"), MethodFunctionCallStrategy("orElse"))
 
         val javaSequence = ClassName.bestGuess("net.semlang.java.Sequence")
         // Sequence constructor
@@ -1264,7 +1264,7 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
         Type.INTEGER -> true
         Type.BOOLEAN -> true
         is Type.List -> isDataType(type.parameter, containingModule)
-        is Type.Try -> isDataType(type.parameter, containingModule)
+        is Type.Maybe -> isDataType(type.parameter, containingModule)
         is Type.FunctionType -> false
         is Type.ParameterType -> false // Might have cases in the future where a parameter can be restricted to be data
         is Type.NamedType -> {

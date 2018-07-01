@@ -78,10 +78,30 @@ sealed class ValidationResult {
             return errors + warnings
         }
         override fun assumeSuccess(): ValidatedModule {
-            error("Encountered errors in validation: $errors")
+            error("Encountered errors in validation: ${formatForCliOutput(errors)}")
+        }
+
+    }
+}
+
+private fun formatForCliOutput(allErrors: List<Issue>): String {
+    val sb = StringBuilder()
+    val errorsByDocument: Map<String?, List<Issue>> = allErrors.groupBy { error -> if (error.location == null) null else error.location.documentUri }
+    for ((document, errors) in errorsByDocument) {
+        if (document == null) {
+            sb.append("In an unknown location:\n")
+        } else {
+            sb.append("In ${document}:\n")
+        }
+        for (error in errors) {
+            sb.append("  ")
+            if (error.location != null) {
+                sb.append(error.location.range).append(": ")
+            }
+            sb.append(error.message).append("\n")
         }
     }
-
+    return sb.toString()
 }
 
 private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String, val upstreamModules: List<ValidatedModule>) {
@@ -368,12 +388,12 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 }
                 Type.List(parameter)
             }
-            is UnvalidatedType.Try -> {
+            is UnvalidatedType.Maybe -> {
                 val parameter = validateType(type.parameter, typeInfo, typeParametersInScope) ?: return null
                 if (parameter.isThreaded()) {
                     errors.add(Issue("Tries cannot have a threaded parameter type", null, IssueLevel.ERROR))
                 }
-                Type.Try(parameter)
+                Type.Maybe(parameter)
             }
             is UnvalidatedType.FunctionType -> {
                 val argTypes = type.argTypes.map { argType -> validateType(argType, typeInfo, typeParametersInScope) ?: return null }
@@ -533,7 +553,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 Type.INTEGER -> true
                 Type.BOOLEAN -> true
                 is Type.List -> isDataType(type.parameter)
-                is Type.Try -> isDataType(type.parameter)
+                is Type.Maybe -> isDataType(type.parameter)
                 is Type.FunctionType -> false
                 is Type.ParameterType -> {
                     val typeClass = type.parameter.typeClass
@@ -568,7 +588,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 is UnvalidatedType.Integer -> true
                 is UnvalidatedType.Boolean -> true
                 is UnvalidatedType.List -> isDataType(type.parameter)
-                is UnvalidatedType.Try -> isDataType(type.parameter)
+                is UnvalidatedType.Maybe -> isDataType(type.parameter)
                 is UnvalidatedType.FunctionType -> false
                 is UnvalidatedType.NamedType -> {
                     // TODO: We might want some caching here

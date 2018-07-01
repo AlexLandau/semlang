@@ -156,7 +156,7 @@ export type Binding = Expression | null;
 export type Type = "Integer"
  | "Boolean"
  | { List: Type }
- | { Try: Type }
+ | { Maybe: Type }
  | Type.FunctionType
  | Type.NamedType;
 export namespace Type {
@@ -174,8 +174,8 @@ export function isListType(type: Type): type is { List: Type } {
     return typeof type === "object" && "List" in type;
 }
 
-export function isTryType(type: Type): type is { Try: Type } {
-    return typeof type === "object" && "Try" in type;
+export function isMaybeType(type: Type): type is { Maybe: Type } {
+    return typeof type === "object" && "Maybe" in type;
 }
 
 export function isNamedType(type: Type): type is Type.NamedType {

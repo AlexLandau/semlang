@@ -24,20 +24,20 @@ struct Utf8.CodePointBytes {
   }
 }
 
-function Utf8.getStartingCodePointBytes(bytes: List<Byte>): Try<Utf8.CodePointBytes> {
+function Utf8.getStartingCodePointBytes(bytes: List<Byte>): Maybe<Utf8.CodePointBytes> {
   let lengthOneList = List.firstN<Byte>(bytes, Natural."1")
   let sizeOneCodePoint = Utf8.CodePointBytes(lengthOneList)
-  if (Try.isSuccess<Utf8.CodePointBytes>(sizeOneCodePoint)) {
+  if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeOneCodePoint)) {
     sizeOneCodePoint
   } else {
     let lengthTwoList = List.firstN<Byte>(bytes, Natural."2")
     let sizeTwoCodePoint = Utf8.CodePointBytes(lengthTwoList)
-    if (Try.isSuccess<Utf8.CodePointBytes>(sizeTwoCodePoint)) {
+    if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeTwoCodePoint)) {
       sizeTwoCodePoint
     } else {
       let lengthThreeList = List.firstN<Byte>(bytes, Natural."3")
       let sizeThreeCodePoint = Utf8.CodePointBytes(lengthThreeList)
-      if (Try.isSuccess<Utf8.CodePointBytes>(sizeThreeCodePoint)) {
+      if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeThreeCodePoint)) {
         sizeThreeCodePoint
       } else {
         let lengthFourList = List.firstN<Byte>(bytes, Natural."4")
@@ -50,7 +50,7 @@ function Utf8.getStartingCodePointBytes(bytes: List<Byte>): Try<Utf8.CodePointBy
 
 function Utf8.isValidOneByteCodePoint(bytes: List<Byte>): Boolean {
   if (Natural.equals(List.size<Byte>(bytes), Natural."1")) {
-    let byte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
     let byteBits = Byte.toBits(byte)
     Bit.equals(Bit."0", ByteBits.get(byteBits, Byte.BitPosition."0"))
   } else {
@@ -60,8 +60,8 @@ function Utf8.isValidOneByteCodePoint(bytes: List<Byte>): Boolean {
 
 function Utf8.isValidTwoByteCodePoint(bytes: List<Byte>): Boolean {
   if (Natural.equals(List.size<Byte>(bytes), Natural."2")) {
-    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byte1 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
     let byteBits1 = Byte.toBits(byte1)
     let byteBits2 = Byte.toBits(byte2)
     Boolean.all([
@@ -78,9 +78,9 @@ function Utf8.isValidTwoByteCodePoint(bytes: List<Byte>): Boolean {
 
 function Utf8.isValidThreeByteCodePoint(bytes: List<Byte>): Boolean {
   if (Natural.equals(List.size<Byte>(bytes), Natural."3")) {
-    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
-    let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+    let byte1 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byte3 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
     let byteBits1 = Byte.toBits(byte1)
     let byteBits2 = Byte.toBits(byte2)
     let byteBits3 = Byte.toBits(byte3)
@@ -101,10 +101,10 @@ function Utf8.isValidThreeByteCodePoint(bytes: List<Byte>): Boolean {
 
 function Utf8.isValidFourByteCodePoint(bytes: List<Byte>): Boolean {
   if (Natural.equals(List.size<Byte>(bytes), Natural."4")) {
-    let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-    let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
-    let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
-    let byte4 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
+    let byte1 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    let byte2 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+    let byte3 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+    let byte4 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
     let byteBits1 = Byte.toBits(byte1)
     let byteBits2 = Byte.toBits(byte2)
     let byteBits3 = Byte.toBits(byte3)
@@ -127,35 +127,35 @@ function Utf8.isValidFourByteCodePoint(bytes: List<Byte>): Boolean {
   }
 }
 
-function getByteCountGivenInitialByte(initialByte: Byte): Try<Utf8.CodePointByteCount> {
+function getByteCountGivenInitialByte(initialByte: Byte): Maybe<Utf8.CodePointByteCount> {
   let bits = Byte.toBits(initialByte)
   if (Bit.equals(Bit."0", ByteBits.get(bits, Byte.BitPosition."0"))) {
-    Try.success<Utf8.CodePointByteCount>(Utf8.CodePointByteCount."1")
+    Maybe.success<Utf8.CodePointByteCount>(Utf8.CodePointByteCount."1")
   } else {
-    Try.failure<Utf8.CodePointByteCount>()
+    Maybe.failure<Utf8.CodePointByteCount>()
   }
 }
 
 function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): Unicode.CodePoint {
   let bytes = codePointBytes->bytes
   let length = List.size<Byte>(bytes)
-  let byte1 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
-  Try.assume<Unicode.CodePoint>(
+  let byte1 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+  Maybe.assume<Unicode.CodePoint>(
     if (Natural.equals(length, Natural."1")) {
       Unicode.CodePoint(byte1->natural)
     } else {
-      let byte2 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
-      let byteTwoContents = Try.assume<Natural>(Natural(Natural.minus(byte2->natural, Natural."128")))
+      let byte2 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."1"))
+      let byteTwoContents = Maybe.assume<Natural>(Natural(Natural.minus(byte2->natural, Natural."128")))
       if (Natural.equals(length, Natural."2")) {
-        let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."192")))
+        let byteOneContents = Maybe.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."192")))
         let byteOneContribution = Natural.times(byteOneContents, Natural."64")
         let byteTwoContribution = byteTwoContents
         Unicode.CodePoint(Natural.plus(byteOneContribution, byteTwoContribution))
       } else {
-        let byte3 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
-        let byteThreeContents = Try.assume<Natural>(Natural(Natural.minus(byte3->natural, Natural."128")))
+        let byte3 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."2"))
+        let byteThreeContents = Maybe.assume<Natural>(Natural(Natural.minus(byte3->natural, Natural."128")))
         if (Natural.equals(length, Natural."3")) {
-          let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."224")))
+          let byteOneContents = Maybe.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."224")))
           let byteOneContribution = Natural.times(byteOneContents, Natural."4096")
           let byteTwoContribution = Natural.times(byteTwoContents, Natural."64")
           let byteThreeContribution = byteThreeContents
@@ -163,10 +163,10 @@ function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): Unicode.CodePoint
           Unicode.CodePoint(numericValue)
         } else {
           // Length is 4
-          let byte4 = Try.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
-          let byteFourContents = Try.assume<Natural>(Natural(Natural.minus(byte4->natural, Natural."128")))
+          let byte4 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."3"))
+          let byteFourContents = Maybe.assume<Natural>(Natural(Natural.minus(byte4->natural, Natural."128")))
 
-          let byteOneContents = Try.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."240")))
+          let byteOneContents = Maybe.assume<Natural>(Natural(Natural.minus(byte1->natural, Natural."240")))
           let byteOneContribution = Natural.times(byteOneContents, Natural."262144")
           let byteTwoContribution = Natural.times(byteTwoContents, Natural."4096")
           let byteThreeContribution = Natural.times(byteThreeContents, Natural."64")
@@ -188,28 +188,28 @@ function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): Unicode.CodePoint
  */
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
 @Export
-function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
+function Utf8.decodeStrict1(bytes: List<Byte>): Maybe<Unicode.String> {
   if (Natural.equals(List.size<Byte>(bytes), Natural."0")) {
-    Try.success<Unicode.String>(Unicode.String."")
+    Maybe.success<Unicode.String>(Unicode.String."")
   } else {
     let firstCharMaybe = Utf8.getStartingCodePointBytes(bytes)
-    Try.flatMap<Utf8.CodePointBytes, Unicode.String>(firstCharMaybe, function (firstChar: Utf8.CodePointBytes): Try<Unicode.String> {
+    Maybe.flatMap<Utf8.CodePointBytes, Unicode.String>(firstCharMaybe, function (firstChar: Utf8.CodePointBytes): Maybe<Unicode.String> {
       let unicodeValue = getUnicodeValue(firstChar)
       let numBytesUsed = List.size<Byte>(firstChar->bytes)
       let remainingBytes = List.drop<Byte>(bytes, numBytesUsed)
-      Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes), function (remainingString: Unicode.String): Unicode.String {
+      Maybe.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes), function (remainingString: Unicode.String): Unicode.String {
         Unicode.String.appendFront(remainingString, unicodeValue)
       })
     })
 
     // TODO: Convert to the newer bytes-to-bits approach
-    // let firstByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
+    // let firstByte = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
     // let firstByteBits = Byte.toBits(firstByte)
     // let 128bit = Byte.BitPosition."7"
     // if (Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."0"))) {
-    //   let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
+    //   let firstChar = Maybe.assume<Unicode.CodePoint>(Unicode.CodePoint(firstByte->natural))
     //   let remainingBytes = List.drop<Byte>(bytes, Natural."1")
-    //   Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+    //   Maybe.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
     //     function(remainingString: Unicode.String): Unicode.String {
     //       let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
     //       Unicode.String(allChars)
@@ -223,16 +223,16 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
     //     Bit.equals(Bit."0", ByteBits.get(firstByteBits, Byte.BitPosition."2")),
     //   )) {
     //     // TODO: Check that we are not the last byte, and that the second byte begins with bits "10"
-    //     let secondByte = Try.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
+    //     let secondByte = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."1")) // TODO: Fix assumption
     //     let secondByteBits = Byte.toBits(secondByte)
     //     let fullBits = BitsBigEndian(List.concatenate<Bit>(
     //       List.lastN<Bit>(firstByteBits->bitsBigEndian->bits, Natural."5"),
     //       List.lastN<Bit>(secondByteBits->bitsBigEndian->bits, Natural."6")
     //     ))
     //     let codePointValue = Natural.fromBits(fullBits)
-    //     let firstChar = Try.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
+    //     let firstChar = Maybe.assume<Unicode.CodePoint>(Unicode.CodePoint(codePointValue))
     //     let remainingBytes = List.drop<Byte>(bytes, Natural."2")
-    //     Try.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
+    //     Maybe.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes),
     //       function(remainingString: Unicode.String): Unicode.String {
     //         let allChars = List.appendFront<Unicode.CodePoint>(firstChar, remainingString->codePoints)
     //         Unicode.String(allChars)
@@ -240,7 +240,7 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Try<Unicode.String> {
     //     )
     //   } else {
     //     // TODO: Implement
-    //     Try.failure<Unicode.String>()
+    //     Maybe.failure<Unicode.String>()
     //   }
     // }
   }
