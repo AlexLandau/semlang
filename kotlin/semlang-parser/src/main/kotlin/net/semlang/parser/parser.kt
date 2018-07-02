@@ -170,7 +170,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             listOf()
         }
 
-        val members: List<UnvalidatedMember> = parseMembers(ctx.struct_members())
+        val members: List<UnvalidatedMember> = parseMembers(ctx.members())
         val requires: Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             scopeBlock(externalVarIds, parseBlock(it))
@@ -363,14 +363,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         throw IllegalArgumentException("Couldn't parse type class: ${type_class}")
     }
 
-    private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<UnvalidatedMember> {
+    private fun parseMembers(members: Sem1Parser.MembersContext): List<UnvalidatedMember> {
         return parseLinkedList(members,
-                Sem1Parser.Struct_membersContext::struct_member,
-                Sem1Parser.Struct_membersContext::struct_members,
+                Sem1Parser.MembersContext::member,
+                Sem1Parser.MembersContext::members,
                 this::parseMember)
     }
 
-    private fun parseMember(member: Sem1Parser.Struct_memberContext): UnvalidatedMember {
+    private fun parseMember(member: Sem1Parser.MemberContext): UnvalidatedMember {
         val name = member.ID().text
         val type = parseType(member.type())
         return UnvalidatedMember(name, type)

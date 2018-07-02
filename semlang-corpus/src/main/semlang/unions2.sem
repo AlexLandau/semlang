@@ -1,0 +1,32 @@
+// Union with a type parameter
+union MyMaybe<T> {
+  Here: T
+  Gone
+}
+
+@Test([], "success(6)")
+function testMyMaybe(): Maybe<Integer> {
+  let intMaybe0: MyMaybe<Integer> = MyMaybe.Gone<Integer>()
+  let intMaybe1: MyMaybe<Integer> = MyMaybe.Here<Integer>(Integer."6")
+  let intMaybe2 = MyMaybe.Gone<Integer>()
+  let intMaybes = [intMaybe0, intMaybe1, intMaybe2]<MyMaybe<Integer>>
+  MyMaybe.firstHere<Integer>(intMaybes)
+}
+
+function MyMaybe.firstHere<T>(maybes: List<MyMaybe<T>>): Maybe<T> {
+  let firstElement = List.get<T>(maybes, Natural."0")
+  Maybe.map<T, T>(firstElement,
+    function (myMaybe: MyMaybe<T>): Maybe<T> {
+      MyMaybe.when<T, Maybe<T>>(myMaybe,
+        //Here
+        function (it: T): Maybe<T> { Maybe.success<T>(it) },
+        //Gone
+        function(): Maybe<T> {
+          let rest = List.subList<MyMaybe<T>>(maybes, Natural."1", List.size<MyMaybe<T>>(maybes))
+          MyMaybe.firstHere<T>(rest)
+        }
+      )
+    }
+  )
+}
+
