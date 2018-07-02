@@ -553,6 +553,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             FunctionLikeType.OPAQUE_TYPE -> {
                 error("$resolved should be a function, not an opaque type")
             }
+            FunctionLikeType.UNION_TYPE -> TODO()
+            FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
+            FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
         }
 
         // TODO: More compact references when not binding arguments
@@ -1283,6 +1286,9 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
                 FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
                 FunctionLikeType.OPAQUE_TYPE -> false
+                FunctionLikeType.UNION_TYPE -> TODO()
+                FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
+                FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
             }
         }
     }

@@ -679,6 +679,8 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
     }
 }
 data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
+    val resolvedRef = ResolvedEntityRef(moduleId, id)
+    val whenId = EntityId(id.namespacedName + "when")
     private val optionIndexLookup: Map<EntityId, Int> = {
         val map = HashMap<EntityId, Int>()
         options.forEachIndexed { index, option ->
@@ -690,6 +692,7 @@ data class Union(override val id: EntityId, val moduleId: ModuleId, val typePara
     fun getOptionIndexById(functionId: EntityId): Int? {
         return optionIndexLookup[functionId]
     }
+
 }
 data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
 data class Option(val name: String, val type: Type?)
