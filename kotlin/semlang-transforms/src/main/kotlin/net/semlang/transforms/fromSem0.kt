@@ -16,7 +16,8 @@ private class Sem0To1Converter(val input: S0Context) {
     fun apply(): RawContext {
         val functions = input.functions.map(this::apply)
         val structs = input.structs.map(this::apply)
-        return RawContext(functions, structs, listOf())
+        val unions = input.unions.map(this::apply)
+        return RawContext(functions, structs, listOf(), unions)
     }
 
     private fun apply(function: S0Function): Function {
@@ -56,6 +57,21 @@ private class Sem0To1Converter(val input: S0Context) {
     private fun apply(member: S0Member): UnvalidatedMember {
         val type = apply(member.type)
         return UnvalidatedMember(member.name, type)
+    }
+
+    private fun apply(union: S0Union): UnvalidatedUnion {
+        val id = convertId(union.id)
+        val typeParameters = union.typeParameters.map(this::apply)
+        val options = union.options.map(this::apply)
+        val annotations = union.annotations.map(this::apply)
+
+        return UnvalidatedUnion(id, typeParameters, options, annotations)
+    }
+
+    private fun apply(option: S0Option): UnvalidatedOption {
+        val name = option.name
+        val type = option.type?.let { apply(it) }
+        return UnvalidatedOption(name, type)
     }
 
     private fun apply(annotation: S0Annotation): Annotation {

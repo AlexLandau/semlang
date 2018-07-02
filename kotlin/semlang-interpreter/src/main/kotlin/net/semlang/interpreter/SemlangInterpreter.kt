@@ -110,10 +110,16 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     error("Tried to use a union type as a function: $entityResolution")
                 }
                 FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> {
-                    TODO()
+                    val unionId = EntityId(entityResolution.entityRef.id.namespacedName.dropLast(1))
+                    val unionRef = entityResolution.entityRef.copy(id = unionId)
+                    val union = referringModule.getInternalUnion(unionRef)
+                    return evaluateUnionOptionConstructor(union.union, entityResolution.entityRef.id, arguments, union.module)
                 }
                 FunctionLikeType.UNION_WHEN_FUNCTION -> {
-                    TODO()
+                    val unionId = EntityId(entityResolution.entityRef.id.namespacedName.dropLast(1))
+                    val unionRef = entityResolution.entityRef.copy(id = unionId)
+                    val union = referringModule.getInternalUnion(unionRef)
+                    return evaluateWhenFunction(union.union, arguments)
                 }
                 FunctionLikeType.OPAQUE_TYPE -> {
                     error("Tried to use an opaque type as a function: $entityResolution")
@@ -298,6 +304,34 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
     private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
         val bindings = arguments.map { it as? SemObject.FunctionBinding ?: error("Every argument to an interface constructor must be a function binding") }
         return SemObject.Instance(interfaceDef, bindings)
+    }
+
+    private fun evaluateUnionOptionConstructor(union: Union, functionId: EntityId, arguments: List<SemObject>, module: ValidatedModule?): SemObject {
+        val optionIndex = union.getOptionIndexById(functionId) ?: error("Bad combination of union ${union.id} and functionId ${functionId}")
+        val option = union.options[optionIndex]
+        if (option.type == null) {
+            if (arguments.isNotEmpty()) {
+                error("Expected no arguments for a union option with no type")
+            }
+        } else {
+            if (arguments.size != 1) {
+                error("Expected one argument for a typed union option")
+            }
+        }
+        val objectMaybe = if (arguments.isEmpty()) null else arguments[0]
+        return SemObject.Union(union, optionIndex, objectMaybe)
+    }
+
+    private fun evaluateWhenFunction(union: Union, arguments: List<SemObject>): SemObject {
+        val unionObject = arguments[0] as? SemObject.Union ?: error("Wrong type in first argument of a union's when-function")
+        val index = unionObject.optionIndex
+        val appropriateFunctionBinding = arguments[index + 1] as? SemObject.FunctionBinding ?: error("Wrong type in function argument of a union's when-function")
+        val bindingArgs = if (unionObject.contents == null) {
+            listOf()
+        } else {
+            listOf(unionObject.contents)
+        }
+        return this.interpretBinding(appropriateFunctionBinding, bindingArgs)
     }
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {

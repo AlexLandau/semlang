@@ -21,7 +21,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
     fun convert(): RawContext {
         generateReplacementEntities()
 
-        return RawContext(getFunctions(), getStructs(), listOf())
+        return RawContext(getFunctions(), getStructs(), listOf(), context.unions)
     }
 
     private fun getStructs(): List<UnvalidatedStruct> {
