@@ -323,6 +323,18 @@ function dataEquals(left: SemObject, right: SemObject): boolean {
         if (right.type !== "Maybe.Success" && right.type !== "Maybe.Failure") throw new Error();
         return (left.type === "Maybe.Failure" && right.type === "Maybe.Failure") ||
                (left.type === "Maybe.Success" && right.type === "Maybe.Success" && dataEquals(left.value, right.value));
+    } else if (left.type === "union") {
+        if (right.type !== "union") throw new Error();
+        if (left.optionIndex !== right.optionIndex) {
+            return false;
+        }
+        if (left.object === undefined) {
+            return right.object === undefined;
+        }
+        if (right.object === undefined) {
+            return false;
+        }
+        return dataEquals(left.object, right.object);
     } else if (isFunctionBinding(left)) {
         throw new Error();
     } else if (left.type === "instance") {

@@ -6,6 +6,7 @@ export interface Context {
     functions: Function[];
     structs: Struct[];
     interfaces: Interface[];
+    unions: Union[];
 }
 
 // TODO: Support upstream modules
@@ -14,6 +15,9 @@ export interface Module {
     structs: { [id: string]: Struct }
     interfaces: { [id: string]: Interface }
     interfacesByAdapterId: { [adapterId: string]: Interface }
+    unions: { [id: string]: Union }
+    unionsByWhenId: { [whenId: string]: Union }
+    unionsByOptionId: { [optionId: string]: [Union, number] }
 }
 
 export interface Function {
@@ -56,6 +60,18 @@ export interface Method {
     typeParameters?: string[];
     arguments: Argument[];
     returnType: Type;
+}
+
+export interface Union {
+    id: string;
+    annotations?: Annotation[];
+    typeParameters?: string[];
+    options: Option[];
+}
+
+export interface Option {
+    name: string;
+    type?: Type;
 }
 
 export type Block = BlockElement[];
