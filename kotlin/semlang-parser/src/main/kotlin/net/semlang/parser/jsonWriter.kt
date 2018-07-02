@@ -39,6 +39,7 @@ fun toJson(module: ValidatedModule): JsonNode {
     addArray(node, "functions", module.ownFunctions.values, ::addFunction)
     addArray(node, "structs", module.ownStructs.values, ::addStruct)
     addArray(node, "interfaces", module.ownInterfaces.values, ::addInterface)
+    addArray(node, "unions", module.ownUnions.values, ::addUnion)
     return node
 }
 
@@ -332,6 +333,47 @@ private fun parseArguments(node: JsonNode): List<UnvalidatedArgument> {
     return node.map { argumentNode -> parseArgument(argumentNode) }
 }
 
+private fun addUnion(node: ObjectNode, union: Union) {
+    node.put("id", union.id.toString())
+    if (union.annotations.isNotEmpty()) {
+        addArray(node, "annotations", union.annotations, ::addAnnotation)
+    }
+    if (union.typeParameters.isNotEmpty()) {
+        addTypeParameters(node.putArray("typeParameters"), union.typeParameters)
+    }
+    addArray(node, "options", union.options, ::addOption)
+}
+
+private fun parseUnion(node: JsonNode): UnvalidatedUnion {
+    if (!node.isObject()) error("Expected a union to be an object")
+
+    val id = parseEntityId(node["id"] ?: error("Unions must have an 'id' field"))
+    val typeParameters = parseTypeParameters(node["typeParameters"])
+    val options = parseOptions(node["options"] ?: error("Unions must have an 'options' array"))
+    val annotations = parseAnnotations(node["annotations"])
+
+    return UnvalidatedUnion(id, typeParameters, options, annotations)
+}
+
+private fun parseOptions(node: JsonNode): List<UnvalidatedOption> {
+    if (!node.isArray()) error("Options should be in an array")
+    return node.map { optionNode -> parseOption(optionNode) }
+}
+
+private fun addOption(node: ObjectNode, option: Option) {
+    node.put("name", option.name)
+    val type = option.type
+    if (type != null) {
+        node.set("type", toTypeNode(type))
+    }
+}
+
+private fun parseOption(node: JsonNode): UnvalidatedOption {
+    val name = node["name"]?.textValue() ?: error("Options must have a 'name' field")
+    val type = node["type"]?.let { parseType(it) }
+    return UnvalidatedOption(name, type)
+}
+
 private fun addFunction(node: ObjectNode, function: ValidatedFunction) {
     node.put("id", function.id.toString())
     if (function.annotations.isNotEmpty()) {
@@ -617,8 +659,9 @@ fun fromJson(node: JsonNode): RawContext {
     val functions = parseFunctions(node.get("functions"))
     val structs = parseStructs(node.get("structs"))
     val interfaces = parseInterfaces(node.get("interfaces"))
+    val unions = parseUnions(node.get("unions"))
 
-    return RawContext(functions, structs, interfaces)
+    return RawContext(functions, structs, interfaces, unions)
 }
 
 private fun parseFunctions(node: JsonNode): List<Function> {
@@ -634,4 +677,9 @@ private fun parseStructs(node: JsonNode): List<UnvalidatedStruct> {
 private fun parseInterfaces(node: JsonNode): List<UnvalidatedInterface> {
     if (!node.isArray()) error("Expected interfaces to be in an array")
     return node.map { interfaceNode -> parseInterface(interfaceNode) }
+}
+
+private fun parseUnions(node: JsonNode): List<UnvalidatedUnion> {
+    if (!node.isArray()) error("Expected unions to be in an array")
+    return node.map { unionNode -> parseUnion(unionNode) }
 }

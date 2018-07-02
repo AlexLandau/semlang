@@ -39,13 +39,14 @@ data class ModuleRef(val group: String?, val module: String, val version: String
     }
 }
 
-data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<UnvalidatedInterface>)
+data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<UnvalidatedInterface>, val unions: List<UnvalidatedUnion>)
 
 // Note: Absence of a module indicates a native function, struct, or interface.
 data class FunctionWithModule(val function: ValidatedFunction, val module: ValidatedModule)
 data class FunctionSignatureWithModule(val function: TypeSignature, val module: ValidatedModule?)
 data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
 data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
+data class UnionWithModule(val union: Union, val module: ValidatedModule?)
 
 class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResolution>>) {
     companion object {
@@ -54,6 +55,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                    ownFunctions: Collection<EntityId>,
                    ownStructs: Map<EntityId, Boolean>,
                    ownInterfaces: Collection<EntityId>,
+                   ownUnions: Collection<EntityId>,
                    upstreamModules: Collection<ValidatedModule>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
@@ -75,24 +77,32 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
                 add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
+            getNativeUnions().keys.forEach { id ->
+                // TODO: Figure out what to add here
+//                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
+            }
             getNativeOpaqueTypes().keys.forEach { id ->
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE, true)
             }
 
-            ownFunctions.forEach { id ->
+            for (id in ownFunctions) {
                 add(id, ownModuleId, FunctionLikeType.FUNCTION, false)
             }
 
-            ownStructs.forEach { id, isThreaded ->
+            for ((id, isThreaded) in ownStructs) {
                 add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, isThreaded)
             }
 
-            ownInterfaces.forEach { id ->
+            for (id in ownInterfaces) {
                 add(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
                 add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
 
-            upstreamModules.forEach { module ->
+            for (id in ownUnions) {
+                // TODO: ...
+            }
+
+            for (module in upstreamModules) {
                 module.getAllExportedFunctions().keys.forEach { id ->
                     add(id, module.id, FunctionLikeType.FUNCTION, false)
                 }
@@ -102,6 +112,9 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 module.getAllExportedInterfaces().keys.forEach { id ->
                     add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
                     add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
+                }
+                module.getAllExportedUnions().keys.forEach { id ->
+                    // TODO: ...
                 }
             }
             return EntityResolver(idResolutions)
@@ -149,6 +162,8 @@ class ValidatedModule private constructor(val id: ModuleId,
                                           val exportedStructs: Set<EntityId>,
                                           val ownInterfaces: Map<EntityId, Interface>,
                                           val exportedInterfaces: Set<EntityId>,
+                                          val ownUnions: Map<EntityId, Union>,
+                                          val exportedUnions: Set<EntityId>,
                                           val upstreamModules: Map<ModuleId, ValidatedModule>) {
     init {
         if (isNativeModule(id)) {
@@ -160,7 +175,7 @@ class ValidatedModule private constructor(val id: ModuleId,
             }
         }
     }
-    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, upstreamModules.values)
+    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, ownUnions.keys, upstreamModules.values)
 
     companion object {
         fun create(id: ModuleId,
@@ -168,16 +183,19 @@ class ValidatedModule private constructor(val id: ModuleId,
                    ownFunctions: Map<EntityId, ValidatedFunction>,
                    ownStructs: Map<EntityId, Struct>,
                    ownInterfaces: Map<EntityId, Interface>,
+                   ownUnions: Map<EntityId, Union>,
                    upstreamModules: Collection<ValidatedModule>): ValidatedModule {
             val exportedFunctions = findExported(ownFunctions.values)
             val exportedStructs = findExported(ownStructs.values)
             val exportedInterfaces = findExported(ownInterfaces.values)
+            val exportedUnions = findExported(ownUnions.values)
 
             // TODO: We'll also need some notion of re-exporting imported things...
             return ValidatedModule(id, nativeModuleVersion,
                     ownFunctions, exportedFunctions,
                     ownStructs, exportedStructs,
                     ownInterfaces, exportedInterfaces,
+                    ownUnions, exportedUnions,
                     upstreamModules.associateBy(ValidatedModule::id))
         }
 
@@ -266,6 +284,27 @@ class ValidatedModule private constructor(val id: ModuleId,
         return null
     }
 
+    fun getInternalUnion(entityRef: ResolvedEntityRef): UnionWithModule {
+        val moduleId = entityRef.module
+        if (moduleId == this.id) {
+            return UnionWithModule(ownUnions[entityRef.id] ?: error("Expected ${entityRef.id} to be a union, but it's not"), this)
+        }
+        if (isNativeModule(moduleId)) {
+            return UnionWithModule(getNativeUnions()[entityRef.id] ?: error("Resolution error"), null)
+        }
+        val module = upstreamModules[moduleId] ?: error("Error in resolving")
+        return module.getExportedUnion(entityRef.id) ?: error("Error in resolving")
+    }
+
+    fun getExportedUnion(id: EntityId): UnionWithModule? {
+        // TODO: This logic will have to change when we allow re-exporting.
+        // (Currently, we can just assume that anything exported is in our own module.)
+        if (exportedUnions.contains(id)) {
+            return getInternalUnion(ResolvedEntityRef(this.id, id))
+        }
+        return null
+    }
+
     fun getAllInternalInterfaces(): Map<EntityId, Interface> {
         // TODO: Consider caching this
         val allInterfaces = HashMap<EntityId, Interface>()
@@ -316,6 +355,10 @@ class ValidatedModule private constructor(val id: ModuleId,
         return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
     }
 
+    fun getAllExportedUnions(): Map<EntityId, Union> {
+        return exportedUnions.associate { id -> id to getExportedUnion(id)!!.union }
+    }
+
     private fun toFunctionSignatures(functions: Map<EntityId, ValidatedFunction>,
                                      structs: Map<EntityId, Struct>,
                                      interfaces: Map<EntityId, Interface>): Map<EntityId, TypeSignature> {
@@ -333,6 +376,8 @@ class ValidatedModule private constructor(val id: ModuleId,
             allSignatures.put(interfac.id, interfac.getInstanceConstructorSignature())
             allSignatures.put(interfac.adapterId, interfac.getAdapterFunctionSignature())
         }
+
+        // TODO: Add implicit function signatures from union types (constructors, when functions, maybe/if functions)
 
         return allSignatures
     }
@@ -360,6 +405,7 @@ enum class FunctionLikeType {
     STRUCT_CONSTRUCTOR,
     INSTANCE_CONSTRUCTOR,
     ADAPTER_CONSTRUCTOR,
+    // TODO: Add union-related types to this
     OPAQUE_TYPE
 }
 

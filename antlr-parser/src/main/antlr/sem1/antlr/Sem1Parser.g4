@@ -85,7 +85,7 @@ method : ID LPAREN function_arguments RPAREN COLON type
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 disjuncts: | disjunct disjuncts ;
-disjunct: ID COLON type_ref | ID ;
+disjunct: ID COLON type | ID ;
 
 annotations : | annotation annotations ;
 annotation : annotation_name

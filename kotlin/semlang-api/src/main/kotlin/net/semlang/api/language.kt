@@ -77,7 +77,7 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
     }
 }
 
-sealed class UnvalidatedType() {
+sealed class UnvalidatedType {
     abstract val location: Location?
     abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
     abstract protected fun getTypeString(): String
@@ -640,6 +640,13 @@ data class UnvalidatedMethod(val name: String, val typeParameters: List<TypePara
 data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
+
+data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>): TopLevelEntity {
+}
+data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
+}
+data class UnvalidatedOption(val name: String, val type: UnvalidatedType?)
+data class Option(val name: String, val type: Type?)
 
 private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParameter>): String {
     val typeParameterNames = explicitTypeParameters.map(TypeParameter::name)
