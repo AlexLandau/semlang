@@ -24,7 +24,7 @@ function testUnionDataEquals(index1: Natural, index2: Natural): Boolean {
     MyUnion.ThingTwo(),
     MyUnion.ThingTwo(),
   ]<MyUnion>
-  let item1 = Try.assume<MyUnion>(List.get<MyUnion>(theValues, index1))
-  let item2 = Try.assume<MyUnion>(List.get<MyUnion>(theValues, index2))
+  let item1 = Maybe.assume<MyUnion>(List.get<MyUnion>(theValues, index1))
+  let item2 = Maybe.assume<MyUnion>(List.get<MyUnion>(theValues, index2))
   Data.equals<MyUnion>(item1, item2)
 }

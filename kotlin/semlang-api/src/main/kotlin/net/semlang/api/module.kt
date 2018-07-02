@@ -55,7 +55,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                    ownFunctions: Collection<EntityId>,
                    ownStructs: Map<EntityId, Boolean>,
                    ownInterfaces: Collection<EntityId>,
-                   ownUnions: Collection<EntityId>,
+                   ownUnions: Map<EntityId, Set<String>>,
                    upstreamModules: Collection<ValidatedModule>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
@@ -77,9 +77,15 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
                 add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
-            getNativeUnions().keys.forEach { id ->
+            getNativeUnions().forEach { (id, nativeUnion) ->
                 // TODO: Figure out what to add here
-//                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
+                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_TYPE, false)
+                for (option in nativeUnion.options) {
+                    val optionConstructorId = EntityId(id.namespacedName + option.name)
+                    add(optionConstructorId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                }
+                val whenId = EntityId(id.namespacedName + "when")
+                add(whenId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_WHEN_FUNCTION, false)
             }
             getNativeOpaqueTypes().keys.forEach { id ->
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE, true)
@@ -98,8 +104,15 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
 
-            for (id in ownUnions) {
+            for ((id, optionNames) in ownUnions) {
                 // TODO: ...
+                add(id, ownModuleId, FunctionLikeType.UNION_TYPE, false)
+                for (optionName in optionNames) {
+                    val optionConstructorId = EntityId(id.namespacedName + optionName)
+                    add(optionConstructorId, ownModuleId, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                }
+                val whenId = EntityId(id.namespacedName + "when")
+                add(whenId, ownModuleId, FunctionLikeType.UNION_WHEN_FUNCTION, false)
             }
 
             for (module in upstreamModules) {
@@ -113,8 +126,15 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                     add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
                     add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
                 }
-                module.getAllExportedUnions().keys.forEach { id ->
+                module.getAllExportedUnions().forEach { id, union ->
                     // TODO: ...
+                    add(id, module.id, FunctionLikeType.UNION_TYPE, false)
+                    for (option in union.options) {
+                        val optionConstructorId = EntityId(id.namespacedName + option.name)
+                        add(optionConstructorId, module.id, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                    }
+                    val whenId = EntityId(id.namespacedName + "when")
+                    add(whenId, module.id, FunctionLikeType.UNION_WHEN_FUNCTION, false)
                 }
             }
             return EntityResolver(idResolutions)
@@ -175,7 +195,7 @@ class ValidatedModule private constructor(val id: ModuleId,
             }
         }
     }
-    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, ownUnions.keys, upstreamModules.values)
+    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, ownUnions.mapValues { it.value.options.map(Option::name).toSet() }, upstreamModules.values)
 
     companion object {
         fun create(id: ModuleId,
@@ -406,6 +426,9 @@ enum class FunctionLikeType {
     INSTANCE_CONSTRUCTOR,
     ADAPTER_CONSTRUCTOR,
     // TODO: Add union-related types to this
+    UNION_TYPE,
+    UNION_OPTION_CONSTRUCTOR,
+    UNION_WHEN_FUNCTION,
     OPAQUE_TYPE
 }
 

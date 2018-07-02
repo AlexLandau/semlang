@@ -1,6 +1,6 @@
 union Foobar {
   Foo: Integer
-  Bar: Unicode.String
+  Bar: Natural
   Baz
 }
 

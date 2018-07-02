@@ -14,15 +14,15 @@ function testMyMaybe(): Maybe<Integer> {
 }
 
 function MyMaybe.firstHere<T>(maybes: List<MyMaybe<T>>): Maybe<T> {
-  let firstElement = List.get<T>(maybes, Natural."0")
-  Maybe.map<T, T>(firstElement,
+  let firstElement = List.get<MyMaybe<T>>(maybes, Natural."0")
+  Maybe.flatMap<MyMaybe<T>, T>(firstElement,
     function (myMaybe: MyMaybe<T>): Maybe<T> {
       MyMaybe.when<T, Maybe<T>>(myMaybe,
         //Here
         function (it: T): Maybe<T> { Maybe.success<T>(it) },
         //Gone
         function(): Maybe<T> {
-          let rest = List.subList<MyMaybe<T>>(maybes, Natural."1", List.size<MyMaybe<T>>(maybes))
+          let rest = Maybe.assume<List<MyMaybe<T>>>(List.subList<MyMaybe<T>>(maybes, Natural."1", List.size<MyMaybe<T>>(maybes)))
           MyMaybe.firstHere<T>(rest)
         }
       )

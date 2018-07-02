@@ -641,11 +641,46 @@ data class Method(val name: String, val typeParameters: List<TypeParameter>, val
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
 
-data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>): TopLevelEntity {
+data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
+    fun getType(): UnvalidatedType {
+        val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
+        return UnvalidatedType.NamedType(id.asRef(), false, functionParameters)
+    }
+    fun getConstructorSignature(option: UnvalidatedOption): UnvalidatedTypeSignature {
+        if (!options.contains(option)) {
+            error("Invalid option $option")
+        }
+        val optionId = EntityId(id.namespacedName + option.name)
+        val argumentTypes = if (option.type == null) {
+            listOf()
+        } else {
+            listOf(option.type)
+        }
+        return UnvalidatedTypeSignature(optionId, argumentTypes, getType(), typeParameters)
+    }
+
+    fun getWhenSignature(): UnvalidatedTypeSignature {
+        val whenId = EntityId(id.namespacedName + "when")
+        val outputParameterName = getUnusedTypeParameterName(typeParameters)
+        val outputParameterType = UnvalidatedType.NamedType(EntityId.of(outputParameterName).asRef(), false)
+        val outputTypeParameter = TypeParameter(outputParameterName, null)
+        val whenTypeParameters = typeParameters + outputTypeParameter
+
+        val argumentTypes = listOf(getType()) + options.map { option ->
+            val optionArgTypes = if (option.type == null) {
+                listOf()
+            } else {
+                listOf(option.type)
+            }
+            UnvalidatedType.FunctionType(optionArgTypes, outputParameterType)
+        }
+
+        return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
+    }
 }
 data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
 }
-data class UnvalidatedOption(val name: String, val type: UnvalidatedType?)
+data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
 data class Option(val name: String, val type: Type?)
 
 private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParameter>): String {

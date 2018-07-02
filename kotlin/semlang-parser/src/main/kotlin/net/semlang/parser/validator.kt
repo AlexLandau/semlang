@@ -114,9 +114,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val ownFunctions = validateFunctions(context.functions, typeInfo)
         val ownStructs = validateStructs(context.structs, typeInfo)
         val ownInterfaces = validateInterfaces(context.interfaces, typeInfo)
+        val ownUnions = validateUnions(context.unions, typeInfo)
 
         if (errors.isEmpty()) {
-            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, upstreamModules)
+            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, ownUnions, upstreamModules)
             return ValidationResult.Success(createdModule, warnings)
         } else {
             return ValidationResult.Failure(errors, warnings)
@@ -138,6 +139,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 context.functions.map(Function::id),
                 context.structs.associateBy { it.id }.mapValues { it.value.markedAsThreaded },
                 context.interfaces.map(UnvalidatedInterface::id),
+                context.unions.associateBy { it.id }.mapValues { it.value.options.map(UnvalidatedOption::name).toSet() },
                 upstreamModules)
 
         val localTypes = HashMap<EntityId, TypeInfo>()
@@ -152,6 +154,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { errors.add(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
+        // TODO: I think we could handle all this duplicate checking better with a ListMultimap-style approach
         for (struct in context.structs) {
             val id = struct.id
             seenTypeIds.add(id)
@@ -244,6 +247,60 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
             if (!duplicateLocalFunctionIds.contains(id)) {
                 localFunctions.put(id, FunctionInfo(function.getTypeSignature(), function.idLocation))
+            }
+        }
+
+        for (union in context.unions) {
+            val id = union.id
+            seenTypeIds.add(union.id)
+
+            var isDuplicate = false
+            if (duplicateLocalTypeIds.contains(id)) {
+                isDuplicate = true
+                addDuplicateIdError(id, union.idLocation)
+            } else if (localTypes.containsKey(id)) {
+                isDuplicate = true
+                addDuplicateIdError(id, union.idLocation)
+                duplicateLocalTypeIds.add(id)
+                addDuplicateIdError(id, localTypes[id]?.idLocation)
+                localTypes.remove(id)
+            }
+
+            for (option in union.options) {
+                val optionId = EntityId(union.id.namespacedName + option.name)
+                if (duplicateLocalFunctionIds.contains(optionId)) {
+                    isDuplicate = true
+                    addDuplicateIdError(optionId, union.idLocation)
+                } else if (localFunctions.containsKey(optionId)) {
+                    isDuplicate = true
+                    addDuplicateIdError(optionId, union.idLocation)
+                    duplicateLocalFunctionIds.add(optionId)
+                    addDuplicateIdError(optionId, localFunctions[optionId]?.idLocation)
+                    localFunctions.remove(optionId)
+                }
+            }
+
+            val whenId = EntityId(union.id.namespacedName + "when")
+            if (duplicateLocalFunctionIds.contains(whenId)) {
+                isDuplicate = true
+                addDuplicateIdError(whenId, union.idLocation)
+            } else if (localFunctions.containsKey(whenId)) {
+                isDuplicate = true
+                addDuplicateIdError(whenId, union.idLocation)
+                duplicateLocalFunctionIds.add(whenId)
+                addDuplicateIdError(whenId, localFunctions[whenId]?.idLocation)
+                localFunctions.remove(whenId)
+            }
+
+            if (!isDuplicate) {
+                localTypes.put(id, getTypeInfo(union))
+                for (option in union.options) {
+                    val optionId = EntityId(union.id.namespacedName + option.name)
+                    val signature = union.getConstructorSignature(option)
+                    localFunctions.put(optionId, FunctionInfo(signature, union.idLocation))
+                }
+                val signature = union.getWhenSignature()
+                localFunctions.put(whenId, FunctionInfo(signature, union.idLocation))
             }
         }
 
@@ -458,6 +515,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         abstract val idLocation: Location?
         data class Struct(val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val idLocation: Location?): TypeInfo()
         data class Interface(val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val idLocation: Location?): TypeInfo()
+        data class Union(val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val idLocation: Location?): TypeInfo()
     }
     private data class FunctionInfo(val signature: UnvalidatedTypeSignature, val idLocation: Location?)
 
@@ -473,6 +531,22 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
     private fun getTypeInfo(interfac: Interface, idLocation: Location?): TypeInfo.Interface {
         return TypeInfo.Interface(interfac.typeParameters, getMethodTypeMap(interfac.methods), idLocation)
+    }
+
+    private fun getTypeInfo(union: UnvalidatedUnion): TypeInfo.Union {
+        return TypeInfo.Union(union.typeParameters, getUnvalidatedUnionTypeMap(union.options), union.idLocation)
+    }
+
+    private fun getUnvalidatedUnionTypeMap(options: List<UnvalidatedOption>): Map<String, Optional<UnvalidatedType>> {
+        val typeMap = HashMap<String, Optional<UnvalidatedType>>()
+        for (option in options) {
+            if (typeMap.containsKey(option.name)) {
+                // TODO: Handle this...
+            } else {
+                typeMap.put(option.name, Optional.ofNullable(option.type))
+            }
+        }
+        return typeMap
     }
 
     private fun getUnvalidatedMemberTypeMap(members: List<UnvalidatedMember>): Map<String, UnvalidatedType> {
@@ -521,6 +595,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         return typeMap
     }
 
+    // TODO: Move this closer to the function that creates it...
     private inner class AllTypeInfo(val resolver: EntityResolver,
                                     val localTypes: Map<EntityId, TypeInfo>,
                                     val duplicateLocalTypeIds: Set<EntityId>,
@@ -577,6 +652,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                                 typeInfo.memberTypes.values.all { isDataType(it) }
                             }
                             is Validator.TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
+                            is Validator.TypeInfo.Union -> {
+                                // TODO: Need to handle recursive references here, too
+                                typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
+                            }
                         }
                     }
                 }
@@ -604,6 +683,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                                 typeInfo.memberTypes.values.all { isDataType(it) }
                             }
                             is Validator.TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
+                            is Validator.TypeInfo.Union -> {
+                                // TODO: Need to handle recursive references here, too
+                                typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
+                            }
                         }
                     }
                 }
@@ -862,6 +945,9 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 val type = parameterizeAndValidateType(methodType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
 
                 return TypedExpression.Follow(type, structureExpression, expression.name)
+            }
+            is Validator.TypeInfo.Union -> {
+                error("Currently we don't allow follows for unions")
             }
         }
     }
@@ -1191,6 +1277,39 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             Method(method.name, method.typeParameters, arguments, returnType)
         }
     }
+
+    private fun validateUnions(unions: List<UnvalidatedUnion>, typeInfo: AllTypeInfo): Map<EntityId, Union> {
+        val validatedUnions = HashMap<EntityId, Union>()
+        for (union in unions) {
+            val validatedUnion = validateUnion(union, typeInfo)
+            if (validatedUnion != null) {
+                validatedUnions.put(union.id, validatedUnion)
+            }
+        }
+        return validatedUnions
+    }
+
+    private fun validateUnion(union: UnvalidatedUnion, typeInfo: AllTypeInfo): Union? {
+        // TODO: Do some actual validation of unions
+        val options = validateOptions(union.options, typeInfo, union.typeParameters.associateBy(TypeParameter::name)) ?: return null
+        return Union(union.id, moduleId, union.typeParameters, options, union.annotations)
+    }
+
+    private fun validateOptions(options: List<UnvalidatedOption>, typeInfo: AllTypeInfo, unionTypeParameters: Map<String, TypeParameter>): List<Option>? {
+        // TODO: Do some actual validation of methods
+        return options.map { option ->
+            val unvalidatedType = option.type
+            val type = if (unvalidatedType == null) null else validateType(unvalidatedType, typeInfo, unionTypeParameters)
+            if (type != null && type.isThreaded()) {
+                error("Threaded types are currently not allowed in unions; this case needs to be considered further")
+            }
+            if (option.name == "when") {
+                errors.add(Issue("Union options cannot be named 'when'", option.idLocation, IssueLevel.ERROR))
+            }
+            Option(option.name, type)
+        }
+    }
+
 }
 
 private fun List<Argument>.asVariableTypesMap(): Map<String, Type> {

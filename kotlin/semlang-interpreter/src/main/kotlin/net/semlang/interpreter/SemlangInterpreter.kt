@@ -106,6 +106,15 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
                     return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
                 }
+                FunctionLikeType.UNION_TYPE -> {
+                    error("Tried to use a union type as a function: $entityResolution")
+                }
+                FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> {
+                    TODO()
+                }
+                FunctionLikeType.UNION_WHEN_FUNCTION -> {
+                    TODO()
+                }
                 FunctionLikeType.OPAQUE_TYPE -> {
                     error("Tried to use an opaque type as a function: $entityResolution")
                 }

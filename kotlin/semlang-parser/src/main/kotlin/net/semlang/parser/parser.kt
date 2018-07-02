@@ -211,7 +211,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val annotations = parseAnnotations(union.annotations())
 
-        return UnvalidatedUnion(id, typeParameters, options, annotations)
+        return UnvalidatedUnion(id, typeParameters, options, annotations, locationOf(union.entity_id()))
     }
 
 
@@ -691,7 +691,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val name = option.ID().text
         val type: UnvalidatedType? = option.type()?.let { parseType(it) }
 
-        return UnvalidatedOption(name, type)
+        return UnvalidatedOption(name, type, locationOf(option.ID().symbol))
     }
 }
 
