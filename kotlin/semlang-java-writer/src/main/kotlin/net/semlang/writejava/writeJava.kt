@@ -398,7 +398,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // TODO: Consider making this an abstract class instead so we can make the constructor private or something
         val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
 
-        builder.addTypeVariables(union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) })
+        val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
+        builder.addTypeVariables(typeVariables)
 
         // Make the constructor private
         val constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
@@ -413,8 +414,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
         // TODO: This is a little silly?
-        val whenTypeVariable = TypeVariableName.get("T")
-        val whenType = Type.ParameterType(TypeParameter("T", null))
+        val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
+        val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
+        val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
         whenBuilder.addTypeVariable(whenTypeVariable)
         whenBuilder.returns(whenTypeVariable)
         for (option in union.options) {
@@ -430,29 +432,54 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return builder
     }
 
-    private fun writeOptionClass(option: Option, className: ClassName, union: Union): TypeSpec {
-        val builder = TypeSpec.classBuilder(className.nestedClass(option.name))
+    private fun writeOptionClass(option: Option, unionClassName: ClassName, union: Union): TypeSpec {
+        val optionClassName = unionClassName.nestedClass(option.name)
+        val builder = TypeSpec.classBuilder(optionClassName)
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
 
         val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
         builder.addTypeVariables(typeVariables)
-        builder.superclass(className.parameterizedWith(typeVariables))
+        builder.superclass(unionClassName.parameterizedWith(typeVariables))
 
         if (option.type != null) {
-            builder.addField(getType(option.type!!, false), "data")
+            builder.addField(getType(option.type!!, false), "data", Modifier.PRIVATE, Modifier.FINAL)
 
             val constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
             constructorBuilder.addParameter(getType(option.type!!, false), "data")
             constructorBuilder.addStatement("this.data = data")
             builder.addMethod(constructorBuilder.build())
             // TODO: This will also require equals() and hashCode() implementations
+
+            val equalsBuilder = MethodSpec.methodBuilder("equals").addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override::class.java)
+                    .addParameter(Object::class.java, "other")
+                    .returns(TypeName.BOOLEAN)
+            val equalsCode = CodeBlock.builder()
+            equalsCode.beginControlFlow("if (!(other instanceof \$T))", optionClassName)
+                    .addStatement("return false")
+                    .endControlFlow()
+                    .addStatement("return data.equals(((\$T) other).data)", optionClassName)
+            equalsBuilder.addCode(equalsCode.build())
+            builder.addMethod(equalsBuilder.build())
+
+            val hashCodeBuilder = MethodSpec.methodBuilder("hashCode").addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override::class.java)
+                    .returns(TypeName.INT)
+                    .addStatement("return \$L + data.hashCode()", optionClassName.toString().hashCode())
+            builder.addMethod(hashCodeBuilder.build())
+        } else {
+            // Make it a singleton
+            val instanceBuilder = FieldSpec.builder(optionClassName, "INSTANCE", Modifier.PRIVATE, Modifier.STATIC)
+            instanceBuilder.initializer("new \$T()", optionClassName)
+            builder.addField(instanceBuilder.build())
         }
 
         val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
         // TODO: Pick something not already used as a type variable
-//        val whenTypeVariable = TypeVariableName.get("T")
-//        val whenType = Type.ParameterType(TypeParameter("T", null))
+        val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
+        val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
+        val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
         whenBuilder.addTypeVariable(whenTypeVariable)
         whenBuilder.returns(whenTypeVariable)
         for (curOption in union.options) {
@@ -482,6 +509,21 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return builder.build()
     }
 
+    private fun pickUnusedTypeVariable(typeVariables: List<TypeVariableName>): String {
+        val usedVariableNamesSet = typeVariables.map { it.name }.toSet()
+        if (!usedVariableNamesSet.contains("T")) {
+            return "T"
+        }
+        var index = 2
+        while (true) {
+            val candidate = "T$index"
+            if (!usedVariableNamesSet.contains(candidate)) {
+                return candidate
+            }
+            index++
+        }
+    }
+
     private fun writeOptionConstructorMethod(option: Option, className: ClassName, union: Union): MethodSpec {
         val builder = MethodSpec.methodBuilder("create" + option.name)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -499,8 +541,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (option.type != null) {
             builder.addStatement("return new \$T(data)", optionClassName)
         } else {
-            // TODO: Convert this to use a singleton
-            builder.addStatement("return new \$T()", optionClassName)
+            builder.addStatement("return \$T.INSTANCE", optionClassName)
         }
 
         return builder.build()
