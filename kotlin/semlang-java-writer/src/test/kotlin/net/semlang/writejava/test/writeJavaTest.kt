@@ -17,6 +17,7 @@ import net.semlang.writejava.writeJavaSourceIntoFolders
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.fail
+import org.junit.Assume
 import java.net.URLClassLoader
 import java.util.*
 import javax.tools.StandardLocation
@@ -36,6 +37,9 @@ class WriteJavaTest(private val file: File, private val libraries: List<Validate
 
     @Test
     fun testWritingJava() {
+        // TODO: This is temporary to shorten the debug cycle
+        Assume.assumeTrue(file.name.contains("unions"))
+
         val unlinkedModule = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         val linkedModule = if (libraries.isEmpty()) {
             unlinkedModule

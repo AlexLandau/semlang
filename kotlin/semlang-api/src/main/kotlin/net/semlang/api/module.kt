@@ -325,6 +325,22 @@ class ValidatedModule private constructor(val id: ModuleId,
         return null
     }
 
+    fun getAllInternalUnions(): Map<EntityId, Union> {
+        // TODO: Consider caching this
+        val allUnions = HashMap<EntityId, Union>()
+        allUnions.putAll(ownUnions)
+
+        for (module in upstreamModules.values) {
+            // TODO: Do we need to filter out conflicts? Pretty sure we do
+            allUnions.putAll(module.getAllExportedUnions())
+        }
+        return allUnions
+    }
+
+    fun getAllExportedUnions(): Map<EntityId, Union> {
+        return exportedUnions.associate { id -> id to getExportedUnion(id)!!.union }
+    }
+
     fun getAllInternalInterfaces(): Map<EntityId, Interface> {
         // TODO: Consider caching this
         val allInterfaces = HashMap<EntityId, Interface>()
@@ -373,10 +389,6 @@ class ValidatedModule private constructor(val id: ModuleId,
 
     fun getAllExportedFunctions(): Map<EntityId, ValidatedFunction> {
         return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
-    }
-
-    fun getAllExportedUnions(): Map<EntityId, Union> {
-        return exportedUnions.associate { id -> id to getExportedUnion(id)!!.union }
     }
 
     private fun toFunctionSignatures(functions: Map<EntityId, ValidatedFunction>,
