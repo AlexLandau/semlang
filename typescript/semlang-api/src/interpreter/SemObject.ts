@@ -56,7 +56,6 @@ export namespace SemObject {
     }
     export interface Union {
         type: "union";
-        // union: Union;
         optionIndex: number;
         object?: SemObject;
     }

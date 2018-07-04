@@ -1290,13 +1290,12 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
     }
 
     private fun validateUnion(union: UnvalidatedUnion, typeInfo: AllTypeInfo): Union? {
-        // TODO: Do some actual validation of unions
+        // TODO: Do some additional validation of unions (e.g. no duplicate option IDs)
         val options = validateOptions(union.options, typeInfo, union.typeParameters.associateBy(TypeParameter::name)) ?: return null
         return Union(union.id, moduleId, union.typeParameters, options, union.annotations)
     }
 
     private fun validateOptions(options: List<UnvalidatedOption>, typeInfo: AllTypeInfo, unionTypeParameters: Map<String, TypeParameter>): List<Option>? {
-        // TODO: Do some actual validation of methods
         return options.map { option ->
             val unvalidatedType = option.type
             val type = if (unvalidatedType == null) null else validateType(unvalidatedType, typeInfo, unionTypeParameters)

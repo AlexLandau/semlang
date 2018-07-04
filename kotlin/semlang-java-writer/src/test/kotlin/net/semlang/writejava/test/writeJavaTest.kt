@@ -1,7 +1,6 @@
 package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.EntityId
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.TestsType
@@ -17,7 +16,6 @@ import net.semlang.writejava.writeJavaSourceIntoFolders
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.fail
-import org.junit.Assume
 import java.net.URLClassLoader
 import java.util.*
 import javax.tools.StandardLocation

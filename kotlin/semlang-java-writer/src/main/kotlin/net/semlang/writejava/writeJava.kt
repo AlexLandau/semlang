@@ -142,7 +142,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             classMap[className] = unionBuilder
         }
-        // TODO: Add call strategies for constructors and when functions
         addWhenFunctionCallStrategies(module.getAllInternalUnions().values)
         addOptionConstructorCallStrategies(module.getAllInternalUnions().values)
 
@@ -393,9 +392,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun writeUnion(union: Union, className: ClassName): TypeSpec.Builder {
         // General strategy:
-        // The union becomes a Java interface with a when() method and static constructor methods
+        // The union becomes a Java abstract class with a when() method and static constructor methods
         // The interface has inner static classes for the options
-        // TODO: Consider making this an abstract class instead so we can make the constructor private or something
         val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
 
         val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
@@ -406,14 +404,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         builder.addMethod(constructorBuilder.build())
 
         for (option in union.options) {
-//            builder.addMethod(writeInterfaceMethod(method).build())
-            // TODO: add the static inner class, and the constructor
             builder.addMethod(writeOptionConstructorMethod(option, className, union))
             builder.addType(writeOptionClass(option, className, union))
         }
 
         val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-        // TODO: This is a little silly?
         val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
         val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
         val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
@@ -448,7 +443,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             constructorBuilder.addParameter(getType(option.type!!, false), "data")
             constructorBuilder.addStatement("this.data = data")
             builder.addMethod(constructorBuilder.build())
-            // TODO: This will also require equals() and hashCode() implementations
 
             val equalsBuilder = MethodSpec.methodBuilder("equals").addModifiers(Modifier.PUBLIC)
                     .addAnnotation(Override::class.java)
@@ -476,7 +470,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override::class.java)
-        // TODO: Pick something not already used as a type variable
         val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
         val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
         val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
@@ -496,9 +489,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         } else {
             Type.FunctionType(listOf(), whenType)
         }
-//        getFunctionTypeStrategy(ourOptionFunctionType).
         val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, "when" + option.name))
-        val optionType = Type.NamedType(union.resolvedRef, union.whenId.asRef(), false, listOf())
         if (option.type != null) {
             whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf(TypedExpression.Variable(option.type!!, "data"))))
         } else {
@@ -524,7 +515,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    private fun writeOptionConstructorMethod(option: Option, className: ClassName, union: Union): MethodSpec {
+    private fun writeOptionConstructorMethod(option: Option, unionClassName: ClassName, union: Union): MethodSpec {
         val builder = MethodSpec.methodBuilder("create" + option.name)
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 
@@ -534,12 +525,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         if (option.type != null) {
             builder.addParameter(getType(option.type!!, false), "data")
         }
-        builder.returns(className.parameterizedWith(typeVariables)) // Return the union type
+        builder.returns(unionClassName.parameterizedWith(typeVariables)) // Return the union type
 
         // TODO: Put this in shared code
-        val optionClassName = className.nestedClass(option.name)
+        val optionClassName = unionClassName.nestedClass(option.name)
         if (option.type != null) {
-            builder.addStatement("return new \$T(data)", optionClassName)
+            builder.addStatement("return new \$T(data)", optionClassName.parameterizedWith(typeVariables))
         } else {
             builder.addStatement("return \$T.INSTANCE", optionClassName)
         }
@@ -1311,28 +1302,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             } else {
                 return CodeBlock.of("\$T.create\$L()", unionClassName, option.name)
             }
-//            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes).toMap()
-//            val instanceType = interfac.instanceType.replacingParameters(parametersMap)
-//
-//            val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
-//                    .addSuperinterface(getType(instanceType, false))
-//            for ((method, constructorArgument) in interfac.methods.zip(arguments)) {
-//                val methodSpec = MethodSpec.methodBuilder(method.name)
-//                        // TODO: This "isParameter" fix is probably needed in a lot of places
-//                        .returns(getType(method.returnType.replacingParameters(parametersMap), method.returnType in parametersMap.keys))
-//                        .addModifiers(Modifier.PUBLIC)
-//                for (arg in method.arguments) {
-//                    methodSpec.addParameter(getType(arg.type.replacingParameters(parametersMap), false), arg.name)
-//                }
-//
-//                // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-//                val returnValue = convertBindingToCall(constructorArgument, method.arguments.map { TypedExpression.Variable(it.type, it.name) })
-//
-//                methodSpec.addStatement("return \$L", writeExpression(returnValue))
-//                instanceAnonymousClass.addMethod(methodSpec.build())
-//            }
-//
-//            return CodeBlock.of("\$L", instanceAnonymousClass.build())
         }
     }
 

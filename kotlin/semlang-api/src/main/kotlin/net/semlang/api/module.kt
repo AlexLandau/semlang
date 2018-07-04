@@ -78,7 +78,6 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
             getNativeUnions().forEach { (id, nativeUnion) ->
-                // TODO: Figure out what to add here
                 add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_TYPE, false)
                 for (option in nativeUnion.options) {
                     val optionConstructorId = EntityId(id.namespacedName + option.name)
@@ -105,7 +104,6 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
             }
 
             for ((id, optionNames) in ownUnions) {
-                // TODO: ...
                 add(id, ownModuleId, FunctionLikeType.UNION_TYPE, false)
                 for (optionName in optionNames) {
                     val optionConstructorId = EntityId(id.namespacedName + optionName)
@@ -127,7 +125,6 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                     add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
                 }
                 module.getAllExportedUnions().forEach { id, union ->
-                    // TODO: ...
                     add(id, module.id, FunctionLikeType.UNION_TYPE, false)
                     for (option in union.options) {
                         val optionConstructorId = EntityId(id.namespacedName + option.name)
@@ -391,29 +388,6 @@ class ValidatedModule private constructor(val id: ModuleId,
         return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
     }
 
-    private fun toFunctionSignatures(functions: Map<EntityId, ValidatedFunction>,
-                                     structs: Map<EntityId, Struct>,
-                                     interfaces: Map<EntityId, Interface>): Map<EntityId, TypeSignature> {
-        val allSignatures = HashMap<EntityId, TypeSignature>()
-
-        for (function in functions.values) {
-            allSignatures.put(function.id, function.getTypeSignature())
-        }
-
-        for (struct in structs.values) {
-            allSignatures.put(struct.id, struct.getConstructorSignature())
-        }
-
-        for (interfac in interfaces.values) {
-            allSignatures.put(interfac.id, interfac.getInstanceConstructorSignature())
-            allSignatures.put(interfac.adapterId, interfac.getAdapterFunctionSignature())
-        }
-
-        // TODO: Add implicit function signatures from union types (constructors, when functions, maybe/if functions)
-
-        return allSignatures
-    }
-
     fun getInternalInterfaceByAdapterId(adapterRef: ResolvedEntityRef): InterfaceWithModule {
         val interfaceId = getInterfaceIdForAdapterId(adapterRef.id) ?: error("Resolution error")
         val interfaceRef = ResolvedEntityRef(adapterRef.module, interfaceId)
@@ -437,7 +411,6 @@ enum class FunctionLikeType {
     STRUCT_CONSTRUCTOR,
     INSTANCE_CONSTRUCTOR,
     ADAPTER_CONSTRUCTOR,
-    // TODO: Add union-related types to this
     UNION_TYPE,
     UNION_OPTION_CONSTRUCTOR,
     UNION_WHEN_FUNCTION,
