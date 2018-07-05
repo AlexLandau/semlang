@@ -10,9 +10,10 @@ import org.junit.Test
 class ContextTests {
     @Test
     fun testFunctionVisibility() {
-        testEntityVisibility(::createFunctionWithId,
+        testEntityVisibility(
+                ::createFunctionWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), mapOf(), upstreamModules)
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -28,9 +29,10 @@ class ContextTests {
 
     @Test
     fun testStructVisibility() {
-        testEntityVisibility(::createStructWithId,
+        testEntityVisibility(
+                ::createStructWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), mapOf(), upstreamModules)
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -45,9 +47,10 @@ class ContextTests {
 
     @Test
     fun testInterfaceVisibility() {
-        testEntityVisibility(::createInterfaceWithId,
+        testEntityVisibility(
+                ::createInterfaceWithId,
                 fun (moduleId: ModuleId, entities: Map<EntityId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, upstreamModules)
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, mapOf(), upstreamModules)
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -58,6 +61,24 @@ class ContextTests {
                     }
                 },
                 { module, id -> module.getExportedInterface(id)?.interfac })
+    }
+
+    @Test
+    fun testUnionVisibility() {
+        testEntityVisibility(
+                ::createUnionWithId,
+                fun (moduleId: ModuleId, entities: Map<EntityId, Union>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), mapOf(), entities, upstreamModules)
+                },
+                { module, id ->
+                    val resolved = module.resolve(EntityRef(null, id))
+                    if (resolved == null) {
+                        null
+                    } else {
+                        module.getInternalUnion(resolved.entityRef).union
+                    }
+                },
+                { module, id -> module.getExportedUnion(id)?.union })
     }
 
     fun <T> testEntityVisibility(createEntity: (id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean) -> T,
@@ -147,4 +168,14 @@ private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect
         listOf()
     }
     return Interface(id, moduleId, listOf(), listOf(method), annotations)
+}
+
+private fun createUnionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Union {
+    val option = Option(uniqueAspect.toString(), null)
+    val annotations = if (exported) {
+        listOf(Annotation(EntityId.of("Export"), listOf()))
+    } else {
+        listOf()
+    }
+    return Union(id, moduleId, listOf(), listOf(option), annotations)
 }

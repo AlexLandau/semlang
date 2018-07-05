@@ -29,6 +29,9 @@ fun write(context: RawContext, writer: Writer) {
     for (struct in context.structs) {
         writeStruct(struct, writer)
     }
+    for (union in context.unions) {
+        writeUnion(union, writer)
+    }
     for (interfac in context.interfaces) {
         writeInterface(interfac, writer)
     }
@@ -61,6 +64,32 @@ private fun writeStruct(struct: UnvalidatedStruct, writer: Writer) {
         writeBlock(requires, 2, writer)
         writer.append(SINGLE_INDENTATION)
                 .appendln("}")
+    }
+    writer.appendln("}")
+            .appendln()
+}
+
+private fun writeUnion(union: UnvalidatedUnion, writer: Writer) {
+    writeAnnotations(union.annotations, writer)
+    writer.append("union ")
+            .append(union.id.toString())
+    if (union.typeParameters.isNotEmpty()) {
+        writer.append("<")
+                .append(union.typeParameters.joinToString(", "))
+                .append(">")
+    }
+    writer.appendln(" {")
+    for (option in union.options) {
+        val type = option.type
+        if (type == null) {
+            writer.append(SINGLE_INDENTATION)
+                    .appendln(option.name)
+        } else {
+            writer.append(SINGLE_INDENTATION)
+                    .append(option.name)
+                    .append(": ")
+                    .appendln(type.toString())
+        }
     }
     writer.appendln("}")
             .appendln()

@@ -105,6 +105,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     val structs: MutableList<UnvalidatedStruct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
     val interfaces: MutableList<UnvalidatedInterface> = ArrayList()
+    val unions: MutableList<UnvalidatedUnion> = ArrayList()
 
     override fun exitFunction(ctx: Sem1Parser.FunctionContext) {
         functions.add(parseFunction(ctx))
@@ -116,6 +117,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     override fun exitInterfac(ctx: Sem1Parser.InterfacContext) {
         interfaces.add(parseInterface(ctx))
+    }
+
+    override fun exitUnion(ctx: Sem1Parser.UnionContext) {
+        unions.add(parseUnion(ctx))
     }
 
     private fun locationOf(context: ParserRuleContext): Location {
@@ -170,7 +175,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             listOf()
         }
 
-        val members: List<UnvalidatedMember> = parseMembers(ctx.struct_members())
+        val members: List<UnvalidatedMember> = parseMembers(ctx.members())
         val requires: Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             scopeBlock(externalVarIds, parseBlock(it))
@@ -193,6 +198,20 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val annotations = parseAnnotations(interfac.annotations())
 
         return UnvalidatedInterface(id, typeParameters, methods, annotations, locationOf(interfac.entity_id()))
+    }
+
+    private fun parseUnion(union: Sem1Parser.UnionContext): UnvalidatedUnion {
+        val id = parseEntityId(union.entity_id())
+        val typeParameters = if (union.GREATER_THAN() != null) {
+            parseTypeParameters(union.cd_type_parameters())
+        } else {
+            listOf()
+        }
+        val options = parseOptions(union.disjuncts())
+
+        val annotations = parseAnnotations(union.annotations())
+
+        return UnvalidatedUnion(id, typeParameters, options, annotations, locationOf(union.entity_id()))
     }
 
 
@@ -363,14 +382,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         throw IllegalArgumentException("Couldn't parse type class: ${type_class}")
     }
 
-    private fun parseMembers(members: Sem1Parser.Struct_membersContext): List<UnvalidatedMember> {
+    private fun parseMembers(members: Sem1Parser.MembersContext): List<UnvalidatedMember> {
         return parseLinkedList(members,
-                Sem1Parser.Struct_membersContext::struct_member,
-                Sem1Parser.Struct_membersContext::struct_members,
+                Sem1Parser.MembersContext::member,
+                Sem1Parser.MembersContext::members,
                 this::parseMember)
     }
 
-    private fun parseMember(member: Sem1Parser.Struct_memberContext): UnvalidatedMember {
+    private fun parseMember(member: Sem1Parser.MemberContext): UnvalidatedMember {
         val name = member.ID().text
         val type = parseType(member.type())
         return UnvalidatedMember(name, type)
@@ -661,6 +680,19 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return UnvalidatedMethod(name, typeParameters, arguments, returnType)
     }
 
+    private fun parseOptions(options: Sem1Parser.DisjunctsContext): List<UnvalidatedOption> {
+        return parseLinkedList(options,
+                Sem1Parser.DisjunctsContext::disjunct,
+                Sem1Parser.DisjunctsContext::disjuncts,
+                this::parseOption)
+    }
+
+    private fun parseOption(option: Sem1Parser.DisjunctContext): UnvalidatedOption {
+        val name = option.ID().text
+        val type: UnvalidatedType? = option.type()?.let { parseType(it) }
+
+        return UnvalidatedOption(name, type, locationOf(option.ID().symbol))
+    }
 }
 
 sealed class ParsingResult {
@@ -686,6 +718,7 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
     val allInterfaces = ArrayList<UnvalidatedInterface>()
+    val allUnions = ArrayList<UnvalidatedUnion>()
     val allErrors = ArrayList<Issue>()
     for (parsingResult in results) {
         if (parsingResult is ParsingResult.Success) {
@@ -693,15 +726,17 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
             allFunctions.addAll(rawContext.functions)
             allStructs.addAll(rawContext.structs)
             allInterfaces.addAll(rawContext.interfaces)
+            allUnions.addAll(rawContext.unions)
         } else if (parsingResult is ParsingResult.Failure) {
             allErrors.addAll(parsingResult.errors)
             val context = parsingResult.partialContext
             allFunctions.addAll(context.functions)
             allStructs.addAll(context.structs)
             allInterfaces.addAll(context.interfaces)
+            allUnions.addAll(context.unions)
         }
     }
-    val combinedContext = RawContext(allFunctions, allStructs, allInterfaces)
+    val combinedContext = RawContext(allFunctions, allStructs, allInterfaces, allUnions)
     if (allErrors.isEmpty()) {
         return ParsingResult.Success(combinedContext)
     } else {
@@ -775,11 +810,11 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
         return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), e.location, IssueLevel.ERROR)), partialContext)
     }
 
-    val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces)
+    val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
     if (!errorListener.errorsFound.isEmpty()) {
         return ParsingResult.Failure(errorListener.errorsFound, context)
     }

@@ -14,6 +14,7 @@ tokens {
   FUNCTION,
   STRUCT,
   INTERFACE,
+  UNION,
   RETURN,
   LET,
   IF,
@@ -55,7 +56,11 @@ module_ref : module_id // Name only
   | module_id COLON module_id COLON module_id ; // Group, name, and version
 module_id : ID | ID HYPHEN module_id | ID UNDERSCORE module_id | ID DOT module_id ;
 
-top_level_entities : | function top_level_entities | struct top_level_entities | interfac top_level_entities ;
+top_level_entities :
+  | function top_level_entities
+  | struct top_level_entities
+  | interfac top_level_entities
+  | union top_level_entities ;
 
 function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
          | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
@@ -63,11 +68,11 @@ block : LBRACE assignments return_statement RBRACE ;
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
 function_argument : ID COLON type ;
 
-struct : annotations STRUCT optional_tilde entity_id LBRACE struct_members maybe_requires RBRACE
-  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE struct_members maybe_requires RBRACE ;
+struct : annotations STRUCT optional_tilde entity_id LBRACE members maybe_requires RBRACE
+  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
 optional_tilde : | TILDE ;
-struct_members : | struct_member struct_members ;
-struct_member : ID COLON type ;
+members : | member members ;
+member : ID COLON type ;
 maybe_requires : | REQUIRES block ;
 
 // TODO: Is there a better solution for this than mangling the name?
@@ -76,6 +81,11 @@ interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
 methods : | method methods ;
 method : ID LPAREN function_arguments RPAREN COLON type
   | ID LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
+
+union : annotations UNION entity_id LBRACE disjuncts RBRACE
+  | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
+disjuncts: | disjunct disjuncts ;
+disjunct: ID COLON type | ID ;
 
 annotations : | annotation annotations ;
 annotation : annotation_name

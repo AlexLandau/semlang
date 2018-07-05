@@ -12,7 +12,7 @@ package net.semlang.api
  * - Interfaces (replaced with equivalent structs)
  * - Inline functions (replaced with bindings of explicit functions)
  */
-data class S0Context(val functions: List<S0Function>, val structs: List<S0Struct>)
+data class S0Context(val functions: List<S0Function>, val structs: List<S0Struct>, val unions: List<S0Union>)
 
 data class S0Struct(val id: String, val markedAsThreaded: Boolean, val typeParameters: List<S0TypeParameter>, val members: List<S0Member>, val requires: S0Block?, val annotations: List<S0Annotation>)
 
@@ -32,6 +32,9 @@ sealed class S0Type {
     data class FunctionType(val argTypes: kotlin.collections.List<S0Type>, val outputType: S0Type): S0Type()
     data class NamedType(val id: String, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
 }
+
+data class S0Union(val id: String, val typeParameters: List<S0TypeParameter>, val options: List<S0Option>, val annotations: List<S0Annotation>)
+data class S0Option(val name: String, val type: S0Type?)
 
 data class S0Function(val id: String, val typeParameters: List<S0TypeParameter>, val arguments: List<S0Argument>, val returnType: S0Type, val block: S0Block, val annotations: List<S0Annotation>)
 

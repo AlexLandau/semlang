@@ -412,6 +412,13 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
             dataListsEqual(left.objects, right.objects)
         }
         is SemObject.Instance -> typeError()
+        is SemObject.Union -> {
+            if (right !is SemObject.Union) typeError()
+            if (left.union != right.union) typeError()
+            left.optionIndex == right.optionIndex &&
+                    ((left.contents == null && right.contents == null)
+                     || (left.contents != null && right.contents != null && dataEquals(left.contents, right.contents)))
+        }
         is SemObject.Maybe.Success -> {
             if (right !is SemObject.Maybe) typeError()
             right is SemObject.Maybe.Success && dataEquals(left.contents, right.contents)

@@ -29,7 +29,12 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         val transformedFunctions = transformFunctions(inputModule.ownFunctions)
         val transformedStructs = transformStructs(inputModule.ownStructs)
         processExtractedFunctions()
-        return RawContext(transformedFunctions + processedExtractedFunctions, transformedStructs, inputModule.ownInterfaces.values.toList().map(::invalidate))
+        return RawContext(
+                transformedFunctions + processedExtractedFunctions,
+                transformedStructs,
+                inputModule.ownInterfaces.values.toList().map(::invalidate),
+                inputModule.ownUnions.values.toList().map(::invalidate)
+        )
     }
 
     private fun processExtractedFunctions() {

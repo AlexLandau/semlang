@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
 import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isMaybeType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
-import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject } from "./SemObject";
+import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 import { parseComplexLiteral, ComplexLiteralNode, isLiteralNode, isSquareListNode } from "./ComplexLiteral";
@@ -103,6 +103,28 @@ export class InterpreterContext {
             });
 
             return interfaceAdapterBindingObject(theAdaptedInterface, datalessBindings);
+        }
+
+        const theUnionOption = this.module.unionsByOptionId[functionName];
+        if (theUnionOption !== undefined) {
+            const optionIndex = theUnionOption[1];
+            const innerObject = (args.length === 1) ? args[0] : undefined;
+            return unionObject(optionIndex, innerObject);
+        }
+
+        const theUnionWhen = this.module.unionsByWhenId[functionName];
+        if (theUnionWhen !== undefined) {
+            const theUnionObject = args[0];
+            if (theUnionObject.type !== "union") {
+                throw new Error();
+            }
+            const optionIndex = theUnionObject.optionIndex;
+            const theBindingToUse = args[optionIndex + 1];
+            if (!isFunctionBinding(theBindingToUse)) {
+                throw new Error();
+            }
+            const optionDataArgs = theUnionObject.object !== undefined ? [theUnionObject.object] : []
+            return this.evaluateBoundFunction(theBindingToUse, optionDataArgs);
         }
 
         throw new Error(`Couldn't find the function ${functionName}`);

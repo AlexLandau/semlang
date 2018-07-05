@@ -39,9 +39,10 @@ private class Linker(val rootModule: ValidatedModule) {
         val transformedFunctions = relevantEntities.functions.map { (ref, function) -> nameAssignment.applyToFunction(ref, function) }
         val transformedStructs = relevantEntities.structs.values.map(nameAssignment::applyToStruct)
         val transformedInterfaces = relevantEntities.interfaces.values.map(nameAssignment::applyToInterface)
+        val transformedUnions = relevantEntities.unions.values.map(nameAssignment::applyToUnion)
 
         val moduleInfo = ModuleInfo(rootModule.id, listOf())
-        val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces)
+        val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces, transformedUnions)
         return UnvalidatedModule(moduleInfo, context)
     }
 }
@@ -50,7 +51,8 @@ private data class RelevantEntities(
         val allModules: Map<ModuleId, ValidatedModule>,
         val functions: Map<ResolvedEntityRef, ValidatedFunction>,
         val structs: Map<ResolvedEntityRef, Struct>,
-        val interfaces: Map<ResolvedEntityRef, Interface>
+        val interfaces: Map<ResolvedEntityRef, Interface>,
+        val unions: Map<ResolvedEntityRef, Union>
 )
 
 private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleId) {
@@ -207,6 +209,19 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val returnType = apply(method.returnType)
         return UnvalidatedMethod(method.name, method.typeParameters, arguments, returnType)
     }
+
+    fun applyToUnion(union: Union): UnvalidatedUnion {
+        val newId = newNames[union.resolvedRef]!!
+        val options = union.options.map(this::apply)
+        val annotations = handleAnnotations(union.annotations, union.moduleId)
+
+        return UnvalidatedUnion(newId, union.typeParameters, options, annotations)
+    }
+
+    private fun apply(option: Option): UnvalidatedOption {
+        val type = option.type?.let { apply(it) }
+        return UnvalidatedOption(option.name, type)
+    }
 }
 
 private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: RelevantEntities) {
@@ -216,7 +231,7 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
     fun assignNames(): NameAssignment {
         // We want to keep everything in the root module the same.
         // For now, we do this by just doing two passes.
-        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys) {
+        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys + relevantEntities.unions.keys) {
             if (ref.module == rootModuleId) {
                 if (allNewNames.contains(ref.id)) {
                     error("EntityId collision in the root module: $ref")
@@ -235,10 +250,28 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
                 allNewNames.add(adapterId)
             }
         }
+        for ((ref, union) in relevantEntities.unions) {
+            if (ref.module == rootModuleId) {
+                val whenId = EntityId(ref.id.namespacedName + "when")
+                if (allNewNames.contains(whenId)) {
+                    error("EntityId collision in the root module: $whenId")
+                }
+                newNameMap.put(ref.copy(id = whenId), whenId)
+                allNewNames.add(whenId)
+                for (option in union.options) {
+                    val optionId = EntityId(ref.id.namespacedName + option.name)
+                    if (allNewNames.contains(optionId)) {
+                        error("EntityId collision in the root module: $optionId")
+                    }
+                    newNameMap.put(ref.copy(id = optionId), optionId)
+                    allNewNames.add(optionId)
+                }
+            }
+        }
 
         val modulePrefixes = assignModulePrefixes()
 
-        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys) {
+        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys + relevantEntities.unions.keys) {
             if (ref.module == rootModuleId) {
                 // Already handled
                 continue
@@ -262,6 +295,28 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
 
                 newNameMap.put(adapterRef, finalAdapterName)
                 allNewNames.add(finalAdapterName)
+            }
+            // TODO: Ditto here
+            val unionMaybe = relevantEntities.unions[ref]
+            if (unionMaybe != null) {
+                val oldWhenId = unionMaybe.whenId
+                val whenRef = ref.copy(id = oldWhenId)
+                val finalWhenId = EntityId(finalName.namespacedName + "when")
+                if (allNewNames.contains(finalWhenId)) {
+                    error("")
+                }
+                newNameMap.put(whenRef, finalWhenId)
+                allNewNames.add(finalWhenId)
+                for (option in unionMaybe.options) {
+                    val oldOptionId = EntityId(unionMaybe.id.namespacedName + option.name)
+                    val optionRef = ref.copy(id = oldOptionId)
+                    val finalOptionId = EntityId(finalName.namespacedName + option.name)
+                    if (allNewNames.contains(finalOptionId)) {
+                        error("")
+                    }
+                    newNameMap.put(optionRef, finalOptionId)
+                    allNewNames.add(finalOptionId)
+                }
             }
         }
         return NameAssignment(newNameMap, rootModuleId)
@@ -323,16 +378,18 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
     val functions = HashMap<ResolvedEntityRef, ValidatedFunction>()
     val structs = HashMap<ResolvedEntityRef, Struct>()
     val interfaces = HashMap<ResolvedEntityRef, Interface>()
+    val unions = HashMap<ResolvedEntityRef, Union>()
 
     val functionsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
     val structsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
     val interfacesQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
+    val unionsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
 
     fun compute(): RelevantEntities {
         initializeQueue()
         resolveQueues()
 
-        return RelevantEntities(allModules, functions, structs, interfaces)
+        return RelevantEntities(allModules, functions, structs, interfaces, unions)
     }
 
     private fun resolveQueues() {
@@ -346,10 +403,34 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             } else if (interfacesQueue.isNotEmpty()) {
                 val interfaceRef = interfacesQueue.remove()
                 resolveInterface(interfaceRef)
+            } else if (unionsQueue.isNotEmpty()) {
+                val unionRef = unionsQueue.remove()
+                resolveUnion(unionRef)
             } else {
                 return
             }
         }
+    }
+
+    private fun resolveUnion(unionRef: ResolvedEntityRef) {
+        if (unions.containsKey(unionRef)) {
+            // The union has already been added; skip it
+            return
+        }
+        if (isNativeModule(unionRef.module)) {
+            return
+        }
+
+        val containingModule = allModules[unionRef.module]!!
+        val union = containingModule.getInternalUnion(unionRef).union
+
+        for (option in union.options) {
+            if (option.type != null) {
+                enqueueType(option.type!!, containingModule)
+            }
+        }
+
+        unions.put(unionRef, union)
     }
 
     private fun resolveInterface(interfaceRef: ResolvedEntityRef) {
@@ -494,7 +575,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
     private fun enqueueFunctionRef(functionRef: ResolvedEntityRef, containingModule: ValidatedModule) {
         // TODO: This is another place where it would help to either store the EntityResolution or have another map in the resolver
         val resolved = containingModule.resolve(functionRef)!!
-        when (resolved.type) {
+        val ignored: Any = when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
                 // Do nothing
             }
@@ -508,7 +589,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 interfacesQueue.add(resolved.entityRef)
             }
             FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-                // TODO: This is probably wrong
                 val adapterId = resolved.entityRef.id
                 val interfaceId = EntityId(adapterId.namespacedName.dropLast(1))
                 val interfaceRef = resolved.entityRef.copy(id = interfaceId)
@@ -516,6 +596,21 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             FunctionLikeType.OPAQUE_TYPE -> {
                 // Currently these are all native types
+            }
+            FunctionLikeType.UNION_TYPE -> {
+                unionsQueue.add(resolved.entityRef)
+            }
+            FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> {
+                val optionId = resolved.entityRef.id
+                val unionId = EntityId(optionId.namespacedName.dropLast(1))
+                val unionRef = resolved.entityRef.copy(id = unionId)
+                unionsQueue.add(unionRef)
+            }
+            FunctionLikeType.UNION_WHEN_FUNCTION -> {
+                val whenId = resolved.entityRef.id
+                val unionId = EntityId(whenId.namespacedName.dropLast(1))
+                val unionRef = resolved.entityRef.copy(id = unionId)
+                unionsQueue.add(unionRef)
             }
         }
         val moduleId = resolved.entityRef.module
@@ -558,6 +653,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
         }
         for (id in rootModule.ownInterfaces.keys) {
             interfacesQueue.add(ResolvedEntityRef(rootModule.id, id))
+        }
+        for (id in rootModule.ownUnions.keys) {
+            unionsQueue.add(ResolvedEntityRef(rootModule.id, id))
         }
     }
 }

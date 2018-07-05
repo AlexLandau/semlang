@@ -404,6 +404,12 @@ fun getNativeInterfaces(): Map<EntityId, Interface> {
     return toMap(interfaces)
 }
 
+fun getNativeUnions(): Map<EntityId, Union> {
+    val unions = ArrayList<Union>()
+
+    return toMap(unions)
+}
+
 object NativeThreadedType {
     private val t = TypeParameter("T", null)
 

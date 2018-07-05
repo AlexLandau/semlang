@@ -1,0 +1,31 @@
+union Foobar {
+  Foo: Integer
+  Bar: Natural
+  Baz
+}
+
+@Test([], "-8")
+function testFoo(): Integer {
+  let foobar: Foobar = Foobar.Foo(Integer."-8")
+  toInteger(foobar)
+}
+
+@Test([], "6")
+function testBar(): Integer {
+  let foobar: Foobar = Foobar.Bar(Natural."6")
+  toInteger(foobar)
+}
+
+@Test([], "0")
+function testBaz(): Integer {
+  let foobar: Foobar = Foobar.Baz()
+  toInteger(foobar)
+}
+
+function toInteger(foobar: Foobar): Integer {
+  Foobar.when<Integer>(foobar,
+    function(int: Integer): Integer { int },
+    function(nat: Natural): Integer { nat->integer },
+    function(): Integer { Integer."0" }
+  )
+}

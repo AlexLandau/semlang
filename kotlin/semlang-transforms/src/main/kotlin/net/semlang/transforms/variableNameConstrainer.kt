@@ -10,7 +10,7 @@ fun constrainVariableNames(context: RawContext, renamingStrategy: VariableRenami
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
     val functions = renameWithinFunctions(context.functions, validatingStrategy)
     val interfaces = renameInterfaceArguments(context.interfaces, validatingStrategy)
-    return RawContext(functions, context.structs, interfaces)
+    return RawContext(functions, context.structs, interfaces, context.unions)
 }
 
 private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableRenamingStrategy {

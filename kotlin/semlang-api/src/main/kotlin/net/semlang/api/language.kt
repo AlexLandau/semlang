@@ -77,7 +77,7 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
     }
 }
 
-sealed class UnvalidatedType() {
+sealed class UnvalidatedType {
     abstract val location: Location?
     abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
     abstract protected fun getTypeString(): String
@@ -437,8 +437,20 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
 }
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
 
-data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int)
-data class Range(val start: Position, val end: Position)
+data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int) {
+    override fun toString(): String {
+        return "L${lineNumber}:${column}"
+    }
+}
+data class Range(val start: Position, val end: Position) {
+    override fun toString(): String {
+        if (start.lineNumber == end.lineNumber) {
+            return "L${start.lineNumber}:${start.column}-${end.column}"
+        } else {
+            return "${start}-${end}"
+        }
+    }
+}
 data class Location(val documentUri: String, val range: Range)
 
 data class Annotation(val name: EntityId, val values: List<AnnotationArgument>)
@@ -628,6 +640,62 @@ data class UnvalidatedMethod(val name: String, val typeParameters: List<TypePara
 data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
     val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
 }
+
+data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
+    fun getType(): UnvalidatedType {
+        val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
+        return UnvalidatedType.NamedType(id.asRef(), false, functionParameters)
+    }
+    fun getConstructorSignature(option: UnvalidatedOption): UnvalidatedTypeSignature {
+        if (!options.contains(option)) {
+            error("Invalid option $option")
+        }
+        val optionId = EntityId(id.namespacedName + option.name)
+        val argumentTypes = if (option.type == null) {
+            listOf()
+        } else {
+            listOf(option.type)
+        }
+        return UnvalidatedTypeSignature(optionId, argumentTypes, getType(), typeParameters)
+    }
+
+    fun getWhenSignature(): UnvalidatedTypeSignature {
+        val whenId = EntityId(id.namespacedName + "when")
+        val outputParameterName = getUnusedTypeParameterName(typeParameters)
+        val outputParameterType = UnvalidatedType.NamedType(EntityId.of(outputParameterName).asRef(), false)
+        val outputTypeParameter = TypeParameter(outputParameterName, null)
+        val whenTypeParameters = typeParameters + outputTypeParameter
+
+        val argumentTypes = listOf(getType()) + options.map { option ->
+            val optionArgTypes = if (option.type == null) {
+                listOf()
+            } else {
+                listOf(option.type)
+            }
+            UnvalidatedType.FunctionType(optionArgTypes, outputParameterType)
+        }
+
+        return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
+    }
+}
+data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
+    val resolvedRef = ResolvedEntityRef(moduleId, id)
+    val whenId = EntityId(id.namespacedName + "when")
+    private val optionIndexLookup: Map<EntityId, Int> = {
+        val map = HashMap<EntityId, Int>()
+        options.forEachIndexed { index, option ->
+            val optionId = EntityId(id.namespacedName + option.name)
+            map.put(optionId, index)
+        }
+        map
+    }()
+    fun getOptionIndexById(functionId: EntityId): Int? {
+        return optionIndexLookup[functionId]
+    }
+
+}
+data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
+data class Option(val name: String, val type: Type?)
 
 private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParameter>): String {
     val typeParameterNames = explicitTypeParameters.map(TypeParameter::name)

@@ -10,6 +10,7 @@ export type SemObject = SemObject.Integer
  | SemObject.String
  | SemObject.Struct
  | SemObject.Instance
+ | SemObject.Union
  | SemObject.FunctionBinding
  | SemObject.ListBuilder;
 export namespace SemObject {
@@ -52,6 +53,11 @@ export namespace SemObject {
         type: "instance";
         interface: Interface;
         methods: SemObject.FunctionBinding[];
+    }
+    export interface Union {
+        type: "union";
+        optionIndex: number;
+        object?: SemObject;
     }
     export interface NamedFunctionBinding {
         type: "namedBinding";
@@ -152,6 +158,14 @@ export function instanceObject(interfaceDef: Interface, methods: SemObject.Funct
         type: "instance",
         interface: interfaceDef,
         methods,
+    };
+}
+
+export function unionObject(optionIndex: number, object?: SemObject): SemObject.Union {
+    return {
+        type: "union",
+        optionIndex,
+        object,
     };
 }
 

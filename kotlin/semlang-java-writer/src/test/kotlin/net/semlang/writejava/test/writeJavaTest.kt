@@ -1,7 +1,6 @@
 package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.EntityId
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.TestsType

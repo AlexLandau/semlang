@@ -45,6 +45,7 @@ Stuff that feels blocked or hasn't been implemented:
   - Use a code coverage tool for the Kotlin tests
   - Apply Kotlin style guide, and maybe add linting?
   - Add tslint?
+- Clean up duplicate ID detection in AllTypeInfo generation in the validator
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
 - Continue to shrink the set of native functions where possible
@@ -65,7 +66,7 @@ Stuff that feels blocked or hasn't been implemented:
 - List#firstIndex
 - Additional primitive-ish types in the standard library (N-bit integers, floating-point numbers, rationals?)
 - Other native-y types: Set, UniqueList, Map, Symbol, Snow?
-- Try error tracking
+- Error tracking
 - Mock tests in other environments
   - Transpiled Java
   - TypeScript interpreter
@@ -76,14 +77,10 @@ Stuff that feels blocked or hasn't been implemented:
 - List literals: Don't require parameter type if non-empty
   - (But avoid this in the base language if it looks like we can't avoid subtypes in the future)
   - Support short-form embedded literals when parameter type is present
-- Enum types
-  - Might be a concept combinable with union types (like ADTs)?
-  - ADTs and when expressions could subsume booleans and if/then
-  - Is a singleton ADT really any different from a struct?
 - DSL for "selecting" expressions from anywhere in a function
   - Point is to establish this before considering add'l characters in variable names
-  - Use with Try.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
-- Real package/module declarations and use, including "import as" (note: "import as" could be a dialect/transformation)
+  - Use with Maybe.assert for an "Assertable" annotation? (e.g. for min or max, a list where size is >0)
+- Real package/module declarations and use, including "import as" (probably in sem2)
 - Typealias
 - Code writing into Java
   - We should have some way to specify the exposed API, and check the inputs of these methods for e.g. Natural >= 0
@@ -100,7 +97,7 @@ Stuff that feels blocked or hasn't been implemented:
   - Ideally this would also be designed to offer single-pass validation like WebAssembly
 - Start to create dialects with simpler syntax, type inference, etc.
   - Also type inference for parameters when calling functions, for types that can be inferred (can these be separated somehow?)
-  - Operators for dealing more easily with Try types (e.g. Foo? instead of Try<Foo>, ?: operator, ? for conditional calls)
+  - Operators for dealing more easily with Maybe types (e.g. Foo? instead of Maybe<Foo>, ?: operator, ? for conditional calls)
 - Semlang -> Semlang transformations, optimizations, etc.
   - Use only simple (non-nested) expressions
   - Remove redundant variables and reiterated definitions
@@ -161,7 +158,7 @@ What a Gradle plugin for this would do:
   - The plugin will probably depend on published jars containing the Kotlin parser, validator, and interpreter
 
 Design choices to reconsider:
-- Try failure: Include ways to distinguish sources of errors? (Union types for exception types?)
+- Try failure: Include ways to distinguish sources of errors?
   - Stacktraces for debugging are considered outside the semantics of Semlang, and so are not included in the type system.
 - Questionable or inconsistent native functions
 - Slightly alternative semantics: A function ID is an expression representing a function binding for that function with
@@ -170,6 +167,8 @@ Design choices to reconsider:
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
 - For Maybe methods, better names than "success" and "failure"
+  - Option 1: Present/absent
+  - Option 2: Here/absent
 
 Errors I've made in writing things:
 - (2) Used . in place of ->

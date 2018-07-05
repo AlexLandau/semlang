@@ -27,6 +27,8 @@ sealed class SemObject {
     }
     // An instance of an interface.
     data class Instance(val interfaceDef: net.semlang.api.Interface, val methods: List<SemObject.FunctionBinding>): SemObject()
+    // An instance of a union.
+    data class Union(val union: net.semlang.api.Union, val optionIndex: Int, val contents: SemObject?): SemObject()
     sealed class Maybe: SemObject() {
         data class Success(val contents: SemObject): Maybe()
         object Failure: Maybe() {

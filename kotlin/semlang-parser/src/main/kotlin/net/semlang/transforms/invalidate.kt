@@ -8,7 +8,18 @@ fun invalidate(module: ValidatedModule): RawContext {
     val functions = module.ownFunctions.values.map(::invalidate)
     val structs = module.ownStructs.values.map(::invalidate)
     val interfaces = module.ownInterfaces.values.map(::invalidate)
-    return RawContext(functions, structs, interfaces)
+    val unions = module.ownUnions.values.map(::invalidate)
+    return RawContext(functions, structs, interfaces, unions)
+}
+
+fun invalidate(union: Union): UnvalidatedUnion {
+    val options = union.options.map(::invalidateOption)
+    return UnvalidatedUnion(union.id, union.typeParameters, options, union.annotations)
+}
+
+private fun invalidateOption(option: Option): UnvalidatedOption {
+    val type = option.type?.let { invalidate(it) }
+    return UnvalidatedOption(option.name, type)
 }
 
 fun invalidate(interfac: Interface): UnvalidatedInterface {

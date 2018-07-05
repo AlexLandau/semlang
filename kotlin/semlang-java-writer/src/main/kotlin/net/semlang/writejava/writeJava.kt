@@ -133,6 +133,18 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
         addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
 
+        for (union in module.ownUnions.values) {
+            val className = getOwnTypeClassName(union.id)
+            val unionBuilder = writeUnion(union, className)
+
+            if (classMap.containsKey(className)) {
+                error("Duplicate class name $className for union ${union.id}")
+            }
+            classMap[className] = unionBuilder
+        }
+        addWhenFunctionCallStrategies(module.getAllInternalUnions().values)
+        addOptionConstructorCallStrategies(module.getAllInternalUnions().values)
+
         for (function in module.ownFunctions.values) {
             val method = writeMethod(function)
 
@@ -157,6 +169,30 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         writePreparedJUnitTests(newTestSrcDir)
 
         return WrittenJavaInfo(testClassCounts.keys.toList())
+    }
+
+    private fun addWhenFunctionCallStrategies(unions: Collection<Union>) {
+        for (union in unions) {
+            val whenId = union.whenId
+            if (namedFunctionCallStrategies.containsKey(whenId)) {
+                error("Already have a call strategy for $whenId")
+            }
+            namedFunctionCallStrategies.put(whenId, MethodFunctionCallStrategy("when"))
+        }
+    }
+
+    private fun addOptionConstructorCallStrategies(unions: Collection<Union>) {
+        for (union in unions) {
+            val unionClassName = getOwnTypeClassName(union.id)
+            for (option in union.options) {
+                val optionId = EntityId(union.id.namespacedName + option.name)
+                if (namedFunctionCallStrategies.containsKey(optionId)) {
+                    error("Already have a call strategy for $optionId")
+                }
+
+                namedFunctionCallStrategies.put(optionId, OptionConstructorCallStrategy(unionClassName, option))
+            }
+        }
     }
 
     private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
@@ -352,6 +388,154 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         builder.returns(getType(method.returnType.replacingParameters(typeReplacements), false))
 
         return builder
+    }
+
+    private fun writeUnion(union: Union, className: ClassName): TypeSpec.Builder {
+        // General strategy:
+        // The union becomes a Java abstract class with a when() method and static constructor methods
+        // The interface has inner static classes for the options
+        val builder = TypeSpec.classBuilder(className).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+
+        val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
+        builder.addTypeVariables(typeVariables)
+
+        // Make the constructor private
+        val constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
+        builder.addMethod(constructorBuilder.build())
+
+        for (option in union.options) {
+            builder.addMethod(writeOptionConstructorMethod(option, className, union))
+            builder.addType(writeOptionClass(option, className, union))
+        }
+
+        val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+        val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
+        val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
+        val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
+        whenBuilder.addTypeVariable(whenTypeVariable)
+        whenBuilder.returns(whenTypeVariable)
+        for (option in union.options) {
+            val functionType = if (option.type != null) {
+                getFunctionType(Type.FunctionType(listOf(option.type!!), whenType))
+            } else {
+                getFunctionType(Type.FunctionType(listOf(), whenType))
+            }
+            whenBuilder.addParameter(functionType, "when" + option.name)
+        }
+        builder.addMethod(whenBuilder.build())
+
+        return builder
+    }
+
+    private fun writeOptionClass(option: Option, unionClassName: ClassName, union: Union): TypeSpec {
+        val optionClassName = unionClassName.nestedClass(option.name)
+        val builder = TypeSpec.classBuilder(optionClassName)
+                .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
+
+        val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
+        builder.addTypeVariables(typeVariables)
+        builder.superclass(unionClassName.parameterizedWith(typeVariables))
+
+        if (option.type != null) {
+            builder.addField(getType(option.type!!, false), "data", Modifier.PRIVATE, Modifier.FINAL)
+
+            val constructorBuilder = MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE)
+            constructorBuilder.addParameter(getType(option.type!!, false), "data")
+            constructorBuilder.addStatement("this.data = data")
+            builder.addMethod(constructorBuilder.build())
+
+            val equalsBuilder = MethodSpec.methodBuilder("equals").addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override::class.java)
+                    .addParameter(Object::class.java, "other")
+                    .returns(TypeName.BOOLEAN)
+            val equalsCode = CodeBlock.builder()
+            equalsCode.beginControlFlow("if (!(other instanceof \$T))", optionClassName)
+                    .addStatement("return false")
+                    .endControlFlow()
+                    .addStatement("return data.equals(((\$T) other).data)", optionClassName)
+            equalsBuilder.addCode(equalsCode.build())
+            builder.addMethod(equalsBuilder.build())
+
+            val hashCodeBuilder = MethodSpec.methodBuilder("hashCode").addModifiers(Modifier.PUBLIC)
+                    .addAnnotation(Override::class.java)
+                    .returns(TypeName.INT)
+                    .addStatement("return \$L + data.hashCode()", optionClassName.toString().hashCode())
+            builder.addMethod(hashCodeBuilder.build())
+        } else {
+            // Make it a singleton
+            val instanceBuilder = FieldSpec.builder(optionClassName, "INSTANCE", Modifier.PRIVATE, Modifier.STATIC)
+            instanceBuilder.initializer("new \$T()", optionClassName)
+            builder.addField(instanceBuilder.build())
+        }
+
+        val whenBuilder = MethodSpec.methodBuilder("when").addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override::class.java)
+        val whenTypeVariableName = pickUnusedTypeVariable(typeVariables)
+        val whenTypeVariable = TypeVariableName.get(whenTypeVariableName)
+        val whenType = Type.ParameterType(TypeParameter(whenTypeVariableName, null))
+        whenBuilder.addTypeVariable(whenTypeVariable)
+        whenBuilder.returns(whenTypeVariable)
+        for (curOption in union.options) {
+            val functionType = if (curOption.type != null) {
+                getFunctionType(Type.FunctionType(listOf(curOption.type!!), whenType))
+            } else {
+                getFunctionType(Type.FunctionType(listOf(), whenType))
+            }
+            whenBuilder.addParameter(functionType, "when" + curOption.name)
+        }
+        // Figure out the return statement here
+        val ourOptionFunctionType = if (option.type != null) {
+            Type.FunctionType(listOf(option.type!!), whenType)
+        } else {
+            Type.FunctionType(listOf(), whenType)
+        }
+        val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, "when" + option.name))
+        if (option.type != null) {
+            whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf(TypedExpression.Variable(option.type!!, "data"))))
+        } else {
+            whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf()))
+        }
+        builder.addMethod(whenBuilder.build())
+
+        return builder.build()
+    }
+
+    private fun pickUnusedTypeVariable(typeVariables: List<TypeVariableName>): String {
+        val usedVariableNamesSet = typeVariables.map { it.name }.toSet()
+        if (!usedVariableNamesSet.contains("T")) {
+            return "T"
+        }
+        var index = 2
+        while (true) {
+            val candidate = "T$index"
+            if (!usedVariableNamesSet.contains(candidate)) {
+                return candidate
+            }
+            index++
+        }
+    }
+
+    private fun writeOptionConstructorMethod(option: Option, unionClassName: ClassName, union: Union): MethodSpec {
+        val builder = MethodSpec.methodBuilder("create" + option.name)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+
+        val typeVariables = union.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) }
+        builder.addTypeVariables(typeVariables)
+
+        if (option.type != null) {
+            builder.addParameter(getType(option.type!!, false), "data")
+        }
+        builder.returns(unionClassName.parameterizedWith(typeVariables)) // Return the union type
+
+        // TODO: Put this in shared code
+        val optionClassName = unionClassName.nestedClass(option.name)
+        if (option.type != null) {
+            builder.addStatement("return new \$T(data)", optionClassName.parameterizedWith(typeVariables))
+        } else {
+            builder.addStatement("return \$T.INSTANCE", optionClassName)
+        }
+
+        return builder.build()
     }
 
     private fun writeMethod(function: ValidatedFunction): MethodSpec {
@@ -553,6 +737,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             FunctionLikeType.OPAQUE_TYPE -> {
                 error("$resolved should be a function, not an opaque type")
             }
+            FunctionLikeType.UNION_TYPE -> TODO()
+            FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
+            FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
         }
 
         // TODO: More compact references when not binding arguments
@@ -1107,6 +1294,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
+
+    inner private class OptionConstructorCallStrategy(val unionClassName: ClassName, val option: Option): FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            if (option.type != null) {
+                return CodeBlock.of("\$T.create\$L(\$L)", unionClassName, option.name, writeExpression(arguments[0]))
+            } else {
+                return CodeBlock.of("\$T.create\$L()", unionClassName, option.name)
+            }
+        }
+    }
+
     private fun convertBindingToCall(binding: TypedExpression, methodArguments: List<TypedExpression.Variable>): TypedExpression {
         val outputType = (binding.type as Type.FunctionType).outputType
         return when (binding) {
@@ -1283,6 +1481,9 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
                 FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
                 FunctionLikeType.OPAQUE_TYPE -> false
+                FunctionLikeType.UNION_TYPE -> TODO()
+                FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
+                FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
             }
         }
     }
@@ -1308,4 +1509,12 @@ private fun List<CodeBlock>.joinToArgumentsList(): CodeBlock {
         builder.add(", \$L", argument)
     }
     return builder.build()
+}
+
+private fun ClassName.parameterizedWith(typeVariables: List<TypeVariableName>): TypeName {
+    if (typeVariables.isEmpty()) {
+        return this
+    } else {
+        return ParameterizedTypeName.get(this, *(typeVariables.toTypedArray()))
+    }
 }
