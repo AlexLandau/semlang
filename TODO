@@ -45,7 +45,6 @@ Stuff that feels blocked or hasn't been implemented:
   - Use a code coverage tool for the Kotlin tests
   - Apply Kotlin style guide, and maybe add linting?
   - Add tslint?
-- Clean up duplicate ID detection in AllTypeInfo generation in the validator
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
 - Continue to shrink the set of native functions where possible

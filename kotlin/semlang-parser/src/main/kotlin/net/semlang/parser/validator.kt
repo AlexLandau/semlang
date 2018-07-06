@@ -142,198 +142,72 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 context.unions.associateBy { it.id }.mapValues { it.value.options.map(UnvalidatedOption::name).toSet() },
                 upstreamModules)
 
-        val localTypes = HashMap<EntityId, TypeInfo>()
-        val duplicateLocalTypeIds = HashSet<EntityId>()
+        val localTypesMultimap = HashMap<EntityId, MutableList<TypeInfo>>()
+        val localFunctionsMultimap = HashMap<EntityId, MutableList<FunctionInfo>>()
 
-        val localFunctions = HashMap<EntityId, FunctionInfo>()
-        val duplicateLocalFunctionIds = HashSet<EntityId>()
-
-        // For sanity-checking the results of the spaghetti logic below
-        val seenTypeIds = HashSet<EntityId>()
-        val seenFunctionIds = HashSet<EntityId>()
-
-        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { errors.add(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
-
-        // TODO: I think we could handle all this duplicate checking better with a ListMultimap-style approach
         for (struct in context.structs) {
             val id = struct.id
-            seenTypeIds.add(id)
-            seenFunctionIds.add(id)
-
-            var isDuplicate = false
-            // Check for duplicate declarations
-            if (duplicateLocalTypeIds.contains(id)) {
-                isDuplicate = true
-            } else if (localTypes.containsKey(id)) {
-                isDuplicate = true
-                duplicateLocalTypeIds.add(id)
-                addDuplicateIdError(id, localTypes[id]?.idLocation)
-                localTypes.remove(id)
-            }
-            if (duplicateLocalFunctionIds.contains(id)) {
-                isDuplicate = true
-            } else if (localFunctions.containsKey(id)) {
-                isDuplicate = true
-                duplicateLocalFunctionIds.add(id)
-                addDuplicateIdError(id, localFunctions[id]?.idLocation)
-                localFunctions.remove(id)
-            }
-            if (isDuplicate) {
-                addDuplicateIdError(id, struct.idLocation)
-            }
-
-            if (!duplicateLocalTypeIds.contains(id)) {
-                // Collect the type info
-                localTypes.put(id, getTypeInfo(struct))
-            }
-            if (!duplicateLocalFunctionIds.contains(id)) {
-                // Collect the constructor function info
-                localFunctions.put(id, FunctionInfo(struct.getConstructorSignature(), struct.idLocation))
-            }
+            localTypesMultimap.multimapPut(id, getTypeInfo(struct))
+            localFunctionsMultimap.multimapPut(id, FunctionInfo(struct.getConstructorSignature(), struct.idLocation))
         }
 
         for (interfac in context.interfaces) {
-            seenTypeIds.add(interfac.id)
-            seenFunctionIds.add(interfac.id)
-            seenFunctionIds.add(interfac.adapterId)
-
-            // Check for duplicate declarations
-            for (id in listOf(interfac.id, interfac.adapterId)) {
-                var isDuplicate = false
-                if (duplicateLocalTypeIds.contains(id)) {
-                    isDuplicate = true
-                } else if (localTypes.containsKey(id)) {
-                    isDuplicate = true
-                    duplicateLocalTypeIds.add(id)
-                    addDuplicateIdError(id, localTypes[id]?.idLocation)
-                    localTypes.remove(id)
-                }
-                if (duplicateLocalFunctionIds.contains(id)) {
-                    isDuplicate = true
-                } else if (localFunctions.containsKey(id)) {
-                    isDuplicate = true
-                    duplicateLocalFunctionIds.add(id)
-                    addDuplicateIdError(id, localFunctions[id]?.idLocation)
-                    localFunctions.remove(id)
-                }
-                if (isDuplicate) {
-                    addDuplicateIdError(id, interfac.idLocation)
-                }
-            }
-
-            if (!duplicateLocalTypeIds.contains(interfac.id)) {
-                localTypes.put(interfac.id, getTypeInfo(interfac))
-            }
-            if (!duplicateLocalFunctionIds.contains(interfac.id)) {
-                localFunctions.put(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idLocation))
-            }
-            if (!duplicateLocalFunctionIds.contains(interfac.adapterId)) {
-                localFunctions.put(interfac.adapterId, FunctionInfo(interfac.getAdapterFunctionSignature(), interfac.idLocation))
-            }
+            localTypesMultimap.multimapPut(interfac.id, getTypeInfo(interfac))
+            localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(interfac.getInstanceConstructorSignature(), interfac.idLocation))
+            localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(interfac.getAdapterFunctionSignature(), interfac.idLocation))
         }
 
         for (function in context.functions) {
             val id = function.id
-            seenFunctionIds.add(id)
-
-            if (duplicateLocalFunctionIds.contains(id)) {
-                addDuplicateIdError(id, function.idLocation)
-            } else if (localFunctions.containsKey(id)) {
-                addDuplicateIdError(id, function.idLocation)
-                duplicateLocalFunctionIds.add(id)
-                addDuplicateIdError(id, localFunctions[id]?.idLocation)
-                localFunctions.remove(id)
-            }
-
-            if (!duplicateLocalFunctionIds.contains(id)) {
-                localFunctions.put(id, FunctionInfo(function.getTypeSignature(), function.idLocation))
-            }
+            localFunctionsMultimap.multimapPut(id, FunctionInfo(function.getTypeSignature(), function.idLocation))
         }
 
         for (union in context.unions) {
             val id = union.id
-            seenTypeIds.add(union.id)
+            val whenId = EntityId(union.id.namespacedName + "when")
 
-            var isDuplicate = false
-            if (duplicateLocalTypeIds.contains(id)) {
-                isDuplicate = true
-                addDuplicateIdError(id, union.idLocation)
-            } else if (localTypes.containsKey(id)) {
-                isDuplicate = true
-                addDuplicateIdError(id, union.idLocation)
-                duplicateLocalTypeIds.add(id)
-                addDuplicateIdError(id, localTypes[id]?.idLocation)
-                localTypes.remove(id)
-            }
-
+            localTypesMultimap.multimapPut(id, getTypeInfo(union))
             for (option in union.options) {
                 val optionId = EntityId(union.id.namespacedName + option.name)
-                if (duplicateLocalFunctionIds.contains(optionId)) {
-                    isDuplicate = true
-                    addDuplicateIdError(optionId, union.idLocation)
-                } else if (localFunctions.containsKey(optionId)) {
-                    isDuplicate = true
-                    addDuplicateIdError(optionId, union.idLocation)
-                    duplicateLocalFunctionIds.add(optionId)
-                    addDuplicateIdError(optionId, localFunctions[optionId]?.idLocation)
-                    localFunctions.remove(optionId)
+                val signature = union.getConstructorSignature(option)
+                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(signature, union.idLocation))
+            }
+            val signature = union.getWhenSignature()
+            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(signature, union.idLocation))
+        }
+
+        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { errors.add(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
+
+        val duplicateLocalTypeIds = HashSet<EntityId>()
+        val uniqueLocalTypes = HashMap<EntityId, TypeInfo>()
+        for ((id, typeInfoList) in localTypesMultimap.entries) {
+            if (typeInfoList.size > 1) {
+                for (typeInfo in typeInfoList) {
+                    addDuplicateIdError(id, typeInfo.idLocation)
                 }
+                duplicateLocalTypeIds.add(id)
+            } else {
+                uniqueLocalTypes.put(id, typeInfoList[0])
             }
+        }
 
-            val whenId = EntityId(union.id.namespacedName + "when")
-            if (duplicateLocalFunctionIds.contains(whenId)) {
-                isDuplicate = true
-                addDuplicateIdError(whenId, union.idLocation)
-            } else if (localFunctions.containsKey(whenId)) {
-                isDuplicate = true
-                addDuplicateIdError(whenId, union.idLocation)
-                duplicateLocalFunctionIds.add(whenId)
-                addDuplicateIdError(whenId, localFunctions[whenId]?.idLocation)
-                localFunctions.remove(whenId)
-            }
-
-            if (!isDuplicate) {
-                localTypes.put(id, getTypeInfo(union))
-                for (option in union.options) {
-                    val optionId = EntityId(union.id.namespacedName + option.name)
-                    val signature = union.getConstructorSignature(option)
-                    localFunctions.put(optionId, FunctionInfo(signature, union.idLocation))
+        val duplicateLocalFunctionIds = HashSet<EntityId>()
+        val uniqueLocalFunctions = HashMap<EntityId, FunctionInfo>()
+        for ((id, functionInfoList) in localFunctionsMultimap.entries) {
+            if (functionInfoList.size > 1) {
+                for (functionInfo in functionInfoList) {
+                    addDuplicateIdError(id, functionInfo.idLocation)
                 }
-                val signature = union.getWhenSignature()
-                localFunctions.put(whenId, FunctionInfo(signature, union.idLocation))
+                duplicateLocalFunctionIds.add(id)
+            } else {
+                uniqueLocalFunctions.put(id, functionInfoList[0])
             }
-        }
-
-        // TODO: Check a few invariants here...
-        // Hopefully we only register one error per duplicate, but that can be dealt with later
-        for (id in duplicateLocalTypeIds) {
-            if (localTypes.containsKey(id)) {
-                error("localTypes has key $id that is also listed in duplicates")
-            }
-        }
-        for (id in seenTypeIds) {
-            if (!localTypes.containsKey(id) && !duplicateLocalTypeIds.contains(id)) {
-                error("We saw a type ID $id that did not end up in the local types or duplicates")
-            }
-        }
-        for (id in duplicateLocalFunctionIds) {
-            if (localFunctions.containsKey(id)) {
-                error("localTypes has key $id that is also listed in duplicates")
-            }
-        }
-        for (id in seenFunctionIds) {
-            if (!localFunctions.containsKey(id) && !duplicateLocalFunctionIds.contains(id)) {
-                error("We saw a function ID $id that did not end up in the local functions or duplicates")
-            }
-        }
-        if ((duplicateLocalTypeIds.isNotEmpty() || duplicateLocalFunctionIds.isNotEmpty()) && errors.isEmpty()) {
-            error("Should have at least one error when there are duplicate IDs")
         }
 
         val upstreamTypes = getUpstreamTypes(nativeModuleVersion, upstreamModules)
         val upstreamFunctions = getUpstreamFunctions(nativeModuleVersion, upstreamModules)
 
-        return AllTypeInfo(resolver, localTypes, duplicateLocalTypeIds, localFunctions, duplicateLocalFunctionIds, upstreamTypes, upstreamFunctions)
+        return AllTypeInfo(resolver, uniqueLocalTypes, duplicateLocalTypeIds, uniqueLocalFunctions, duplicateLocalFunctionIds, upstreamTypes, upstreamFunctions)
     }
 
     private fun getUpstreamTypes(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeInfo> {
@@ -1313,4 +1187,18 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
 private fun List<Argument>.asVariableTypesMap(): Map<String, Type> {
     return this.map{arg -> Pair(arg.name, arg.type)}.toMap()
+}
+
+/**
+ * This (somewhat) mimics the behavior of a Guava ListMultimap.
+ */
+private fun <K, V> MutableMap<K, MutableList<V>>.multimapPut(key: K, value: V) {
+    val existingListMaybe = this[key]
+    if (existingListMaybe != null) {
+        existingListMaybe.add(value)
+        return
+    }
+    val newList = ArrayList<V>()
+    newList.add(value)
+    this.put(key, newList)
 }
