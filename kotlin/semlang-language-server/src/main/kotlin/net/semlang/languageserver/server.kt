@@ -74,6 +74,12 @@ class SemlangWorkspaceService(private val languageClientProvider: LanguageClient
 class SemlangTextDocumentService(private val languageClientProvider: LanguageClientProvider): TextDocumentService {
     val model = AllModulesModel(languageClientProvider)
 
+    override fun completion(position: TextDocumentPositionParams): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
+        model.getCompletions(position)
+//        val substring = getPrecedingSubstringForCompletion(position)
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
     override fun resolveCompletionItem(unresolved: CompletionItem?): CompletableFuture<CompletionItem> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -107,10 +113,6 @@ class SemlangTextDocumentService(private val languageClientProvider: LanguageCli
     }
 
     override fun rename(params: RenameParams?): CompletableFuture<WorkspaceEdit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun completion(position: TextDocumentPositionParams?): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

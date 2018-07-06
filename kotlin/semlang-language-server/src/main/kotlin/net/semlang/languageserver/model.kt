@@ -12,6 +12,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -23,12 +24,8 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
     private val foldersToModelsMap = HashMap<URI, SourcesFolderModel>()
 
     fun documentWasOpened(uri: String, text: String) {
-        System.err.println("Handling documentWasOpened for document with URI $uri")
         val uriObject = URI(uri)
-        System.err.println("URI object is: $uriObject")
         val containingFolder = uriObject.resolve(".")
-        val resolved = uriObject.resolve("module.conf")
-        System.err.println("Resolved URI is: $resolved")
 
         val existingModel = foldersToModelsMap[containingFolder]
         if (existingModel != null) {
@@ -41,10 +38,8 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
     }
 
     fun documentWasUpdated(uri: String, text: String) {
-        val uriObject = URI(uri)
-        val containingFolder = uriObject.resolve(".")
 
-        val existingModel = foldersToModelsMap[containingFolder]
+        val existingModel = getExistingModel(uri)
         if (existingModel != null) {
             existingModel.updateDocument(uri, text)
         } else {
@@ -53,13 +48,27 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
     }
 
     fun documentWasClosed(uri: String) {
-        val uriObject = URI(uri)
-        val containingFolder = uriObject.resolve(".")
 
-        val existingModel = foldersToModelsMap[containingFolder]
+        val existingModel = getExistingModel(uri)
         if (existingModel != null) {
             existingModel.closeDocument(uri)
         }
+    }
+
+    fun getCompletions(position: TextDocumentPositionParams): CompletionList {
+        val existingModel = getExistingModel(position.textDocument.uri)
+        if (existingModel != null) {
+            return existingModel.getCompletions(position.position)
+        } else {
+            error("Got completions request for unknown document ${position.textDocument.uri}")
+        }
+    }
+
+    private fun getExistingModel(uri: String): SourcesFolderModel? {
+        val uriObject = URI(uri)
+        val containingFolder = uriObject.resolve(".")
+
+        return foldersToModelsMap[containingFolder]
     }
 }
 
@@ -409,6 +418,71 @@ class SourcesFolderModel(private val folderUri: URI,
 
     private fun toLsp4jPosition(position: net.semlang.api.Position): Position {
         return Position(position.lineNumber - 1, position.column)
+    }
+
+    fun getCompletions(position: Position): CompletionList {
+        CompletableFuture.supplyAsync()//.supplyAsync(foo, workQueue)
+//        workQueue.add()
+    }
+
+
+    private fun getCompletionsTask(position: TextDocumentPositionParams): () -> Unit {
+        return fun() {
+            val fileText = this.folderState.openFiles[position.textDocument.uri] ?: error("No loaded file text for ${position.textDocument.uri}")
+            val precedingEntityIdToComplete = getIncompleteEntityIdToComplete(position.position, fileText)
+
+//            val oldOtherFilesState = this.folderState.otherFiles
+//            val newOpenFilesState = HashMap<String, String>(oldOpenFilesState)
+//            val newOtherFilesState = HashMap<String, FileOnDiskState>(oldOtherFilesState)
+//
+//            val filePath = Paths.get(URI(position.textDocument.uri))
+//            val fileName = filePath.toFile().name
+//
+//            newOpenFilesState.remove(fileName)
+//            if (isRelevantFilename(fileName) && Files.isRegularFile(filePath)) {
+//                val lastModifiedTime = getLastModifiedTime(filePath)
+//                val fileText = filePath.toFile().readText()
+//                val fileState = FileOnDiskState(fileText, lastModifiedTime)
+//                newOtherFilesState.put(fileName, fileState)
+//            }
+//
+//            this.folderState = SourcesFolderState(newOpenFilesState, newOtherFilesState)
+        }
+    }
+
+    private fun getIncompleteEntityIdToComplete(position: Position, fileText: String): String {
+        // TODO: Would it be better to store these as a list of lines somehow?
+        var i = 0
+        var lineNumber = 1
+        while (i < fileText.length && lineNumber < position.line) {
+            if (fileText[i] == '\n') {
+                lineNumber++
+            }
+            i++
+        }
+        if (lineNumber < position.line) {
+            error("Either I did this wrong or something's wrong")
+        }
+        var charInLineNumber = 1
+        while (i < fileText.length && charInLineNumber < position.character) {
+            i++
+            charInLineNumber++
+        }
+        if (charInLineNumber < position.character) {
+            error("Either I did this wrong or something's wrong 2")
+        }
+        // So i is the number from which we work backwards
+        var h = i
+        while (h > 0) {
+            val prevChar = fileText[h - 1]
+            val includePrevChar = prevChar in 'a'..'z' || prevChar in 'A'..'Z' || prevChar in '0'..'9' || prevChar == '.'
+            if (includePrevChar) {
+                h--
+            } else {
+                break
+            }
+        }
+        return fileText.substring(h, i)
     }
 }
 
