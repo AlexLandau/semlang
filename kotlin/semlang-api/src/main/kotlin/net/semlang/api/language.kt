@@ -693,6 +693,21 @@ data class Union(override val id: EntityId, val moduleId: ModuleId, val typePara
         return optionIndexLookup[functionId]
     }
 
+    fun getType(): Type {
+        return Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
+    }
+
+    fun getOptionConstructorSignatureForId(optionId: EntityId): TypeSignature {
+        val optionIndex = optionIndexLookup[optionId] ?: error("The union ${id} has no option with ID $optionId")
+        val option = options[optionIndex]
+        val optionType = option.type
+        if (optionType != null) {
+            return TypeSignature(optionId, listOf(optionType), this.getType(), typeParameters)
+        } else {
+            return TypeSignature(optionId, listOf(), this.getType(), typeParameters)
+        }
+    }
+
 }
 data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
 data class Option(val name: String, val type: Type?)

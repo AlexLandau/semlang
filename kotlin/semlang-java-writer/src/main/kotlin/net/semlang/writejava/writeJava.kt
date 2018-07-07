@@ -738,7 +738,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 error("$resolved should be a function, not an opaque type")
             }
             FunctionLikeType.UNION_TYPE -> TODO()
-            FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
+            FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> {
+                val unionId = EntityId(resolved.entityRef.id.namespacedName.dropLast(1))
+                val unionRef = resolved.entityRef.copy(id = unionId)
+                module.getInternalUnion(unionRef).union.getOptionConstructorSignatureForId(resolved.entityRef.id)
+            }
             FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
         }
 
