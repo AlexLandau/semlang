@@ -12,37 +12,70 @@ struct Utf8.CodePointByteCount {
   }
 }
 
-struct Utf8.CodePointBytes {
+union Utf8.CodePointBytes {
+  OneByte: Utf8.OneByteCodePoint
+  TwoByte: Utf8.TwoByteCodePoint
+  ThreeByte: Utf8.ThreeByteCodePoint
+  FourByte: Utf8.FourByteCodePoint
+}
+
+struct Utf8.OneByteCodePoint {
   bytes: List<Byte>
   requires {
-    Boolean.any([
-      Utf8.isValidOneByteCodePoint(bytes),
-      Utf8.isValidTwoByteCodePoint(bytes),
-      Utf8.isValidThreeByteCodePoint(bytes),
-      Utf8.isValidFourByteCodePoint(bytes)
-    ]<Boolean>)
+    Utf8.isValidOneByteCodePoint(bytes)
   }
+}
+
+struct Utf8.TwoByteCodePoint {
+  bytes: List<Byte>
+  requires {
+    Utf8.isValidTwoByteCodePoint(bytes)
+  }
+}
+
+struct Utf8.ThreeByteCodePoint {
+  bytes: List<Byte>
+  requires {
+    Utf8.isValidThreeByteCodePoint(bytes)
+  }
+}
+
+struct Utf8.FourByteCodePoint {
+  bytes: List<Byte>
+  requires {
+    Utf8.isValidFourByteCodePoint(bytes)
+  }
+}
+
+function Utf8.CodePointBytes.getBytes(bytes: Utf8.CodePointBytes): List<Byte> {
+  Utf8.CodePointBytes.when<List<Byte>>(
+    bytes,
+    function (oneByte: Utf8.OneByteCodePoint): List<Byte> { oneByte->bytes },
+    function (twoByte: Utf8.TwoByteCodePoint): List<Byte> { twoByte->bytes },
+    function (threeByte: Utf8.ThreeByteCodePoint): List<Byte> { threeByte->bytes },
+    function (fourByte: Utf8.FourByteCodePoint): List<Byte> { fourByte->bytes },
+  )
 }
 
 function Utf8.getStartingCodePointBytes(bytes: List<Byte>): Maybe<Utf8.CodePointBytes> {
   let lengthOneList = List.firstN<Byte>(bytes, Natural."1")
-  let sizeOneCodePoint = Utf8.CodePointBytes(lengthOneList)
-  if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeOneCodePoint)) {
-    sizeOneCodePoint
+  let sizeOneCodePoint = Utf8.OneByteCodePoint(lengthOneList)
+  if (Maybe.isSuccess<Utf8.OneByteCodePoint>(sizeOneCodePoint)) {
+    Maybe.map<Utf8.OneByteCodePoint, Utf8.CodePointBytes>(sizeOneCodePoint, Utf8.CodePointBytes.OneByte|(_))
   } else {
     let lengthTwoList = List.firstN<Byte>(bytes, Natural."2")
-    let sizeTwoCodePoint = Utf8.CodePointBytes(lengthTwoList)
-    if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeTwoCodePoint)) {
-      sizeTwoCodePoint
+    let sizeTwoCodePoint = Utf8.TwoByteCodePoint(lengthTwoList)
+    if (Maybe.isSuccess<Utf8.TwoByteCodePoint>(sizeTwoCodePoint)) {
+      Maybe.map<Utf8.TwoByteCodePoint, Utf8.CodePointBytes>(sizeTwoCodePoint, Utf8.CodePointBytes.TwoByte|(_))
     } else {
       let lengthThreeList = List.firstN<Byte>(bytes, Natural."3")
-      let sizeThreeCodePoint = Utf8.CodePointBytes(lengthThreeList)
-      if (Maybe.isSuccess<Utf8.CodePointBytes>(sizeThreeCodePoint)) {
-        sizeThreeCodePoint
+      let sizeThreeCodePoint = Utf8.ThreeByteCodePoint(lengthThreeList)
+      if (Maybe.isSuccess<Utf8.ThreeByteCodePoint>(sizeThreeCodePoint)) {
+        Maybe.map<Utf8.ThreeByteCodePoint, Utf8.CodePointBytes>(sizeThreeCodePoint, Utf8.CodePointBytes.ThreeByte|(_))
       } else {
         let lengthFourList = List.firstN<Byte>(bytes, Natural."4")
-        let sizeFourCodePoint = Utf8.CodePointBytes(lengthFourList)
-        sizeFourCodePoint
+        let sizeFourCodePoint = Utf8.FourByteCodePoint(lengthFourList)
+        Maybe.map<Utf8.FourByteCodePoint, Utf8.CodePointBytes>(sizeFourCodePoint, Utf8.CodePointBytes.FourByte|(_))
       }
     }
   }
@@ -137,7 +170,7 @@ function getByteCountGivenInitialByte(initialByte: Byte): Maybe<Utf8.CodePointBy
 }
 
 function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): Unicode.CodePoint {
-  let bytes = codePointBytes->bytes
+  let bytes = Utf8.CodePointBytes.getBytes(codePointBytes)
   let length = List.size<Byte>(bytes)
   let byte1 = Maybe.assume<Byte>(List.get<Byte>(bytes, Natural."0"))
   Maybe.assume<Unicode.CodePoint>(
@@ -195,7 +228,8 @@ function Utf8.decodeStrict1(bytes: List<Byte>): Maybe<Unicode.String> {
     let firstCharMaybe = Utf8.getStartingCodePointBytes(bytes)
     Maybe.flatMap<Utf8.CodePointBytes, Unicode.String>(firstCharMaybe, function (firstChar: Utf8.CodePointBytes): Maybe<Unicode.String> {
       let unicodeValue = getUnicodeValue(firstChar)
-      let numBytesUsed = List.size<Byte>(firstChar->bytes)
+      let firstCharBytes = Utf8.CodePointBytes.getBytes(firstChar)
+      let numBytesUsed = List.size<Byte>(firstCharBytes)
       let remainingBytes = List.drop<Byte>(bytes, numBytesUsed)
       Maybe.map<Unicode.String, Unicode.String>(Utf8.decodeStrict1(remainingBytes), function (remainingString: Unicode.String): Unicode.String {
         Unicode.String.appendFront(remainingString, unicodeValue)
