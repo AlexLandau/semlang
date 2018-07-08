@@ -897,8 +897,16 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterLength) {
             expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         } else if (expression.chosenParameters.size == requiredTypeParameterLength) {
-            signature.getTypeParameterInferenceSources()
-            TODO()
+            val inferenceSources = signature.getTypeParameterInferenceSources()
+            val explicitParametersIterator = expression.chosenParameters.iterator()
+            inferenceSources.map { inferenceSource ->
+                if (inferenceSource == null) {
+                    val chosenParameter = explicitParametersIterator.next()
+                    validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
+                } else {
+                    inferenceSource.findType(argumentTypes)
+                }
+            }
         } else {
             // TODO: Update issue message to account for multiple possible lengths
             errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${expression.chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
