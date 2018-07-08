@@ -889,10 +889,24 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //TODO: Maybe compare argument size before grounding?
 
         //Ground the signature
-        val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-        if (signature.typeParameters.size != chosenParameters.size) {
-            errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
+        // TODO: Type inference will happen here...
+        // Will need to decide if we should have restrictions on required vs. inferrable parameter ordering, or just calculate it in the signatures
+
+        val fullTypeParameterLength = signature.typeParameters.size
+        val requiredTypeParameterLength = signature.getRequiredTypeParameterCount()
+        val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterLength) {
+            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+        } else if (expression.chosenParameters.size == requiredTypeParameterLength) {
+            signature.getTypeParameterInferenceSources()
+            TODO()
+        } else {
+            // TODO: Update issue message to account for multiple possible lengths
+            errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${expression.chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
             return null
+        }
+
+        if (signature.typeParameters.size != chosenParameters.size) {
+            error("Got the incorrect number of type parameters somehow: ${chosenParameters.size} instead of $fullTypeParameterLength or $requiredTypeParameterLength")
         }
         for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
             validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)

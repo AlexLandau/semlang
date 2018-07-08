@@ -429,10 +429,76 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     }
 }
 
+sealed class TypeParameterInferenceSource {
+    data class ArgumentType(val index: Int): TypeParameterInferenceSource()
+    data class ListType(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource()
+    data class NamedTypeParameter(val containingSource: TypeParameterInferenceSource, val index: Int): TypeParameterInferenceSource()
+}
+
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
+    }
+
+    fun getTypeParameterInferenceSources(): List<TypeParameterInferenceSource?> {
+        val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
+
+        fun addPossibleSources(type: UnvalidatedType, sourceSoFar: TypeParameterInferenceSource) {
+            val unused = when (type) {
+                is UnvalidatedType.Invalid.ThreadedInteger -> TODO()
+                is UnvalidatedType.Invalid.ThreadedBoolean -> TODO()
+                is UnvalidatedType.Integer -> { return }
+                is UnvalidatedType.Boolean -> { return }
+                is UnvalidatedType.List -> {
+                    val listSource = TypeParameterInferenceSource.ListType(sourceSoFar)
+                    addPossibleSources(type.parameter, listSource)
+                }
+                is UnvalidatedType.Maybe -> TODO()
+                is UnvalidatedType.FunctionType -> TODO()
+                is UnvalidatedType.NamedType -> {
+                    if (type.ref.moduleRef == null) {
+                        val namespacedName = type.ref.id.namespacedName
+                        if (namespacedName.size == 1) {
+                            val name = namespacedName[0]
+                            possibleSourcesByTypeParameterName.multimapPut(name, sourceSoFar)
+                        }
+                    }
+                    type.parameters.forEachIndexed { parameterIndex, parameter ->
+                        val parameterSource = TypeParameterInferenceSource.NamedTypeParameter(sourceSoFar, parameterIndex)
+                        addPossibleSources(parameter, parameterSource)
+                    }
+                }
+            }
+        }
+
+        argumentTypes.forEachIndexed { index, argType ->
+            val source = TypeParameterInferenceSource.ArgumentType(index)
+            addPossibleSources(argType, source)
+        }
+
+        val result = typeParameters.map { typeParameter -> getPreferredSource(possibleSourcesByTypeParameterName[typeParameter.name]) }
+        return result
+    }
+
+
+    private fun getPreferredSource(list: List<TypeParameterInferenceSource>?): TypeParameterInferenceSource? {
+        if (list == null || list.isEmpty()) {
+            return null
+        }
+        // TODO: It would probably be advantageous to prefer sources that involve less delving into types, but only slightly so
+        return list[0]
+//        return list.maxWith(Comparator { source1, source2 ->
+//
+//        })
+    }
+
+    /**
+     * Returns the number of type parameters for which type inference can't be performed.
+     */
+    fun getRequiredTypeParameterCount(): Int {
+        val sources = getTypeParameterInferenceSources()
+        return sources.count { it == null }
     }
 }
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
@@ -761,4 +827,18 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
         return null
     }
     return EntityRef(adapterRef.moduleRef, interfaceId)
+}
+
+/**
+ * This (somewhat) mimics the behavior of a Guava ListMultimap.
+ */
+private fun <K, V> MutableMap<K, MutableList<V>>.multimapPut(key: K, value: V) {
+    val existingListMaybe = this[key]
+    if (existingListMaybe != null) {
+        existingListMaybe.add(value)
+        return
+    }
+    val newList = java.util.ArrayList<V>()
+    newList.add(value)
+    this.put(key, newList)
 }
