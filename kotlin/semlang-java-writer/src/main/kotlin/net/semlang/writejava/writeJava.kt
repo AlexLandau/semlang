@@ -772,7 +772,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
+        unboundArgumentNames.forEach(this::addToVariableScope)
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
+        unboundArgumentNames.forEach(this::removeFromVariableScope)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 

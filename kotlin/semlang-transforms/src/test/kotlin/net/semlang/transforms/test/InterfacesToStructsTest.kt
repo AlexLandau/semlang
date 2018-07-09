@@ -35,7 +35,13 @@ class InterfacesToStructsTest(private val file: File, private val libraries: Lis
         val context = transformInterfacesToStructs(originalContext)
         Assert.assertEquals(0, context.interfaces.size)
 
-        val validatedMaybe = validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries)
+        val validatedMaybe = try {
+            validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries)
+        } catch(e: NotImplementedError) {
+            System.out.println("Transformed context for test $file:")
+            System.out.println(writeToString(context))
+            throw RuntimeException(e)
+        }
         if (validatedMaybe is ValidationResult.Failure) {
             System.out.println("Transformed sources for $file:")
             System.out.println(writeToString(context))
