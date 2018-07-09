@@ -429,42 +429,47 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     }
 }
 
+// TODO: This logic should probably be in a different module
 sealed class TypeParameterInferenceSource {
-    abstract fun findType(argumentTypes: List<Type>): Type
+    /*
+     * Note: This is not responsible for reporting errors if the types are incompatible with the expected types. That's
+     * left to other code to deal with.
+     */
+    abstract fun findType(argumentTypes: List<Type?>): Type?
 
     data class ArgumentType(val index: Int): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             return argumentTypes[index]
         }
     }
     data class ListType(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.List ?: error("")).parameter
+            return (currentType as? Type.List ?: return null).parameter
         }
     }
     data class MaybeType(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.Maybe ?: error("")).parameter
+            return (currentType as? Type.Maybe ?: return null).parameter
         }
     }
     data class FunctionTypeArgument(val containingSource: TypeParameterInferenceSource, val argumentIndex: Int): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.FunctionType ?: error("")).argTypes[argumentIndex]
+            return (currentType as? Type.FunctionType ?: return null).argTypes[argumentIndex]
         }
     }
     data class FunctionTypeOutput(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.FunctionType ?: error("")).outputType
+            return (currentType as? Type.FunctionType ?: return null).outputType
         }
     }
     data class NamedTypeParameter(val containingSource: TypeParameterInferenceSource, val index: Int): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type>): Type {
+        override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.NamedType ?: error("")).parameters[index]
+            return (currentType as? Type.NamedType ?: return null).parameters[index]
         }
     }
 }
@@ -476,7 +481,7 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
     }
 
     // TODO: Bindings could complicate this; we might need multiple possible sources
-    fun getTypeParameterInferenceSources(): List<TypeParameterInferenceSource?> {
+    fun getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
         val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
 
         fun addPossibleSources(type: UnvalidatedType, sourceSoFar: TypeParameterInferenceSource) {
@@ -522,7 +527,7 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
             addPossibleSources(argType, source)
         }
 
-        val result = typeParameters.map { typeParameter -> getPreferredSource(possibleSourcesByTypeParameterName[typeParameter.name]) }
+        val result = typeParameters.map { typeParameter -> possibleSourcesByTypeParameterName[typeParameter.name] ?: listOf<TypeParameterInferenceSource>() }
         return result
     }
 

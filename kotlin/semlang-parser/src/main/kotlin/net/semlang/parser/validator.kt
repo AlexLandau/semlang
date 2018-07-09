@@ -719,7 +719,47 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
         }
         val signature = functionInfo.signature
-        val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+
+
+        val bindings = expression.bindings.map { binding ->
+            if (binding == null) {
+                null
+            } else {
+                validateExpression(binding, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId)
+            }
+        }
+        val bindingTypes = bindings.map { binding ->
+            if (binding == null) {
+                null
+            } else {
+                binding.type
+            }
+        }
+
+        val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
+            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+        } else {
+            // Apply type inference
+            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
+            val explicitParametersIterator = expression.chosenParameters.iterator()
+            val types = inferenceSourcesByArgument.map { inferenceSources ->
+                val inferredType = inferenceSources.stream().map { it.findType(bindingTypes) }.filter { it != null }.findFirst()
+                if (inferredType.isPresent()) {
+                    inferredType.get()
+                } else {
+                    if (!explicitParametersIterator.hasNext()) {
+                        error("Ran out of explicit parameters")
+                    }
+                    val chosenParameter = explicitParametersIterator.next()
+                    validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
+                }
+            }
+            if (explicitParametersIterator.hasNext()) {
+                // TODO: Differentiate from the case where there are more explicit parameters than parameters in the signature
+                error("Too many explicit parameters")
+            }
+            types
+        }
         if (chosenParameters.size != signature.typeParameters.size) {
             fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
         }
@@ -732,14 +772,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         if (expectedFunctionType.argTypes.size != expression.bindings.size) {
             errors.add(Issue("Tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${expectedFunctionType.argTypes.size} arguments", expression.location, IssueLevel.ERROR))
             return null
-        }
-
-        val bindings = expression.bindings.map { binding ->
-            if (binding == null) {
-                null
-            } else {
-                validateExpression(binding, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            }
         }
 
         val postBindingArgumentTypes = ArrayList<Type>()
@@ -905,14 +937,15 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterLength) {
             expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         } else if (expression.chosenParameters.size == requiredTypeParameterLength) {
-            val inferenceSources = signature.getTypeParameterInferenceSources()
+            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
             val explicitParametersIterator = expression.chosenParameters.iterator()
-            val types = inferenceSources.map { inferenceSource ->
-                if (inferenceSource == null) {
+            val types = inferenceSourcesByArgument.map { inferenceSources ->
+                if (inferenceSources.isEmpty()) {
                     val chosenParameter = explicitParametersIterator.next()
                     validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
                 } else {
-                    inferenceSource.findType(argumentTypes)
+                    // Since we know all our arguments are present, we can cheat a little and just take the first one
+                    inferenceSources.stream().map { it.findType(argumentTypes) }.filter { it != null }.findFirst().get()
                 }
             }
             if (explicitParametersIterator.hasNext()) {

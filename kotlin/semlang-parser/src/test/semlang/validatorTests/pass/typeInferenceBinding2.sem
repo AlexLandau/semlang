@@ -1,0 +1,5 @@
+// Type inference in a function binding when the type is a parameter of an argument type
+function myFunction(): () -> Natural {
+  let numbers = [Integer."0"]<Integer>
+  List.size|(numbers)
+}

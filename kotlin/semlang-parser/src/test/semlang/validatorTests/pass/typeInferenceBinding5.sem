@@ -1,0 +1,5 @@
+// Type inference in a function binding where one argument provides only one type
+function myFunction(): ((Integer) -> Integer) -> Maybe<Integer> {
+  let input: Maybe<Integer> = Maybe.success<Integer>(Integer."0")
+  Maybe.map<Integer>|(input, _)
+}
