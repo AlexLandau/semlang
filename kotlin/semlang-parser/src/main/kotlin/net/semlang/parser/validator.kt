@@ -696,6 +696,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val postBindingType = Type.FunctionType(
                 postBindingArgumentTypes,
                 functionType.outputType)
+        if (!expression.chosenParameters.isEmpty()) {
+            // Does this actually happen? If not, simplify
+            TODO()
+        }
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         for (chosenParameter in chosenParameters) {
             if (chosenParameter.isThreaded()) {
@@ -856,6 +860,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         if (argumentTypes != functionType.argTypes) {
             errors.add(Issue("The bound function $functionExpression expects argument types ${functionType.argTypes}, but we give it types $argumentTypes", expression.location, IssueLevel.ERROR))
             return null
+        }
+        if (!expression.chosenParameters.isEmpty()) {
+            // Does this actually happen? If not, simplify
+            TODO()
         }
         val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         for (chosenParameter in chosenParameters) {
