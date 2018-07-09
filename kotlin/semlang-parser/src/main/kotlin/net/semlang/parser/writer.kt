@@ -268,11 +268,6 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         is Expression.ExpressionFunctionCall -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
-            if (expression.chosenParameters.isNotEmpty()) {
-                writer.append("<")
-                        .append(expression.chosenParameters.joinToString(", "))
-                        .append(">")
-            }
             writer.append("(")
             var first = true
             for (argument in expression.arguments) {
@@ -286,11 +281,6 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         is Expression.ExpressionFunctionBinding -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
-            if (expression.chosenParameters.isNotEmpty()) {
-                writer.append("<")
-                        .append(expression.chosenParameters.joinToString(", "))
-                        .append(">")
-            }
             writer.append("|(")
             var first = true
             for (binding in expression.bindings) {

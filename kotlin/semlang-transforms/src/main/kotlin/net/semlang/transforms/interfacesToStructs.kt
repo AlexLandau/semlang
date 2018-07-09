@@ -78,8 +78,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
                                         arguments = interfac.methods.map { method ->
                                             Expression.ExpressionFunctionBinding(
                                                     functionExpression = Expression.Variable(method.name),
-                                                    bindings = listOf(Expression.Variable("data")) + Collections.nCopies(method.arguments.size, null),
-                                                    chosenParameters = listOf()
+                                                    bindings = listOf(Expression.Variable("data")) + Collections.nCopies(method.arguments.size, null)
                                             )
                                         },
                                         chosenParameters = interfaceParameterTypes // TODO: Probably wrong, work through with real case

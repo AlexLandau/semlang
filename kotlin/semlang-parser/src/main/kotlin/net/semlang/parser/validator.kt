@@ -696,18 +696,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val postBindingType = Type.FunctionType(
                 postBindingArgumentTypes,
                 functionType.outputType)
-        if (!expression.chosenParameters.isEmpty()) {
-            // Does this actually happen? If not, simplify
-            TODO()
-        }
-        val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-        for (chosenParameter in chosenParameters) {
-            if (chosenParameter.isThreaded()) {
-                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
-            }
-        }
 
-        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, chosenParameters)
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings)
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -898,18 +888,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("The bound function $functionExpression expects argument types ${functionType.argTypes}, but we give it types $argumentTypes", expression.location, IssueLevel.ERROR))
             return null
         }
-        if (!expression.chosenParameters.isEmpty()) {
-            // Does this actually happen? If not, simplify
-            TODO()
-        }
-        val chosenParameters = expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-        for (chosenParameter in chosenParameters) {
-            if (chosenParameter.isThreaded()) {
-                errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
-            }
-        }
 
-        return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, chosenParameters)
+        return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments)
     }
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
