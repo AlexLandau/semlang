@@ -549,7 +549,7 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
      */
     fun getRequiredTypeParameterCount(): Int {
         val sources = getTypeParameterInferenceSources()
-        return sources.count { it == null }
+        return sources.count { it.isEmpty() }
     }
 }
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId

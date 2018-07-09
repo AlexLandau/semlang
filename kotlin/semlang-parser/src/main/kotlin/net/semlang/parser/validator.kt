@@ -738,6 +738,9 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
             expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+        } else if (signature.typeParameters.size < expression.chosenParameters.size) {
+            errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
+            return null
         } else {
             // Apply type inference
             val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
@@ -748,15 +751,17 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                     inferredType.get()
                 } else {
                     if (!explicitParametersIterator.hasNext()) {
-                        error("Ran out of explicit parameters")
+                        errors.add(Issue("Not enough type parameters were supplied for function binding for ${functionRef}", expression.location, IssueLevel.ERROR))
+                        return null
                     }
                     val chosenParameter = explicitParametersIterator.next()
                     validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
                 }
             }
             if (explicitParametersIterator.hasNext()) {
-                // TODO: Differentiate from the case where there are more explicit parameters than parameters in the signature
-                error("Too many explicit parameters")
+                // TODO: Give this an error message a human could reasonably understand
+                errors.add(Issue("The type parameters supplied for function binding for $functionRef were too few for full type parameters, but too many for non-inferrable-only type parameters", expression.location, IssueLevel.ERROR))
+                return null
             }
             types
         }
@@ -932,11 +937,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         // TODO: Type inference will happen here...
         // Will need to decide if we should have restrictions on required vs. inferrable parameter ordering, or just calculate it in the signatures
 
-        val fullTypeParameterLength = signature.typeParameters.size
-        val requiredTypeParameterLength = signature.getRequiredTypeParameterCount()
-        val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterLength) {
+        val fullTypeParameterCount = signature.typeParameters.size
+        val requiredTypeParameterCount = signature.getRequiredTypeParameterCount()
+        val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterCount) {
             expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-        } else if (expression.chosenParameters.size == requiredTypeParameterLength) {
+        } else if (expression.chosenParameters.size == requiredTypeParameterCount) {
             val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
             val explicitParametersIterator = expression.chosenParameters.iterator()
             val types = inferenceSourcesByArgument.map { inferenceSources ->
@@ -959,7 +964,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
 
         if (signature.typeParameters.size != chosenParameters.size) {
-            error("Got the incorrect number of type parameters somehow: ${chosenParameters.size} instead of $fullTypeParameterLength or $requiredTypeParameterLength")
+            error("Got the incorrect number of type parameters somehow: ${chosenParameters.size} instead of $fullTypeParameterCount or $requiredTypeParameterCount")
         }
         for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
             validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
