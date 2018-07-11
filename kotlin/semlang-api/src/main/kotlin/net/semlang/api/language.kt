@@ -480,7 +480,6 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
         return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
     }
 
-    // TODO: Bindings could complicate this; we might need multiple possible sources
     fun getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
         val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
 
@@ -527,21 +526,7 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
             addPossibleSources(argType, source)
         }
 
-        val result = typeParameters.map { typeParameter -> possibleSourcesByTypeParameterName[typeParameter.name] ?: listOf<TypeParameterInferenceSource>() }
-        return result
-    }
-
-
-    private fun getPreferredSource(list: List<TypeParameterInferenceSource>?): TypeParameterInferenceSource? {
-        if (list == null || list.isEmpty()) {
-            return null
-        }
-        // TODO: It would probably be advantageous to prefer sources that involve less delving into types, but only slightly so
-        // TODO: For bindings, we might end up just returning a whole list instead...
-        return list[0]
-//        return list.maxWith(Comparator { source1, source2 ->
-//
-//        })
+        return typeParameters.map { typeParameter -> possibleSourcesByTypeParameterName[typeParameter.name] ?: listOf<TypeParameterInferenceSource>() }
     }
 
     /**
