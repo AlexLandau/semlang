@@ -7,7 +7,7 @@ import net.semlang.interpreter.InterpreterOptions
 import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
 import org.junit.Test
-import net.semlang.parser.*
+import net.semlang.validator.parseAndValidateFile
 import org.junit.Assert
 import java.io.ByteArrayOutputStream
 import java.io.File

@@ -9,7 +9,7 @@ import net.semlang.interpreter.InterpreterOptions
 import net.semlang.interpreter.SemObject
 import net.semlang.interpreter.SemlangForwardInterpreter
 import net.semlang.parser.parseFileNamed
-import net.semlang.parser.validateModule
+import net.semlang.validator.validateModule
 import org.junit.Assume
 import java.math.BigInteger
 import java.security.MessageDigest

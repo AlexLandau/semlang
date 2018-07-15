@@ -6,6 +6,9 @@ import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
+import net.semlang.validator.Issue
+import net.semlang.validator.IssueLevel
+import net.semlang.validator.validate
 import org.eclipse.lsp4j.*
 import java.net.URI
 import java.nio.file.Files

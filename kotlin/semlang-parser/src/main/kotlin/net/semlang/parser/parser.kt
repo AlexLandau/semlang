@@ -11,6 +11,8 @@ import sem1.antlr.Sem1ParserBaseListener
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.api.Annotation
+import net.semlang.validator.Issue
+import net.semlang.validator.IssueLevel
 import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean

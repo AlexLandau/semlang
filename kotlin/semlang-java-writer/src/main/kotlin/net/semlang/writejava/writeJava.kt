@@ -8,8 +8,8 @@ import net.semlang.interpreter.ComplexLiteralNode
 import net.semlang.interpreter.ComplexLiteralParsingResult
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.interpreter.parseComplexLiteral
-import net.semlang.parser.validateModule
 import net.semlang.transforms.*
+import net.semlang.validator.validateModule
 import java.io.File
 import java.io.PrintStream
 import java.math.BigInteger

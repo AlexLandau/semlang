@@ -3,6 +3,8 @@ package net.semlang.parser.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.parser.*
+import net.semlang.validator.ValidationResult
+import net.semlang.validator.validate
 import org.junit.Test
 import java.io.File
 

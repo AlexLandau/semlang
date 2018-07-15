@@ -3,8 +3,7 @@ package net.semlang.transforms
 import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
-import net.semlang.parser.validate
-import net.semlang.parser.validateModule
+import net.semlang.validator.validateModule
 
 // TODO: Test this on multi-module cases
 fun convertToSem0(module: ValidatedModule): S0Context {

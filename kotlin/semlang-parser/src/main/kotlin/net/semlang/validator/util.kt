@@ -1,4 +1,4 @@
-package net.semlang.parser
+package net.semlang.validator
 
 import net.semlang.api.TypedBlock
 import net.semlang.api.TypedExpression

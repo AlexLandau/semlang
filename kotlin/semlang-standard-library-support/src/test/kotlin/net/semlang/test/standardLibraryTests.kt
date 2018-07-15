@@ -3,7 +3,6 @@ package net.semlang.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert
-import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -13,8 +12,7 @@ import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.interpreter.InterpreterOptions
 import net.semlang.parser.parseFile
-import net.semlang.parser.parseFiles
-import net.semlang.parser.validateModule
+import net.semlang.validator.validateModule
 import java.io.File
 
 @RunWith(Parameterized::class)

@@ -1,7 +1,10 @@
-package net.semlang.parser
+package net.semlang.validator
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import net.semlang.parser.ParsingResult
+import net.semlang.parser.parseFile
+import net.semlang.parser.parseString
 import net.semlang.transforms.invalidate
 import java.io.File
 import java.util.*
@@ -1244,7 +1247,7 @@ private fun List<Argument>.asVariableTypesMap(): Map<String, Type> {
 /**
  * This (somewhat) mimics the behavior of a Guava ListMultimap.
  */
-private fun <K, V> MutableMap<K, MutableList<V>>.multimapPut(key: K, value: V) {
+internal fun <K, V> MutableMap<K, MutableList<V>>.multimapPut(key: K, value: V) {
     val existingListMaybe = this[key]
     if (existingListMaybe != null) {
         existingListMaybe.add(value)

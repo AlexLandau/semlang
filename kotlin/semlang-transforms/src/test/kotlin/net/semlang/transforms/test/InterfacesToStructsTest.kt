@@ -3,15 +3,13 @@ package net.semlang.transforms.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
-import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import net.semlang.internal.test.runAnnotationTests
-import net.semlang.parser.ValidationResult
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
-import net.semlang.transforms.invalidate
 import net.semlang.transforms.transformInterfacesToStructs
+import net.semlang.validator.ValidationResult
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

@@ -6,10 +6,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.api.*
 import net.semlang.internal.test.getSemlangNativeCorpusFiles
-import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
 import net.semlang.internal.test.runAnnotationTests
-import net.semlang.parser.parseAndValidateFile
+import net.semlang.validator.parseAndValidateFile
 import java.io.File
 
 @RunWith(Parameterized::class)

@@ -5,14 +5,13 @@ import net.semlang.api.ModuleId
 import net.semlang.api.RawContext
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
-import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
 import net.semlang.transforms.invalidate
+import net.semlang.validator.validateModule
 import java.io.File
 
 // TODO: Move this to where invalidation is?
