@@ -13,7 +13,6 @@ Major near-term projects:
   - Consider a return keyword and similar imperative control structures?
 
 Cases to get working with "nice" dev tooling:
-- Empty union
 - Empty struct
 - Empty interface
 - Empty function definition

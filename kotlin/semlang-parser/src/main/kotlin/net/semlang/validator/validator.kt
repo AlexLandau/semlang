@@ -1217,6 +1217,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
     private fun validateUnion(union: UnvalidatedUnion, typeInfo: AllTypeInfo): Union? {
         // TODO: Do some additional validation of unions (e.g. no duplicate option IDs)
+        if (union.options.isEmpty()) {
+            errors.add(Issue("A union must include at least one option", union.idLocation, IssueLevel.ERROR))
+            return null
+        }
         val options = validateOptions(union.options, typeInfo, union.typeParameters.associateBy(TypeParameter::name)) ?: return null
         return Union(union.id, moduleId, union.typeParameters, options, union.annotations)
     }
@@ -1230,6 +1234,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
             if (option.name == "when") {
                 errors.add(Issue("Union options cannot be named 'when'", option.idLocation, IssueLevel.ERROR))
+                return null
             }
             Option(option.name, type)
         }
