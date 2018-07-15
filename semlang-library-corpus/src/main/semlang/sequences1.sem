@@ -14,8 +14,8 @@ struct TwoNaturals {
 function myStuff.fibonacci(n: Natural): Natural {
   let base: TwoNaturals = TwoNaturals(Natural."1", Natural."0")
   let next: (TwoNaturals) -> TwoNaturals = myStuff.nextPair|(_)
-  let fibonaccis: Sequence<TwoNaturals> = Sequence<TwoNaturals>(base, next)
-  Sequence.get<TwoNaturals>(fibonaccis, n)->right
+  let fibonaccis: Sequence<TwoNaturals> = Sequence(base, next)
+  Sequence.get(fibonaccis, n)->right
 }
 
 function myStuff.nextPair(pair: TwoNaturals): TwoNaturals {

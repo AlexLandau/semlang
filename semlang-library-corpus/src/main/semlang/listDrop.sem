@@ -6,5 +6,5 @@
 @Test(["5"], "[]")
 @Test(["100"], "[]")
 function List.testDrop(n: Natural): List<Integer> {
-  List.drop<Integer>([Integer."3", Integer."77", Integer."49", Integer."20"]<Integer>, n)
+  List.drop([Integer."3", Integer."77", Integer."49", Integer."20"]<Integer>, n)
 }

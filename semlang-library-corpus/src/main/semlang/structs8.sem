@@ -16,7 +16,7 @@ function myStuff.myFunction(input: Natural): Integer {
   let 1 = Natural."1"
   let newX = Natural.plus(input, 1)
   let newY = Natural.plus(newX, 1)
-  let object = myStuff.Point<Natural>(newX, newY)
+  let object = myStuff.Point(newX, newY)
   let partialOutput = Natural.times(object->x, object->y)
   let specificFunction = myStuff.genericFunction<Natural>|(_)
   let constantFactor = specificFunction(object)

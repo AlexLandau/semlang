@@ -5,5 +5,5 @@
 @Test(["['1', '2', '4', '8']", "8"], "success(3)")
 @Test(["['1', '2', '4', '8']", "7"], "failure")
 function List.testFirstIndexOf(list: List<Integer>, i: Integer): Maybe<Natural> {
-  List.firstIndexOf<Integer>(list, i)
+  List.firstIndexOf(list, i)
 }

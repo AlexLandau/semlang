@@ -4,5 +4,5 @@
 @Test(["['1', '2', '1']"], "['0', '1', '2']")
 @Test(["['9', '9', '9', '9']"], "['0', '1', '2', '3']")
 function testListGetIndices(list: List<Integer>): List<Natural> {
-  List.getIndices<Integer>(list)
+  List.getIndices(list)
 }

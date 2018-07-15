@@ -29,7 +29,7 @@ function Natural.equalsTest(left: Natural, right: Natural): Boolean {
 @Test(["1"], "1")
 @Test(["7"], "7")
 function sequenceTest(index: Natural): Natural {
-    Sequence.get<Natural>(Natural.sequence(), index)
+    Sequence.get(Natural.sequence(), index)
 }
 
 @Test(["0"], "1")
@@ -44,7 +44,7 @@ function sequenceTest(index: Natural): Natural {
 @Test(["256"], "9")
 function toBitsLengthTest(value: Natural): Natural {
   let bits = Natural.toBits(value)
-  List.size<Bit>(bits->bits)
+  List.size(bits->bits)
 }
 
 @Test(["0", "0"], "success(0)")
@@ -57,5 +57,5 @@ function toBitsLengthTest(value: Natural): Natural {
 @Test(["256", "8"], "failure")
 function toNBitsLengthTest(value: Natural, numBits: Natural): Maybe<Natural> {
   let bits: Maybe<BitsBigEndian> = Natural.toNBits(value, numBits)
-  Maybe.map<BitsBigEndian, Natural>(bits, function(validBits: BitsBigEndian): Natural { List.size<Bit>(validBits->bits) })
+  Maybe.map(bits, function(validBits: BitsBigEndian): Natural { List.size(validBits->bits) })
 }
