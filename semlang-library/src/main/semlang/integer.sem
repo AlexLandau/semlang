@@ -1,4 +1,4 @@
 @Export
 function Integer.sum(integers: List<Integer>): Integer {
-  List.reduce<Integer, Integer>(integers, Integer."0", Integer.plus|(_, _))
+  List.reduce(integers, Integer."0", Integer.plus|(_, _))
 }

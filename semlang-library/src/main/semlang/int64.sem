@@ -23,7 +23,7 @@ function Int64.plusUnsafe(left: Int64, right: Int64): Int64 {
       intValue
     }
   }
-  Maybe.assume<Int64>(Int64(correctedIntValue))
+  Maybe.assume(Int64(correctedIntValue))
 }
 
 // This version of plus returns failure if an overflow or underflow would occur.
@@ -46,7 +46,7 @@ function Int64.minusUnsafe(left: Int64, right: Int64): Int64 {
       intValue
     }
   }
-  Maybe.assume<Int64>(Int64(correctedIntValue))
+  Maybe.assume(Int64(correctedIntValue))
 }
 
 // This version of minus returns failure if an overflow or underflow would occur.
@@ -62,7 +62,7 @@ function Int64.timesUnsafe(left: Int64, right: Int64): Int64 {
   let intValue = Integer.times(left->integer, right->integer)
 
   // TODO: This might do unnecessary work in some cases... maybe check up-front if it's safe?
-  let timesDividesInto2e64 = Maybe.assume<Integer>(Integer.dividedBy(intValue, Integer."18446744073709551616"))
+  let timesDividesInto2e64 = Maybe.assume(Integer.dividedBy(intValue, Integer."18446744073709551616"))
   let amountToSubtract = Integer.times(timesDividesInto2e64, Integer."18446744073709551616")
 
   // This should get it within one "fix" of being correct
@@ -77,7 +77,7 @@ function Int64.timesUnsafe(left: Int64, right: Int64): Int64 {
       approxIntValue
     }
   }
-  Maybe.assume<Int64>(Int64(correctedIntValue))
+  Maybe.assume(Int64(correctedIntValue))
 }
 
 // This version of times returns failure if an overflow or underflow would occur.
@@ -105,5 +105,5 @@ function Int64.greaterThan(left: Int64, right: Int64): Boolean {
 @Export
 function Int64.dividedBy(left: Int64, right: Int64): Maybe<Int64> {
   let intValue = Integer.dividedBy(left->integer, right->integer)
-  Maybe.flatMap<Integer, Int64>(intValue, Int64|(_))
+  Maybe.flatMap(intValue, Int64|(_))
 }

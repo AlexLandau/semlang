@@ -1,9 +1,9 @@
 @Export
 function Boolean.all(values: List<Boolean>): Boolean {
-  List.reduce<Boolean, Boolean>(values, Boolean."true", Boolean.and|(_, _))
+  List.reduce(values, Boolean."true", Boolean.and|(_, _))
 }
 
 @Export
 function Boolean.any(values: List<Boolean>): Boolean {
-  List.reduce<Boolean, Boolean>(values, Boolean."false", Boolean.or|(_, _))
+  List.reduce(values, Boolean."false", Boolean.or|(_, _))
 }

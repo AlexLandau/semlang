@@ -1,18 +1,18 @@
 @Export
 function Unicode.String.length(string: Unicode.String): Natural {
-  List.size<Unicode.CodePoint>(string->codePoints)
+  List.size(string->codePoints)
 }
 
 function Unicode.String.appendFront(string: Unicode.String, codePoint: Unicode.CodePoint): Unicode.String {
-  let allCodePoints = List.appendFront<Unicode.CodePoint>(string->codePoints, codePoint)
+  let allCodePoints = List.appendFront(string->codePoints, codePoint)
   Unicode.String(allCodePoints)
 }
 
 @Export
 function Unicode.String.join(strings: List<Unicode.String>, separator: Unicode.String): Unicode.String {
   // TODO: Possible optimization: If separator is the empty string, don't call interpose
-  let stringsList = List.interpose<Unicode.String>(strings, separator)
-  let allCharPoints = List.flatMap<Unicode.String, Unicode.CodePoint>(stringsList, function(string: Unicode.String): List<Unicode.CodePoint> {
+  let stringsList = List.interpose(strings, separator)
+  let allCharPoints = List.flatMap(stringsList, function(string: Unicode.String): List<Unicode.CodePoint> {
     string->codePoints
   })
   Unicode.String(allCharPoints)
