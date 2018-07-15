@@ -1,6 +1,5 @@
 package net.semlang.parser.test
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
@@ -8,6 +7,10 @@ import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.assertRawContextsEqual
 import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.parser.*
+import net.semlang.validator.ValidationResult
+import net.semlang.validator.parseAndValidateFile
+import net.semlang.validator.validate
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

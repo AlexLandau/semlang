@@ -1,4 +1,4 @@
-package net.semlang.parser
+package net.semlang.validator
 
 import net.semlang.api.NativeStruct
 import net.semlang.api.Type

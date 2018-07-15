@@ -10,11 +10,10 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
-import net.semlang.parser.write
 import net.semlang.parser.writeToString
 import net.semlang.transforms.convertFromSem0
 import net.semlang.transforms.convertToSem0
+import net.semlang.validator.validateModule
 import java.io.File
 
 @RunWith(Parameterized::class)

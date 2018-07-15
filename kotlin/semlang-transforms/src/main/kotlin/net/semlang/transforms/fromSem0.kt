@@ -115,8 +115,7 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Expression.ExpressionFunctionCall -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val arguments = expression.argumentVarNames.map(this::convertVarName)
-                val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
+                Expression.ExpressionFunctionCall(functionExpression, arguments)
             }
             is S0Expression.Literal -> {
                 val type = apply(expression.type)
@@ -136,8 +135,7 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Expression.ExpressionFunctionBinding -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val bindings = expression.bindingVarNames.map { if (it == null) null else convertVarName(it) }
-                val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings)
             }
             is S0Expression.Follow -> {
                 val structureExpression = convertVarName(expression.structureVarName)

@@ -1,0 +1,4 @@
+// Type inference in a function call when the type is an argument type
+function myFunction(): Maybe<Integer> {
+  Maybe.success(Integer."1")
+}

@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
+import net.semlang.validator.validateModule
 import net.semlang.writejava.writeJavaSourceIntoFolders
 import java.io.File
 import java.nio.file.Files

@@ -3,15 +3,13 @@ package net.semlang.transforms.test
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
-import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import net.semlang.internal.test.runAnnotationTests
-import net.semlang.parser.ValidationResult
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
-import net.semlang.transforms.invalidate
 import net.semlang.transforms.transformInterfacesToStructs
+import net.semlang.validator.ValidationResult
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,7 +33,13 @@ class InterfacesToStructsTest(private val file: File, private val libraries: Lis
         val context = transformInterfacesToStructs(originalContext)
         Assert.assertEquals(0, context.interfaces.size)
 
-        val validatedMaybe = validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries)
+        val validatedMaybe = try {
+            validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries)
+        } catch(e: NotImplementedError) {
+            System.out.println("Transformed context for test $file:")
+            System.out.println(writeToString(context))
+            throw RuntimeException(e)
+        }
         if (validatedMaybe is ValidationResult.Failure) {
             System.out.println("Transformed sources for $file:")
             System.out.println(writeToString(context))

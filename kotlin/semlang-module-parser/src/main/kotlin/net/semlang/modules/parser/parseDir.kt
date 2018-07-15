@@ -2,6 +2,10 @@ package net.semlang.modules.parser
 
 import net.semlang.modules.ModuleRepository
 import net.semlang.parser.*
+import net.semlang.validator.Issue
+import net.semlang.validator.IssueLevel
+import net.semlang.validator.ValidationResult
+import net.semlang.validator.validate
 import java.io.File
 
 fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String, repository: ModuleRepository): ValidationResult {

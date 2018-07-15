@@ -118,8 +118,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = apply(expression.functionExpression)
                 val arguments = expression.arguments.map(this::apply)
-                val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
+                Expression.ExpressionFunctionCall(functionExpression, arguments)
             }
             is TypedExpression.Literal -> {
                 val type = apply(expression.type)
@@ -139,8 +138,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = apply(expression.functionExpression)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                val chosenParameters = expression.chosenParameters.map(this::apply)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = apply(expression.structureExpression)
@@ -523,9 +521,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 enqueueExpression(expression.functionExpression, containingModule)
-                for (type in expression.chosenParameters) {
-                    enqueueType(type, containingModule)
-                }
                 for (argument in expression.arguments) {
                     enqueueExpression(argument, containingModule)
                 }
@@ -551,9 +546,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 enqueueExpression(expression.functionExpression, containingModule)
-                for (type in expression.chosenParameters) {
-                    enqueueType(type, containingModule)
-                }
                 for (binding in expression.bindings) {
                     if (binding != null) {
                         enqueueExpression(binding, containingModule)

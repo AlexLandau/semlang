@@ -1,0 +1,4 @@
+// Type inference in a function call when the type is not used in the argument types
+function myFunction(): Maybe<Integer> {
+  Maybe.failure()
+}

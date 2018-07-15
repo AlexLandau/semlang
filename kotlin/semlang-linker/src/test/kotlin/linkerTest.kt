@@ -7,9 +7,9 @@ import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.modules.getDefaultLocalRepository
-import net.semlang.parser.parseAndValidateFile
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
+import net.semlang.validator.parseAndValidateFile
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

@@ -1,17 +1,14 @@
 package net.semlang.transforms.test
 
 import net.semlang.api.*
-import net.semlang.internal.test.getAllStandaloneCompilableFiles
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.linker.linkModuleWithDependencies
 import net.semlang.parser.parseFile
-import net.semlang.parser.validate
-import net.semlang.parser.validateModule
 import net.semlang.parser.writeToString
 import net.semlang.transforms.extractInlineFunctions
 import net.semlang.transforms.replaceSomeExpressionsPostvisit
-import net.semlang.transforms.transformInterfacesToStructs
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

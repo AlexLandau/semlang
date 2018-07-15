@@ -8,8 +8,8 @@ import net.semlang.interpreter.ComplexLiteralNode
 import net.semlang.interpreter.ComplexLiteralParsingResult
 import net.semlang.interpreter.evaluateStringLiteral
 import net.semlang.interpreter.parseComplexLiteral
-import net.semlang.parser.validateModule
 import net.semlang.transforms.*
+import net.semlang.validator.validateModule
 import java.io.File
 import java.io.PrintStream
 import java.math.BigInteger
@@ -612,7 +612,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionCallStrategy = getExpressionFunctionCallStrategy(expression.functionExpression)
-                functionCallStrategy.apply(expression.chosenParameters, expression.arguments)
+                functionCallStrategy.apply(listOf(), expression.arguments)
             }
             is TypedExpression.Literal -> {
                 writeLiteralExpression(expression)
@@ -709,7 +709,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
-        val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
+        val functionCall = functionCallStrategy.apply(listOf(), arguments)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 
@@ -772,7 +772,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
+        unboundArgumentNames.forEach(this::addToVariableScope)
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
+        unboundArgumentNames.forEach(this::removeFromVariableScope)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 
@@ -1313,7 +1315,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val outputType = (binding.type as Type.FunctionType).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments)
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1336,7 +1338,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (binding) {
             is TypedExpression.Variable -> {
                 val arguments = listOf(openBindingReplacement) + methodArguments
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments)
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()

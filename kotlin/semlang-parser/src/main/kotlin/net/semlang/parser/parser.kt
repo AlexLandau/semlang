@@ -11,6 +11,8 @@ import sem1.antlr.Sem1ParserBaseListener
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.api.Annotation
+import net.semlang.validator.Issue
+import net.semlang.validator.IssueLevel
 import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -280,7 +282,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // TODO: The position of the variable is incorrect here
                     return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
 
@@ -296,9 +297,11 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
+                if (expression.chosenParameters.size > 0) {
+                    error("Had explicit parameters in a an expression-based function binding")
+                }
                 return Expression.ExpressionFunctionBinding(
                         functionExpression = scopeExpression(varIds, innerExpression),
-                        chosenParameters = expression.chosenParameters,
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                         location = expression.location)
             }
@@ -317,7 +320,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                             // TODO: The position of the variable is incorrect here
                             functionExpression = Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
                     return Expression.NamedFunctionCall(
@@ -334,10 +336,12 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
+                if (expression.chosenParameters.size > 0) {
+                    error("Had explicit parameters in an expression-based function call")
+                }
                 return Expression.ExpressionFunctionCall(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                        chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
             is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.location)

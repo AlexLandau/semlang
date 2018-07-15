@@ -2,6 +2,7 @@ package net.semlang.modules
 
 import net.semlang.api.*
 import net.semlang.parser.*
+import net.semlang.validator.validateModule
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter

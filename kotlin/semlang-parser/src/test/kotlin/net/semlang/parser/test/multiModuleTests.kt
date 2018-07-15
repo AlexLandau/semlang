@@ -5,7 +5,7 @@ import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.parser.parseFile
-import net.semlang.parser.validateModule
+import net.semlang.validator.validateModule
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith

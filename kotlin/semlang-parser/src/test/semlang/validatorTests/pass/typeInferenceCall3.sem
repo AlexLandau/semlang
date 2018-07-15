@@ -1,0 +1,4 @@
+// Type inference in a function call with multiple arguments, one of which comes from a function type
+function myFunction(): Maybe<Integer> {
+  Maybe.map(Maybe.success<Integer>(Integer."0"), Integer.plus|(_, Integer."1"))
+}

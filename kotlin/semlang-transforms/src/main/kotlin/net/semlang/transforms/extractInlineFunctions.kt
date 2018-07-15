@@ -92,8 +92,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val arguments = expression.arguments.map(this::transformExpression)
-                val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
+                Expression.ExpressionFunctionCall(functionExpression, arguments)
             }
             is TypedExpression.Literal -> {
                 Expression.Literal(invalidate(expression.type), expression.literal)
@@ -110,8 +109,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
-                val chosenParameters = expression.chosenParameters.map(::invalidate)
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = transformExpression(expression.structureExpression)
