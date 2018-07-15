@@ -4,7 +4,6 @@ import net.semlang.api.Type
 import net.semlang.api.UnvalidatedType
 import net.semlang.api.UnvalidatedTypeSignature
 
-// TODO: This logic should probably be in a different module
 internal sealed class TypeParameterInferenceSource {
     /*
      * Note: This is not responsible for reporting errors if the types are incompatible with the expected types. That's

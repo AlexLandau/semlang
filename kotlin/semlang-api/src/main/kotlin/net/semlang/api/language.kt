@@ -429,7 +429,6 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     }
 }
 
-
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {

@@ -3,20 +3,20 @@ package net.semlang.validator
 import net.semlang.api.TypedBlock
 import net.semlang.api.TypedExpression
 
-fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
+internal fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
     val varsReferenced = HashSet<String>()
     collectVars(varsReferenced, validatedBlock)
     return varsReferenced
 }
 
-fun collectVars(varsReferenced: MutableCollection<String>, block: TypedBlock) {
+private fun collectVars(varsReferenced: MutableCollection<String>, block: TypedBlock) {
     for (assignment in block.assignments) {
         collectVars(varsReferenced, assignment.expression)
     }
     collectVars(varsReferenced, block.returnedExpression)
 }
 
-fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpression) {
+private fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpression) {
     val unused: Any = when (expression) {
         is TypedExpression.Variable -> {
             varsReferenced.add(expression.name)

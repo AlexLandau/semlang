@@ -735,7 +735,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
             return null
         } else {
-            // Apply type inference
+            // Apply type parameter inference
             val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
             val explicitParametersIterator = expression.chosenParameters.iterator()
             val types = inferenceSourcesByArgument.map { inferenceSources ->
@@ -752,8 +752,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 }
             }
             if (explicitParametersIterator.hasNext()) {
-                // TODO: Give this an error message a human could reasonably understand
-                errors.add(Issue("The type parameters supplied for function binding for $functionRef were too few for full type parameters, but too many for non-inferrable-only type parameters", expression.location, IssueLevel.ERROR))
+                errors.add(Issue("The function binding for $functionRef did not supply all type parameters, but supplied more than the appropriate number for type parameter inference", expression.location, IssueLevel.ERROR))
                 return null
             }
             types
@@ -917,8 +916,6 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //TODO: Maybe compare argument size before grounding?
 
         //Ground the signature
-        // TODO: Type inference will happen here...
-        // Will need to decide if we should have restrictions on required vs. inferrable parameter ordering, or just calculate it in the signatures
 
         val fullTypeParameterCount = signature.typeParameters.size
         val requiredTypeParameterCount = signature.getRequiredTypeParameterCount()
@@ -937,7 +934,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 }
             }
             if (explicitParametersIterator.hasNext()) {
-                error("TODO: Test for/handle this case")
+                error("Validator internal logic for type parameter inference was invalid")
             }
             types
         } else {
