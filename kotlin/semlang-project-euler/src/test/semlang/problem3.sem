@@ -11,7 +11,7 @@
 
 function euler.getLargestPrimeFactor(n: Natural): Natural {
     let primeFactors: List<Natural> = getPrimeFactors(n)
-    let largestPrimeFactor: Natural = Maybe.assume<Natural>(Natural.max(primeFactors))
+    let largestPrimeFactor: Natural = Maybe.assume(Natural.max(primeFactors))
     largestPrimeFactor
 }
 
@@ -21,31 +21,30 @@ function getPrimeFactors(n: Natural): List<Natural> {
     if (Natural.equals(n, firstPrimeDivisor)) {
         [n]<Natural>
     } else {
-        let dividend: Natural = Maybe.assume<Natural>(Natural.dividedBy(n, firstPrimeDivisor))
+        let dividend: Natural = Maybe.assume(Natural.dividedBy(n, firstPrimeDivisor))
         let recursiveFactors: List<Natural> = getPrimeFactors(dividend)
-        List.append<Natural>(recursiveFactors, firstPrimeDivisor)
+        List.append(recursiveFactors, firstPrimeDivisor)
     }
 }
 
 // Library candidate for a non-standard library?
 function getPrimes(): SequenceLike<Natural> {
-    let 2: Natural = Natural."2"
-    Sequence.createAccumulating<Natural>(2, getNextPrime|(_))
+    Sequence.createAccumulating(Natural."2", getNextPrime|(_))
 }
 
 function getNextPrime(allPreviousPrimes: List<Natural>): Natural {
-    let lastPrime: Natural = Maybe.assume<Natural>(List.last<Natural>(allPreviousPrimes))
+    let lastPrime: Natural = Maybe.assume(List.last(allPreviousPrimes))
     let firstCandidate: Natural = Natural.plus(lastPrime, Natural."1")
     let candidates: Sequence<Natural> = Natural.arithmeticProgression(firstCandidate, Natural."1")
-    Sequence.first<Natural>(candidates, isNotDivisibleByAny|(_, allPreviousPrimes))
+    Sequence.first(candidates, isNotDivisibleByAny|(_, allPreviousPrimes))
 }
 
 function isNotDivisibleByAny(n: Natural, allPreviousPrimes: List<Natural>): Boolean {
-    let divisibilities: List<Boolean> = List.map<Natural, Boolean>(allPreviousPrimes, dividesEvenly|(_, n))
+    let divisibilities: List<Boolean> = List.map(allPreviousPrimes, dividesEvenly|(_, n))
     Boolean.not(Boolean.any(divisibilities))
 }
 
 function dividesEvenly(denominator: Natural, numerator: Natural): Boolean {
-    let remainder: Natural = Maybe.assume<Natural>(Natural.modulo(numerator, denominator))
+    let remainder: Natural = Maybe.assume(Natural.modulo(numerator, denominator))
     Natural.equals(remainder, Natural."0")
 }
