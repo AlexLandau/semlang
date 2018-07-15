@@ -19,7 +19,6 @@ Cases to get working with "nice" dev tooling:
 - Union and struct with same name
 - Attempt to use follows on a union
 - Function declaration without output type (should be type error, not parsing error)
-- java.lang.IllegalStateException: In function Utf8.getStartingCodePointBytes, could not reconcile 'then' and 'else' block types
 
 Stuff that feels blocked or hasn't been implemented:
 - Modules still need some rethinking and design work

@@ -1087,7 +1087,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         val type = try {
             typeUnion(thenBlock.type, elseBlock.type)
         } catch (e: RuntimeException) {
-            fail(e, "In function $containingFunctionId, could not reconcile 'then' and 'else' block types")
+            errors.add(Issue("Cannot reconcile types of 'then' block (${thenBlock.type}) and 'else' block (${elseBlock.type})", expression.location, IssueLevel.ERROR))
+            return null
         }
 
         return TypedExpression.IfThen(type, condition, thenBlock, elseBlock)
