@@ -17,8 +17,6 @@ Cases to get working with "nice" dev tooling:
 - Empty interface
 - Empty function definition
 - Union and struct with same name
-- java.lang.IllegalStateException: Validation error, position not recorded: The function Utf8.getStartingCodePointBytes references a function Utf8.CodePointBytes that was not found
-  - Trying to use a union's name as a function, maybe?
 - Attempt to use follows on a union
 - Function declaration without output type (should be type error, not parsing error)
 - java.lang.IllegalStateException: In function Utf8.getStartingCodePointBytes, could not reconcile 'then' and 'else' block types

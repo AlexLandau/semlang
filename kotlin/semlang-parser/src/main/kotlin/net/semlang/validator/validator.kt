@@ -911,7 +911,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 
         val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature
         if (signature == null) {
-            fail("The function $containingFunctionId references a function $functionRef that was not found")
+            errors.add(Issue("Entity $functionRef is not a function", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
         }
         //TODO: Maybe compare argument size before grounding?
 

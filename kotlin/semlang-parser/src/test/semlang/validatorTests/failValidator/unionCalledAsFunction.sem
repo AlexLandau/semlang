@@ -1,0 +1,9 @@
+union MyUnion {
+  Foo: Integer
+  Bar
+}
+
+// Cannot call a union's name as a function
+function MyFunction(): MyUnion {
+  MyUnion()
+}
