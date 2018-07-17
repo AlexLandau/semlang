@@ -914,7 +914,10 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("Entity $functionRef is not a function", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
-        //TODO: Maybe compare argument size before grounding?
+        if (expression.arguments.size != signature.argumentTypes.size) {
+            errors.add(Issue("The function $functionRef expects ${signature.argumentTypes.size} arguments types (${signature.argumentTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
+        }
 
         //Ground the signature
 

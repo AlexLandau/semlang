@@ -3,7 +3,7 @@ Major near-term projects:
   - Ability to test functions involving threaded objects
   - Threaded structs
     - Destructuring statements
-  - Threaded parameter types (think e.g. having ~T and then a function that accepts ~T)
+  - Threaded parameter types (think e.g. having ~T and then a function that accepts ~T as arguments)
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors
