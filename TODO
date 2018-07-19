@@ -16,6 +16,8 @@ Cases to get working with "nice" dev tooling:
 - Empty struct
 - Empty interface
 - Empty function definition
+- Empty inline function declaration
+- Function with no ending expression, only "let"s (also: inline function)
 - Union and struct with same name
 - Attempt to use follows on a union
 - Function declaration without output type (should be type error, not parsing error)
