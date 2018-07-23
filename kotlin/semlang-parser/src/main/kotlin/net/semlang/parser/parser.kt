@@ -596,9 +596,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedType {
         if (type.ARROW() != null) {
             //Function type
+            val typeParameters = if (type.cd_type_parameters() != null) {
+                parseTypeParameters(type.cd_type_parameters())
+            } else {
+                listOf()
+            }
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return UnvalidatedType.FunctionType(argumentTypes, outputType, locationOf(type))
+            return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
         if (type.LESS_THAN() != null) {

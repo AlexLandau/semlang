@@ -1,0 +1,6 @@
+@Test(["[]"], "0")
+@Test(["['1', '2', '3']"], "3")
+function complicatedListSize(list: List<Integer>): Natural {
+  let getSize: <T>(List<T>) -> Natural = List.size<_>|(_)
+  getSize<Integer>(list)
+}

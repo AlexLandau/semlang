@@ -41,9 +41,10 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             UnvalidatedType.Maybe(parameter)
         }
         is UnvalidatedType.FunctionType -> {
+            val typeParameters = type.typeParameters
             val argTypes = type.argTypes.map(::stripLocations)
             val outputType = stripLocations(type.outputType)
-            UnvalidatedType.FunctionType(argTypes, outputType)
+            UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)

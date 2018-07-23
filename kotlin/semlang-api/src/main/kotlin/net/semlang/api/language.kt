@@ -172,11 +172,13 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class FunctionType(val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+    // TODO: Modify this so equals() and hashCode() ignore differences in type parameter names
+    data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap),
-                    location)
+//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
+//                    outputType.replacingParameters(parameterMap),
+//                    location)
+            TODO()
         }
 
         override fun getTypeString(): String {
@@ -304,18 +306,25 @@ sealed class Type {
         }
     }
 
-    data class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
+    data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
 
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap))
+//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
+//                    outputType.replacingParameters(parameterMap))
+            TODO()
         }
 
         override fun getTypeString(): String {
-            return "(" +
+            val typeParametersString = if (typeParameters.isEmpty()) {
+                ""
+            } else {
+                "<" + typeParameters.joinToString(", ") + ">"
+            }
+            return typeParametersString +
+                    "(" +
                     argTypes.joinToString(", ") +
                     ") -> " +
                     outputType.toString()
@@ -432,7 +441,7 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
-        return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
+        return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType, null)
     }
 }
 data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
@@ -593,7 +602,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = UnvalidatedType.FunctionType(listOf(dataType), instanceType)
+        val outputType = UnvalidatedType.FunctionType(listOf(), listOf(dataType), instanceType)
 
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -609,7 +618,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
     val dataType = Type.ParameterType(dataTypeParameter)
     val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
-    val adapterType = Type.FunctionType(listOf(dataType), instanceType)
+    val adapterType = Type.FunctionType(listOf(), listOf(dataType), instanceType)
     fun getType(): Type.NamedType {
         return instanceType
     }
@@ -635,10 +644,10 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     }
 }
 data class UnvalidatedMethod(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
-    val functionType = UnvalidatedType.FunctionType(arguments.map { arg -> arg.type }, returnType, null)
+    val functionType = UnvalidatedType.FunctionType(typeParameters, arguments.map { arg -> arg.type }, returnType, null)
 }
 data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
-    val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
+    val functionType = Type.FunctionType(typeParameters, arguments.map { arg -> arg.type }, returnType)
 }
 
 data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
@@ -672,7 +681,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
             } else {
                 listOf(option.type)
             }
-            UnvalidatedType.FunctionType(optionArgTypes, outputParameterType)
+            UnvalidatedType.FunctionType(listOf(), optionArgTypes, outputParameterType)
         }
 
         return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
@@ -734,7 +743,7 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: UnvalidatedType
         argTypes.add(argument.type)
     }
 
-    return UnvalidatedType.FunctionType(argTypes, method.returnType, null)
+    return UnvalidatedType.FunctionType(listOf(), argTypes, method.returnType, null)
 }
 private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.ParameterType, method: Method): Type {
     val argTypes = ArrayList<Type>()
@@ -743,7 +752,7 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.ParameterT
         argTypes.add(argument.type)
     }
 
-    return Type.FunctionType(argTypes, method.returnType)
+    return Type.FunctionType(listOf(), argTypes, method.returnType)
 }
 
 fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {

@@ -330,9 +330,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 Type.Maybe(parameter)
             }
             is UnvalidatedType.FunctionType -> {
+                // TODO: Add validation of these
+                val typeParameters = type.typeParameters
                 val argTypes = type.argTypes.map { argType -> validateType(argType, typeInfo, typeParametersInScope) ?: return null }
                 val outputType = validateType(type.outputType, typeInfo, typeParametersInScope) ?: return null
-                Type.FunctionType(argTypes, outputType)
+                Type.FunctionType(typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 if (type.parameters.isEmpty()
@@ -652,7 +654,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
         }
 
-        val functionType = Type.FunctionType(validatedArguments.map(Argument::type), validatedBlock.type)
+        val functionType = Type.FunctionType(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
 
         return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
@@ -697,6 +699,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
         val postBindingType = Type.FunctionType(
+                listOf(),
                 postBindingArgumentTypes,
                 functionType.outputType)
 
@@ -787,6 +790,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
         val postBindingType = Type.FunctionType(
+                listOf(),
                 postBindingArgumentTypes,
                 expectedFunctionType.outputType)
 

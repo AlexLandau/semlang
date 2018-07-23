@@ -167,6 +167,9 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.FunctionType -> {
             val node = ObjectNode(factory)
+            if (type.typeParameters.isNotEmpty()) {
+                addTypeParameters(node.putArray("typeParameters"), type.typeParameters)
+            }
             val argsArray = node.putArray("from")
             for (argType in type.argTypes) {
                 argsArray.add(toTypeNode(argType))
@@ -225,9 +228,10 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         }
         return UnvalidatedType.NamedType(id, isThreaded, parameters)
     } else if (node.has("from")) {
+        val typeParameters = node["typeParameters"]?.let(::parseTypeParameters) ?: listOf()
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])
-        return UnvalidatedType.FunctionType(argTypes, outputType)
+        return UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
     } else if (node.has("Maybe")) {
         return UnvalidatedType.Maybe(parseType(node["Maybe"]))
     } else if (node.has("List")) {

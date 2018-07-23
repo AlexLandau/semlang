@@ -106,7 +106,8 @@ return_statement: expression ;
 
 type : type_ref
   | type_ref LESS_THAN cd_types GREATER_THAN
-  | LPAREN cd_types RPAREN ARROW type ;
+  | LPAREN cd_types RPAREN ARROW type
+  | LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type ;
 cd_types : | type | type COMMA | type COMMA cd_types ;
 cd_types_nonempty : type | type COMMA | type COMMA cd_types_nonempty ;
 expression : IF LPAREN expression RPAREN block ELSE block
