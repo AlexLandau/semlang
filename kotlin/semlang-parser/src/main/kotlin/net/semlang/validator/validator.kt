@@ -733,7 +733,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
 
         val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
-            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
+            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null }
         } else if (signature.typeParameters.size < expression.chosenParameters.size) {
             errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
             return null
@@ -751,7 +751,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                         return null
                     }
                     val chosenParameter = explicitParametersIterator.next()
-                    validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
+                    validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null
                 }
             }
             if (explicitParametersIterator.hasNext()) {

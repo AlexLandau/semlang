@@ -459,12 +459,12 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     null
                 }
 
-                val chosenParameters = if (expression.LESS_THAN() != null) {
-                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
-                } else {
-                    listOf()
-                }
                 if (expression.PIPE() != null) {
+                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                        parseCommaDelimitedTypesOrUnderscores(expression.cd_types_or_underscores_nonempty())
+                    } else {
+                        listOf()
+                    }
                     val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
                     if (functionRefOrVar != null) {
@@ -474,6 +474,11 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     }
                 }
 
+                val chosenParameters = if (expression.LESS_THAN() != null) {
+                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
+                } else {
+                    listOf()
+                }
                 val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
                 if (functionRefOrVar != null) {
                     return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
@@ -593,6 +598,15 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 TerminalNode::getText)
     }
 
+    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem1Parser.Type_or_underscoreContext): UnvalidatedType? {
+        if (typeOrUnderscore.type() != null) {
+            return parseType(typeOrUnderscore.type())
+        } else {
+            if (typeOrUnderscore.UNDERSCORE() == null) error("Unexpected case")
+            return null
+        }
+    }
+
     private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedType {
         if (type.ARROW() != null) {
             //Function type
@@ -629,6 +643,13 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 Sem1Parser.Cd_types_nonemptyContext::type,
                 Sem1Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
+    }
+
+    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem1Parser.Cd_types_or_underscores_nonemptyContext): List<UnvalidatedType?> {
+        return parseLinkedList(cd_types,
+                Sem1Parser.Cd_types_or_underscores_nonemptyContext::type_or_underscore,
+                Sem1Parser.Cd_types_or_underscores_nonemptyContext::cd_types_or_underscores_nonempty,
+                this::parseTypeOrUnderscore)
     }
 
     private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {

@@ -110,14 +110,16 @@ type : type_ref
   | LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type ;
 cd_types : | type | type COMMA | type COMMA cd_types ;
 cd_types_nonempty : type | type COMMA | type COMMA cd_types_nonempty ;
+cd_types_or_underscores_nonempty : type_or_underscore | type_or_underscore COMMA | type_or_underscore COMMA cd_types_or_underscores_nonempty ;
+type_or_underscore : UNDERSCORE | type ;
 expression : IF LPAREN expression RPAREN block ELSE block
   | type_ref DOT LITERAL
   | LBRACKET cd_expressions RBRACKET LESS_THAN type GREATER_THAN
   | expression ARROW ID
-  | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
-  | entity_ref PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference
-  | expression LESS_THAN cd_types_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference with type parameters
-  | entity_ref LESS_THAN cd_types_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function reference with type parameters
+  | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
+  | entity_ref PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
+  | expression LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
+  | entity_ref LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
   | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | entity_ref LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
