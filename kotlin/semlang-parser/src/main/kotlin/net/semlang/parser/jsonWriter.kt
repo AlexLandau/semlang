@@ -468,6 +468,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.ExpressionFunctionCall -> {
             node.put("type", "expressionCall")
             addExpression(node.putObject("expression"), expression.functionExpression)
+            addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addArray(node, "arguments", expression.arguments, ::addExpression)
             return
         }
@@ -491,7 +492,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.NamedFunctionBinding -> {
             node.put("type", "namedBinding")
             node.put("function", expression.functionRef.toString())
-            addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
+            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
@@ -545,7 +546,8 @@ private fun parseExpression(node: JsonNode): Expression {
         "expressionCall" -> {
             val functionExpression = parseExpression(node["expression"])
             val arguments = parseExpressionsArray(node["arguments"])
-            return Expression.ExpressionFunctionCall(functionExpression, arguments)
+            val chosenParameters = parseChosenParameters(node["chosenParameters"])
+            return Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         "literal" -> {
             val literalType = parseType(node["literalType"])
@@ -565,7 +567,7 @@ private fun parseExpression(node: JsonNode): Expression {
         "namedBinding" -> {
             val functionRef = parseEntityRef(node["function"])
             val bindings = parseBindingsArray(node["bindings"])
-            val chosenParameters = parseChosenParameters(node["chosenParameters"])
+            val chosenParameters = parseOptionalChosenParameters(node["chosenParameters"])
             return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
         }
         "expressionBinding" -> {
@@ -583,6 +585,11 @@ private fun parseExpression(node: JsonNode): Expression {
             error("Unknown expression type '$type'")
         }
     }
+}
+
+private fun parseOptionalChosenParameters(node: JsonNode): List<UnvalidatedType?> {
+    if (!node.isArray()) error("Expected an array of expressions")
+    return node.map { typeNode -> if (typeNode.isNull()) null else parseType(typeNode) }
 }
 
 private fun parseChosenParameters(node: JsonNode): List<UnvalidatedType> {
@@ -611,6 +618,16 @@ private fun addBinding(node: ObjectNode, binding: TypedExpression?) {
     // Just leave the object empty if the binding is null
     if (binding != null) {
         addExpression(node, binding)
+    }
+}
+
+private fun addChosenOptionalParameters(node: ArrayNode, chosenParameters: List<Type?>) {
+    for (parameter in chosenParameters) {
+        if (parameter == null) {
+            node.addNull()
+        } else {
+            node.add(toTypeNode(parameter))
+        }
     }
 }
 

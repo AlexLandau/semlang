@@ -103,7 +103,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val arguments = expression.arguments.map(::invalidateExpression)
-            Expression.ExpressionFunctionCall(functionExpression, arguments)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is TypedExpression.Literal -> {
             val type = invalidate(expression.type)
@@ -116,7 +117,7 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {

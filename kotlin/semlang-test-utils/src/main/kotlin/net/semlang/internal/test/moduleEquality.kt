@@ -86,7 +86,8 @@ private fun stripLocations(expression: Expression): Expression {
         is Expression.ExpressionFunctionCall -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val arguments = expression.arguments.map(::stripLocations)
-            Expression.ExpressionFunctionCall(functionExpression, arguments)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is Expression.Literal -> {
             val type = stripLocations(expression.type)

@@ -732,40 +732,67 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             }
         }
 
-        val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
-            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null }
-        } else if (signature.typeParameters.size < expression.chosenParameters.size) {
-            errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
-            return null
-        } else {
-            // Apply type parameter inference
-            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
-            val explicitParametersIterator = expression.chosenParameters.iterator()
-            val types = inferenceSourcesByArgument.map { inferenceSources ->
-                val inferredType = inferenceSources.stream().map { it.findType(bindingTypes) }.filter { it != null }.findFirst()
-                if (inferredType.isPresent()) {
-                    inferredType.get()
-                } else {
-                    if (!explicitParametersIterator.hasNext()) {
-                        errors.add(Issue("Not enough type parameters were supplied for function binding for ${functionRef}", expression.location, IssueLevel.ERROR))
-                        return null
-                    }
-                    val chosenParameter = explicitParametersIterator.next()
-                    validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null
-                }
-            }
-            if (explicitParametersIterator.hasNext()) {
-                errors.add(Issue("The function binding for $functionRef did not supply all type parameters, but supplied more than the appropriate number for type parameter inference", expression.location, IssueLevel.ERROR))
-                return null
-            }
-            types
+        // So what do we want this new world to look like?
+        // Given the original signature of the function (function type -- this would be all we get coming from the expression),
+        // there are certain patterns we do and do not allow in terms of maintaining or defining the parameters and bindings:
+        // - If an argument type contains a reference to a type parameter and the argument is bound, then the type parameter
+        //   must also be defined in the binding
+        // This might be the only rule here in terms of disallowing certain bindings. It's allowed to define more types
+        // than necessary given the bindings involved.
+
+        // So here are the inputs:
+        // - Original function type (including type parameters, argument types, output type)
+        // - Type parameters, possibly including underscores, possibly not, possibly using type parameter inference
+        // - Bindings
+
+        // And here are the outputs we want:
+        // - New function binding type (including type parameters, argument types, output types)
+
+        // And the error cases we need to consider:
+        // - Wrong number of type parameters or bindings
+        // - Types of bindings are wrong given the arguments
+        // - A binding is provided where a type is not fully defined yet
+
+        val providedParameters = expression.chosenParameters.map {
+            if (it == null) null else (validateType(it, typeInfo, typeParametersInScope) ?: return null)
         }
-        if (chosenParameters.size != signature.typeParameters.size) {
-            fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
-        }
-        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
-            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
-        }
+
+        val chosenParameters = getFinalParametersForBinding(signature.getFunctionType(), providedParameters, bindingTypes, typeInfo, typeParametersInScope, functionRef, expression.location) ?: return null
+
+//        val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
+//            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null }
+//        } else if (signature.typeParameters.size < expression.chosenParameters.size) {
+//            errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
+//            return null
+//        } else {
+//            // Apply type parameter inference
+//            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
+//            val explicitParametersIterator = expression.chosenParameters.iterator()
+//            val types = inferenceSourcesByArgument.map { inferenceSources ->
+//                val inferredType = inferenceSources.stream().map { it.findType(bindingTypes) }.filter { it != null }.findFirst()
+//                if (inferredType.isPresent()) {
+//                    inferredType.get()
+//                } else {
+//                    if (!explicitParametersIterator.hasNext()) {
+//                        errors.add(Issue("Not enough type parameters were supplied for function binding for ${functionRef}", expression.location, IssueLevel.ERROR))
+//                        return null
+//                    }
+//                    val chosenParameter = explicitParametersIterator.next()
+//                    validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null
+//                }
+//            }
+//            if (explicitParametersIterator.hasNext()) {
+//                errors.add(Issue("The function binding for $functionRef did not supply all type parameters, but supplied more than the appropriate number for type parameter inference", expression.location, IssueLevel.ERROR))
+//                return null
+//            }
+//            types
+//        }
+//        if (chosenParameters.size != signature.typeParameters.size) {
+//            fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
+//        }
+//        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
+//            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
+//        }
 
         val expectedFunctionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
 
@@ -795,6 +822,50 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
                 expectedFunctionType.outputType)
 
         return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, resolvedRef.entityRef, bindings, chosenParameters)
+    }
+
+    private fun getFinalParametersForBinding(functionType: UnvalidatedType.FunctionType, providedParameters: List<Type?>, bindingTypes: List<Type?>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, functionRef: EntityRef, expressionLocation: Location?): List<Type?>? {
+        // Deal with inference first?
+        // What's left after that?
+
+        val chosenParameters = if (functionType.typeParameters.size == providedParameters.size) {
+            providedParameters
+        } else if (functionType.typeParameters.size < providedParameters.size) {
+            errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expressionLocation, IssueLevel.ERROR))
+            return null
+        } else {
+            // Apply type parameter inference
+            val inferenceSourcesByArgument = functionType.getTypeParameterInferenceSources()
+            val explicitParametersIterator = providedParameters.iterator()
+            val types = inferenceSourcesByArgument.map { inferenceSources ->
+                val inferredType = inferenceSources.stream().map { it.findType(bindingTypes) }.filter { it != null }.findFirst()
+                if (inferredType.isPresent()) {
+                    inferredType.get()
+                } else {
+                    if (!explicitParametersIterator.hasNext()) {
+                        errors.add(Issue("Not enough type parameters were supplied for function binding for ${functionRef}", expressionLocation, IssueLevel.ERROR))
+                        return null
+                    }
+                    val chosenParameter = explicitParametersIterator.next()
+                    chosenParameter ?: return null
+                }
+            }
+            if (explicitParametersIterator.hasNext()) {
+                errors.add(Issue("The function binding for $functionRef did not supply all type parameters, but supplied more than the appropriate number for type parameter inference", expressionLocation, IssueLevel.ERROR))
+                return null
+            }
+            types
+        }
+        if (chosenParameters.size != functionType.typeParameters.size) {
+            // TODO: Hopefully this is impossible to hit now
+            fail("Referenced a function $functionRef with type parameters ${functionType.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
+        }
+        for ((typeParameter, chosenType) in functionType.typeParameters.zip(chosenParameters)) {
+            if (chosenType != null) {
+                validateTypeParameterChoice(typeParameter, chosenType, expressionLocation, typeInfo)
+            }
+        }
+        return chosenParameters
     }
 
     private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -863,13 +934,14 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun parameterizeAndValidateType(unvalidatedType: UnvalidatedType, typeParameters: List<Type.ParameterType>, chosenTypes: List<Type>, typeInfo: Validator.AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type? {
+    private fun parameterizeAndValidateType(unvalidatedType: UnvalidatedType, typeParameters: List<Type.ParameterType>, chosenTypes: List<Type?>, typeInfo: Validator.AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type? {
         val type = validateType(unvalidatedType, typeInfo, typeParametersInScope + typeParameters.map(Type.ParameterType::parameter).associateBy(TypeParameter::name)) ?: return null
 
         if (typeParameters.size != chosenTypes.size) {
             error("Give me a better error message")
         }
-        val parameterMap = typeParameters.zip(chosenTypes).toMap()
+        // TODO: Is this all that's needed to handle the case of null chosen types?
+        val parameterMap = typeParameters.zip(chosenTypes).filter { it.second != null }.toMap().mapValues { it.value!! }
 
         return type.replacingParameters(parameterMap)
     }
@@ -883,6 +955,8 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             return null
         }
 
+        val chosenParameters = expression.chosenParameters.map { TODO() }
+
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
             val argument = validateExpression(untypedArgument, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
@@ -895,7 +969,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments)
+        return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, chosenParameters)
     }
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -926,11 +1000,11 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         //Ground the signature
 
         val fullTypeParameterCount = signature.typeParameters.size
-        val requiredTypeParameterCount = signature.getRequiredTypeParameterCount()
+        val requiredTypeParameterCount = signature.getFunctionType().getRequiredTypeParameterCount()
         val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterCount) {
             expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
         } else if (expression.chosenParameters.size == requiredTypeParameterCount) {
-            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
+            val inferenceSourcesByArgument = signature.getFunctionType().getTypeParameterInferenceSources()
             val explicitParametersIterator = expression.chosenParameters.iterator()
             val types = inferenceSourcesByArgument.map { inferenceSources ->
                 if (inferenceSources.isEmpty()) {
@@ -983,7 +1057,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun parameterizeAndValidateSignature(signature: UnvalidatedTypeSignature, chosenParameters: List<Type>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
+    private fun parameterizeAndValidateSignature(signature: UnvalidatedTypeSignature, chosenParameters: List<Type?>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
         val typeParameters = signature.typeParameters.map(Type::ParameterType)
         try {
             return parameterizeAndValidateType(signature.getFunctionType(), typeParameters, chosenParameters, typeInfo, typeParametersInScope) as Type.FunctionType?

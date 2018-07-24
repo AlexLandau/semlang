@@ -48,7 +48,7 @@ internal sealed class TypeParameterInferenceSource {
     }
 }
 
-internal fun UnvalidatedTypeSignature.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
+internal fun UnvalidatedType.FunctionType.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
     val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
 
     fun addPossibleSources(type: UnvalidatedType, sourceSoFar: TypeParameterInferenceSource) {
@@ -89,7 +89,7 @@ internal fun UnvalidatedTypeSignature.getTypeParameterInferenceSources(): List<L
         }
     }
 
-    argumentTypes.forEachIndexed { index, argType ->
+    argTypes.forEachIndexed { index, argType ->
         val source = TypeParameterInferenceSource.ArgumentType(index)
         addPossibleSources(argType, source)
     }
@@ -100,7 +100,7 @@ internal fun UnvalidatedTypeSignature.getTypeParameterInferenceSources(): List<L
 /**
  * Returns the number of type parameters for which type inference can't be performed.
  */
-internal fun UnvalidatedTypeSignature.getRequiredTypeParameterCount(): Int {
+internal fun UnvalidatedType.FunctionType.getRequiredTypeParameterCount(): Int {
     val sources = getTypeParameterInferenceSources()
     return sources.count { it.isEmpty() }
 }
