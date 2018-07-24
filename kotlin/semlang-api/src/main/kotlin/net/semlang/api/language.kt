@@ -79,7 +79,6 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
 
 sealed class UnvalidatedType {
     abstract val location: Location?
-    abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
     abstract protected fun getTypeString(): String
     override fun toString(): String {
         return getTypeString()
@@ -93,10 +92,6 @@ sealed class UnvalidatedType {
                 return "~Integer"
             }
 
-            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-                return this
-            }
-
             override fun toString(): String {
                 return getTypeString()
             }
@@ -105,10 +100,6 @@ sealed class UnvalidatedType {
         data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
             override fun getTypeString(): String {
                 return "~Boolean"
-            }
-
-            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-                return this
             }
 
             override fun toString(): String {
@@ -122,10 +113,6 @@ sealed class UnvalidatedType {
             return "Integer"
         }
 
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return this
-        }
-
         override fun toString(): String {
             return getTypeString()
         }
@@ -135,20 +122,12 @@ sealed class UnvalidatedType {
             return "Boolean"
         }
 
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return this
-        }
-
         override fun toString(): String {
             return getTypeString()
         }
     }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return List(parameter.replacingParameters(parameterMap), location)
-        }
-
         override fun getTypeString(): String {
             return "List<$parameter>"
         }
@@ -159,10 +138,6 @@ sealed class UnvalidatedType {
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return Maybe(parameter.replacingParameters(parameterMap), location)
-        }
-
         override fun getTypeString(): String {
             return "Maybe<$parameter>"
         }
@@ -174,13 +149,6 @@ sealed class UnvalidatedType {
 
     // TODO: Modify this so equals() and hashCode() ignore differences in type parameter names
     data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-//                    outputType.replacingParameters(parameterMap),
-//                    location)
-            TODO()
-        }
-
         override fun getTypeString(): String {
             return "(" +
                     argTypes.joinToString(", ") +
@@ -198,18 +166,6 @@ sealed class UnvalidatedType {
             fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
             }
-        }
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            val replacement = parameterMap[this]
-            if (replacement != null) {
-                // TODO: Should this have replaceParameters applied to it?
-                return replacement
-            }
-            return NamedType(ref,
-                    isThreaded,
-                    parameters.map { it.replacingParameters(parameterMap) },
-                    location
-            )
         }
 
         override fun getTypeString(): String {
@@ -230,7 +186,7 @@ sealed class UnvalidatedType {
 }
 
 /**
- * Note: The hashCode() and equals() methods for [Type.NamedType] ignore [originalRef], which is provided for a narrow
+ * Note: The hashCode() and equals() methods for [Type.NamedType] ignore [Type.NamedType.originalRef], which is provided for a narrow
  * range of reasons -- primarily, converting back to the original unvalidated code. This may cause odd behavior if
  * you put Types in a set or as the key of a map, but it makes equality checking correct for the purposes of checking
  * that types agree with one another.
@@ -312,9 +268,12 @@ sealed class Type {
         }
 
         override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-//            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-//                    outputType.replacingParameters(parameterMap))
-            TODO()
+            val replacedNames = parameterMap.keys.map { it.getTypeString() }
+            return FunctionType(
+                    typeParameters.filterNot { replacedNames.contains(it.name) },
+                    argTypes.map { type -> type.replacingParameters(parameterMap) },
+                    outputType.replacingParameters(parameterMap)
+            )
         }
 
         override fun getTypeString(): String {
