@@ -148,9 +148,24 @@ sealed class UnvalidatedType {
     }
 
     // TODO: Modify this so equals() and hashCode() ignore differences in type parameter names
+    // TODO: The visible/invisible type parameter issue might be able to be solved by the same solution as the equals/hashCode
+    // solution, if I come up with something clever and robust...
+    // ...................................................................
+    // One option is to include a list of names for the type parameters (along with __), but only actually refer to these
+    // types not by name, but by an index approach: starting with 0, 1 for the "closer" declarations (in the component types)
+    // and with later numbers for the "wrapper" types declared further out. This gets more complicated when considering
+    // that there are also type parameters in structs and interfaces that have to be considered separately. (Uh, should
+    // there also be type parameters in unions?) In particular, members of structs that have function types have two sets
+    // of type parameters to include in their types, so those indices need to have their relative orders defined.
     data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun getTypeString(): String {
-            return "(" +
+            val typeParametersString = if (typeParameters.isEmpty()) {
+                ""
+            } else {
+                "<" + typeParameters.joinToString(", ") + ">"
+            }
+            return typeParametersString +
+                    "(" +
                     argTypes.joinToString(", ") +
                     ") -> " +
                     outputType.toString()

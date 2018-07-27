@@ -332,8 +332,16 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             is UnvalidatedType.FunctionType -> {
                 // TODO: Add validation of these
                 val typeParameters = type.typeParameters
-                val argTypes = type.argTypes.map { argType -> validateType(argType, typeInfo, typeParametersInScope) ?: return null }
-                val outputType = validateType(type.outputType, typeInfo, typeParametersInScope) ?: return null
+                val newTypeParameterScope = HashMap<String, TypeParameter>(typeParametersInScope)
+                for (typeParameter in typeParameters) {
+                    if (newTypeParameterScope.containsKey(typeParameter.name)) {
+                        // TODO: Do stuff here?
+//                        error("Already using type parameter name ${typeParameter.name}; type is $type, existing type parameters are $newTypeParameterScope")
+                    }
+                    newTypeParameterScope.put(typeParameter.name, typeParameter)
+                }
+                val argTypes = type.argTypes.map { argType -> validateType(argType, typeInfo, newTypeParameterScope) ?: return null }
+                val outputType = validateType(type.outputType, typeInfo, newTypeParameterScope) ?: return null
                 Type.FunctionType(typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
@@ -589,9 +597,9 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
             val validatedExpression = validateExpression(assignment.expression, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
             val unvalidatedAssignmentType = assignment.type
             if (unvalidatedAssignmentType != null) {
-                val assignmentType = validateType(unvalidatedAssignmentType, typeInfo, typeParametersInScope)
+                val assignmentType = validateType(unvalidatedAssignmentType, typeInfo, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
-                    fail("In function $containingFunctionId, the variable ${assignment.name} is supposed to be of type ${assignment.type}, " +
+                    fail("In function $containingFunctionId, the variable ${assignment.name} is supposed to be of type $assignmentType, " +
                             "but the expression given has actual type ${validatedExpression.type}")
                 }
             }
@@ -794,7 +802,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
 //            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
 //        }
 
-        val expectedFunctionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
+        val expectedFunctionType = applyChosenParametersToFunctionType(signature.getFunctionType(), chosenParameters, typeInfo, typeParametersInScope) ?: return null
 
         if (expectedFunctionType.argTypes.size != expression.bindings.size) {
             errors.add(Issue("Tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${expectedFunctionType.argTypes.size} arguments", expression.location, IssueLevel.ERROR))
@@ -934,6 +942,20 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
+    // TODO: Disentangle the typeParameters and chosenTypes mess here
+    /*
+    This is called from:
+
+    - parameterizeAndValidateSignature
+    - validateFollowExpression
+     */
+    /**
+     * Applies the chosen parameters to the function type, removing them from the function type's type parameters, and
+     * then validates the resulting function type.
+     *
+     * So this is weird because we want to distinguish between the cases where the type involved here has explicitly
+     * listed type parameters and where it doesn't.
+     */
     private fun parameterizeAndValidateType(unvalidatedType: UnvalidatedType, typeParameters: List<Type.ParameterType>, chosenTypes: List<Type?>, typeInfo: Validator.AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type? {
         val type = validateType(unvalidatedType, typeInfo, typeParametersInScope + typeParameters.map(Type.ParameterType::parameter).associateBy(TypeParameter::name)) ?: return null
 
@@ -1033,7 +1055,7 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
 
 
-        val functionType = parameterizeAndValidateSignature(signature, chosenParameters, typeInfo, typeParametersInScope) ?: return null
+        val functionType = applyChosenParametersToFunctionType(signature.getFunctionType(), chosenParameters, typeInfo, typeParametersInScope) ?: return null
         if (argumentTypes != functionType.argTypes) {
             errors.add(Issue("The function $functionRef expects argument types ${functionType.argTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
         }
@@ -1057,13 +1079,13 @@ private class Validator(val moduleId: ModuleId, val nativeModuleVersion: String,
         }
     }
 
-    private fun parameterizeAndValidateSignature(signature: UnvalidatedTypeSignature, chosenParameters: List<Type?>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
-        val typeParameters = signature.typeParameters.map(Type::ParameterType)
-        try {
-            return parameterizeAndValidateType(signature.getFunctionType(), typeParameters, chosenParameters, typeInfo, typeParametersInScope) as Type.FunctionType?
-        } catch (e: RuntimeException) {
-            throw RuntimeException("Signature being parameterized is $signature", e)
-        }
+    /**
+     * Applies the chosen parameters to the function type, removing them from the function type's type parameters, and
+     * then validates the resulting function type.
+     */
+    private fun applyChosenParametersToFunctionType(functionType: UnvalidatedType.FunctionType, chosenParameters: List<Type?>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
+        val parameterTypes = functionType.typeParameters.map(Type::ParameterType)
+        return parameterizeAndValidateType(functionType, parameterTypes, chosenParameters, typeInfo, typeParametersInScope) as Type.FunctionType?
     }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
