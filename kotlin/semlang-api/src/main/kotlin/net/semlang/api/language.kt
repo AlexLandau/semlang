@@ -207,7 +207,7 @@ sealed class UnvalidatedType {
  * that types agree with one another.
  */
 sealed class Type {
-    abstract fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type
+    abstract protected fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type
     abstract protected fun getTypeString(): String
     abstract fun isThreaded(): Boolean
     override fun toString(): String {
@@ -223,7 +223,7 @@ sealed class Type {
             return "Integer"
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
             return this
         }
     }
@@ -236,7 +236,7 @@ sealed class Type {
             return "Boolean"
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
             return this
         }
     }
@@ -246,8 +246,8 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
-            return List(parameter.replacingParameters(chosenParameters))
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return List(parameter.replacingParametersInternal(chosenParameters))
         }
 
         override fun getTypeString(): String {
@@ -264,8 +264,8 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
-            return Maybe(parameter.replacingParameters(chosenParameters))
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return Maybe(parameter.replacingParametersInternal(chosenParameters))
         }
 
         override fun getTypeString(): String {
@@ -292,7 +292,7 @@ sealed class Type {
             }
 //            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
             // TODO: Validate that none of these are internal parameter types?
-            return replacingParameters(chosenParameters).argTypes
+            return replacingParametersInternal(chosenParameters).argTypes
         }
 
         fun getOutputType(chosenParameters: kotlin.collections.List<Type>): Type {
@@ -301,7 +301,7 @@ sealed class Type {
             }
 //            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
             // TODO: Validate that this is not an internal parameter type?
-            return replacingParameters(chosenParameters).outputType
+            return replacingParametersInternal(chosenParameters).outputType
         }
 
         override fun hashCode(): Int {
@@ -319,11 +319,56 @@ sealed class Type {
             && argTypes == other.argTypes
             && outputType == other.outputType
         }
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): FunctionType {
+        // TODO: Rename
+        private fun replacingParametersImpl(chosenParameters: kotlin.collections.List<Type?>): FunctionType {
+            // The chosenParameters should be correct at this point
+
+            return FunctionType(
+                    // Keep type parameters that aren't getting defined
+                    typeParameters.filterIndexed { index, typeParameter ->
+                        chosenParameters[index] == null
+                    },
+                    argTypes.map { type -> type.replacingParametersInternal(chosenParameters) },
+                    outputType.replacingParametersInternal(chosenParameters)
+            )
+        }
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): FunctionType {
+            // TODO: Differentiate external calls from incoming internal calls
+            val adjustedChosenParameters = typeParameters.map { null } + chosenParameters
+
+            return replacingParametersImpl(adjustedChosenParameters)
+            //            val replacedNames = parameterMap.keys.map { it.getTypeString() }
+
             // TODO: This is not quite right, because this could be nested in another function type providing additional parameters...
 //            if (chosenParameters.size != typeParameters.size) {
 //                error("Incorrect size of chosen parameters")
 //            }
+
+            // So how is this going to work?
+            /*
+            In the simple case, this is the outermost one and chosenParameters.size is typeParameters.size, i.e. we're
+            just replacing the parameters defined here.
+
+            In this case, we look through our (direct) children and replace InternalParameterType(0) with chosenParameters[0],
+            InternalParameterType(1) with chosenParameters[1], etc. This is accomplished via recursive calls to replacingParameters
+            passing the current value of chosenParameters along.
+
+            In addition to replacing our types, we'll also want to remove the selected parameters from our TypeParameters
+            in the returned value. This leaves two complications:
+
+            - Finding type definitions for function bindings that leave some parameters undefined
+            - Nested function types
+
+            I think these will have related solutions, in part involving using a List<Type?> instead of a List<Type>.
+
+            Part of the solution will need to replace some InternalParameterTypes with other InternalParameterTypes,
+            updating the indices appropriately, in the case where the number of defined type parameters changes.
+
+            Then there's the question of how chosenParameters changes when getting to nested types. I believe if we're
+            using nulls, it will just require appending N nulls to the beginning of the list, where N is the number of
+            type parameters introduced in the child type.
+
+             */
 
 //            val replacedNames = parameterMap.keys.map { it.getTypeString() }
 //            return FunctionType(
@@ -331,7 +376,10 @@ sealed class Type {
 //                    argTypes.map { type -> type.replacingParameters(parameterMap) },
 //                    outputType.replacingParameters(parameterMap)
 //            )
+
+
             // Note that we may need to add to the chosenParameters
+
             TODO()
         }
 
@@ -369,11 +417,17 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
 //            val replacement = parameterMap[this]
 //            return if (replacement != null) replacement else this
             val replacement = chosenParameters[index]
-            return replacement
+            if (replacement != null) {
+                return replacement
+            } else {
+                // New index: number of null values preceding this index in the chosenParameters array
+                val newIndex = chosenParameters.subList(0, index).count { it == null }
+                return InternalParameterType(newIndex)
+            }
         }
 
         override fun getTypeString(): String {
@@ -392,7 +446,7 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
 //            val replacement = parameterMap[this]
 //            return if (replacement != null) replacement else this
             return this
@@ -419,7 +473,7 @@ sealed class Type {
             return threaded
         }
 
-        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+        override fun replacingParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
 //            val replacement = parameterMap[this]
 //            if (replacement != null) {
 //                // TODO: Should this have replaceParameters applied to it?
@@ -428,7 +482,7 @@ sealed class Type {
             return NamedType(ref,
                     originalRef,
                     threaded,
-                    parameters.map { parameter -> parameter.replacingParameters(chosenParameters) }
+                    parameters.map { parameter -> parameter.replacingParametersInternal(chosenParameters) }
             )
         }
 
