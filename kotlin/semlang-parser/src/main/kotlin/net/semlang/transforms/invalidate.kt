@@ -59,8 +59,9 @@ fun invalidate(type: Type): UnvalidatedType {
             UnvalidatedType.Maybe(invalidate(type.parameter))
         }
         is Type.FunctionType -> {
-            val argTypes = type.argTypes.map(::invalidate)
-            val outputType = invalidate(type.outputType)
+            val defaultTypeParameters = type.getDefaultTypeParameterNameSubstitution()
+            val argTypes = type.getArgTypes(defaultTypeParameters).map(::invalidate)
+            val outputType = invalidate(type.getOutputType(defaultTypeParameters))
             UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
         }
         is Type.ParameterType -> {
@@ -70,6 +71,7 @@ fun invalidate(type: Type): UnvalidatedType {
             val parameters = type.parameters.map(::invalidate)
             UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
         }
+        is Type.InternalParameterType -> error("This shouldn't happen")
     }
 }
 

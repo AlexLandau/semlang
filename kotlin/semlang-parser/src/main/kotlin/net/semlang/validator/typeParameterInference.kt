@@ -31,13 +31,17 @@ internal sealed class TypeParameterInferenceSource {
     data class FunctionTypeArgument(val containingSource: TypeParameterInferenceSource, val argumentIndex: Int): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.FunctionType ?: return null).argTypes[argumentIndex]
+            val functionType = currentType as? Type.FunctionType ?: return null
+            val defaultTypeParameterNames = functionType.getDefaultTypeParameterNameSubstitution()
+            return functionType.getArgTypes(defaultTypeParameterNames)[argumentIndex]
         }
     }
     data class FunctionTypeOutput(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.FunctionType ?: return null).outputType
+            val functionType = currentType as? Type.FunctionType ?: return null
+            val defaultTypeParameterNames = functionType.getDefaultTypeParameterNameSubstitution()
+            return functionType.getOutputType(defaultTypeParameterNames)
         }
     }
     data class NamedTypeParameter(val containingSource: TypeParameterInferenceSource, val index: Int): TypeParameterInferenceSource() {

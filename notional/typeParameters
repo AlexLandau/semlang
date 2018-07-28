@@ -1,0 +1,54 @@
+So I'm kind of retooling how type parameters work with a bunch of stuff already implemented, after I realized that the
+current approach doesn't really handle cases like ListLike.reduce well -- since that wants to accept a type parameter
+and also wants to be a function binding, and currently function types don't include type parameters.
+
+The hard part, I've discovered, is that types can be nested, and we want the use of names of type parameters --
+previously important to the implementation -- to be irrelevant. (Type classes still need to be preserved and compared.)
+So we want some approach where <T>(List<T>) -> Natural is the same as <U>(List<U>) -> Natural.
+
+It's relatively easy, on the other hand, to look at individual examples and say what's right. The annoying part is just
+getting into the code of the validator and keeping track of, say, which code paths require a type's type parameter names
+to be non-shadowing (which I'd still like to preserve -- principle of least surprise) and which don't, because they
+reference a type parameter from a function that is nowhere near the code actually being evaluated. (Idea there: When
+getting the function type of a function via its ref, don't bother to pass the names of its type parameters. Or maybe we
+have an "annotated type" notion or something that represents both the type object and its names. But maybe not.)
+
+So then there's an index notion:
+
+<T>(<U>(U) -> T, T) -> T
+
+This is an object graph:
+
+               FunctionType(params: ["T"], args: [*, *], output: *)
+                                                  |  |           |
+       /-----------------------------------------/    \----------\
+      v                                                           v
+FunctionType(params: ["U"], args: [*], output: *)        ParameterType(index: 0)
+                                   |           |
+                            /------/           \------------\
+                            v                               v
+                    ParameterType(index: 0)            ParameterType(index: 1)
+
+We see that there are ParameterType objects representing T with indices both 0 and 1.
+
+So here's another question to pose: What are the function types for the members of the following struct?
+
+struct Foo<T> {
+  bar: <U>(U) -> Integer
+  baz: <U>(U) -> T
+}
+
+I think the correct interpretation here is that there is no function type that can be retrieved for Foo#baz in the
+abstract; instead, a value of T has to be chosen before there is a sensible function type for baz. Alternatively, we
+could be in a function parameterized on Z that then deals with Foo<Z> (where we could use the name T instead of Z with
+no difference), but that puts us in a suitable context where the types are "defined". (But then what is the type value?)
+
+Different question now: Is having a parameter type in a function type different from having a parameter type in a
+function body? This seems like a plausible approach to take; I just don't know what it looks like in the code. I guess
+it would mean that Type can include two different classes representing parameter types, one representing types "bound"
+elsewhere in the type and one representing types bound elsewhere in the function. That's starting to get confusing, but
+it could be worse.
+
+Okay, actual good idea: In the FunctionType object, hide the internal argument and output types as private, and make
+outside users go through getter functions that must pass in a list of type parameters. In theory, outside consumers
+(other than perhaps some validation functions) should never have to see an InternalParameterType.

@@ -53,5 +53,6 @@ fun getTypeValidatorFor(type: Type): LiteralValidator? {
         is Type.FunctionType -> null
         is Type.Maybe -> null
         is Type.ParameterType -> null
+        is Type.InternalParameterType -> null
     }
 }

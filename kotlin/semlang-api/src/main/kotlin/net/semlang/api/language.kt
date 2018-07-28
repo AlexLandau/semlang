@@ -207,7 +207,7 @@ sealed class UnvalidatedType {
  * that types agree with one another.
  */
 sealed class Type {
-    abstract fun replacingParameters(parameterMap: Map<out Type, Type>): Type
+    abstract fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type
     abstract protected fun getTypeString(): String
     abstract fun isThreaded(): Boolean
     override fun toString(): String {
@@ -223,7 +223,7 @@ sealed class Type {
             return "Integer"
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
             return this
         }
     }
@@ -236,7 +236,7 @@ sealed class Type {
             return "Boolean"
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
             return this
         }
     }
@@ -246,8 +246,8 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return List(parameter.replacingParameters(parameterMap))
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+            return List(parameter.replacingParameters(chosenParameters))
         }
 
         override fun getTypeString(): String {
@@ -264,8 +264,8 @@ sealed class Type {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return Maybe(parameter.replacingParameters(parameterMap))
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+            return Maybe(parameter.replacingParameters(chosenParameters))
         }
 
         override fun getTypeString(): String {
@@ -277,18 +277,62 @@ sealed class Type {
         }
     }
 
-    data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
+    class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, private val argTypes: kotlin.collections.List<Type>, private val outputType: Type): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            val replacedNames = parameterMap.keys.map { it.getTypeString() }
-            return FunctionType(
-                    typeParameters.filterNot { replacedNames.contains(it.name) },
-                    argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap)
+        fun getDefaultTypeParameterNameSubstitution(): kotlin.collections.List<Type> {
+            return typeParameters.map(Type::ParameterType)
+        }
+
+        fun getArgTypes(chosenParameters: kotlin.collections.List<Type>): kotlin.collections.List<Type> {
+            if (chosenParameters.size != typeParameters.size) {
+                error("Incorrect size of chosen parameters")
+            }
+//            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
+            // TODO: Validate that none of these are internal parameter types?
+            return replacingParameters(chosenParameters).argTypes
+        }
+
+        fun getOutputType(chosenParameters: kotlin.collections.List<Type>): Type {
+            if (chosenParameters.size != typeParameters.size) {
+                error("Incorrect size of chosen parameters")
+            }
+//            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
+            // TODO: Validate that this is not an internal parameter type?
+            return replacingParameters(chosenParameters).outputType
+        }
+
+        override fun hashCode(): Int {
+            return Objects.hash(
+                    typeParameters.map { it.typeClass },
+                    argTypes,
+                    outputType
             )
+        }
+        override fun equals(other: Any?): Boolean {
+            if (other !is Type.FunctionType) {
+                return false
+            }
+            return typeParameters.map { it.typeClass } == other.typeParameters.map { it.typeClass }
+            && argTypes == other.argTypes
+            && outputType == other.outputType
+        }
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): FunctionType {
+            // TODO: This is not quite right, because this could be nested in another function type providing additional parameters...
+//            if (chosenParameters.size != typeParameters.size) {
+//                error("Incorrect size of chosen parameters")
+//            }
+
+//            val replacedNames = parameterMap.keys.map { it.getTypeString() }
+//            return FunctionType(
+//                    typeParameters.filterNot { replacedNames.contains(it.name) },
+//                    argTypes.map { type -> type.replacingParameters(parameterMap) },
+//                    outputType.replacingParameters(parameterMap)
+//            )
+            // Note that we may need to add to the chosenParameters
+            TODO()
         }
 
         override fun getTypeString(): String {
@@ -309,14 +353,49 @@ sealed class Type {
         }
     }
 
+    /**
+     * This class represents a type parameter that is defined elsewhere in either this type or a type containing this
+     * one. In the latter case, this should not be exposed to clients directly; instead, the type defining the type
+     * parameter should require clients to pass in type parameters in order to instantiate them.
+     *
+     * This deals with the fact that we don't want the name of the type parameter to be meaningful; in particular, if
+     * we have a function parameterized in terms of T in its definition, we want to be able to call it and ignore the
+     * name "T", which we might be using locally, without having to worry about name shadowing.
+     *
+     * TODO: Document index ordering.
+     */
+    data class InternalParameterType(val index: Int): Type() {
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+//            val replacement = parameterMap[this]
+//            return if (replacement != null) replacement else this
+            val replacement = chosenParameters[index]
+            return replacement
+        }
+
+        override fun getTypeString(): String {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+    }
+
+    /**
+     * This represents type parameter types where the type parameter is defined in places other than within the same
+     * type definition. For example, a struct with a type parameter T may have a member of type T, or a function with
+     * type parameter T may have a variable in its code with type T. These would use ParameterType as opposed to
+     * [InternalParameterType].
+     */
     data class ParameterType(val parameter: TypeParameter): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            val replacement = parameterMap[this]
-            return if (replacement != null) replacement else this
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+//            val replacement = parameterMap[this]
+//            return if (replacement != null) replacement else this
+            return this
         }
 
         override fun getTypeString(): String {
@@ -340,16 +419,16 @@ sealed class Type {
             return threaded
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            val replacement = parameterMap[this]
-            if (replacement != null) {
-                // TODO: Should this have replaceParameters applied to it?
-                return replacement
-            }
+        override fun replacingParameters(chosenParameters: kotlin.collections.List<Type>): Type {
+//            val replacement = parameterMap[this]
+//            if (replacement != null) {
+//                // TODO: Should this have replaceParameters applied to it?
+//                return replacement
+//            }
             return NamedType(ref,
                     originalRef,
                     threaded,
-                    parameters.map { parameter -> parameter.replacingParameters(parameterMap) }
+                    parameters.map { parameter -> parameter.replacingParameters(chosenParameters) }
             )
         }
 
