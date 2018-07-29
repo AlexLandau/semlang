@@ -655,6 +655,17 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
+    // TODO: If we do offer this, we'd want to pass in something offering validation of the argument and output types
+    fun getValidatedConstructorSignature(): TypeSignature {
+        val argumentTypes = members.map(UnvalidatedMember::type)
+        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
+        val outputType = if (requires == null) {
+            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
+        } else {
+            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
+        }
+        return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
+    }
 }
 data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
