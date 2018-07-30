@@ -807,9 +807,14 @@ private class Validator(
 
          */
 
-        val inferredTypeParameters = inferChosenTypeParameters(functionInfo.type, providedChoices, argumentTypes, functionRef.toString(), expression.location)
+        val inferredNullableTypeParameters = inferChosenTypeParameters(functionInfo.type, providedChoices, argumentTypes, functionRef.toString(), expression.location) ?: return null
+        val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        TODO()
+        val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
+        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+
+        return TypedExpression.NamedFunctionCall(outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
+//        TODO()
 //
 //        val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature
 //        if (signature == null) {

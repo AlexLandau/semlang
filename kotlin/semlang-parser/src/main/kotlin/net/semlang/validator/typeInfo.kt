@@ -57,7 +57,7 @@ class TypesInfo(
     }
 
 }
-data class FunctionInfo(val type: Type.FunctionType, val idLocation: Location?)
+data class FunctionInfo(val resolvedRef: ResolvedEntityRef, val type: Type.FunctionType, val idLocation: Location?)
 sealed class TypeInfo {
     abstract val resolvedRef: ResolvedEntityRef
     abstract val idLocation: Location?
@@ -148,16 +148,19 @@ private class TypeInfoCollector(
     private fun addLocalUnions() {
         for (union in context.unions) {
             val id = union.id
-            val whenId = EntityId(union.id.namespacedName + "when")
 
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(union))
             for (option in union.options) {
                 val optionId = EntityId(union.id.namespacedName + option.name)
                 val functionType = pseudoValidateFunctionType(union.getConstructorSignature(option).getFunctionType())
-                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(functionType, union.idLocation))
+                val resolvedRef = ResolvedEntityRef(moduleId, optionId)
+                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(resolvedRef, functionType, union.idLocation))
             }
+
+            val whenId = EntityId(union.id.namespacedName + "when")
             val functionType = pseudoValidateFunctionType(union.getWhenSignature().getFunctionType())
-            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(functionType, union.idLocation))
+            val resolvedRef = ResolvedEntityRef(moduleId, whenId)
+            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(resolvedRef, functionType, union.idLocation))
         }
     }
 
@@ -165,9 +168,11 @@ private class TypeInfoCollector(
         for (interfac in context.interfaces) {
             localTypesMultimap.multimapPut(interfac.id, getLocalTypeInfo(interfac))
             val instanceConstructorType = pseudoValidateFunctionType(interfac.getInstanceConstructorSignature().getFunctionType())
-            localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(instanceConstructorType, interfac.idLocation))
+            val instanceResolvedRef = ResolvedEntityRef(moduleId, interfac.id)
+            localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(instanceResolvedRef, instanceConstructorType, interfac.idLocation))
             val adapterFunctionType = pseudoValidateFunctionType(interfac.getInstanceConstructorSignature().getFunctionType())
-            localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(adapterFunctionType, interfac.idLocation))
+            val adapterResolvedRef = ResolvedEntityRef(moduleId, interfac.adapterId)
+            localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(adapterResolvedRef, adapterFunctionType, interfac.idLocation))
         }
     }
 
@@ -177,7 +182,8 @@ private class TypeInfoCollector(
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(struct))
             // Don't pass in the type parameters because they're already part of the function type
             val constructorType = pseudoValidateFunctionType(struct.getConstructorSignature().getFunctionType())
-            localFunctionsMultimap.multimapPut(id, FunctionInfo(constructorType, struct.idLocation))
+            val resolvedRef = ResolvedEntityRef(moduleId, id)
+            localFunctionsMultimap.multimapPut(id, FunctionInfo(resolvedRef, constructorType, struct.idLocation))
         }
     }
 
@@ -264,11 +270,11 @@ private class TypeInfoCollector(
 
     private fun addLocalFunctions() {
         for (function in context.functions) {
-            localFunctionsMultimap.multimapPut(function.id, getFunctionInfo(function))
+            localFunctionsMultimap.multimapPut(function.id, getLocalFunctionInfo(function))
         }
     }
 
-    private fun getFunctionInfo(function: Function): FunctionInfo {
+    private fun getLocalFunctionInfo(function: Function): FunctionInfo {
 //        val typeParameters = function.typeParameters.map { it.name }
 //
 //        val argTypes = function.arguments.map { argument -> pseudoValidateType(argument.type, typeParameters) }
@@ -276,8 +282,9 @@ private class TypeInfoCollector(
 //
 //        val type = Type.FunctionType(function.typeParameters, argTypes, outputType)
 //        return FunctionInfo(type)
+        val resolvedRef = ResolvedEntityRef(moduleId, function.id)
         val type = pseudoValidateFunctionType(function.getType())
-        return FunctionInfo(type, function.idLocation)
+        return FunctionInfo(resolvedRef, type, function.idLocation)
     }
 
     private fun pseudoValidateFunctionType(type: UnvalidatedType.FunctionType): Type.FunctionType {
@@ -361,39 +368,41 @@ private class TypeInfoCollector(
         val upstreamFunctions = HashMap<ResolvedEntityRef, FunctionInfo>()
 
         // (We don't need the idPosition for functions in upstream modules)
-        val functionInfo = fun(signature: TypeSignature): FunctionInfo { return FunctionInfo(signature.getFunctionType(), null) }
+        val functionInfo = fun(ref: ResolvedEntityRef, signature: TypeSignature): FunctionInfo {
+            return FunctionInfo(ref, signature.getFunctionType(), null)
+        }
 
         // TODO: Fix this to use nativeModuleVersion
         val nativeModuleId = CURRENT_NATIVE_MODULE_ID
         for (struct in getNativeStructs().values) {
             val ref = ResolvedEntityRef(nativeModuleId, struct.id)
-            upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
+            upstreamFunctions.put(ref, functionInfo(ref, struct.getConstructorSignature()))
         }
         for (interfac in getNativeInterfaces().values) {
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
-            upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
+            upstreamFunctions.put(ref, functionInfo(ref, interfac.getInstanceConstructorSignature()))
             val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
-            upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterFunctionSignature()))
+            upstreamFunctions.put(adapterRef, functionInfo(adapterRef, interfac.getAdapterFunctionSignature()))
         }
         for (function in getNativeFunctionOnlyDefinitions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, function.id)
-            upstreamFunctions.put(ref, functionInfo(function))
+            upstreamFunctions.put(ref, functionInfo(ref, function))
         }
 
         for (module in upstreamModules) {
             for (struct in module.getAllExportedStructs().values) {
                 val ref = ResolvedEntityRef(module.id, struct.id)
-                upstreamFunctions.put(ref, functionInfo(struct.getConstructorSignature()))
+                upstreamFunctions.put(ref, functionInfo(ref, struct.getConstructorSignature()))
             }
             for (interfac in module.getAllExportedInterfaces().values) {
                 val ref = ResolvedEntityRef(module.id, interfac.id)
-                upstreamFunctions.put(ref, functionInfo(interfac.getInstanceConstructorSignature()))
+                upstreamFunctions.put(ref, functionInfo(ref, interfac.getInstanceConstructorSignature()))
                 val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
-                upstreamFunctions.put(adapterRef, functionInfo(interfac.getAdapterFunctionSignature()))
+                upstreamFunctions.put(adapterRef, functionInfo(adapterRef, interfac.getAdapterFunctionSignature()))
             }
             for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)
-                upstreamFunctions.put(ref, functionInfo(function.getTypeSignature()))
+                upstreamFunctions.put(ref, functionInfo(ref, function.getTypeSignature()))
             }
         }
         return upstreamFunctions
