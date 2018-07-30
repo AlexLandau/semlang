@@ -98,8 +98,8 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
-    val typeT = Type.ParameterType(t)
-    val typeU = Type.ParameterType(u)
+    val typeT = Type.InternalParameterType(0)
+    val typeU = Type.InternalParameterType(1)
 
     // List.append
     definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(t),
@@ -155,8 +155,8 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addMaybeFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
-    val typeT = Type.ParameterType(t)
-    val typeU = Type.ParameterType(u)
+    val typeT = Type.InternalParameterType(0)
+    val typeU = Type.InternalParameterType(1)
 
     // Maybe.success
     definitions.add(TypeSignature(EntityId.of("Maybe", "success"), typeParameters = listOf(t),
@@ -198,7 +198,7 @@ private fun addMaybeFunctions(definitions: ArrayList<TypeSignature>) {
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
     val sequenceT = NativeStruct.SEQUENCE.getType()
 
@@ -217,7 +217,7 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 
 private fun addDataFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", TypeClass.Data)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
     // Data.equals
     definitions.add(TypeSignature(EntityId.of("Data", "equals"), typeParameters = listOf(t),
@@ -227,7 +227,7 @@ private fun addDataFunctions(definitions: ArrayList<TypeSignature>) {
 
 private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
     // TextOut.print
     definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
