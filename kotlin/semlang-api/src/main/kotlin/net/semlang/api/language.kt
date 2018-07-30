@@ -342,7 +342,7 @@ sealed class Type {
             }
 //            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
             // TODO: Validate that none of these are internal parameter types?
-            return replacingParametersInternal(chosenParameters).argTypes
+            return replacingParametersImpl(chosenParameters).argTypes
         }
 
         fun getOutputType(chosenParameters: kotlin.collections.List<Type>): Type {
@@ -351,7 +351,7 @@ sealed class Type {
             }
 //            val parametersMap = typeParameters.map{ Type.ParameterType(it) }.zip(chosenParameters).toMap()
             // TODO: Validate that this is not an internal parameter type?
-            return replacingParametersInternal(chosenParameters).outputType
+            return replacingParametersImpl(chosenParameters).outputType
         }
 
         override fun hashCode(): Int {
