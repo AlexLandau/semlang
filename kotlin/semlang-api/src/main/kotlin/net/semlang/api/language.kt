@@ -80,6 +80,7 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
 sealed class UnvalidatedType {
     abstract val location: Location?
     abstract protected fun getTypeString(): String
+    abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
     override fun toString(): String {
         return getTypeString()
     }
@@ -88,6 +89,10 @@ sealed class UnvalidatedType {
     // can be left to the validator
     object Invalid {
         data class ThreadedInteger(override val location: Location? = null) : UnvalidatedType() {
+            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+                return this
+            }
+
             override fun getTypeString(): String {
                 return "~Integer"
             }
@@ -98,6 +103,10 @@ sealed class UnvalidatedType {
         }
 
         data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
+            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+                return this
+            }
+
             override fun getTypeString(): String {
                 return "~Boolean"
             }
@@ -109,6 +118,10 @@ sealed class UnvalidatedType {
     }
 
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return this
+        }
+
         override fun getTypeString(): String {
             return "Integer"
         }
@@ -118,6 +131,10 @@ sealed class UnvalidatedType {
         }
     }
     data class Boolean(override val location: Location? = null) : UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return this
+        }
+
         override fun getTypeString(): String {
             return "Boolean"
         }
@@ -128,6 +145,10 @@ sealed class UnvalidatedType {
     }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
+        }
+
         override fun getTypeString(): String {
             return "List<$parameter>"
         }
@@ -138,6 +159,10 @@ sealed class UnvalidatedType {
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
+        }
+
         override fun getTypeString(): String {
             return "Maybe<$parameter>"
         }
@@ -158,6 +183,14 @@ sealed class UnvalidatedType {
     // there also be type parameters in unions?) In particular, members of structs that have function types have two sets
     // of type parameters to include in their types, so those indices need to have their relative orders defined.
     data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return FunctionType(
+                    typeParameters,
+                    this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
+                    this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
+                    location)
+        }
+
         override fun getTypeString(): String {
             val typeParametersString = if (typeParameters.isEmpty()) {
                 ""
@@ -177,6 +210,20 @@ sealed class UnvalidatedType {
     }
 
     data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            if (ref.moduleRef == null && ref.id.namespacedName.size == 1) {
+                val replacement = parameterReplacementMap[ref.id.namespacedName[0]]
+                if (replacement != null) {
+                    return replacement
+                }
+            }
+            return NamedType(
+                    ref,
+                    isThreaded,
+                    parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
+                    location)
+        }
+
         companion object {
             fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
@@ -198,6 +245,7 @@ sealed class UnvalidatedType {
             return getTypeString()
         }
     }
+
 }
 
 /**
@@ -488,9 +536,9 @@ sealed class Type {
             )
         }
 
-        fun getParameterizedTypes(): kotlin.collections.List<Type> {
-            return parameters
-        }
+//        fun getParameterizedTypes(): kotlin.collections.List<Type> {
+//            return parameters
+//        }
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...

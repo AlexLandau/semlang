@@ -663,17 +663,20 @@ private class Validator(
                 // Type parameters come from the struct definition itself
                 // Chosen types come from the struct type known for the variable
                 val typeParameters = structureTypeInfo.typeParameters
-                val chosenTypes = structureNamedType.getParameterizedTypes()
+                val chosenTypes = structureNamedType.parameters
                 for (chosenParameter in chosenTypes) {
                     if (chosenParameter.isThreaded()) {
                         errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
-                TODO()
+
+                val parameterizedType = replaceAndValidateExternalTypeParameters(memberType, typeParameters, chosenTypes)
+                val type = validateType(parameterizedType, typeParametersInScope) ?: return null
+//                TODO()
 //                val type = parameterizeAndValidateType(memberType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
-//                return TypedExpression.Follow(type, structureExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression, expression.name)
 
             }
             is TypeInfo.Interface -> {
@@ -686,7 +689,7 @@ private class Validator(
                 }
 
                 val typeParameters = interfac.typeParameters
-                val chosenTypes = interfaceType.getParameterizedTypes()
+                val chosenTypes = interfaceType.parameters
                 for (chosenParameter in chosenTypes) {
                     if (chosenParameter.isThreaded()) {
                         errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
@@ -701,6 +704,13 @@ private class Validator(
                 error("Currently we don't allow follows for unions")
             }
         }
+    }
+
+    private fun replaceAndValidateExternalTypeParameters(originalType: UnvalidatedType, typeParameters: List<TypeParameter>, chosenTypes: List<Type>): UnvalidatedType {
+        // TODO: Check that the parameters are of appropriate types
+        val parameterReplacementMap = typeParameters.map { it.name }.zip(chosenTypes.map(::invalidate)).toMap()
+        val replacedType = originalType.replacingNamedParameterTypes(parameterReplacementMap)
+        return replacedType
     }
 
     // TODO: Disentangle the typeParameters and chosenTypes mess here
