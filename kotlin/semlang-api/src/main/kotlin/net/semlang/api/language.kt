@@ -214,6 +214,7 @@ sealed class Type {
         return getTypeString()
     }
 
+    // TODO: Recase these to Integer and Boolean when convenient
     object INTEGER : Type() {
         override fun isThreaded(): Boolean {
             return false
@@ -277,7 +278,8 @@ sealed class Type {
         }
     }
 
-    class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, private val argTypes: kotlin.collections.List<Type>, private val outputType: Type): Type() {
+    //TODO: Figure out if we can return argTypes to private
+    class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
         override fun isThreaded(): Boolean {
             return false
         }
@@ -551,7 +553,11 @@ data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes
         return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType)
     }
 }
-data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
+data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
+    fun getFunctionType(): Type.FunctionType {
+        return Type.FunctionType(typeParameters, argumentTypes, outputType)
+    }
+}
 
 data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int) {
     override fun toString(): String {
@@ -628,11 +634,19 @@ data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val return
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
-    fun getTypeSignature(): UnvalidatedTypeSignature {
-        return UnvalidatedTypeSignature(id,
+//    fun getTypeSignature(): UnvalidatedTypeSignature {
+//        return UnvalidatedTypeSignature(id,
+//                arguments.map(UnvalidatedArgument::type),
+//                returnType,
+//                typeParameters)
+//    }
+
+    fun getType(): UnvalidatedType.FunctionType {
+        return UnvalidatedType.FunctionType(
+                typeParameters,
                 arguments.map(UnvalidatedArgument::type),
-                returnType,
-                typeParameters)
+                returnType
+        )
     }
 }
 data class ValidatedFunction(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
@@ -656,16 +670,16 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
     // TODO: If we do offer this, we'd want to pass in something offering validation of the argument and output types
-    fun getValidatedConstructorSignature(): TypeSignature {
-        val argumentTypes = members.map(UnvalidatedMember::type)
-        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
-        val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
-        } else {
-            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
-        }
-        return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
-    }
+//    fun getValidatedConstructorSignature(): TypeSignature {
+//        val argumentTypes = members.map(UnvalidatedMember::type)
+//        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
+//        val outputType = if (requires == null) {
+//            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
+//        } else {
+//            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
+//        }
+//        return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
+//    }
 }
 data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)

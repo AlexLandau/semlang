@@ -52,24 +52,22 @@ internal sealed class TypeParameterInferenceSource {
     }
 }
 
-internal fun UnvalidatedType.FunctionType.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
+internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
     val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
 
-    fun addPossibleSources(type: UnvalidatedType, sourceSoFar: TypeParameterInferenceSource) {
+    fun addPossibleSources(type: Type, sourceSoFar: TypeParameterInferenceSource) {
         val unused = when (type) {
-            is UnvalidatedType.Invalid.ThreadedInteger -> TODO()
-            is UnvalidatedType.Invalid.ThreadedBoolean -> TODO()
-            is UnvalidatedType.Integer -> { return }
-            is UnvalidatedType.Boolean -> { return }
-            is UnvalidatedType.List -> {
+            is Type.INTEGER -> { return }
+            is Type.BOOLEAN -> { return }
+            is Type.List -> {
                 val listSource = TypeParameterInferenceSource.ListType(sourceSoFar)
                 addPossibleSources(type.parameter, listSource)
             }
-            is UnvalidatedType.Maybe -> {
+            is Type.Maybe -> {
                 val maybeSource = TypeParameterInferenceSource.MaybeType(sourceSoFar)
                 addPossibleSources(type.parameter, maybeSource)
             }
-            is UnvalidatedType.FunctionType -> {
+            is Type.FunctionType -> {
                 type.argTypes.forEachIndexed { argIndex, argType ->
                     val argTypeSource = TypeParameterInferenceSource.FunctionTypeArgument(sourceSoFar, argIndex)
                     addPossibleSources(argType, argTypeSource)
@@ -77,18 +75,24 @@ internal fun UnvalidatedType.FunctionType.getTypeParameterInferenceSources(): Li
                 val outputTypeSource = TypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
                 addPossibleSources(type.outputType, outputTypeSource)
             }
-            is UnvalidatedType.NamedType -> {
-                if (type.ref.moduleRef == null) {
-                    val namespacedName = type.ref.id.namespacedName
-                    if (namespacedName.size == 1) {
-                        val name = namespacedName[0]
-                        possibleSourcesByTypeParameterName.multimapPut(name, sourceSoFar)
-                    }
-                }
+            is Type.NamedType -> {
+//                if (type.ref.moduleRef == null) {
+//                    val namespacedName = type.ref.id.namespacedName
+//                    if (namespacedName.size == 1) {
+//                        val name = namespacedName[0]
+//                        possibleSourcesByTypeParameterName.multimapPut(name, sourceSoFar)
+//                    }
+//                }
                 type.parameters.forEachIndexed { parameterIndex, parameter ->
                     val parameterSource = TypeParameterInferenceSource.NamedTypeParameter(sourceSoFar, parameterIndex)
                     addPossibleSources(parameter, parameterSource)
                 }
+            }
+            is Type.InternalParameterType -> {
+                TODO()
+            }
+            is Type.ParameterType -> {
+                TODO()
             }
         }
     }
@@ -104,7 +108,7 @@ internal fun UnvalidatedType.FunctionType.getTypeParameterInferenceSources(): Li
 /**
  * Returns the number of type parameters for which type inference can't be performed.
  */
-internal fun UnvalidatedType.FunctionType.getRequiredTypeParameterCount(): Int {
+internal fun Type.FunctionType.getRequiredTypeParameterCount(): Int {
     val sources = getTypeParameterInferenceSources()
     return sources.count { it.isEmpty() }
 }

@@ -2,6 +2,7 @@ package net.semlang.validator
 
 import net.semlang.api.TypedBlock
 import net.semlang.api.TypedExpression
+import java.util.ArrayList
 
 internal fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
     val varsReferenced = HashSet<String>()
@@ -65,4 +66,18 @@ private fun collectVars(varsReferenced: MutableCollection<String>, expression: T
             collectVars(varsReferenced, expression.block)
         }
     }
+}
+
+/**
+ * This (somewhat) mimics the behavior of a Guava ListMultimap.
+ */
+internal fun <K, V> MutableMap<K, MutableList<V>>.multimapPut(key: K, value: V) {
+    val existingListMaybe = this[key]
+    if (existingListMaybe != null) {
+        existingListMaybe.add(value)
+        return
+    }
+    val newList = ArrayList<V>()
+    newList.add(value)
+    this.put(key, newList)
 }
