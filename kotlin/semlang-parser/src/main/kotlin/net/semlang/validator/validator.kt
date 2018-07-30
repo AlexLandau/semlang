@@ -265,33 +265,33 @@ private class Validator(
 
 
     // TODO: Move this closer to the function that creates it...
-    private inner class AllTypeInfo(val resolver: EntityResolver,
-                                    val localTypes: Map<EntityId, TypeInfo>,
-                                    val duplicateLocalTypeIds: Set<EntityId>,
-                                    val localFunctions: Map<EntityId, FunctionInfo>,
-                                    val duplicateLocalFunctionIds: Set<EntityId>,
-                                    val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
-                                    val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>) {
-        fun getTypeInfo(resolvedRef: ResolvedEntityRef): TypeInfo? {
-            return if (resolvedRef.module == moduleId) {
-                if (duplicateLocalTypeIds.contains(resolvedRef.id)) {
-                    fail("There are multiple declarations of the type name ${resolvedRef.id}")
-                }
-                localTypes[resolvedRef.id]
-            } else {
-                upstreamTypes[resolvedRef]
-            }
-        }
-        fun getFunctionInfo(resolvedRef: ResolvedEntityRef): FunctionInfo? {
-            return if (resolvedRef.module == moduleId) {
-                if (duplicateLocalFunctionIds.contains(resolvedRef.id)) {
-                    fail("There are multiple declarations of the function name ${resolvedRef.id}")
-                }
-                localFunctions[resolvedRef.id]
-            } else {
-                upstreamFunctions[resolvedRef]
-            }
-        }
+//    private inner class AllTypeInfo(val resolver: EntityResolver,
+//                                    val localTypes: Map<EntityId, TypeInfo>,
+//                                    val duplicateLocalTypeIds: Set<EntityId>,
+//                                    val localFunctions: Map<EntityId, FunctionInfo>,
+//                                    val duplicateLocalFunctionIds: Set<EntityId>,
+//                                    val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
+//                                    val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>) {
+//        fun getTypeInfo(resolvedRef: ResolvedEntityRef): TypeInfo? {
+//            return if (resolvedRef.module == moduleId) {
+//                if (duplicateLocalTypeIds.contains(resolvedRef.id)) {
+//                    fail("There are multiple declarations of the type name ${resolvedRef.id}")
+//                }
+//                localTypes[resolvedRef.id]
+//            } else {
+//                upstreamTypes[resolvedRef]
+//            }
+//        }
+//        fun getFunctionInfo(resolvedRef: ResolvedEntityRef): FunctionInfo? {
+//            return if (resolvedRef.module == moduleId) {
+//                if (duplicateLocalFunctionIds.contains(resolvedRef.id)) {
+//                    fail("There are multiple declarations of the function name ${resolvedRef.id}")
+//                }
+//                localFunctions[resolvedRef.id]
+//            } else {
+//                upstreamFunctions[resolvedRef]
+//            }
+//        }
         // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
 //        private fun isDataType(type: UnvalidatedType): Boolean {
 //            return when (type) {
@@ -325,7 +325,7 @@ private class Validator(
 //                is UnvalidatedType.Invalid.ThreadedBoolean -> false
 //            }
 //        }
-    }
+//    }
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
