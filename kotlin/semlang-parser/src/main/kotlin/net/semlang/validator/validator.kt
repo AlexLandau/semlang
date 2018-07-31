@@ -205,6 +205,7 @@ private class Validator(
                     Type.ParameterType(typeParametersInScope[type.ref.id.namespacedName[0]]!!)
                 } else {
 //                    val resolved = typesInfo.resolver.resolve(type.ref)
+                    // TODO: Getting this for ListBuilder, TextOut, T (in one case)
                     val typeInfo = typesInfo.getTypeInfo(type.ref)
 
                     if (typeInfo == null) {
@@ -703,6 +704,9 @@ private class Validator(
             is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
             }
+            is TypeInfo.OpaqueType -> {
+                error("Currently we don't allow follows for opaque types")
+            }
         }
     }
 
@@ -783,6 +787,7 @@ private class Validator(
 //    validated types of arguments/bindings given to the function, the function type itself
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        System.out.println("Validating named function call $expression")
         val functionRef = expression.functionRef
 
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
@@ -822,6 +827,10 @@ private class Validator(
 
         val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
         val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+
+        System.out.println("Function type: ${functionInfo.type}")
+        System.out.println("Inferred type parameters: $inferredTypeParameters")
+        System.out.println("outputType: $outputType")
 
         return TypedExpression.NamedFunctionCall(outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
 //        TODO()

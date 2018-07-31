@@ -963,3 +963,10 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     }
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
+
+data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+    val resolvedRef = ResolvedEntityRef(moduleId, id)
+    fun getType(): Type.NamedType {
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map { Type.ParameterType(it) })
+    }
+}

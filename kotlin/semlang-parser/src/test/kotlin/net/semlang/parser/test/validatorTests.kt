@@ -29,6 +29,7 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun test() {
+        System.out.println("Running for file $file")
         parseAndValidateFile(file).assumeSuccess()
     }
 

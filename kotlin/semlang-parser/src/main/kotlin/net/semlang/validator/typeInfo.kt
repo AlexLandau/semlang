@@ -65,6 +65,7 @@ sealed class TypeInfo {
     data class Struct(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
     data class Interface(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
     data class Union(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
+    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
 }
 
 fun getTypesInfo(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>, recordIssue: (Issue) -> Unit): TypesInfo {
@@ -254,6 +255,10 @@ private class TypeInfoCollector(
         val resolvedRef = ResolvedEntityRef(moduleId, union.id)
         return TypeInfo.Union(resolvedRef, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
     }
+    private fun getTypeInfo(union: Union, idLocation: Location?): TypeInfo.Union {
+        // TODO: Consider allowing threaded unions
+        return TypeInfo.Union(union.resolvedRef, union.typeParameters, getUnionTypeMap(union.options), false, idLocation)
+    }
 
     private fun getUnvalidatedUnionTypeMap(options: List<UnvalidatedOption>): Map<String, Optional<UnvalidatedType>> {
         val typeMap = HashMap<String, Optional<UnvalidatedType>>()
@@ -263,6 +268,18 @@ private class TypeInfoCollector(
                 error("Duplicate option name ${option.name}")
             } else {
                 typeMap.put(option.name, Optional.ofNullable(option.type))
+            }
+        }
+        return typeMap
+    }
+    private fun getUnionTypeMap(options: List<Option>): Map<String, Optional<UnvalidatedType>> {
+        val typeMap = HashMap<String, Optional<UnvalidatedType>>()
+        for (option in options) {
+            if (typeMap.containsKey(option.name)) {
+                // TODO: Test this case
+                error("Duplicate option name ${option.name}")
+            } else {
+                typeMap.put(option.name, Optional.ofNullable(option.type?.let(::invalidate)))
             }
         }
         return typeMap
@@ -350,6 +367,15 @@ private class TypeInfoCollector(
             val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
             upstreamTypes.put(ref, getTypeInfo(interfac, null))
         }
+        for (union in getNativeUnions().values) {
+            val ref = ResolvedEntityRef(nativeModuleId, union.id)
+            upstreamTypes.put(ref, getTypeInfo(union, null))
+        }
+        for (opaqueType in getNativeOpaqueTypes().values) {
+            val ref = opaqueType.resolvedRef
+            upstreamTypes.put(ref, getTypeInfo(opaqueType, null))
+        }
+
 
         for (module in upstreamModules) {
             for (struct in module.getAllExportedStructs().values) {
@@ -362,6 +388,10 @@ private class TypeInfoCollector(
             }
         }
         return upstreamTypes
+    }
+
+    private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): TypeInfo {
+        return TypeInfo.OpaqueType(opaqueType.resolvedRef, opaqueType.typeParameters, opaqueType.isThreaded, idLocation)
     }
 
     private fun getUpstreamFunctions(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, FunctionInfo> {
@@ -443,6 +473,7 @@ fun TypesInfo.isDataType(type: Type): Boolean {
                         // TODO: Need to handle recursive references here, too
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
                     }
+                    is TypeInfo.OpaqueType -> false
                 }
             }
         }
@@ -474,6 +505,7 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                         // TODO: Need to handle recursive references here, too
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
                     }
+                    is TypeInfo.OpaqueType -> false
                 }
             }
         }

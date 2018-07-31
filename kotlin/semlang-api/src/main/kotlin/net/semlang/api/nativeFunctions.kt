@@ -231,10 +231,10 @@ private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
 
     // TextOut.print
     definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
-            argumentTypes = listOf(NativeThreadedType.TEXT_OUT, NativeStruct.UNICODE_STRING.getType()),
-            outputType = NativeThreadedType.TEXT_OUT))
+            argumentTypes = listOf(NativeThreadedType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
+            outputType = NativeThreadedType.TEXT_OUT.getType()))
 
-    val listBuilderT = NativeThreadedType.LIST_BUILDER
+    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType()
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
@@ -414,10 +414,12 @@ object NativeThreadedType {
     private val t = TypeParameter("T", null)
 
     private val textOutId = EntityId.of("TextOut")
-    val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
+//    val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
+    val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
     private val listBuilderId = EntityId.of("ListBuilder")
-    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType(t)))
+//    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType(t)))
+    val LIST_BUILDER = OpaqueType(listBuilderId, CURRENT_NATIVE_MODULE_ID, listOf(t), true)
 }
 
 /**
@@ -428,11 +430,11 @@ object NativeThreadedType {
  * associated methods that must have a native implementation. (Obviously, these wouldn't be supported by
  * every type of runtime environment.)
  */
-fun getNativeOpaqueTypes(): Map<EntityId, Type.NamedType> {
-    val types = ArrayList<Type.NamedType>()
+fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
+    val types = ArrayList<OpaqueType>()
 
     types.add(NativeThreadedType.TEXT_OUT)
     types.add(NativeThreadedType.LIST_BUILDER)
 
-    return types.associateBy { it.ref.id }
+    return types.associateBy { it.id }
 }
