@@ -162,18 +162,21 @@ private class Validator(
     }
 
     private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>): Type? {
+        return validateType(type, typeParametersInScope, listOf())
+    }
+    private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>, internalParameters: List<String>): Type? {
         return when (type) {
             is UnvalidatedType.Integer -> Type.INTEGER
             is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
-                val parameter = validateType(type.parameter, typeParametersInScope) ?: return null
+                val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
                 if (parameter.isThreaded()) {
                     errors.add(Issue("Lists cannot have a threaded parameter type", null, IssueLevel.ERROR))
                 }
                 Type.List(parameter)
             }
             is UnvalidatedType.Maybe -> {
-                val parameter = validateType(type.parameter, typeParametersInScope) ?: return null
+                val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
                 if (parameter.isThreaded()) {
                     errors.add(Issue("Tries cannot have a threaded parameter type", null, IssueLevel.ERROR))
                 }
@@ -181,50 +184,62 @@ private class Validator(
             }
             is UnvalidatedType.FunctionType -> {
                 // TODO: Add validation of these
-                val typeParameters = type.typeParameters
-                val newTypeParameterScope = HashMap<String, TypeParameter>(typeParametersInScope)
-                for (typeParameter in typeParameters) {
-                    if (newTypeParameterScope.containsKey(typeParameter.name)) {
+//                val typeParameters = type.typeParameters
+//                val newTypeParameterScope = HashMap<String, TypeParameter>(typeParametersInScope)
+
+                val newInternalParameters = ArrayList<String>()
+                // Add the new parameters to the front of the list
+                for (typeParameter in type.typeParameters) {
+                    newInternalParameters.add(typeParameter.name)
+//                    if (newTypeParameterScope.containsKey(typeParameter.name)) {
                         // TODO: Do stuff here?
 //                        error("Already using type parameter name ${typeParameter.name}; type is $type, existing type parameters are $newTypeParameterScope")
-                    }
-                    newTypeParameterScope.put(typeParameter.name, typeParameter)
+//                    }
+//                    newTypeParameterScope.put(typeParameter.name, typeParameter)
                 }
-                val argTypes = type.argTypes.map { argType -> validateType(argType, newTypeParameterScope) ?: return null }
-                val outputType = validateType(type.outputType, newTypeParameterScope) ?: return null
-                Type.FunctionType(typeParameters, argTypes, outputType)
+                newInternalParameters.addAll(internalParameters)
+
+                val argTypes = type.argTypes.map { argType -> validateType(argType, typeParametersInScope, newInternalParameters) ?: return null }
+                val outputType = validateType(type.outputType, typeParametersInScope, newInternalParameters) ?: return null
+                Type.FunctionType(type.typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 if (type.parameters.isEmpty()
                         && type.ref.moduleRef == null
-                        && type.ref.id.namespacedName.size == 1
-                        && typeParametersInScope.containsKey(type.ref.id.namespacedName[0])) {
-                    if (type.isThreaded) {
-                        error("Type parameters shouldn't be marked as threaded")
+                        && type.ref.id.namespacedName.size == 1) {
+                    val typeName = type.ref.id.namespacedName[0]
+                    val internalParameterIndex = internalParameters.indexOf(typeName)
+                    if (internalParameterIndex >= 0) {
+                        return Type.InternalParameterType(internalParameterIndex)
                     }
-                    Type.ParameterType(typeParametersInScope[type.ref.id.namespacedName[0]]!!)
-                } else {
-//                    val resolved = typesInfo.resolver.resolve(type.ref)
-                    // TODO: Getting this for ListBuilder, TextOut, T (in one case)
-                    val typeInfo = typesInfo.getTypeInfo(type.ref)
-
-                    if (typeInfo == null) {
-                        errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
-                        return null
+                    val externalParameterType = typeParametersInScope[typeName]
+                    if (externalParameterType != null) {
+                        return Type.ParameterType(externalParameterType)
                     }
-                    val shouldBeThreaded = typeInfo.isThreaded
-
-                    if (shouldBeThreaded && !type.isThreaded) {
-                        errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
-                        return null
-                    }
-                    if (type.isThreaded && !shouldBeThreaded) {
-                        errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
-                        return null
-                    }
-                    val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope) ?: return null }
-                    Type.NamedType(typeInfo.resolvedRef, type.ref, type.isThreaded, parameters)
                 }
+//                    if (type.isThreaded) {
+//                        error("Type parameters shouldn't be marked as threaded")
+//                    }
+//                    val resolved = typesInfo.resolver.resolve(type.ref)
+                // TODO: Getting this for ListBuilder, TextOut, T (in one case)
+                val typeInfo = typesInfo.getTypeInfo(type.ref)
+
+                if (typeInfo == null) {
+                    errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
+                    return null
+                }
+                val shouldBeThreaded = typeInfo.isThreaded
+
+                if (shouldBeThreaded && !type.isThreaded) {
+                    errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
+                    return null
+                }
+                if (type.isThreaded && !shouldBeThreaded) {
+                    errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
+                    return null
+                }
+                val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope, internalParameters) ?: return null }
+                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isThreaded, parameters)
             }
             is UnvalidatedType.Invalid.ThreadedInteger -> {
                 errors.add(Issue("Integer is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
@@ -608,7 +623,7 @@ private class Validator(
         val chosenParameters = if (functionType.typeParameters.size == providedChoices.size) {
             providedChoices
         } else if (functionType.typeParameters.size < providedChoices.size) {
-            errors.add(Issue("Too many type parameters were supplied for function binding for $functionDescription", expressionLocation, IssueLevel.ERROR))
+            errors.add(Issue("Too many type parameters were supplied for function call/binding for $functionDescription; provided ${providedChoices.size}, but ${functionType.typeParameters.size} were expected", expressionLocation, IssueLevel.ERROR))
             return null
         } else {
             // Apply type parameter inference
@@ -620,7 +635,7 @@ private class Validator(
                     inferredType.get()
                 } else {
                     if (!explicitParametersIterator.hasNext()) {
-                        errors.add(Issue("Not enough type parameters were supplied for function binding for $functionDescription", expressionLocation, IssueLevel.ERROR))
+                        errors.add(Issue("Not enough type parameters were supplied for function call/binding for $functionDescription", expressionLocation, IssueLevel.ERROR))
                         return null
                     }
                     val chosenParameter = explicitParametersIterator.next()
