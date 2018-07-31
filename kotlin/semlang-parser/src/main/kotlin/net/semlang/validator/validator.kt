@@ -784,9 +784,15 @@ private class Validator(
         }
         val argumentTypes = arguments.map(TypedExpression::type)
 
-        val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, argumentTypes, functionType.toString(), expression.location)
+        val inferredNullableTypeParameters = inferChosenTypeParameters(functionType, providedChoices, argumentTypes, functionType.toString(), expression.location) ?: return null
+        val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        TODO()
+        val argTypes = functionType.getArgTypes(inferredTypeParameters)
+        val outputType = functionType.getOutputType(inferredTypeParameters)
+
+        return TypedExpression.ExpressionFunctionCall(outputType, functionExpression, arguments, inferredTypeParameters)
+
+//        TODO()
 
 //
 //        val chosenParameters = expression.chosenParameters.map { TODO() }
