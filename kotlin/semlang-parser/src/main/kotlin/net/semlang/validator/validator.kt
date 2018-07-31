@@ -633,7 +633,7 @@ private class Validator(
         val chosenParameters = if (functionType.typeParameters.size == providedChoices.size) {
             providedChoices
         } else if (functionType.typeParameters.size < providedChoices.size) {
-            errors.add(Issue("Too many type parameters were supplied for function call/binding for $functionDescription; provided ${providedChoices.size}, but ${functionType.typeParameters.size} were expected", expressionLocation, IssueLevel.ERROR))
+            errors.add(Issue("Too many type parameters were supplied for function call/binding for $functionDescription; provided ${providedChoices.size}, but ${functionType.typeParameters.size} were expected, function type was $functionType", expressionLocation, IssueLevel.ERROR))
             return null
         } else {
             // Apply type parameter inference
@@ -729,7 +729,14 @@ private class Validator(
                         errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
-                TODO()
+
+
+                val parameterizedType = replaceAndValidateExternalTypeParameters(methodType, typeParameters, chosenTypes)
+                val type = validateType(parameterizedType, typeParametersInScope) ?: return null
+
+                return TypedExpression.Follow(type, structureExpression, expression.name)
+
+//                TODO()
 //                val type = parameterizeAndValidateType(methodType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
 
 //                return TypedExpression.Follow(type, structureExpression, expression.name)

@@ -812,7 +812,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     fun getAdapterFunctionSignature(): TypeSignature {
         val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
-        val dataStructType = Type.ParameterType(adapterTypeParameters[0])
+        val dataStructType = Type.InternalParameterType(0)
         val argumentTypes = ArrayList<Type>()
         this.methods.forEach { method ->
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
@@ -937,7 +937,7 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: UnvalidatedType
 
     return UnvalidatedType.FunctionType(listOf(), argTypes, method.returnType, null)
 }
-private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.ParameterType, method: Method): Type {
+private fun getInterfaceMethodReferenceType(intrinsicStructType: Type, method: Method): Type {
     val argTypes = ArrayList<Type>()
     argTypes.add(intrinsicStructType)
     method.arguments.forEach { argument ->

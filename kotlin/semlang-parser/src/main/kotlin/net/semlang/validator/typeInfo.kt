@@ -171,7 +171,7 @@ private class TypeInfoCollector(
             val instanceConstructorType = pseudoValidateFunctionType(interfac.getInstanceConstructorSignature().getFunctionType())
             val instanceResolvedRef = ResolvedEntityRef(moduleId, interfac.id)
             localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(instanceResolvedRef, instanceConstructorType, interfac.idLocation))
-            val adapterFunctionType = pseudoValidateFunctionType(interfac.getInstanceConstructorSignature().getFunctionType())
+            val adapterFunctionType = pseudoValidateFunctionType(interfac.getAdapterFunctionSignature().getFunctionType())
             val adapterResolvedRef = ResolvedEntityRef(moduleId, interfac.adapterId)
             localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(adapterResolvedRef, adapterFunctionType, interfac.idLocation))
         }
