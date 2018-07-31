@@ -336,7 +336,7 @@ sealed class Type {
             return typeParameters.map(Type::ParameterType)
         }
 
-        fun getArgTypes(chosenParameters: kotlin.collections.List<Type>): kotlin.collections.List<Type> {
+        fun getArgTypes(chosenParameters: kotlin.collections.List<Type?>): kotlin.collections.List<Type> {
             if (chosenParameters.size != typeParameters.size) {
                 error("Incorrect size of chosen parameters")
             }
@@ -345,7 +345,7 @@ sealed class Type {
             return replacingParametersImpl(chosenParameters).argTypes
         }
 
-        fun getOutputType(chosenParameters: kotlin.collections.List<Type>): Type {
+        fun getOutputType(chosenParameters: kotlin.collections.List<Type?>): Type {
             if (chosenParameters.size != typeParameters.size) {
                 error("Incorrect size of chosen parameters")
             }

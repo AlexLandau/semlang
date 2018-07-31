@@ -496,9 +496,17 @@ private class Validator(
 
         val providedChoices = expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
 
-        val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionRef.toString(), expression.location)
+        val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionRef.toString(), expression.location) ?: return null
 
-        TODO()
+        val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
+        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+
+        val postBindingType = Type.FunctionType(
+                functionInfo.type.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
+                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
+                outputType)
+
+        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters)
 
 
         // So what do we want this new world to look like?
