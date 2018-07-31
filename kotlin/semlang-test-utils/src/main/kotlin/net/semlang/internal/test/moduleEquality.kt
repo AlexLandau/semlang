@@ -10,6 +10,7 @@ fun assertModulesEqual(expected: ValidatedModule, actual: ValidatedModule) {
     Assert.assertEquals(expected.ownFunctions, actual.ownFunctions)
     Assert.assertEquals(expected.ownStructs, actual.ownStructs)
     Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
+    Assert.assertEquals(expected.ownUnions, actual.ownUnions)
     // TODO: Maybe check more?
 }
 
@@ -19,6 +20,7 @@ fun assertRawContextsEqual(expected: RawContext, actual: RawContext) {
     Assert.assertEquals(expected.functions.map(::stripLocations), actual.functions.map(::stripLocations))
     Assert.assertEquals(expected.structs.map(::stripLocations), actual.structs.map(::stripLocations))
     Assert.assertEquals(expected.interfaces.map(::stripLocations), actual.interfaces.map(::stripLocations))
+    Assert.assertEquals(expected.unions.map(::stripLocations), actual.unions.map(::stripLocations))
 }
 
 private fun stripLocations(function: Function): Function {
@@ -146,4 +148,14 @@ private fun stripLocations(method: UnvalidatedMethod): UnvalidatedMethod {
 private fun stripLocations(member: UnvalidatedMember): UnvalidatedMember {
     val type = stripLocations(member.type)
     return UnvalidatedMember(member.name, type)
+}
+
+private fun stripLocations(union: UnvalidatedUnion): UnvalidatedUnion {
+    val options = union.options.map(::stripLocations)
+    return UnvalidatedUnion(union.id, union.typeParameters, options, union.annotations)
+}
+
+private fun stripLocations(option: UnvalidatedOption): UnvalidatedOption {
+    val type = option.type?.let(::stripLocations)
+    return UnvalidatedOption(option.name, type)
 }
