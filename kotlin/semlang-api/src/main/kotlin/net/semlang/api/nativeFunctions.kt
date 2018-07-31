@@ -234,7 +234,9 @@ private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(NativeThreadedType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
             outputType = NativeThreadedType.TEXT_OUT.getType()))
 
-    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType()
+    // TODO: Having to set the parameters here isn't good. What should the right approach be?
+    // TODO: We probably want to have getType() accept a list of parameters as an argument
+    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType().copy(parameters = listOf(typeT))
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
