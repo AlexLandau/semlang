@@ -108,7 +108,8 @@ private fun stripLocations(expression: Expression): Expression {
         is Expression.ExpressionFunctionBinding -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else stripLocations(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else stripLocations(it) }
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is Expression.Follow -> {
             val structureExpression = stripLocations(expression.structureExpression)

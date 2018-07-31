@@ -446,11 +446,21 @@ private class Validator(
         val bindingTypes = bindings.map { if (it == null) null else it.type }
 
         // TODO: Implement this
-        val providedChoices = listOf<Type?>()// expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
+        val providedChoices = expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
 
-        val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionType.toString(), expression.location)
+        val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionType.toString(), expression.location) ?: return null
 
-        TODO()
+        val argTypes = functionType.getArgTypes(inferredTypeParameters)
+        val outputType = functionType.getOutputType(inferredTypeParameters)
+
+        val postBindingType = Type.FunctionType(
+                functionType.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
+                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
+                outputType)
+
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters)
+
+//        TODO()
 //
 //        val preBindingArgumentTypes = functionType.argTypes
 //

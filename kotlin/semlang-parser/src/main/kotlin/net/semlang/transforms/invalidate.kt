@@ -125,7 +125,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is TypedExpression.Follow -> {
             val structureExpression = invalidateExpression(expression.structureExpression)

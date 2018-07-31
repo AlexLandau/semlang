@@ -501,6 +501,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.ExpressionFunctionBinding -> {
             node.put("type", "expressionBinding")
             addExpression(node.putObject("expression"), expression.functionExpression)
+            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.chosenParameters)
             addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
@@ -575,7 +576,8 @@ private fun parseExpression(node: JsonNode): Expression {
         "expressionBinding" -> {
             val functionExpression = parseExpression(node["expression"])
             val bindings = parseBindingsArray(node["bindings"])
-            return Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            val chosenParameters = parseOptionalChosenParameters(node["chosenParameters"])
+            return Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         "inlineFunction" -> {
             val arguments = parseArguments(node["arguments"])

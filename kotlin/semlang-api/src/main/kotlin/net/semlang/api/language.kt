@@ -654,7 +654,7 @@ sealed class Expression {
     data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location? = null): Expression()
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location? = null): Expression()
     data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, override val location: Location? = null): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null): Expression()
     data class Follow(val structureExpression: Expression, val name: String, override val location: Location? = null): Expression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
 }
@@ -668,7 +668,7 @@ sealed class TypedExpression {
     data class Literal(override val type: Type, val literal: String): TypedExpression()
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
     data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
     data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }

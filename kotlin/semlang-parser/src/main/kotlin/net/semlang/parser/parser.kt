@@ -276,12 +276,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     expression.location)
             is AmbiguousExpression.VarOrNamedFunctionBinding -> {
                 if (varIds.contains(expression.functionIdOrVariable)) {
-                    if (expression.chosenParameters.size > 0) {
-                        error("Had explicit parameters in a variable-based function binding")
-                    }
                     // TODO: The position of the variable is incorrect here
                     return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
 
@@ -297,12 +295,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
-                if (expression.chosenParameters.size > 0) {
-                    error("Had explicit parameters in a an expression-based function binding")
-                }
                 return Expression.ExpressionFunctionBinding(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                        chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
             is AmbiguousExpression.IfThen -> Expression.IfThen(
