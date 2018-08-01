@@ -436,6 +436,11 @@ private class Validator(
             return null
         }
 
+        if (expression.bindings.size != functionType.argTypes.size) {
+            errors.add(Issue("The function binding here expects ${functionType.argTypes.size} arguments (with types ${functionType.argTypes}), but ${expression.bindings.size} were given", expression.location, IssueLevel.ERROR))
+            return null
+        }
+
         val bindings = expression.bindings.map { binding ->
             if (binding == null) {
                 null
@@ -794,6 +799,11 @@ private class Validator(
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
             errors.add(Issue("The expression $functionExpression is called like a function, but it has a non-function type ${functionExpression.type}", expression.functionExpression.location, IssueLevel.ERROR))
+            return null
+        }
+
+        if (expression.arguments.size != functionType.argTypes.size) {
+            errors.add(Issue("The function binding here expects ${functionType.argTypes.size} arguments (with types ${functionType.argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
