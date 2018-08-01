@@ -115,7 +115,8 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Expression.ExpressionFunctionCall -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val arguments = expression.argumentVarNames.map(this::convertVarName)
-                Expression.ExpressionFunctionCall(functionExpression, arguments)
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is S0Expression.Literal -> {
                 val type = apply(expression.type)
@@ -129,13 +130,14 @@ private class Sem0To1Converter(val input: S0Context) {
             is S0Expression.NamedFunctionBinding -> {
                 val functionRef = convertRef(expression.functionId)
                 val bindings = expression.bindingVarNames.map { if (it == null) null else convertVarName(it) }
-                val chosenParameters = expression.chosenParameters.map(this::apply)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
                 Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
             }
             is S0Expression.ExpressionFunctionBinding -> {
                 val functionExpression = convertVarName(expression.functionVarName)
                 val bindings = expression.bindingVarNames.map { if (it == null) null else convertVarName(it) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is S0Expression.Follow -> {
                 val structureExpression = convertVarName(expression.structureVarName)
@@ -164,9 +166,10 @@ private class Sem0To1Converter(val input: S0Context) {
                 UnvalidatedType.Maybe(apply(type.parameter))
             }
             is S0Type.FunctionType -> {
+                val typeParameters = type.typeParameters.map(this::apply)
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)
-                UnvalidatedType.FunctionType(argTypes, outputType)
+                UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
             }
             is S0Type.NamedType -> {
                 val ref = convertRef(type.id)

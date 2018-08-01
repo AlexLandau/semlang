@@ -143,7 +143,7 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
             is Expression.ExpressionFunctionCall -> {
                 val functionExpression = apply(expression.functionExpression)
                 val arguments = expression.arguments.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.location)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters, expression.location)
             }
             is Expression.Literal -> expression
             is Expression.ListLiteral -> {
@@ -152,12 +152,12 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
             }
             is Expression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, expression.location)
+                Expression.NamedFunctionBinding(expression.functionRef, bindings, expression.chosenParameters, expression.location, expression.functionRefLocation)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val functionExpression = apply(expression.functionExpression)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.location)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters, expression.location)
             }
             is Expression.Follow -> {
                 val structureExpression = apply(expression.structureExpression)

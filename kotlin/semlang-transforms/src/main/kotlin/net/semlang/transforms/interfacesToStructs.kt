@@ -64,7 +64,8 @@ private class InterfaceToStructConverter(private val context: RawContext) {
             UnvalidatedArgument(method.name, methodFunctionType.copy(argTypes = newArgumentTypes))
         }
 
-        val outputType = UnvalidatedType.FunctionType(listOf(dataParameterType), interfac.instanceType)
+        // TODO: This is probably broken
+        val outputType = UnvalidatedType.FunctionType(listOf(interfac.dataTypeParameter), listOf(dataParameterType), interfac.instanceType)
 
         val interfaceParameterTypes = interfac.typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) }
 
@@ -78,6 +79,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
                                         arguments = interfac.methods.map { method ->
                                             Expression.ExpressionFunctionBinding(
                                                     functionExpression = Expression.Variable(method.name),
+                                                    chosenParameters = listOf(),
                                                     bindings = listOf(Expression.Variable("data")) + Collections.nCopies(method.arguments.size, null)
                                             )
                                         },

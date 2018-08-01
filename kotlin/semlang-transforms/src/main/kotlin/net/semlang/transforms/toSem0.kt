@@ -116,9 +116,10 @@ private class Sem1To0Converter(val input: RawContext) {
             is UnvalidatedType.List -> S0Type.List(apply(type.parameter))
             is UnvalidatedType.Maybe -> S0Type.Maybe(apply(type.parameter))
             is UnvalidatedType.FunctionType -> {
+                val typeParameters = type.typeParameters.map(this::apply)
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)
-                S0Type.FunctionType(argTypes, outputType)
+                S0Type.FunctionType(typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 val id = convertRef(type.ref)
@@ -169,7 +170,8 @@ private class Sem1To0Converter(val input: RawContext) {
             is Expression.ExpressionFunctionCall -> {
                 val functionVarName = convertVarExpression(expression.functionExpression)
                 val argumentVarNames = expression.arguments.map(this::convertVarExpression)
-                S0Expression.ExpressionFunctionCall(functionVarName, argumentVarNames)
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                S0Expression.ExpressionFunctionCall(functionVarName, argumentVarNames, chosenParameters)
             }
             is Expression.Literal -> {
                 val type = apply(expression.type)
@@ -183,13 +185,14 @@ private class Sem1To0Converter(val input: RawContext) {
             is Expression.NamedFunctionBinding -> {
                 val functionId = convertRef(expression.functionRef)
                 val bindingVarNames = expression.bindings.map { if (it == null) null else convertVarExpression(it) }
-                val chosenParameters = expression.chosenParameters.map(this::apply)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
                 S0Expression.NamedFunctionBinding(functionId, bindingVarNames, chosenParameters)
             }
             is Expression.ExpressionFunctionBinding -> {
                 val functionVarName = convertVarExpression(expression.functionExpression)
                 val bindingVarNames = expression.bindings.map { if (it == null) null else convertVarExpression(it) }
-                S0Expression.ExpressionFunctionBinding(functionVarName, bindingVarNames)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
+                S0Expression.ExpressionFunctionBinding(functionVarName, bindingVarNames, chosenParameters)
             }
             is Expression.Follow -> {
                 val structureVarName = convertVarExpression(expression.structureExpression)

@@ -106,7 +106,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val result = tryMakingIntoVar(expression.functionExpression)
 
-                Expression.ExpressionFunctionCall(result, newArguments)
+                Expression.ExpressionFunctionCall(result, newArguments, expression.chosenParameters)
             }
             is Expression.NamedFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -128,7 +128,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val result = tryMakingIntoVar(expression.functionExpression)
 
-                Expression.ExpressionFunctionBinding(result, newBindings)
+                Expression.ExpressionFunctionBinding(result, newBindings, expression.chosenParameters)
             }
             is Expression.NamedFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->
@@ -199,7 +199,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val subresult = tryMakingIntoVar(expression.functionExpression)
 
-                Expression.ExpressionFunctionCall(subresult, newArguments)
+                Expression.ExpressionFunctionCall(subresult, newArguments, expression.chosenParameters)
             }
             is Expression.NamedFunctionCall -> {
                 val newArguments = expression.arguments.map { argument ->
@@ -221,7 +221,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
 
                 val subresult = tryMakingIntoVar(expression.functionExpression)
 
-                Expression.ExpressionFunctionBinding(subresult, newBindings)
+                Expression.ExpressionFunctionBinding(subresult, newBindings, expression.chosenParameters)
             }
             is Expression.NamedFunctionBinding -> {
                 val newBindings = expression.bindings.map { binding ->

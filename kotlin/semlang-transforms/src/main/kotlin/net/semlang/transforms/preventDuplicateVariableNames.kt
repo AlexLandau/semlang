@@ -108,7 +108,7 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
             is Expression.ExpressionFunctionCall -> {
                 val functionExpression = applyTransformations(expression.functionExpression, varTransformations)
                 val arguments = expression.arguments.map { applyTransformations(it, varTransformations) }
-                Expression.ExpressionFunctionCall(functionExpression, arguments)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters)
             }
             is Expression.Literal -> expression
             is Expression.ListLiteral -> {
@@ -122,7 +122,7 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
             is Expression.ExpressionFunctionBinding -> {
                 val functionExpression = applyTransformations(expression.functionExpression, varTransformations)
                 val bindings = expression.bindings.map { if (it == null) null else applyTransformations(it, varTransformations) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings)
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters)
             }
             is Expression.Follow -> {
                 val structureExpression = applyTransformations(expression.structureExpression, varTransformations)
