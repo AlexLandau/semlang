@@ -200,7 +200,9 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.InternalParameterType(0)
 
-    val sequenceT = NativeStruct.SEQUENCE.getType()
+    // TODO: Having to set the parameters here isn't good. What should the right approach be?
+    // TODO: We probably want to have getType() accept a list of parameters as an argument
+    val sequenceT = NativeStruct.SEQUENCE.getType().copy(parameters = listOf(typeT))
 
     // Sequence.get
     definitions.add(TypeSignature(EntityId.of("Sequence", "get"), typeParameters = listOf(t),

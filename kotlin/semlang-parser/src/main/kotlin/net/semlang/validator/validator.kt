@@ -459,13 +459,13 @@ private class Validator(
         val outputType = functionType.getOutputType(inferredTypeParameters)
 
         for (entry in argTypes.zip(bindings)) {
-            val type = entry.first
+            val expectedType = entry.first
             val binding = entry.second
             if (binding != null) {
                 // TODO: Make a test where this is necessary
-//                if (binding.type != type) {
-//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
-//                }
+                if (binding.type != expectedType) {
+                    errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
+                }
                 if (binding.type.isThreaded()) {
                     errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
@@ -551,13 +551,13 @@ private class Validator(
         val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
 
         for (entry in argTypes.zip(bindings)) {
-            val type = entry.first
+            val expectedType = entry.first
             val binding = entry.second
             if (binding != null) {
                 // TODO: Make a test where this is necessary
-//                if (binding.type != type) {
-//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
-//                }
+                if (binding.type != expectedType) {
+                    errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
+                }
                 if (binding.type.isThreaded()) {
                     errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
@@ -847,8 +847,13 @@ private class Validator(
         val inferredNullableTypeParameters = inferChosenTypeParameters(functionType, providedChoices, argumentTypes, functionType.toString(), expression.location) ?: return null
         val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        val argTypes = functionType.getArgTypes(inferredTypeParameters)
+        val functionArgTypes = functionType.getArgTypes(inferredTypeParameters)
         val outputType = functionType.getOutputType(inferredTypeParameters)
+
+        if (argumentTypes != functionArgTypes) {
+            errors.add(Issue("The function expression expects arguments with types $functionArgTypes, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+            return null
+        }
 
         return TypedExpression.ExpressionFunctionCall(outputType, functionExpression, arguments, inferredTypeParameters)
 
@@ -919,8 +924,14 @@ private class Validator(
         val inferredNullableTypeParameters = inferChosenTypeParameters(functionInfo.type, providedChoices, argumentTypes, functionRef.toString(), expression.location) ?: return null
         val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
+        val functionArgTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
         val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+
+        if (argumentTypes != functionArgTypes) {
+            val paramString = if (inferredTypeParameters.isEmpty()) "" else "<$inferredTypeParameters>"
+            errors.add(Issue("The function $functionRef$paramString expects arguments with types $functionArgTypes, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+            return null
+        }
 
         System.out.println("Function type: ${functionInfo.type}")
         System.out.println("Inferred type parameters: $inferredTypeParameters")
