@@ -41,8 +41,12 @@ class ValidatorPositiveTests(private val file: File) {
 //        System.out.println("Rewritten contents for file $file:")
 //        System.out.println(writtenToString)
 //        System.out.println("(End contents)")
-        val reparsed = parseAndValidateString(writtenToString)
-        assertModulesEqual(initiallyParsed, reparsed)
+        try {
+            val reparsed = parseAndValidateString(writtenToString)
+            assertModulesEqual(initiallyParsed, reparsed)
+        } catch (t: Throwable) {
+            throw AssertionError("Error; written version was: $writtenToString", t)
+        }
     }
 
     @Test

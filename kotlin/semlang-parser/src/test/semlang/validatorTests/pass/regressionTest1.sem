@@ -1,0 +1,5 @@
+// This failed when writing the outcome...
+function applyNTimes(numTimes: Natural, startingValue: Natural, fn: (Natural) -> Natural): Natural {
+    let sequence = Sequence<Natural>(startingValue, fn)
+    Sequence.get<Natural>(sequence, numTimes)
+}

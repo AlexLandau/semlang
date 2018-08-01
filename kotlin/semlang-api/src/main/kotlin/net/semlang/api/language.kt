@@ -748,8 +748,9 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         } else {
             Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
         }
-        return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
+        return createTypeSignatureWithInternalParameters(id, argumentTypes, outputType, this.typeParameters)
     }
+
 }
 interface HasId {
     val id: EntityId
@@ -968,5 +969,48 @@ data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParamete
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(): Type.NamedType {
         return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map { Type.ParameterType(it) })
+    }
+}
+
+// TODO: "Standardize" this
+fun createTypeSignatureWithInternalParameters(id: EntityId, argumentTypes: List<Type>, outputType: Type, typeParameters: List<TypeParameter>): TypeSignature {
+    val newParameterIndices = HashMap<String, Int>()
+    typeParameters.mapIndexed { index, typeParameter ->
+        newParameterIndices.put(typeParameter.name, index)
+    }
+    val newArgTypes = argumentTypes.map { it.internalizeParameters(newParameterIndices, 0) }
+    val newOutputType = outputType.internalizeParameters(newParameterIndices, 0)
+    return TypeSignature(id, newArgTypes, newOutputType, typeParameters)
+}
+
+private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
+    return when (this) {
+        Type.INTEGER -> this
+        Type.BOOLEAN -> this
+        is Type.List -> {
+            Type.List(parameter.internalizeParameters(newParameterIndices, indexOffset))
+        }
+        is Type.Maybe -> {
+            Type.Maybe(parameter.internalizeParameters(newParameterIndices, indexOffset))
+        }
+        is Type.FunctionType -> {
+            val newIndexOffset = indexOffset + this.typeParameters.size
+            val newArgTypes = argTypes.map { it.internalizeParameters(newParameterIndices, newIndexOffset) }
+            val newOutputType = outputType.internalizeParameters(newParameterIndices, newIndexOffset)
+            Type.FunctionType(typeParameters, newArgTypes, newOutputType)
+        }
+        is Type.InternalParameterType -> this
+        is Type.ParameterType -> {
+            val index = newParameterIndices[this.parameter.name]?.plus(indexOffset)
+            if (index != null) {
+                Type.InternalParameterType(index)
+            } else {
+                this
+            }
+        }
+        is Type.NamedType -> {
+            val newParameters = parameters.map { it.internalizeParameters(newParameterIndices, indexOffset) }
+            return this.copy(parameters = newParameters)
+        }
     }
 }

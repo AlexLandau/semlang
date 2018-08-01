@@ -315,9 +315,10 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append(indent)
                     .appendln("} else {")
             writeBlock(expression.elseBlock, indentationLevel + 1, writer)
-            writer.append("}")
+            writer.append(indent).append("}")
         }
         is Expression.InlineFunction -> {
+            val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
             writer.append("function(")
             writer.append(expression.arguments.joinToString { argument ->
                 argument.name + ": " + argument.type.toString()
@@ -326,7 +327,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append(expression.returnType.toString())
             writer.appendln(" {")
             writeBlock(expression.block, indentationLevel + 1, writer)
-            writer.append("}")
+            writer.append(indent).append("}")
         }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")
     }
