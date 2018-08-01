@@ -56,8 +56,8 @@ class ValidatorPositiveTests(private val file: File) {
         try {
             val reparsed = parseString(writtenToString, "").assumeSuccess()
             assertRawContextsEqual(initiallyParsed, reparsed)
-        } catch (e: RuntimeException) {
-            throw AssertionError("Error while reparsing; written version was: $writtenToString", e)
+        } catch (t: Throwable) {
+            throw AssertionError("Error while reparsing; written version was: $writtenToString", t)
         }
     }
 
