@@ -309,8 +309,9 @@ private class TypeInfoCollector(
     }
     private fun pseudoValidateTypeInternal(type: UnvalidatedType, internalTypeParameters: List<String>): Type {
         return when (type) {
-            is UnvalidatedType.Invalid.ThreadedInteger -> error("Invalid type ~Integer")
-            is UnvalidatedType.Invalid.ThreadedBoolean -> error("Invalid type ~Boolean")
+            // Note: These errors will be caught later; just do something reasonable
+            is UnvalidatedType.Invalid.ThreadedInteger -> Type.INTEGER
+            is UnvalidatedType.Invalid.ThreadedBoolean -> Type.BOOLEAN
             is UnvalidatedType.Integer -> Type.INTEGER
             is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {

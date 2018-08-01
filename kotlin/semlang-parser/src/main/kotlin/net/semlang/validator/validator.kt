@@ -458,6 +458,20 @@ private class Validator(
         val argTypes = functionType.getArgTypes(inferredTypeParameters)
         val outputType = functionType.getOutputType(inferredTypeParameters)
 
+        for (entry in argTypes.zip(bindings)) {
+            val type = entry.first
+            val binding = entry.second
+            if (binding != null) {
+                // TODO: Make a test where this is necessary
+//                if (binding.type != type) {
+//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
+//                }
+                if (binding.type.isThreaded()) {
+                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                }
+            }
+        }
+
         val postBindingType = Type.FunctionType(
                 functionType.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
                 argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
@@ -535,6 +549,20 @@ private class Validator(
 
         val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
         val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+
+        for (entry in argTypes.zip(bindings)) {
+            val type = entry.first
+            val binding = entry.second
+            if (binding != null) {
+                // TODO: Make a test where this is necessary
+//                if (binding.type != type) {
+//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
+//                }
+                if (binding.type.isThreaded()) {
+                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                }
+            }
+        }
 
         val postBindingType = Type.FunctionType(
                 functionInfo.type.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
