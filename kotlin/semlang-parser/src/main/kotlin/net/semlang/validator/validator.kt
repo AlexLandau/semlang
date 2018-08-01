@@ -519,6 +519,11 @@ private class Validator(
             }
         }
 
+        if (expression.bindings.size != functionInfo.type.argTypes.size) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.argTypes.size} arguments (with types ${functionInfo.type.argTypes}), but ${expression.bindings.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
+        }
+
         val providedChoices = expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
 
         val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionRef.toString(), expression.location) ?: return null
@@ -851,6 +856,11 @@ private class Validator(
         }
         val argumentTypes = arguments.map(TypedExpression::type)
 
+        if (expression.arguments.size != functionInfo.type.argTypes.size) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.argTypes.size} arguments (with types ${functionInfo.type.argTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
+        }
+
         /*
         There are a few things we're going to want to gather for each of these:
 
@@ -884,10 +894,6 @@ private class Validator(
 //        val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature
 //        if (signature == null) {
 //            errors.add(Issue("Entity $functionRef is not a function", expression.functionRefLocation, IssueLevel.ERROR))
-//            return null
-//        }
-//        if (expression.arguments.size != signature.argumentTypes.size) {
-//            errors.add(Issue("The function $functionRef expects ${signature.argumentTypes.size} arguments types (${signature.argumentTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
 //            return null
 //        }
 //
