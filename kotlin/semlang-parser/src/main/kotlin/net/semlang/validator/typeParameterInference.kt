@@ -53,27 +53,33 @@ internal sealed class TypeParameterInferenceSource {
 }
 
 internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
-    val possibleSourcesByTypeParameterName = HashMap<String, MutableList<TypeParameterInferenceSource>>()
+    val allPossibleSources = ArrayList<MutableList<TypeParameterInferenceSource>>()
+    for (parameter in this.typeParameters) {
+        allPossibleSources.add(ArrayList())
+    }
 
-    fun addPossibleSources(type: Type, sourceSoFar: TypeParameterInferenceSource) {
-        val unused = when (type) {
+    fun addPossibleSources(type: Type, sourceSoFar: TypeParameterInferenceSource, indexOffset: Int) {
+        val unused: Any = when (type) {
             is Type.INTEGER -> { return }
             is Type.BOOLEAN -> { return }
             is Type.List -> {
                 val listSource = TypeParameterInferenceSource.ListType(sourceSoFar)
-                addPossibleSources(type.parameter, listSource)
+                addPossibleSources(type.parameter, listSource, indexOffset)
             }
             is Type.Maybe -> {
                 val maybeSource = TypeParameterInferenceSource.MaybeType(sourceSoFar)
-                addPossibleSources(type.parameter, maybeSource)
+                addPossibleSources(type.parameter, maybeSource, indexOffset)
             }
             is Type.FunctionType -> {
+                // Reminder: In the example <T>(<U>(U, T) -> Bool) -> T,
+                // first U is 0, first T is 1, outer T is 0
+                val newIndexOffset = indexOffset + type.typeParameters.size
                 type.argTypes.forEachIndexed { argIndex, argType ->
                     val argTypeSource = TypeParameterInferenceSource.FunctionTypeArgument(sourceSoFar, argIndex)
-                    addPossibleSources(argType, argTypeSource)
+                    addPossibleSources(argType, argTypeSource, newIndexOffset)
                 }
                 val outputTypeSource = TypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
-                addPossibleSources(type.outputType, outputTypeSource)
+                addPossibleSources(type.outputType, outputTypeSource, newIndexOffset)
             }
             is Type.NamedType -> {
 //                if (type.ref.moduleRef == null) {
@@ -85,24 +91,25 @@ internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<Typ
 //                }
                 type.parameters.forEachIndexed { parameterIndex, parameter ->
                     val parameterSource = TypeParameterInferenceSource.NamedTypeParameter(sourceSoFar, parameterIndex)
-                    addPossibleSources(parameter, parameterSource)
+                    addPossibleSources(parameter, parameterSource, indexOffset)
                 }
             }
             is Type.InternalParameterType -> {
-                TODO()
+                val index = type.index + indexOffset
+                allPossibleSources[index].add(sourceSoFar)
             }
             is Type.ParameterType -> {
-                TODO()
+                // Do nothing
             }
         }
     }
 
     argTypes.forEachIndexed { index, argType ->
         val source = TypeParameterInferenceSource.ArgumentType(index)
-        addPossibleSources(argType, source)
+        addPossibleSources(argType, source, 0)
     }
 
-    return typeParameters.map { typeParameter -> possibleSourcesByTypeParameterName[typeParameter.name] ?: listOf<TypeParameterInferenceSource>() }
+    return allPossibleSources
 }
 
 /**
