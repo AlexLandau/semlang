@@ -118,7 +118,8 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = apply(expression.functionExpression)
                 val arguments = expression.arguments.map(this::apply)
-                Expression.ExpressionFunctionCall(functionExpression, arguments)
+                val chosenParameters = expression.chosenParameters.map(this::apply)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is TypedExpression.Literal -> {
                 val type = apply(expression.type)
@@ -132,13 +133,14 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is TypedExpression.NamedFunctionBinding -> {
                 val functionRef = translateRef(expression.resolvedFunctionRef)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                val chosenParameters = expression.chosenParameters.map(this::apply)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
                 Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = apply(expression.functionExpression)
                 val bindings = expression.bindings.map { if (it == null) null else apply(it) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings)
+                val chosenParameters = expression.chosenParameters.map { if (it == null) null else apply(it) }
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = apply(expression.structureExpression)
@@ -166,7 +168,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is Type.FunctionType -> {
                 val argTypes = type.argTypes.map(this::apply)
                 val outputType = apply(type.outputType)
-                UnvalidatedType.FunctionType(argTypes, outputType)
+                UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
             }
             is Type.NamedType -> {
                 val newRef = translateRef(type.ref)
@@ -177,6 +179,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
                 val newRef = EntityRef.of(type.parameter.name)
                 UnvalidatedType.NamedType(newRef, false)
             }
+            is Type.InternalParameterType -> TODO()
         }
     }
 
@@ -521,6 +524,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 enqueueExpression(expression.functionExpression, containingModule)
+                for (type in expression.chosenParameters) {
+                    enqueueType(type, containingModule)
+                }
                 for (argument in expression.arguments) {
                     enqueueExpression(argument, containingModule)
                 }
@@ -536,7 +542,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             is TypedExpression.NamedFunctionBinding -> {
                 enqueueFunctionRef(expression.resolvedFunctionRef, containingModule)
                 for (type in expression.chosenParameters) {
-                    enqueueType(type, containingModule)
+                    if (type != null) {
+                        enqueueType(type, containingModule)
+                    }
                 }
                 for (binding in expression.bindings) {
                     if (binding != null) {
@@ -546,6 +554,11 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 enqueueExpression(expression.functionExpression, containingModule)
+                for (type in expression.chosenParameters) {
+                    if (type != null) {
+                        enqueueType(type, containingModule)
+                    }
+                }
                 for (binding in expression.bindings) {
                     if (binding != null) {
                         enqueueExpression(binding, containingModule)
@@ -632,6 +645,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 enqueueFunctionRef(type.ref, containingModule)
             }
             is Type.ParameterType -> { /* Do nothing */ }
+            is Type.InternalParameterType -> { /* Do nothing */ }
         }
     }
 
