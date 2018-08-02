@@ -8,6 +8,7 @@ import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.parseFile
+import net.semlang.parser.writeToString
 import net.semlang.validator.parseAndValidateFile
 import net.semlang.validator.validateModule
 import org.junit.Assert
@@ -64,7 +65,11 @@ class StandardLibraryTests(private val file: File) {
     fun test() {
         val unlinkedModule = parseAndValidateFile(file)
         val linkedContext = linkModuleWithDependencies(unlinkedModule)
-        val validatedModule = validateModule(linkedContext.contents, linkedContext.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val validatedModule = try {
+            validateModule(linkedContext.contents, linkedContext.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        } catch (t: Throwable) {
+            throw AssertionError("Contents of linked context are: ${writeToString(linkedContext.contents)}", t)
+        }
 
         // Check that the names of exported things are not changed
         Assert.assertEquals(unlinkedModule.exportedFunctions, validatedModule.exportedFunctions)

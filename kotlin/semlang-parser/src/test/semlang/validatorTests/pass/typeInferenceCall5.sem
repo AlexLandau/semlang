@@ -1,0 +1,8 @@
+// Type inference in a non-native function call when the type is a parameter of an argument type
+function myFunction<T>(list: List<T>): List<T> {
+  List.partial(list, Natural."3")
+}
+
+function List.partial<T>(list: List<T>, n: Natural): List<T> {
+  Maybe.assume(List.subList(list, Natural."0", n))
+}
