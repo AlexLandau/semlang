@@ -881,7 +881,7 @@ private class Validator(
 //    validated types of arguments/bindings given to the function, the function type itself
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        System.out.println("Validating named function call $expression")
+//        System.out.println("Validating named function call $expression")
         val functionRef = expression.functionRef
 
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
@@ -933,9 +933,9 @@ private class Validator(
             return null
         }
 
-        System.out.println("Function type: ${functionInfo.type}")
-        System.out.println("Inferred type parameters: $inferredTypeParameters")
-        System.out.println("outputType: $outputType")
+//        System.out.println("Function type: ${functionInfo.type}")
+//        System.out.println("Inferred type parameters: $inferredTypeParameters")
+//        System.out.println("outputType: $outputType")
 
         return TypedExpression.NamedFunctionCall(outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
 //        TODO()
