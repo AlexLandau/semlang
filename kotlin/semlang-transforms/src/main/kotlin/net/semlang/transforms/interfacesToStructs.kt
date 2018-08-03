@@ -64,8 +64,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
             UnvalidatedArgument(method.name, methodFunctionType.copy(argTypes = newArgumentTypes))
         }
 
-        // TODO: This is probably broken
-        val outputType = UnvalidatedType.FunctionType(listOf(interfac.dataTypeParameter), listOf(dataParameterType), interfac.instanceType)
+        val outputType = UnvalidatedType.FunctionType(listOf(), listOf(dataParameterType), interfac.instanceType)
 
         val interfaceParameterTypes = interfac.typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name) }
 
