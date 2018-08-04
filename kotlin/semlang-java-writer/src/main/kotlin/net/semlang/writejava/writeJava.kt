@@ -990,7 +990,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
-            is Type.InternalParameterType -> TODO()
+            is Type.InternalParameterType -> WildcardTypeName.subtypeOf(TypeName.OBJECT)
         }
     }
 
