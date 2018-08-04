@@ -270,7 +270,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             // Check to avoid overriding special cases
             if (!namedFunctionCallStrategies.containsKey(struct.id)) {
                 namedFunctionCallStrategies[struct.id] = object : FunctionCallStrategy {
-                    override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+                    override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                         if (chosenTypes.isEmpty()) {
                             // TODO: Deconfliction with methods actually named "create"
                             return CodeBlock.of("\$T.create(\$L)", structClass, getArgumentsBlock(arguments))
@@ -372,7 +372,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return builder
     }
 
-    private fun writeInterfaceMethod(method: Method, makeAbstract: Boolean = true, typeReplacements: Map<Type, Type> = mapOf()): MethodSpec.Builder {
+    private fun writeInterfaceMethod(method: Method, makeAbstract: Boolean = true): MethodSpec.Builder {
         val builder = MethodSpec.methodBuilder(method.name).addModifiers(Modifier.PUBLIC)
         if (makeAbstract) {
             builder.addModifiers(Modifier.ABSTRACT)
@@ -383,9 +383,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         for (argument in method.arguments) {
-            builder.addParameter(getType(argument.type.replacingParameters(typeReplacements), false), argument.name)
+            builder.addParameter(getType(argument.type, false), argument.name)
         }
-        builder.returns(getType(method.returnType.replacingParameters(typeReplacements), false))
+        builder.returns(getType(method.returnType, false))
 
         return builder
     }
@@ -416,9 +416,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (option in union.options) {
             val functionType = if (option.type != null) {
-                getFunctionType(Type.FunctionType(listOf(option.type!!), whenType))
+                getFunctionType(Type.FunctionType(listOf(), listOf(option.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType(listOf(), whenType))
+                getFunctionType(Type.FunctionType(listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + option.name)
         }
@@ -477,17 +477,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (curOption in union.options) {
             val functionType = if (curOption.type != null) {
-                getFunctionType(Type.FunctionType(listOf(curOption.type!!), whenType))
+                getFunctionType(Type.FunctionType(listOf(), listOf(curOption.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType(listOf(), whenType))
+                getFunctionType(Type.FunctionType(listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + curOption.name)
         }
         // Figure out the return statement here
         val ourOptionFunctionType = if (option.type != null) {
-            Type.FunctionType(listOf(option.type!!), whenType)
+            Type.FunctionType(listOf(), listOf(option.type!!), whenType)
         } else {
-            Type.FunctionType(listOf(), whenType)
+            Type.FunctionType(listOf(), listOf(), whenType)
         }
         val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, "when" + option.name))
         if (option.type != null) {
@@ -764,8 +764,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 })
                 unboundArgumentNames.add(argumentName)
 
-                val unparameterizedArgType = signature.argumentTypes[index]
-                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
+                val argType = signature.getFunctionType().getArgTypes(expression.chosenParameters)[index]
+//                val unparameterizedArgType = signature.argumentTypes[index]
+//                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
             } else {
                 arguments.add(binding)
@@ -820,7 +821,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         val classContainingFunction = getContainingClassName(functionId)
         val strategy = object: FunctionCallStrategy {
-            override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                 if (chosenTypes.isEmpty()) {
                     return CodeBlock.of("\$T.\$L(\$L)", classContainingFunction, functionId.namespacedName.last(), getArgumentsBlock(arguments))
                 } else {
@@ -843,7 +844,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 // TODO: I don't think this handles native interfaces?
                 if (resolvedStructureType != null && resolvedStructureType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
                     return object : FunctionCallStrategy {
-                        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+                        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                             return CodeBlock.of("\$L.\$L(\$L)", writeExpression(structureExpression), expression.name, getArgumentsBlock(arguments))
                         }
                     }
@@ -852,7 +853,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         return object: FunctionCallStrategy {
-            override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                 val functionName = if (arguments.size == 0) "get" else "apply"
                 return CodeBlock.of("\$L.\$L(\$L)", writeExpression(expression), functionName, getArgumentsBlock(arguments))
             }
@@ -920,6 +921,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.ParameterType -> {
                 error("Literals not supported for parameter type $type")
             }
+            is Type.InternalParameterType -> {
+                error("Literals not supported for internal parameter type $type")
+            }
         }
     }
 
@@ -969,6 +973,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     TODO()
                 }
             }
+            is Type.InternalParameterType -> TODO()
         }
     }
 
@@ -985,6 +990,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
+            is Type.InternalParameterType -> TODO()
         }
     }
 
@@ -1194,21 +1200,21 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun wrapInBigint(delegate: FunctionCallStrategy): FunctionCallStrategy {
         return object: FunctionCallStrategy {
-            override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+            override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                 return CodeBlock.of("BigInteger.valueOf(\$L)", delegate.apply(chosenTypes, arguments))
             }
         }
     }
 
     val PassedThroughVarFunctionCallStrategy = object: FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             if (arguments.size != 1) error("")
             return writeExpression(arguments[0])
         }
     }
 
     val DataEqualsFunctionCallStrategy = object: FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             val left = writeExpression(arguments[0])
             val right = writeExpression(arguments[1])
             // TODO: We may need to vary this based on the chosen type in the future
@@ -1222,7 +1228,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     inner class StaticFunctionCallStrategy(val className: ClassName, val methodName: String): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             if (chosenTypes.isNotEmpty()) {
                 return CodeBlock.of("\$T.<\$L>\$L(\$L)", className, getChosenTypesCode(chosenTypes), methodName, getArgumentsBlock(arguments))
             }
@@ -1231,25 +1237,25 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     inner class MethodFunctionCallStrategy(val methodName: String): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             return CodeBlock.of("\$L.\$L(\$L)", writeExpression(arguments[0]), methodName, getArgumentsBlock(arguments.drop(1)))
         }
     }
 
     inner private class InstanceFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes).toMap()
-            val instanceType = interfac.instanceType.replacingParameters(parametersMap)
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
+            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.map { if (it == null) error("") else it }).toMap()
+            val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
 
             val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
                     .addSuperinterface(getType(instanceType, false))
             for ((method, constructorArgument) in interfac.methods.zip(arguments)) {
                 val methodSpec = MethodSpec.methodBuilder(method.name)
                         // TODO: This "isParameter" fix is probably needed in a lot of places
-                        .returns(getType(method.returnType.replacingParameters(parametersMap), method.returnType in parametersMap.keys))
+                        .returns(getType(method.returnType.replacingExternalParameters(parametersMap), method.returnType in parametersMap.keys))
                         .addModifiers(Modifier.PUBLIC)
                 for (arg in method.arguments) {
-                    methodSpec.addParameter(getType(arg.type.replacingParameters(parametersMap), false), arg.name)
+                    methodSpec.addParameter(getType(arg.type.replacingExternalParameters(parametersMap), false), arg.name)
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
@@ -1264,13 +1270,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     inner private class AdapterFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
-            val dataType = chosenTypes[0]
-            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.drop(1)).toMap()
-            val instanceType = interfac.instanceType.replacingParameters(parametersMap)
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
+            val dataType = chosenTypes[0]!!
+            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.drop(1).map { if (it == null) error("") else it }).toMap()
+            val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
 
             val functionAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(Type.FunctionType(listOf(dataType), instanceType), false))
+                    .addSuperinterface(getType(Type.FunctionType(listOf(), listOf(dataType), instanceType), false))
 
             val applyMethodSpec = MethodSpec.methodBuilder("apply")
                     .addParameter(getType(dataType, true), "data")
@@ -1281,10 +1287,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     .addSuperinterface(getType(instanceType, false))
             for ((method, adapterArgument) in interfac.methods.zip(arguments)) {
                 val methodSpec = MethodSpec.methodBuilder(method.name)
-                        .returns(getType(method.returnType.replacingParameters(parametersMap), false))
+                        .returns(getType(method.returnType.replacingExternalParameters(parametersMap), false))
                         .addModifiers(Modifier.PUBLIC)
                 for (arg in method.arguments) {
-                    methodSpec.addParameter(getType(arg.type.replacingParameters(parametersMap), false), arg.name)
+                    methodSpec.addParameter(getType(arg.type.replacingExternalParameters(parametersMap), false), arg.name)
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
@@ -1302,7 +1308,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
 
     inner private class OptionConstructorCallStrategy(val unionClassName: ClassName, val option: Option): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             if (option.type != null) {
                 return CodeBlock.of("\$T.create\$L(\$L)", unionClassName, option.name, writeExpression(arguments[0]))
             } else {
@@ -1315,7 +1321,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val outputType = (binding.type as Type.FunctionType).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments)
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1324,7 +1330,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.ListLiteral -> TODO()
             is TypedExpression.NamedFunctionBinding -> {
                 val arguments = binding.bindings.map { if (it == null) TODO() else it }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters)
+                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters.map { if (it == null) error("") else it })
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()
@@ -1338,7 +1344,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (binding) {
             is TypedExpression.Variable -> {
                 val arguments = listOf(openBindingReplacement) + methodArguments
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments)
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1349,7 +1355,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 // TODO: Do we need the openBindingReplacement here, too? Add a test for that
                 val arguments = binding.bindings.replacingFirst(null, openBindingReplacement)
                         .map { if (it == null) TODO() else it }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters)
+                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters.map { if (it == null) error("") else it })
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()
@@ -1357,8 +1363,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    private fun getChosenTypesCode(chosenSemlangTypes: List<Type>): CodeBlock {
-        val chosenTypes = chosenSemlangTypes.map { this.getType(it, true) }
+    private fun getChosenTypesCode(chosenSemlangTypes: List<Type?>): CodeBlock {
+        val chosenTypes = chosenSemlangTypes.map { if (it == null) TypeName.OBJECT else this.getType(it, true) }
         val typesCodeBuilder = CodeBlock.builder()
         typesCodeBuilder.add("\$T", chosenTypes[0])
         for (chosenType in chosenTypes.drop(1)) {
@@ -1395,7 +1401,7 @@ private fun <E> List<E>.replacingFirst(toReplace: E, replacement: E): List<E> {
 }
 
 private interface FunctionCallStrategy {
-    fun apply(chosenTypes: List<Type>, arguments: List<TypedExpression>): CodeBlock
+    fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock
 }
 
 private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrategy {
@@ -1492,6 +1498,7 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
             }
         }
+        is Type.InternalParameterType -> TODO()
     }
 }
 
