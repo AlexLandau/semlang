@@ -200,9 +200,7 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.InternalParameterType(0)
 
-    // TODO: Having to set the parameters here isn't good. What should the right approach be?
-    // TODO: We probably want to have getType() accept a list of parameters as an argument
-    val sequenceT = NativeStruct.SEQUENCE.getType().copy(parameters = listOf(typeT))
+    val sequenceT = NativeStruct.SEQUENCE.getType(listOf(typeT))
 
     // Sequence.get
     definitions.add(TypeSignature(EntityId.of("Sequence", "get"), typeParameters = listOf(t),
@@ -236,9 +234,7 @@ private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
             argumentTypes = listOf(NativeThreadedType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
             outputType = NativeThreadedType.TEXT_OUT.getType()))
 
-    // TODO: Having to set the parameters here isn't good. What should the right approach be?
-    // TODO: We probably want to have getType() accept a list of parameters as an argument
-    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType().copy(parameters = listOf(typeT))
+    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType(listOf(typeT))
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
@@ -417,11 +413,9 @@ object NativeThreadedType {
     private val t = TypeParameter("T", null)
 
     private val textOutId = EntityId.of("TextOut")
-//    val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
     val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
     private val listBuilderId = EntityId.of("ListBuilder")
-//    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType(t)))
     val LIST_BUILDER = OpaqueType(listBuilderId, CURRENT_NATIVE_MODULE_ID, listOf(t), true)
 }
 

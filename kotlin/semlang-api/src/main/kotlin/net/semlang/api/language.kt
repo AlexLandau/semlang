@@ -899,8 +899,11 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         return members.indexOfFirst { member -> member.name == name }
     }
 
-    fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map(Type::ParameterType))
+    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+        if (chosenParameters.size != typeParameters.size) {
+            error("Incorrect number of type parameters")
+        }
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -964,7 +967,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     val dataType = Type.ParameterType(dataTypeParameter)
     val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
     val adapterType = Type.FunctionType.create(listOf(), listOf(dataType), instanceType)
-    fun getType(): Type.NamedType {
+    private fun getType(): Type.NamedType {
         return instanceType
     }
 
@@ -1008,7 +1011,7 @@ data class Method(val name: String, val typeParameters: List<TypeParameter>, val
 }
 
 data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
-    fun getType(): UnvalidatedType {
+    private fun getType(): UnvalidatedType {
         val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
         return UnvalidatedType.NamedType(id.asRef(), false, functionParameters)
     }
@@ -1131,8 +1134,11 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
 
 data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
-    fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map { Type.ParameterType(it) })
+    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+        if (chosenParameters.size != typeParameters.size) {
+            error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
+        }
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
     }
 }
 
