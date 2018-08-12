@@ -433,7 +433,7 @@ private class TypeInfoCollector(
             }
             for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)
-                val signature = createTypeSignatureWithInternalParameters(function.id, function.arguments.map {it.type}, function.returnType, function.typeParameters)
+                val signature = TypeSignature.create(function.id, function.arguments.map {it.type}, function.returnType, function.typeParameters)
                 upstreamFunctions.put(ref, functionInfo(ref, signature))
             }
         }
