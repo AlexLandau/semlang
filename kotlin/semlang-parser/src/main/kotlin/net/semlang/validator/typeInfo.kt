@@ -328,7 +328,7 @@ private class TypeInfoCollector(
                 val argTypes = type.argTypes.map { pseudoValidateTypeInternal(it, newInternalTypeParameters) }
                 val outputType = pseudoValidateTypeInternal(type.outputType, newInternalTypeParameters)
 
-                Type.FunctionType(type.typeParameters, argTypes, outputType)
+                Type.FunctionType.create(type.typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 val ref = type.ref

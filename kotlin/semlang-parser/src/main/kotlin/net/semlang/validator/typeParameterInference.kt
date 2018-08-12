@@ -32,16 +32,16 @@ internal sealed class TypeParameterInferenceSource {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
             val functionType = currentType as? Type.FunctionType ?: return null
-            val defaultTypeParameterNames = functionType.getDefaultTypeParameterNameSubstitution()
-            return functionType.getArgTypes(defaultTypeParameterNames)[argumentIndex]
+            val groundFunctionType = functionType.getDefaultGrounding()
+            return groundFunctionType.argTypes[argumentIndex]
         }
     }
     data class FunctionTypeOutput(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
             val functionType = currentType as? Type.FunctionType ?: return null
-            val defaultTypeParameterNames = functionType.getDefaultTypeParameterNameSubstitution()
-            return functionType.getOutputType(defaultTypeParameterNames)
+            val groundFunctionType = functionType.getDefaultGrounding()
+            return groundFunctionType.outputType
         }
     }
     data class NamedTypeParameter(val containingSource: TypeParameterInferenceSource, val index: Int): TypeParameterInferenceSource() {
@@ -52,7 +52,7 @@ internal sealed class TypeParameterInferenceSource {
     }
 }
 
-internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
+internal fun Type.FunctionType.Parameterized.getTypeParameterInferenceSources(): List<List<TypeParameterInferenceSource>> {
     val allPossibleSources = ArrayList<MutableList<TypeParameterInferenceSource>>()
     for (parameter in this.typeParameters) {
         allPossibleSources.add(ArrayList())
@@ -70,7 +70,15 @@ internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<Typ
                 val maybeSource = TypeParameterInferenceSource.MaybeType(sourceSoFar)
                 addPossibleSources(type.parameter, maybeSource, indexOffset)
             }
-            is Type.FunctionType -> {
+            is Type.FunctionType.Ground -> {
+                type.argTypes.forEachIndexed { argIndex, argType ->
+                    val argTypeSource = TypeParameterInferenceSource.FunctionTypeArgument(sourceSoFar, argIndex)
+                    addPossibleSources(argType, argTypeSource, indexOffset)
+                }
+                val outputTypeSource = TypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
+                addPossibleSources(type.outputType, outputTypeSource, indexOffset)
+            }
+            is Type.FunctionType.Parameterized -> {
                 // Reminder: In the example <T>(<U>(U, T) -> Bool) -> T,
                 // first U is 0, first T is 1, outer T is 0
                 val newIndexOffset = indexOffset + type.typeParameters.size
@@ -110,12 +118,4 @@ internal fun Type.FunctionType.getTypeParameterInferenceSources(): List<List<Typ
     }
 
     return allPossibleSources
-}
-
-/**
- * Returns the number of type parameters for which type inference can't be performed.
- */
-internal fun Type.FunctionType.getRequiredTypeParameterCount(): Int {
-    val sources = getTypeParameterInferenceSources()
-    return sources.count { it.isEmpty() }
 }

@@ -201,7 +201,7 @@ private class Validator(
 
                 val argTypes = type.argTypes.map { argType -> validateType(argType, typeParametersInScope, newInternalParameters) ?: return null }
                 val outputType = validateType(type.outputType, typeParametersInScope, newInternalParameters) ?: return null
-                Type.FunctionType(type.typeParameters, argTypes, outputType)
+                Type.FunctionType.create(type.typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 if (type.parameters.isEmpty()
@@ -422,7 +422,7 @@ private class Validator(
             errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
         }
 
-        val functionType = Type.FunctionType(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
+        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
 
         return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
@@ -436,8 +436,8 @@ private class Validator(
             return null
         }
 
-        if (expression.bindings.size != functionType.argTypes.size) {
-            errors.add(Issue("The function binding here expects ${functionType.argTypes.size} arguments (with types ${functionType.argTypes}), but ${expression.bindings.size} were given", expression.location, IssueLevel.ERROR))
+        if (expression.bindings.size != functionType.getNumArgTypes()) {
+            errors.add(Issue("The function binding here expects ${functionType.getNumArgTypes()} arguments, but ${expression.bindings.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -455,14 +455,24 @@ private class Validator(
 
         val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionType.toString(), expression.location) ?: return null
 
-        val argTypes = functionType.getArgTypes(inferredTypeParameters)
-        val outputType = functionType.getOutputType(inferredTypeParameters)
+        val typeWithNewParameters = functionType.rebindTypeParameters(inferredTypeParameters)
+        val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
+        System.out.println("Validating expression function binding with expression $expression:")
+        System.out.println("  functionType is: $functionType")
+        System.out.println("  providedChoices are: $providedChoices")
+        System.out.println("  inferredTypeParameters are: $inferredTypeParameters")
+        System.out.println("  bindingTypes are: $bindingTypes")
+//        System.out.println("  postBindingType is: $postBindingType")
+        System.out.println("  bindableArgumentTypes are: $bindableArgumentTypes")
 
-        for (entry in argTypes.zip(bindings)) {
+        for (entry in bindableArgumentTypes.zip(bindings)) {
             val expectedType = entry.first
             val binding = entry.second
             if (binding != null) {
                 // TODO: Make a test where this is necessary
+                if (expectedType == null) {
+                    error("Invalid binding")
+                }
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
@@ -472,10 +482,12 @@ private class Validator(
             }
         }
 
-        val postBindingType = Type.FunctionType(
-                functionType.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
-                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
-                outputType)
+        val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
+
+//        val postBindingType = Type.FunctionType(
+//                functionType.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
+//                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
+//                outputType)
 
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters)
 
@@ -538,8 +550,8 @@ private class Validator(
             }
         }
 
-        if (expression.bindings.size != functionInfo.type.argTypes.size) {
-            errors.add(Issue("The function $functionRef expects ${functionInfo.type.argTypes.size} arguments (with types ${functionInfo.type.argTypes}), but ${expression.bindings.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+        if (expression.bindings.size != functionInfo.type.getNumArgTypes()) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArgTypes()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.bindings.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
 
@@ -547,14 +559,18 @@ private class Validator(
 
         val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionRef.toString(), expression.location) ?: return null
 
-        val argTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
-        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+        val typeWithNewParameters = functionType.rebindTypeParameters(inferredTypeParameters)
+//        val postBindingType = functionType.rebindWithTypeParameters(inferredTypeParameters, bindingTypes)
+        val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
 
-        for (entry in argTypes.zip(bindings)) {
+        for (entry in bindableArgumentTypes.zip(bindings)) {
             val expectedType = entry.first
             val binding = entry.second
             if (binding != null) {
                 // TODO: Make a test where this is necessary
+                if (expectedType == null) {
+                    error("Invalid binding")
+                }
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
@@ -564,10 +580,7 @@ private class Validator(
             }
         }
 
-        val postBindingType = Type.FunctionType(
-                functionInfo.type.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
-                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
-                outputType)
+        val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
         return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters)
 
@@ -667,6 +680,9 @@ private class Validator(
     private fun inferChosenTypeParameters(functionType: Type.FunctionType, providedChoices: List<Type?>, bindingTypes: List<Type?>, functionDescription: String, expressionLocation: Location?): List<Type?>? {
         // Deal with inference first?
         // What's left after that?
+        if (functionType !is Type.FunctionType.Parameterized) {
+            return listOf()
+        }
 
         val chosenParameters = if (functionType.typeParameters.size == providedChoices.size) {
             providedChoices
@@ -830,8 +846,8 @@ private class Validator(
             return null
         }
 
-        if (expression.arguments.size != functionType.argTypes.size) {
-            errors.add(Issue("The function binding here expects ${functionType.argTypes.size} arguments (with types ${functionType.argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
+        if (expression.arguments.size != functionType.getNumArgTypes()) {
+            errors.add(Issue("The function binding here expects ${functionType.getNumArgTypes()} arguments (with types ${functionType.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -847,15 +863,17 @@ private class Validator(
         val inferredNullableTypeParameters = inferChosenTypeParameters(functionType, providedChoices, argumentTypes, functionType.toString(), expression.location) ?: return null
         val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        val functionArgTypes = functionType.getArgTypes(inferredTypeParameters)
-        val outputType = functionType.getOutputType(inferredTypeParameters)
+        val groundFunctionType = functionType.groundWithTypeParameters(inferredTypeParameters)
 
-        if (argumentTypes != functionArgTypes) {
-            errors.add(Issue("The function expression expects arguments with types $functionArgTypes, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+//        val functionArgTypes = functionType.getArgTypes(inferredTypeParameters)
+//        val outputType = functionType.getOutputType(inferredTypeParameters)
+
+        if (argumentTypes != groundFunctionType.argTypes) {
+            errors.add(Issue("The function expression expects arguments with types ${groundFunctionType.argTypes}, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(outputType, functionExpression, arguments, inferredTypeParameters)
+        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters)
 
 //        TODO()
 
@@ -899,8 +917,8 @@ private class Validator(
         }
         val argumentTypes = arguments.map(TypedExpression::type)
 
-        if (expression.arguments.size != functionInfo.type.argTypes.size) {
-            errors.add(Issue("The function $functionRef expects ${functionInfo.type.argTypes.size} arguments (with types ${functionInfo.type.argTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+        if (expression.arguments.size != functionInfo.type.getNumArgTypes()) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArgTypes()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
 
@@ -924,12 +942,13 @@ private class Validator(
         val inferredNullableTypeParameters = inferChosenTypeParameters(functionInfo.type, providedChoices, argumentTypes, functionRef.toString(), expression.location) ?: return null
         val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
-        val functionArgTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
-        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
+        val groundFunctionType = functionInfo.type.groundWithTypeParameters(inferredTypeParameters)
+//        val functionArgTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
+//        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
 
-        if (argumentTypes != functionArgTypes) {
+        if (argumentTypes != groundFunctionType.argTypes) {
             val paramString = if (inferredTypeParameters.isEmpty()) "" else "<$inferredTypeParameters>"
-            errors.add(Issue("The function $functionRef$paramString expects arguments with types $functionArgTypes, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("The function $functionRef$paramString expects arguments with types ${groundFunctionType.argTypes}, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -937,7 +956,7 @@ private class Validator(
 //        System.out.println("Inferred type parameters: $inferredTypeParameters")
 //        System.out.println("outputType: $outputType")
 
-        return TypedExpression.NamedFunctionCall(outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
 //        TODO()
 //
 //        val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature

@@ -59,9 +59,9 @@ fun invalidate(type: Type): UnvalidatedType {
             UnvalidatedType.Maybe(invalidate(type.parameter))
         }
         is Type.FunctionType -> {
-            val defaultTypeParameters = type.getDefaultTypeParameterNameSubstitution()
-            val argTypes = type.getArgTypes(defaultTypeParameters).map(::invalidate)
-            val outputType = invalidate(type.getOutputType(defaultTypeParameters))
+            val groundType = type.getDefaultGrounding()
+            val argTypes = groundType.argTypes.map(::invalidate)
+            val outputType = invalidate(groundType.outputType)
             UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
         }
         is Type.ParameterType -> {

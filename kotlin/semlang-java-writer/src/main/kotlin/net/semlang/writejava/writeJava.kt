@@ -416,9 +416,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (option in union.options) {
             val functionType = if (option.type != null) {
-                getFunctionType(Type.FunctionType(listOf(), listOf(option.type!!), whenType))
+                getFunctionType(Type.FunctionType.create(listOf(), listOf(option.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType(listOf(), listOf(), whenType))
+                getFunctionType(Type.FunctionType.create(listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + option.name)
         }
@@ -477,17 +477,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (curOption in union.options) {
             val functionType = if (curOption.type != null) {
-                getFunctionType(Type.FunctionType(listOf(), listOf(curOption.type!!), whenType))
+                getFunctionType(Type.FunctionType.create(listOf(), listOf(curOption.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType(listOf(), listOf(), whenType))
+                getFunctionType(Type.FunctionType.create(listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + curOption.name)
         }
         // Figure out the return statement here
         val ourOptionFunctionType = if (option.type != null) {
-            Type.FunctionType(listOf(), listOf(option.type!!), whenType)
+            Type.FunctionType.create(listOf(), listOf(option.type!!), whenType)
         } else {
-            Type.FunctionType(listOf(), listOf(), whenType)
+            Type.FunctionType.create(listOf(), listOf(), whenType)
         }
         val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, "when" + option.name))
         if (option.type != null) {
@@ -700,7 +700,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 val argumentName = ensureUnusedVariable("arg" + index)
                 unboundArgumentNames.add(argumentName)
 
-                val argType = outputType.argTypes[unboundArgumentIndex]
+                val argType = when (outputType) {
+                    is Type.FunctionType.Ground -> outputType.argTypes[unboundArgumentIndex]
+                    is Type.FunctionType.Parameterized -> outputType.argTypes[unboundArgumentIndex]
+                }
 
                 arguments.add(TypedExpression.Variable(argType, argumentName))
                 unboundArgumentIndex++
@@ -764,7 +767,13 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 })
                 unboundArgumentNames.add(argumentName)
 
-                val argType = signature.getFunctionType().getArgTypes(expression.chosenParameters)[index]
+                val functionType = signature.getFunctionType().rebindTypeParameters(expression.chosenParameters)
+//                val argType = signature.getFunctionType().getArgTypes(expression.chosenParameters)[index]
+                val argType = when (functionType) {
+                    is Type.FunctionType.Ground -> functionType.argTypes[index]
+                    is Type.FunctionType.Parameterized -> functionType.argTypes[index]
+                }
+
 //                val unparameterizedArgType = signature.argumentTypes[index]
 //                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
@@ -1276,7 +1285,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
 
             val functionAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(Type.FunctionType(listOf(), listOf(dataType), instanceType), false))
+                    .addSuperinterface(getType(Type.FunctionType.create(listOf(), listOf(dataType), instanceType), false))
 
             val applyMethodSpec = MethodSpec.methodBuilder("apply")
                     .addParameter(getType(dataType, true), "data")
@@ -1318,7 +1327,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun convertBindingToCall(binding: TypedExpression, methodArguments: List<TypedExpression.Variable>): TypedExpression {
-        val outputType = (binding.type as Type.FunctionType).outputType
+        val outputType = (binding.type as Type.FunctionType.Ground).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
                 return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf())
@@ -1340,7 +1349,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     // TODO: Name no longer fully covers what this is doing, refactor?
     private fun convertBindingToCallReplacingOnlyOpenBinding(binding: TypedExpression, openBindingReplacement: TypedExpression, methodArguments: List<TypedExpression.Variable>): TypedExpression {
-        val outputType = (binding.type as Type.FunctionType).outputType
+        val outputType = (binding.type as Type.FunctionType.Ground).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
                 val arguments = listOf(openBindingReplacement) + methodArguments
@@ -1405,14 +1414,14 @@ private interface FunctionCallStrategy {
 }
 
 private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrategy {
-    if (type.argTypes.size == 0) {
+    if (type.getNumArgTypes() == 0) {
         return SupplierFunctionTypeStrategy
-    } else if (type.argTypes.size == 1) {
+    } else if (type.getNumArgTypes() == 1) {
         return FunctionFunctionTypeStrategy
     }
 
-    if (type.argTypes.size < 4) {
-        return RuntimeLibraryFunctionTypeStrategy(type.argTypes.size)
+    if (type.getNumArgTypes() < 4) {
+        return RuntimeLibraryFunctionTypeStrategy(type.getNumArgTypes())
     }
     /*
      * Quick/easy workaround: Add a few types for 2, 3, etc.
@@ -1424,25 +1433,39 @@ private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrate
 
 object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
     override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
-        if (type.argTypes.isNotEmpty()) {
+        if (type.getNumArgTypes() > 0) {
             error("")
         }
         val className = ClassName.get(java.util.function.Supplier::class.java)
 
-        return ParameterizedTypeName.get(className, getTypeForParameter(type.outputType).box())
+        return ParameterizedTypeName.get(className, getTypeForParameter(type.getOutputType()).box())
     }
 }
 
 object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
     override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
-        if (type.argTypes.size != 1) {
+        if (type.getNumArgTypes() != 1) {
             error("")
         }
         val className = ClassName.get(java.util.function.Function::class.java)
 
-        return ParameterizedTypeName.get(className, getTypeForParameter(type.argTypes[0]).box(), getTypeForParameter(type.outputType).box())
+        return ParameterizedTypeName.get(className, getTypeForParameter(type.getArgTypes()[0]).box(), getTypeForParameter(type.getOutputType()).box())
     }
 
+}
+
+// We want to get these directly, without translating the inner type bits, for now...
+private fun Type.FunctionType.getArgTypes(): List<Type> {
+    return when (this) {
+        is Type.FunctionType.Ground -> this.argTypes
+        is Type.FunctionType.Parameterized -> this.argTypes
+    }
+}
+private fun Type.FunctionType.getOutputType(): Type {
+    return when (this) {
+        is Type.FunctionType.Ground -> this.outputType
+        is Type.FunctionType.Parameterized -> this.outputType
+    }
 }
 
 class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy {
@@ -1450,10 +1473,10 @@ class RuntimeLibraryFunctionTypeStrategy(val numArgs: Int): FunctionTypeStrategy
         val className = ClassName.bestGuess("net.semlang.java.function.Function" + numArgs)
 
         val parameterTypes = ArrayList<TypeName>()
-        for (semlangType in type.argTypes) {
+        for (semlangType in type.getArgTypes()) {
             parameterTypes.add(getTypeForParameter(semlangType).box())
         }
-        parameterTypes.add(getTypeForParameter(type.outputType).box())
+        parameterTypes.add(getTypeForParameter(type.getOutputType()).box())
 
         return ParameterizedTypeName.get(className, *parameterTypes.toTypedArray())
     }

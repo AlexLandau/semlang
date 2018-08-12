@@ -171,11 +171,11 @@ private fun toTypeNode(type: Type): JsonNode {
                 addTypeParameters(node.putArray("typeParameters"), type.typeParameters)
             }
             val argsArray = node.putArray("from")
-            val defaultTypeParameters = type.getDefaultTypeParameterNameSubstitution()
-            for (argType in type.getArgTypes(defaultTypeParameters)) {
+            val groundType = type.getDefaultGrounding()
+            for (argType in groundType.argTypes) {
                 argsArray.add(toTypeNode(argType))
             }
-            node.set("to", toTypeNode(type.getOutputType(defaultTypeParameters)))
+            node.set("to", toTypeNode(groundType.outputType))
             node
         }
         is Type.NamedType -> {

@@ -182,7 +182,13 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is Type.Maybe -> {
                 addTypeParameters(set, type.parameter)
             }
-            is Type.FunctionType -> {
+            is Type.FunctionType.Ground -> {
+                for (argType in type.argTypes) {
+                    addTypeParameters(set, argType)
+                }
+                addTypeParameters(set, type.outputType)
+            }
+            is Type.FunctionType.Parameterized -> {
                 for (argType in type.argTypes) {
                     addTypeParameters(set, argType)
                 }
