@@ -29,13 +29,11 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun test() {
-        System.out.println("Running test for file $file")
         parseAndValidateFile(file).assumeSuccess()
     }
 
     @Test
     fun testValidateWriteValidateEquality() {
-        System.out.println("Running testVWV for file $file")
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
 //        System.out.println("Rewritten contents for file $file:")
@@ -51,7 +49,6 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun testParseWriteParseEquality() {
-        System.out.println("Running testPWP for file $file")
         val initiallyParsed = parseFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
 //        System.out.println("Rewritten contents for file $file:")
@@ -67,7 +64,6 @@ class ValidatorPositiveTests(private val file: File) {
 
     @Test
     fun testJsonWriteParseEquality() {
-        System.out.println("Running testJson for file $file")
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val asJson = toJson(initiallyParsed)
 //        System.out.println("Contents for file $file as JSON:")

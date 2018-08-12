@@ -90,13 +90,6 @@ internal fun Type.FunctionType.Parameterized.getTypeParameterInferenceSources():
                 addPossibleSources(type.outputType, outputTypeSource, newIndexOffset)
             }
             is Type.NamedType -> {
-//                if (type.ref.moduleRef == null) {
-//                    val namespacedName = type.ref.id.namespacedName
-//                    if (namespacedName.size == 1) {
-//                        val name = namespacedName[0]
-//                        possibleSourcesByTypeParameterName.multimapPut(name, sourceSoFar)
-//                    }
-//                }
                 type.parameters.forEachIndexed { parameterIndex, parameter ->
                     val parameterSource = TypeParameterInferenceSource.NamedTypeParameter(sourceSoFar, parameterIndex)
                     addPossibleSources(parameter, parameterSource, indexOffset)

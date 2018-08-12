@@ -203,7 +203,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                 }
             }
             is Type.InternalParameterType -> {
-                // TODO: This doesn't count, right?
+                // This doesn't count
             }
         }
     }
