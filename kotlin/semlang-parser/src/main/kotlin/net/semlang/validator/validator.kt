@@ -457,13 +457,6 @@ private class Validator(
 
         val typeWithNewParameters = functionType.rebindTypeParameters(inferredTypeParameters)
         val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
-        System.out.println("Validating expression function binding with expression $expression:")
-        System.out.println("  functionType is: $functionType")
-        System.out.println("  providedChoices are: $providedChoices")
-        System.out.println("  inferredTypeParameters are: $inferredTypeParameters")
-        System.out.println("  bindingTypes are: $bindingTypes")
-//        System.out.println("  postBindingType is: $postBindingType")
-        System.out.println("  bindableArgumentTypes are: $bindableArgumentTypes")
 
         for (entry in bindableArgumentTypes.zip(bindings)) {
             val expectedType = entry.first
