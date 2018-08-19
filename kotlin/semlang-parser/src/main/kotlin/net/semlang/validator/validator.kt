@@ -183,19 +183,10 @@ private class Validator(
                 Type.Maybe(parameter)
             }
             is UnvalidatedType.FunctionType -> {
-                // TODO: Add validation of these
-//                val typeParameters = type.typeParameters
-//                val newTypeParameterScope = HashMap<String, TypeParameter>(typeParametersInScope)
-
                 val newInternalParameters = ArrayList<String>()
                 // Add the new parameters to the front of the list
                 for (typeParameter in type.typeParameters) {
                     newInternalParameters.add(typeParameter.name)
-//                    if (newTypeParameterScope.containsKey(typeParameter.name)) {
-                        // TODO: Do stuff here?
-//                        error("Already using type parameter name ${typeParameter.name}; type is $type, existing type parameters are $newTypeParameterScope")
-//                    }
-//                    newTypeParameterScope.put(typeParameter.name, typeParameter)
                 }
                 newInternalParameters.addAll(internalParameters)
 
@@ -217,11 +208,7 @@ private class Validator(
                         return Type.ParameterType(externalParameterType)
                     }
                 }
-//                    if (type.isThreaded) {
-//                        error("Type parameters shouldn't be marked as threaded")
-//                    }
-//                    val resolved = typesInfo.resolver.resolve(type.ref)
-                // TODO: Getting this for ListBuilder, TextOut, T (in one case)
+
                 val typeInfo = typesInfo.getTypeInfo(type.ref)
 
                 if (typeInfo == null) {
@@ -264,84 +251,6 @@ private class Validator(
     private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
         return arguments.associate { argument -> Pair(argument.name, argument.type) }
     }
-
-
-//    private sealed class TypeInfo {
-//        abstract val idLocation: Location?
-//        data class Struct(val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val idLocation: Location?): TypeInfo()
-//        data class Interface(val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val idLocation: Location?): TypeInfo()
-//        data class Union(val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val idLocation: Location?): TypeInfo()
-//    }
-    // TODO: Should this contain unvalidated types or validated types? I think we really want something in between... (maybe?)
-    // We can't confirm that named types exist while we put these together; however, we should be able to assemble the correct
-    // types in terms of type parameters and getting the InternalParameterTypes
-    // So either we introduce a third stage for Type objects or allow creating invalid ResolvedEntityRef objects for local
-    // objects (to be checked later)
-//    private data class FunctionInfo(val signature: TypeSignature, val idLocation: Location?)
-
-
-    // TODO: Move this closer to the function that creates it...
-//    private inner class AllTypeInfo(val resolver: EntityResolver,
-//                                    val localTypes: Map<EntityId, TypeInfo>,
-//                                    val duplicateLocalTypeIds: Set<EntityId>,
-//                                    val localFunctions: Map<EntityId, FunctionInfo>,
-//                                    val duplicateLocalFunctionIds: Set<EntityId>,
-//                                    val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
-//                                    val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>) {
-//        fun getTypeInfo(resolvedRef: ResolvedEntityRef): TypeInfo? {
-//            return if (resolvedRef.module == moduleId) {
-//                if (duplicateLocalTypeIds.contains(resolvedRef.id)) {
-//                    fail("There are multiple declarations of the type name ${resolvedRef.id}")
-//                }
-//                localTypes[resolvedRef.id]
-//            } else {
-//                upstreamTypes[resolvedRef]
-//            }
-//        }
-//        fun getFunctionInfo(resolvedRef: ResolvedEntityRef): FunctionInfo? {
-//            return if (resolvedRef.module == moduleId) {
-//                if (duplicateLocalFunctionIds.contains(resolvedRef.id)) {
-//                    fail("There are multiple declarations of the function name ${resolvedRef.id}")
-//                }
-//                localFunctions[resolvedRef.id]
-//            } else {
-//                upstreamFunctions[resolvedRef]
-//            }
-//        }
-        // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
-//        private fun isDataType(type: UnvalidatedType): Boolean {
-//            return when (type) {
-//                is UnvalidatedType.Integer -> true
-//                is UnvalidatedType.Boolean -> true
-//                is UnvalidatedType.List -> isDataType(type.parameter)
-//                is UnvalidatedType.Maybe -> isDataType(type.parameter)
-//                is UnvalidatedType.FunctionType -> false
-//                is UnvalidatedType.NamedType -> {
-//                    // TODO: We might want some caching here
-//                    if (type.isThreaded) {
-//                        false
-//                    } else {
-//                        val resolvedRef = resolver.resolve(type.ref)!!
-//                        val typeInfo = getTypeInfo(resolvedRef.entityRef)!!
-//                        when (typeInfo) {
-//                            is TypeInfo.Struct -> {
-//                                // TODO: Need to handle recursive references; perhaps precomputing this across the whole type graph would be preferable (or do lazy computation and caching...)
-//                                // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
-//                                typeInfo.memberTypes.values.all { isDataType(it) }
-//                            }
-//                            is TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
-//                            is TypeInfo.Union -> {
-//                                // TODO: Need to handle recursive references here, too
-//                                typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
-//                            }
-//                        }
-//                    }
-//                }
-//                is UnvalidatedType.Invalid.ThreadedInteger -> false
-//                is UnvalidatedType.Invalid.ThreadedBoolean -> false
-//            }
-//        }
-//    }
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
@@ -477,50 +386,11 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-//        val postBindingType = Type.FunctionType(
-//                functionType.typeParameters.zip(inferredTypeParameters).filter { it.second == null }.map { it.first },
-//                argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
-//                outputType)
-
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters)
-
-//        TODO()
-//
-//        val preBindingArgumentTypes = functionType.argTypes
-//
-//        if (preBindingArgumentTypes.size != expression.bindings.size) {
-//            errors.add(Issue("Tried to re-bind $functionExpression with ${expression.bindings.size} bindings, but it takes ${preBindingArgumentTypes.size} arguments", expression.location, IssueLevel.ERROR))
-//            return null
-//        }
-//
-//
-//        val postBindingArgumentTypes = ArrayList<Type>()
-//        for (entry in preBindingArgumentTypes.zip(bindings)) {
-//            val type = entry.first
-//            val binding = entry.second
-//            if (binding == null) {
-//                postBindingArgumentTypes.add(type)
-//            } else {
-//                if (binding.type != type) {
-//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
-//                }
-//                if (binding.type.isThreaded()) {
-//                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
-//                }
-//            }
-//        }
-//        val postBindingType = Type.FunctionType(
-//                listOf(),
-//                postBindingArgumentTypes,
-//                functionType.outputType)
-//
-//        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings)
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
-
-//        val resolvedRef = typesInfo.resolver.resolve(functionRef) ?: fail("In function $containingFunctionId, could not find a declaration of a function with ID $functionRef")
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
 
         if (functionInfo == null) {
@@ -553,7 +423,6 @@ private class Validator(
         val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionRef.toString(), expression.location) ?: return null
 
         val typeWithNewParameters = functionType.rebindTypeParameters(inferredTypeParameters)
-//        val postBindingType = functionType.rebindWithTypeParameters(inferredTypeParameters, bindingTypes)
         val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
 
         for (entry in bindableArgumentTypes.zip(bindings)) {
@@ -577,97 +446,6 @@ private class Validator(
 
         return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters)
 
-
-        // So what do we want this new world to look like?
-        // Given the original signature of the function (function type -- this would be all we get coming from the expression),
-        // there are certain patterns we do and do not allow in terms of maintaining or defining the parameters and bindings:
-        // - If an argument type contains a reference to a type parameter and the argument is bound, then the type parameter
-        //   must also be defined in the binding
-        // This might be the only rule here in terms of disallowing certain bindings. It's allowed to define more types
-        // than necessary given the bindings involved.
-
-        // So here are the inputs:
-        // - Original function type (including type parameters, argument types, output type)
-        // - Type parameters, possibly including underscores, possibly not, possibly using type parameter inference
-        // - Bindings
-
-        // And here are the outputs we want:
-        // - New function binding type (including type parameters, argument types, output types)
-
-        // And the error cases we need to consider:
-        // - Wrong number of type parameters or bindings
-        // - Types of bindings are wrong given the arguments
-        // - A binding is provided where a type is not fully defined yet
-
-//        val providedParameters = expression.chosenParameters.map {
-//            if (it == null) null else (validateType(it, typeInfo, typeParametersInScope) ?: return null)
-//        }
-//
-//        val chosenParameters = getFinalParametersForBinding(signature.getFunctionType(), providedParameters, bindingTypes, typeInfo, typeParametersInScope, functionRef, expression.location) ?: return null
-
-//        val chosenParameters = if (signature.typeParameters.size == expression.chosenParameters.size) {
-//            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null }
-//        } else if (signature.typeParameters.size < expression.chosenParameters.size) {
-//            errors.add(Issue("Too many type parameters were supplied for function binding for $functionRef", expression.location, IssueLevel.ERROR))
-//            return null
-//        } else {
-//            // Apply type parameter inference
-//            val inferenceSourcesByArgument = signature.getTypeParameterInferenceSources()
-//            val explicitParametersIterator = expression.chosenParameters.iterator()
-//            val types = inferenceSourcesByArgument.map { inferenceSources ->
-//                val inferredType = inferenceSources.stream().map { it.findType(bindingTypes) }.filter { it != null }.findFirst()
-//                if (inferredType.isPresent()) {
-//                    inferredType.get()
-//                } else {
-//                    if (!explicitParametersIterator.hasNext()) {
-//                        errors.add(Issue("Not enough type parameters were supplied for function binding for ${functionRef}", expression.location, IssueLevel.ERROR))
-//                        return null
-//                    }
-//                    val chosenParameter = explicitParametersIterator.next()
-//                    validateType(chosenParameter!!, typeInfo, typeParametersInScope) ?: return null
-//                }
-//            }
-//            if (explicitParametersIterator.hasNext()) {
-//                errors.add(Issue("The function binding for $functionRef did not supply all type parameters, but supplied more than the appropriate number for type parameter inference", expression.location, IssueLevel.ERROR))
-//                return null
-//            }
-//            types
-//        }
-//        if (chosenParameters.size != signature.typeParameters.size) {
-//            fail("In function $containingFunctionId, referenced a function $functionRef with type parameters ${signature.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
-//        }
-//        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
-//            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
-//        }
-
-//        val expectedFunctionType = applyChosenParametersToFunctionType(signature.getFunctionType(), chosenParameters, typeInfo, typeParametersInScope) ?: return null
-//
-//        if (expectedFunctionType.argTypes.size != expression.bindings.size) {
-//            errors.add(Issue("Tried to bind function $functionRef with ${expression.bindings.size} bindings, but it takes ${expectedFunctionType.argTypes.size} arguments", expression.location, IssueLevel.ERROR))
-//            return null
-//        }
-//
-//        val postBindingArgumentTypes = ArrayList<Type>()
-//        for (entry in expectedFunctionType.argTypes.zip(bindings)) {
-//            val type = entry.first
-//            val binding = entry.second
-//            if (binding == null) {
-//                postBindingArgumentTypes.add(type)
-//            } else {
-//                if (binding.type != type) {
-//                    fail("In function $containingFunctionId, a binding is of type ${binding.type} but the expected argument type is $type")
-//                }
-//                if (binding.type.isThreaded()) {
-//                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
-//                }
-//            }
-//        }
-//        val postBindingType = Type.FunctionType(
-//                listOf(),
-//                postBindingArgumentTypes,
-//                expectedFunctionType.outputType)
-//
-//        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, resolvedRef.entityRef, bindings, chosenParameters)
     }
 
     private fun inferChosenTypeParameters(functionType: Type.FunctionType, providedChoices: List<Type?>, bindingTypes: List<Type?>, functionDescription: String, expressionLocation: Location?): List<Type?>? {
@@ -726,11 +504,6 @@ private class Validator(
             return null
         }
 
-//        val resolvedStructureType = typesInfo.resolver.resolve(structureNamedType.originalRef)
-//        if (resolvedStructureType == null) {
-//            errors.add(Issue("Cannot dereference an expression $structureExpression of unrecognized type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
-//            return null
-//        }
         val structureTypeInfo = typesInfo.getTypeInfo(structureNamedType.originalRef) ?: error("No type info for ${structureNamedType.originalRef}")
 
         return when (structureTypeInfo) {
@@ -753,8 +526,6 @@ private class Validator(
 
                 val parameterizedType = replaceAndValidateExternalTypeParameters(memberType, typeParameters, chosenTypes)
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
-//                TODO()
-//                val type = parameterizeAndValidateType(memberType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
                 return TypedExpression.Follow(type, structureExpression, expression.name)
@@ -782,11 +553,6 @@ private class Validator(
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
 
                 return TypedExpression.Follow(type, structureExpression, expression.name)
-
-//                TODO()
-//                val type = parameterizeAndValidateType(methodType, typeParameters.map(Type::ParameterType), chosenTypes, typeInfo, typeParametersInScope) ?: return null
-
-//                return TypedExpression.Follow(type, structureExpression, expression.name)
             }
             is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
@@ -803,32 +569,6 @@ private class Validator(
         val replacedType = originalType.replacingNamedParameterTypes(parameterReplacementMap)
         return replacedType
     }
-
-    // TODO: Disentangle the typeParameters and chosenTypes mess here
-    /*
-    This is called from:
-
-    - parameterizeAndValidateSignature
-    - validateFollowExpression
-     */
-    /*
-     * Applies the chosen parameters to the function type, removing them from the function type's type parameters, and
-     * then validates the resulting function type.
-     *
-     * So this is weird because we want to distinguish between the cases where the type involved here has explicitly
-     * listed type parameters and where it doesn't.
-     */
-//    private fun parameterizeAndValidateType(unvalidatedType: UnvalidatedType, typeParameters: List<Type.ParameterType>, chosenTypes: List<Type?>, typeInfo: Validator.AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type? {
-//        val type = validateType(unvalidatedType, typeInfo, typeParametersInScope + typeParameters.map(Type.ParameterType::parameter).associateBy(TypeParameter::name)) ?: return null
-//
-//        if (typeParameters.size != chosenTypes.size) {
-//            error("Give me a better error message")
-//        }
-//        // TODO: Is this all that's needed to handle the case of null chosen types?
-//        val parameterMap = typeParameters.zip(chosenTypes).filter { it.second != null }.toMap().mapValues { it.value!! }
-//
-//        return type.replacingParameters(parameterMap)
-//    }
 
     private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
@@ -858,41 +598,15 @@ private class Validator(
 
         val groundFunctionType = functionType.groundWithTypeParameters(inferredTypeParameters)
 
-//        val functionArgTypes = functionType.getArgTypes(inferredTypeParameters)
-//        val outputType = functionType.getOutputType(inferredTypeParameters)
-
         if (argumentTypes != groundFunctionType.argTypes) {
             errors.add(Issue("The function expression expects arguments with types ${groundFunctionType.argTypes}, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
             return null
         }
 
         return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters)
-
-//        TODO()
-
-//
-//        val chosenParameters = expression.chosenParameters.map { TODO() }
-//
-//        val arguments = ArrayList<TypedExpression>()
-//        for (untypedArgument in expression.arguments) {
-//            val argument = validateExpression(untypedArgument, variableTypes, typeInfo, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
-//            arguments.add(argument)
-//        }
-//        val argumentTypes = arguments.map(TypedExpression::type)
-//
-//        if (argumentTypes != functionType.argTypes) {
-//            errors.add(Issue("The bound function $functionExpression expects argument types ${functionType.argTypes}, but we give it types $argumentTypes", expression.location, IssueLevel.ERROR))
-//            return null
-//        }
-//
-//        return TypedExpression.ExpressionFunctionCall(functionType.outputType, functionExpression, arguments, chosenParameters)
     }
 
-//    - Arguments to type inference: Given values for type parameters (should be validated as individual types),
-//    validated types of arguments/bindings given to the function, the function type itself
-
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-//        System.out.println("Validating named function call $expression")
         val functionRef = expression.functionRef
 
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
@@ -915,29 +629,10 @@ private class Validator(
             return null
         }
 
-        /*
-        There are a few things we're going to want to gather for each of these:
-
-        - What is the type of the function? (Either via a signature from our typeInfo or an expression)
-          - These should be Types, not UnvalidatedTypes, so we should know parameters and everything
-        - What are the chosen values of the type parameters?
-          - Type inference may apply here -- apply that early and in its own shared code path
-            - Arguments to type inference: Given values for type parameters (should be validated as individual types),
-              validated types of arguments/bindings given to the function, the function type itself
-
-        After we get these things, then we can:
-        - Check that the type parameters are valid given their type classes
-        - Check that the arguments or bindings match their appropriate argument types
-        - Determine and return the output type
-
-         */
-
         val inferredNullableTypeParameters = inferChosenTypeParameters(functionInfo.type, providedChoices, argumentTypes, functionRef.toString(), expression.location) ?: return null
         val inferredTypeParameters = inferredNullableTypeParameters.filterNotNull()
 
         val groundFunctionType = functionInfo.type.groundWithTypeParameters(inferredTypeParameters)
-//        val functionArgTypes = functionInfo.type.getArgTypes(inferredTypeParameters)
-//        val outputType = functionInfo.type.getOutputType(inferredTypeParameters)
 
         if (argumentTypes != groundFunctionType.argTypes) {
             val paramString = if (inferredTypeParameters.isEmpty()) "" else "<$inferredTypeParameters>"
@@ -945,61 +640,7 @@ private class Validator(
             return null
         }
 
-//        System.out.println("Function type: ${functionInfo.type}")
-//        System.out.println("Inferred type parameters: $inferredTypeParameters")
-//        System.out.println("outputType: $outputType")
-
         return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
-//        TODO()
-//
-//        val signature = typeInfo.getFunctionInfo(functionResolvedRef.entityRef)?.signature
-//        if (signature == null) {
-//            errors.add(Issue("Entity $functionRef is not a function", expression.functionRefLocation, IssueLevel.ERROR))
-//            return null
-//        }
-//
-//        //Ground the signature
-//
-//        val fullTypeParameterCount = signature.typeParameters.size
-//        val requiredTypeParameterCount = signature.getFunctionType().getRequiredTypeParameterCount()
-//        val chosenParameters = if (expression.chosenParameters.size == fullTypeParameterCount) {
-//            expression.chosenParameters.map { chosenParameter -> validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null }
-//        } else if (expression.chosenParameters.size == requiredTypeParameterCount) {
-//            val inferenceSourcesByArgument = signature.getFunctionType().getTypeParameterInferenceSources()
-//            val explicitParametersIterator = expression.chosenParameters.iterator()
-//            val types = inferenceSourcesByArgument.map { inferenceSources ->
-//                if (inferenceSources.isEmpty()) {
-//                    val chosenParameter = explicitParametersIterator.next()
-//                    validateType(chosenParameter, typeInfo, typeParametersInScope) ?: return null
-//                } else {
-//                    // Since we know all our arguments are present, we can cheat a little and just take the first one
-//                    inferenceSources.stream().map { it.findType(argumentTypes) }.filter { it != null }.findFirst().get()
-//                }
-//            }
-//            if (explicitParametersIterator.hasNext()) {
-//                error("Validator internal logic for type parameter inference was invalid")
-//            }
-//            types
-//        } else {
-//            // TODO: Update issue message to account for multiple possible lengths
-//            errors.add(Issue("Expected ${signature.typeParameters.size} type parameters, but got ${expression.chosenParameters.size}", expression.functionRefLocation, IssueLevel.ERROR))
-//            return null
-//        }
-//
-//        if (signature.typeParameters.size != chosenParameters.size) {
-//            error("Got the incorrect number of type parameters somehow: ${chosenParameters.size} instead of $fullTypeParameterCount or $requiredTypeParameterCount")
-//        }
-//        for ((typeParameter, chosenType) in signature.typeParameters.zip(chosenParameters)) {
-//            validateTypeParameterChoice(typeParameter, chosenType, expression.location, typeInfo)
-//        }
-//
-//
-//        val functionType = applyChosenParametersToFunctionType(signature.getFunctionType(), chosenParameters, typeInfo, typeParametersInScope) ?: return null
-//        if (argumentTypes != functionType.argTypes) {
-//            errors.add(Issue("The function $functionRef expects argument types ${functionType.argTypes}, but is given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
-//        }
-//
-//        return TypedExpression.NamedFunctionCall(functionType.outputType, functionRef, functionResolvedRef.entityRef, arguments, chosenParameters)
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
@@ -1017,15 +658,6 @@ private class Validator(
             }
         }
     }
-
-    /*
-     * Applies the chosen parameters to the function type, removing them from the function type's type parameters, and
-     * then validates the resulting function type.
-     */
-//    private fun applyChosenParametersToFunctionType(functionType: UnvalidatedType.FunctionType, chosenParameters: List<Type?>, typeInfo: AllTypeInfo, typeParametersInScope: Map<String, TypeParameter>): Type.FunctionType? {
-//        val parameterTypes = functionType.typeParameters.map(Type::ParameterType)
-//        return parameterizeAndValidateType(functionType, parameterTypes, chosenParameters, typeInfo, typeParametersInScope) as Type.FunctionType?
-//    }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         val typeChain = getLiteralTypeChain(expression.type, expression.location, typeParametersInScope)
@@ -1064,8 +696,6 @@ private class Validator(
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
-//                val resolvedType = typesInfo.resolver.resolve(type.originalRef) ?: fail("Could not resolve type ${type.ref}")
-//                val struct = typesInfo.getTypeInfo(resolvedType.entityRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a non-struct named type $resolvedType")
                 val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a nonexistent or non-struct type ${type.originalRef}")
 
                 if (structInfo.typeParameters.isNotEmpty()) {
