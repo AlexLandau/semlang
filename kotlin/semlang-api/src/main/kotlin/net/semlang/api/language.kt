@@ -79,8 +79,8 @@ data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
 
 sealed class UnvalidatedType {
     abstract val location: Location?
-    abstract fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType
     abstract protected fun getTypeString(): String
+    abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
     override fun toString(): String {
         return getTypeString()
     }
@@ -89,12 +89,12 @@ sealed class UnvalidatedType {
     // can be left to the validator
     object Invalid {
         data class ThreadedInteger(override val location: Location? = null) : UnvalidatedType() {
-            override fun getTypeString(): String {
-                return "~Integer"
+            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+                return this
             }
 
-            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-                return this
+            override fun getTypeString(): String {
+                return "~Integer"
             }
 
             override fun toString(): String {
@@ -103,12 +103,12 @@ sealed class UnvalidatedType {
         }
 
         data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
-            override fun getTypeString(): String {
-                return "~Boolean"
+            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+                return this
             }
 
-            override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-                return this
+            override fun getTypeString(): String {
+                return "~Boolean"
             }
 
             override fun toString(): String {
@@ -118,12 +118,12 @@ sealed class UnvalidatedType {
     }
 
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
-        override fun getTypeString(): String {
-            return "Integer"
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return this
         }
 
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return this
+        override fun getTypeString(): String {
+            return "Integer"
         }
 
         override fun toString(): String {
@@ -131,12 +131,12 @@ sealed class UnvalidatedType {
         }
     }
     data class Boolean(override val location: Location? = null) : UnvalidatedType() {
-        override fun getTypeString(): String {
-            return "Boolean"
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return this
         }
 
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return this
+        override fun getTypeString(): String {
+            return "Boolean"
         }
 
         override fun toString(): String {
@@ -145,8 +145,8 @@ sealed class UnvalidatedType {
     }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return List(parameter.replacingParameters(parameterMap), location)
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
 
         override fun getTypeString(): String {
@@ -159,8 +159,8 @@ sealed class UnvalidatedType {
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return Maybe(parameter.replacingParameters(parameterMap), location)
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
 
         override fun getTypeString(): String {
@@ -172,15 +172,23 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class FunctionType(val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap),
+    data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            return FunctionType(
+                    typeParameters,
+                    this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
+                    this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
                     location)
         }
 
         override fun getTypeString(): String {
-            return "(" +
+            val typeParametersString = if (typeParameters.isEmpty()) {
+                ""
+            } else {
+                "<" + typeParameters.joinToString(", ") + ">"
+            }
+            return typeParametersString +
+                    "(" +
                     argTypes.joinToString(", ") +
                     ") -> " +
                     outputType.toString()
@@ -192,22 +200,24 @@ sealed class UnvalidatedType {
     }
 
     data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+            if (ref.moduleRef == null && ref.id.namespacedName.size == 1) {
+                val replacement = parameterReplacementMap[ref.id.namespacedName[0]]
+                if (replacement != null) {
+                    return replacement
+                }
+            }
+            return NamedType(
+                    ref,
+                    isThreaded,
+                    parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
+                    location)
+        }
+
         companion object {
             fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
             }
-        }
-        override fun replacingParameters(parameterMap: Map<UnvalidatedType, UnvalidatedType>): UnvalidatedType {
-            val replacement = parameterMap[this]
-            if (replacement != null) {
-                // TODO: Should this have replaceParameters applied to it?
-                return replacement
-            }
-            return NamedType(ref,
-                    isThreaded,
-                    parameters.map { it.replacingParameters(parameterMap) },
-                    location
-            )
         }
 
         override fun getTypeString(): String {
@@ -225,23 +235,41 @@ sealed class UnvalidatedType {
             return getTypeString()
         }
     }
+
 }
 
 /**
- * Note: The hashCode() and equals() methods for [Type.NamedType] ignore [originalRef], which is provided for a narrow
+ * Note: The hashCode() and equals() methods for [Type.NamedType] ignore [Type.NamedType.originalRef], which is provided for a narrow
  * range of reasons -- primarily, converting back to the original unvalidated code. This may cause odd behavior if
  * you put Types in a set or as the key of a map, but it makes equality checking correct for the purposes of checking
  * that types agree with one another.
  */
 sealed class Type {
-    abstract fun replacingParameters(parameterMap: Map<out Type, Type>): Type
-    abstract protected fun getTypeString(): String
+    protected abstract fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type
+    protected abstract fun getTypeString(): String
     abstract fun isThreaded(): Boolean
     override fun toString(): String {
         return getTypeString()
     }
 
+    abstract fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type
+
+    /**
+     * Some types are not bindable -- that is, if they are arguments of a function type, they cannot immediately accept
+     * an argument in a function binding. This happens when they contain references to internal parameter types external
+     * to the type itself.
+     */
+    fun isBindable(): Boolean {
+        return isBindableInternal(0)
+    }
+    abstract protected fun isBindableInternal(numAllowedIndices: Int): Boolean
+
+    // TODO: Recase these to Integer and Boolean when convenient
     object INTEGER : Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return true
+        }
+
         override fun isThreaded(): Boolean {
             return false
         }
@@ -250,11 +278,19 @@ sealed class Type {
             return "Integer"
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return this
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
             return this
         }
     }
     object BOOLEAN : Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return true
+        }
+
         override fun isThreaded(): Boolean {
             return false
         }
@@ -263,18 +299,30 @@ sealed class Type {
             return "Boolean"
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return this
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
             return this
         }
     }
 
     data class List(val parameter: Type): Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return parameter.isBindableInternal(numAllowedIndices)
+        }
+
         override fun isThreaded(): Boolean {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return List(parameter.replacingParameters(parameterMap))
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return List(parameter.replacingInternalParametersInternal(chosenParameters))
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+            return List(parameter.replacingExternalParameters(parametersMap))
         }
 
         override fun getTypeString(): String {
@@ -287,12 +335,20 @@ sealed class Type {
     }
 
     data class Maybe(val parameter: Type): Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return parameter.isBindableInternal(numAllowedIndices)
+        }
+
         override fun isThreaded(): Boolean {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return Maybe(parameter.replacingParameters(parameterMap))
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return Maybe(parameter.replacingInternalParametersInternal(chosenParameters))
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+            return Maybe(parameter.replacingExternalParameters(parametersMap))
         }
 
         override fun getTypeString(): String {
@@ -304,36 +360,333 @@ sealed class Type {
         }
     }
 
-    data class FunctionType(val argTypes: kotlin.collections.List<Type>, val outputType: Type): Type() {
-        override fun isThreaded(): Boolean {
-            return false
+    sealed class FunctionType: Type() {
+        abstract fun getNumArgTypes(): Int
+        abstract fun rebindTypeParameters(boundTypeParameters: kotlin.collections.List<Type?>): FunctionType
+        abstract fun rebindArguments(bindingTypes: kotlin.collections.List<Type?>): FunctionType
+        /**
+         * This returns a list of argument types in which any argument type that is not currently bindable (because its type
+         * contains an internal parameter type that is not bound) is replaced with null.
+         */
+        abstract fun getBindableArgumentTypes(): kotlin.collections.List<Type?>
+
+        // This is usually used for things like printing the types for the user
+        abstract fun getDefaultGrounding(): FunctionType.Ground
+
+        abstract fun groundWithTypeParameters(chosenTypeParameters: kotlin.collections.List<Type>): FunctionType.Ground
+        abstract val typeParameters: kotlin.collections.List<TypeParameter>
+
+        companion object {
+            fun create(typeParameters: kotlin.collections.List<TypeParameter>, argTypes: kotlin.collections.List<Type>, outputType: Type): FunctionType {
+                if (typeParameters.isEmpty()) {
+                    return FunctionType.Ground(argTypes, outputType)
+                } else {
+                    return FunctionType.Parameterized(typeParameters, argTypes, outputType)
+                }
+            }
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            return FunctionType(argTypes.map { type -> type.replacingParameters(parameterMap) },
-                    outputType.replacingParameters(parameterMap))
+        data class Ground(val argTypes: kotlin.collections.List<Type>, val outputType: Type) : FunctionType() {
+            override val typeParameters = listOf<TypeParameter>()
+
+            override fun groundWithTypeParameters(chosenTypeParameters: kotlin.collections.List<Type>): Ground {
+                if (chosenTypeParameters.isNotEmpty()) {
+                    error("Tried to rebind a ground function type $this with parameters $chosenTypeParameters")
+                }
+                return this
+            }
+
+            override fun getDefaultGrounding(): Ground {
+                return this
+            }
+
+            override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+                return argTypes.all { it.isBindableInternal(numAllowedIndices) } && outputType.isBindableInternal(numAllowedIndices)
+            }
+
+            override fun getBindableArgumentTypes(): kotlin.collections.List<Type?> {
+                return argTypes
+            }
+
+            override fun rebindTypeParameters(boundTypeParameters: kotlin.collections.List<Type?>): FunctionType.Ground {
+                if (boundTypeParameters.isNotEmpty()) {
+                    error("Tried to rebind a ground function type $this with parameters $boundTypeParameters")
+                }
+                return this
+            }
+
+            override fun rebindArguments(bindingTypes: kotlin.collections.List<Type?>): FunctionType.Ground {
+                if (bindingTypes.size != argTypes.size) {
+                    error("Wrong number of binding types")
+                }
+                return Type.FunctionType.Ground(
+                        argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
+                        outputType)
+            }
+
+            override fun getNumArgTypes(): Int {
+                return argTypes.size
+            }
+
+            override fun isThreaded(): Boolean {
+                return false
+            }
+
+            override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type.FunctionType.Ground {
+                val argTypes = argTypes.map { it.replacingInternalParametersInternal(chosenParameters) }
+                val outputType = outputType.replacingInternalParametersInternal(chosenParameters)
+                return Type.FunctionType.Ground(argTypes, outputType)
+            }
+
+            override fun getTypeString(): String {
+                return "(" +
+                        argTypes.joinToString(", ") +
+                        ") -> " +
+                        outputType.toString()
+            }
+
+            override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+                return FunctionType.Ground(
+                        argTypes.map { it.replacingExternalParameters(parametersMap) },
+                        outputType.replacingExternalParameters(parametersMap)
+                )
+            }
         }
 
-        override fun getTypeString(): String {
-            return "(" +
-                    argTypes.joinToString(", ") +
-                    ") -> " +
-                    outputType.toString()
-        }
+        //TODO: Figure out if we can return argTypes and outputType to private
+        class Parameterized(override val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<Type>, val outputType: Type) : FunctionType() {
 
-        override fun toString(): String {
-            return getTypeString()
+            override fun groundWithTypeParameters(chosenTypeParameters: kotlin.collections.List<Type>): Ground {
+                if (chosenTypeParameters.size != typeParameters.size) {
+                    error("Wrong number of type parameters")
+                }
+                val newArgTypes = getArgTypes(chosenTypeParameters)
+                val newOutputType = getOutputType(chosenTypeParameters)
+                return Type.FunctionType.Ground(newArgTypes, newOutputType)
+            }
+
+            override fun getDefaultGrounding(): Ground {
+                val substitution = this.getDefaultTypeParameterNameSubstitution()
+                return rebindTypeParameters(substitution) as Ground
+            }
+
+            override fun isBindableInternal(incomingNumAllowedIndices: Int): Boolean {
+                val newNumAllowedIndices = incomingNumAllowedIndices + typeParameters.size
+                return argTypes.all { it.isBindableInternal(newNumAllowedIndices) } && outputType.isBindableInternal(newNumAllowedIndices)
+            }
+
+            override fun getBindableArgumentTypes(): kotlin.collections.List<Type?> {
+                return argTypes.map {
+                    if (it.isBindable()) {
+                        it
+                    } else {
+                        null
+                    }
+                }
+            }
+
+            override fun rebindTypeParameters(boundTypeParameters: kotlin.collections.List<Type?>): FunctionType {
+                if (boundTypeParameters.size != typeParameters.size) {
+                    error("Wrong number of type parameters")
+                }
+
+                val newArgTypes = getArgTypes(boundTypeParameters)
+                val newOutputType = getOutputType(boundTypeParameters)
+
+                return Type.FunctionType.create(
+                    typeParameters.zip(boundTypeParameters).filter { it.second == null }.map { it.first },
+                    newArgTypes,
+                    newOutputType)
+            }
+
+            override fun rebindArguments(bindingTypes: kotlin.collections.List<Type?>): FunctionType {
+                if (bindingTypes.size != argTypes.size) {
+                    error("Wrong number of binding types")
+                }
+
+                for ((bindingType, argType) in bindingTypes.zip(argTypes)) {
+                    if (bindingType != null && !argType.isBindable()) {
+                        error("Passed in a binding type for a non-bindable argument type $argType; type is $this, bindingTypes are $bindingTypes")
+                    }
+                }
+
+                return Type.FunctionType.create(
+                        typeParameters,
+                        argTypes.zip(bindingTypes).filter { it.second == null }.map { it.first },
+                        outputType)
+            }
+
+            init {
+                if (typeParameters.isEmpty()) {
+                    error("Should be making a FunctionType.Ground instead; argTypes: $argTypes, outputType: $outputType")
+                }
+            }
+
+            override fun getNumArgTypes(): Int {
+                return argTypes.size
+            }
+
+            override fun isThreaded(): Boolean {
+                return false
+            }
+
+            private fun getDefaultTypeParameterNameSubstitution(): kotlin.collections.List<Type> {
+                return typeParameters.map(Type::ParameterType)
+            }
+
+            private fun getArgTypes(chosenParameters: kotlin.collections.List<Type?>): kotlin.collections.List<Type> {
+                if (chosenParameters.size != typeParameters.size) {
+                    error("Incorrect size of chosen parameters")
+                }
+
+                val replaced = replacingInternalParameters(chosenParameters)
+                return when (replaced) {
+                    is Type.FunctionType.Ground -> replaced.argTypes
+                    is Type.FunctionType.Parameterized -> replaced.argTypes
+                }
+            }
+
+            private fun getOutputType(chosenParameters: kotlin.collections.List<Type?>): Type {
+                if (chosenParameters.size != typeParameters.size) {
+                    error("Incorrect size of chosen parameters")
+                }
+
+                val replaced = replacingInternalParameters(chosenParameters)
+                return when (replaced) {
+                    is Type.FunctionType.Ground -> replaced.outputType
+                    is Type.FunctionType.Parameterized -> replaced.outputType
+                }
+            }
+
+            override fun hashCode(): Int {
+                return Objects.hash(
+                        typeParameters.map { it.typeClass },
+                        argTypes,
+                        outputType
+                )
+            }
+
+            override fun equals(other: Any?): Boolean {
+                if (other !is Type.FunctionType.Parameterized) {
+                    return false
+                }
+                return typeParameters.map { it.typeClass } == other.typeParameters.map { it.typeClass }
+                        && argTypes == other.argTypes
+                        && outputType == other.outputType
+            }
+
+            private fun replacingInternalParameters(chosenParameters: kotlin.collections.List<Type?>): FunctionType {
+                // The chosenParameters should be correct at this point
+
+                return FunctionType.create(
+                        // Keep type parameters that aren't getting defined
+                        typeParameters.filterIndexed { index, typeParameter ->
+                            chosenParameters[index] == null
+                        },
+                        argTypes.map { type -> type.replacingInternalParametersInternal(chosenParameters) },
+                        outputType.replacingInternalParametersInternal(chosenParameters)
+                )
+            }
+
+            override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): FunctionType {
+                val adjustedChosenParameters = typeParameters.map { null } + chosenParameters
+
+                return replacingInternalParameters(adjustedChosenParameters)
+            }
+
+            override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+                return FunctionType.Parameterized(
+                        typeParameters,
+                        argTypes.map { it.replacingExternalParameters(parametersMap) },
+                        outputType.replacingExternalParameters(parametersMap)
+                )
+            }
+
+            override fun getTypeString(): String {
+                val typeParametersString = if (typeParameters.isEmpty()) {
+                    ""
+                } else {
+                    "<" + typeParameters.joinToString(", ") + ">"
+                }
+                return typeParametersString +
+                        "(" +
+                        argTypes.joinToString(", ") +
+                        ") -> " +
+                        outputType.toString()
+            }
+
+            override fun toString(): String {
+                return getTypeString()
+            }
         }
     }
 
-    data class ParameterType(val parameter: TypeParameter): Type() {
+    /**
+     * This class represents a type parameter that is defined elsewhere in either this type or a type containing this
+     * one. In the latter case, this should not be exposed to clients directly; instead, the type defining the type
+     * parameter should require clients to pass in type parameters in order to instantiate them.
+     *
+     * This deals with the fact that we don't want the name of the type parameter to be meaningful; in particular, if
+     * we have a function parameterized in terms of T in its definition, we want to be able to call it and ignore the
+     * name "T", which we might be using locally, without having to worry about name shadowing.
+     *
+     * TODO: Document index ordering.
+     */
+    data class InternalParameterType(val index: Int): Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return index < numAllowedIndices
+        }
+
         override fun isThreaded(): Boolean {
             return false
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            val replacement = parameterMap[this]
-            return if (replacement != null) replacement else this
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            val replacement = chosenParameters[index]
+            if (replacement != null) {
+                return replacement
+            } else {
+                // New index: number of null values preceding this index in the chosenParameters array
+                val newIndex = chosenParameters.subList(0, index).count { it == null }
+                return InternalParameterType(newIndex)
+            }
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+            return this
+        }
+
+        override fun getTypeString(): String {
+            error("This internal parameter type should be replaced in the type before being converted to a string")
+        }
+    }
+
+    /**
+     * This represents type parameter types where the type parameter is defined in places other than within the same
+     * type definition. For example, a struct with a type parameter T may have a member of type T, or a function with
+     * type parameter T may have a variable in its code with type T. These would use ParameterType as opposed to
+     * [InternalParameterType].
+     */
+    data class ParameterType(val parameter: TypeParameter): Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return true
+        }
+
+        override fun isThreaded(): Boolean {
+            return false
+        }
+
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return this
+        }
+
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+            val replacement = parametersMap[this]
+            return if (replacement != null) {
+                replacement
+            } else {
+                this
+            }
         }
 
         override fun getTypeString(): String {
@@ -353,25 +706,20 @@ sealed class Type {
      */
     // TODO: Should "ref" be an EntityResolution? Either way, stop passing originalRef to resolvers
     data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val threaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
+            return parameters.all { it.isBindableInternal(numAllowedIndices) }
+        }
+
         override fun isThreaded(): Boolean {
             return threaded
         }
 
-        override fun replacingParameters(parameterMap: Map<out Type, Type>): Type {
-            val replacement = parameterMap[this]
-            if (replacement != null) {
-                // TODO: Should this have replaceParameters applied to it?
-                return replacement
-            }
-            return NamedType(ref,
-                    originalRef,
-                    threaded,
-                    parameters.map { parameter -> parameter.replacingParameters(parameterMap) }
-            )
+        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
+            return this.copy(parameters = parameters.map { it.replacingInternalParametersInternal(chosenParameters) })
         }
 
-        fun getParameterizedTypes(): kotlin.collections.List<Type> {
-            return parameters
+        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
+            return this.copy(parameters = parameters.map { it.replacingExternalParameters(parametersMap) })
         }
 
         override fun getTypeString(): String {
@@ -432,10 +780,28 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
 // TODO: Maybe rename TypeSignature -> FunctionSignature?
 data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
-        return UnvalidatedType.FunctionType(argumentTypes, outputType, null)
+        return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType)
     }
 }
-data class TypeSignature(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId
+data class TypeSignature private constructor(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
+    companion object {
+        /**
+         * Note: This converts instances of the given type parameters into internal parameters in the argument and output types.
+         */
+        fun create(id: EntityId, argumentTypes: List<Type>, outputType: Type, typeParameters: List<TypeParameter> = listOf()): TypeSignature {
+            val newParameterIndices = HashMap<String, Int>()
+            typeParameters.mapIndexed { index, typeParameter ->
+                newParameterIndices.put(typeParameter.name, index)
+            }
+            val newArgTypes = argumentTypes.map { it.internalizeParameters(newParameterIndices, 0) }
+            val newOutputType = outputType.internalizeParameters(newParameterIndices, 0)
+            return TypeSignature(id, newArgTypes, newOutputType, typeParameters)
+        }
+    }
+    fun getFunctionType(): Type.FunctionType {
+        return Type.FunctionType.create(typeParameters, argumentTypes, outputType)
+    }
+}
 
 data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int) {
     override fun toString(): String {
@@ -463,10 +829,10 @@ sealed class AnnotationArgument {
 sealed class AmbiguousExpression {
     abstract val location: Location
     data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location): AmbiguousExpression()
+    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
+    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<UnvalidatedType>, override val location: Location, val varOrNameLocation: Location?): AmbiguousExpression()
+    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<UnvalidatedType>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<UnvalidatedType>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location): AmbiguousExpression()
     data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: UnvalidatedType, override val location: Location): AmbiguousExpression()
@@ -480,11 +846,11 @@ sealed class Expression {
     data class Variable(val name: String, override val location: Location? = null): Expression()
     data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location? = null): Expression()
     data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
-    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, override val location: Location? = null): Expression()
+    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
     data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location? = null): Expression()
     data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location? = null): Expression()
-    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, override val location: Location? = null): Expression()
+    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null): Expression()
     data class Follow(val structureExpression: Expression, val name: String, override val location: Location? = null): Expression()
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
 }
@@ -494,11 +860,11 @@ sealed class TypedExpression {
     data class Variable(override val type: Type, val name: String): TypedExpression()
     data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
     data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
-    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>): TypedExpression()
+    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
     data class Literal(override val type: Type, val literal: String): TypedExpression()
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>) : TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
     data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }
@@ -512,16 +878,17 @@ data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val return
 data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
-    fun getTypeSignature(): UnvalidatedTypeSignature {
-        return UnvalidatedTypeSignature(id,
+    fun getType(): UnvalidatedType.FunctionType {
+        return UnvalidatedType.FunctionType(
+                typeParameters,
                 arguments.map(UnvalidatedArgument::type),
-                returnType,
-                typeParameters)
+                returnType
+        )
     }
 }
 data class ValidatedFunction(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
     fun getTypeSignature(): TypeSignature {
-        return TypeSignature(id,
+        return TypeSignature.create(id,
                 arguments.map(Argument::type),
                 returnType,
                 typeParameters)
@@ -546,8 +913,11 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         return members.indexOfFirst { member -> member.name == name }
     }
 
-    fun getType(): Type.NamedType {
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters.map(Type::ParameterType))
+    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+        if (chosenParameters.size != typeParameters.size) {
+            error("Incorrect number of type parameters")
+        }
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -559,8 +929,9 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         } else {
             Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
         }
-        return TypeSignature(id, argumentTypes, outputType, this.typeParameters)
+        return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
+
 }
 interface HasId {
     val id: EntityId
@@ -593,7 +964,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = UnvalidatedType.FunctionType(listOf(dataType), instanceType)
+        val outputType = UnvalidatedType.FunctionType(listOf(), listOf(dataType), instanceType)
 
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -609,8 +980,8 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
     val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
     val dataType = Type.ParameterType(dataTypeParameter)
     val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
-    val adapterType = Type.FunctionType(listOf(dataType), instanceType)
-    fun getType(): Type.NamedType {
+    val adapterType = Type.FunctionType.create(listOf(), listOf(dataType), instanceType)
+    private fun getType(): Type.NamedType {
         return instanceType
     }
 
@@ -618,12 +989,12 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
         val typeParameters = this.typeParameters
         val argumentTypes = this.methods.map(Method::functionType)
 
-        return TypeSignature(this.id, argumentTypes, instanceType, typeParameters)
+        return TypeSignature.create(this.id, argumentTypes, instanceType, typeParameters)
     }
     fun getAdapterFunctionSignature(): TypeSignature {
         val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
-        val dataStructType = Type.ParameterType(adapterTypeParameters[0])
+        val dataStructType = Type.InternalParameterType(0)
         val argumentTypes = ArrayList<Type>()
         this.methods.forEach { method ->
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
@@ -631,18 +1002,30 @@ data class Interface(override val id: EntityId, val moduleId: ModuleId, val type
 
         val outputType = adapterType
 
-        return TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
+        return TypeSignature.create(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
 data class UnvalidatedMethod(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
-    val functionType = UnvalidatedType.FunctionType(arguments.map { arg -> arg.type }, returnType, null)
+    init {
+        if (typeParameters.isNotEmpty()) {
+            // This case hasn't really been handled correctly/tested yet
+            TODO()
+        }
+    }
+    val functionType = UnvalidatedType.FunctionType(typeParameters, arguments.map { arg -> arg.type }, returnType, null)
 }
 data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
-    val functionType = Type.FunctionType(arguments.map { arg -> arg.type }, returnType)
+    init {
+        if (typeParameters.isNotEmpty()) {
+            // This case hasn't really been handled correctly/tested yet
+            TODO()
+        }
+    }
+    val functionType = Type.FunctionType.create(typeParameters, arguments.map { arg -> arg.type }, returnType)
 }
 
 data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
-    fun getType(): UnvalidatedType {
+    private fun getType(): UnvalidatedType {
         val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
         return UnvalidatedType.NamedType(id.asRef(), false, functionParameters)
     }
@@ -672,7 +1055,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
             } else {
                 listOf(option.type)
             }
-            UnvalidatedType.FunctionType(optionArgTypes, outputParameterType)
+            UnvalidatedType.FunctionType(listOf(), optionArgTypes, outputParameterType)
         }
 
         return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
@@ -702,9 +1085,9 @@ data class Union(override val id: EntityId, val moduleId: ModuleId, val typePara
         val option = options[optionIndex]
         val optionType = option.type
         if (optionType != null) {
-            return TypeSignature(optionId, listOf(optionType), this.getType(), typeParameters)
+            return TypeSignature.create(optionId, listOf(optionType), this.getType(), typeParameters)
         } else {
-            return TypeSignature(optionId, listOf(), this.getType(), typeParameters)
+            return TypeSignature.create(optionId, listOf(), this.getType(), typeParameters)
         }
     }
 
@@ -734,16 +1117,16 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: UnvalidatedType
         argTypes.add(argument.type)
     }
 
-    return UnvalidatedType.FunctionType(argTypes, method.returnType, null)
+    return UnvalidatedType.FunctionType(listOf(), argTypes, method.returnType, null)
 }
-private fun getInterfaceMethodReferenceType(intrinsicStructType: Type.ParameterType, method: Method): Type {
+private fun getInterfaceMethodReferenceType(intrinsicStructType: Type, method: Method): Type {
     val argTypes = ArrayList<Type>()
     argTypes.add(intrinsicStructType)
     method.arguments.forEach { argument ->
         argTypes.add(argument.type)
     }
 
-    return Type.FunctionType(argTypes, method.returnType)
+    return Type.FunctionType.create(listOf(), argTypes, method.returnType)
 }
 
 fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
@@ -761,4 +1144,51 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
         return null
     }
     return EntityRef(adapterRef.moduleRef, interfaceId)
+}
+
+data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+    val resolvedRef = ResolvedEntityRef(moduleId, id)
+    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+        if (chosenParameters.size != typeParameters.size) {
+            error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
+        }
+        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
+    }
+}
+
+private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
+    return when (this) {
+        Type.INTEGER -> this
+        Type.BOOLEAN -> this
+        is Type.List -> {
+            Type.List(parameter.internalizeParameters(newParameterIndices, indexOffset))
+        }
+        is Type.Maybe -> {
+            Type.Maybe(parameter.internalizeParameters(newParameterIndices, indexOffset))
+        }
+        is Type.FunctionType.Ground -> {
+            val newArgTypes = argTypes.map { it.internalizeParameters(newParameterIndices, indexOffset) }
+            val newOutputType = outputType.internalizeParameters(newParameterIndices, indexOffset)
+            Type.FunctionType.Ground(newArgTypes, newOutputType)
+        }
+        is Type.FunctionType.Parameterized -> {
+            val newIndexOffset = indexOffset + this.typeParameters.size
+            val newArgTypes = argTypes.map { it.internalizeParameters(newParameterIndices, newIndexOffset) }
+            val newOutputType = outputType.internalizeParameters(newParameterIndices, newIndexOffset)
+            Type.FunctionType.Parameterized(typeParameters, newArgTypes, newOutputType)
+        }
+        is Type.InternalParameterType -> this
+        is Type.ParameterType -> {
+            val index = newParameterIndices[this.parameter.name]?.plus(indexOffset)
+            if (index != null) {
+                Type.InternalParameterType(index)
+            } else {
+                this
+            }
+        }
+        is Type.NamedType -> {
+            val newParameters = parameters.map { it.internalizeParameters(newParameterIndices, indexOffset) }
+            return this.copy(parameters = newParameters)
+        }
+    }
 }

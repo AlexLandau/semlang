@@ -276,19 +276,18 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     expression.location)
             is AmbiguousExpression.VarOrNamedFunctionBinding -> {
                 if (varIds.contains(expression.functionIdOrVariable)) {
-                    if (expression.chosenParameters.size > 0) {
-                        error("Had explicit parameters in a variable-based function binding")
-                    }
                     // TODO: The position of the variable is incorrect here
                     return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
 
                     return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                             chosenParameters = expression.chosenParameters,
-                            location = expression.location)
+                            location = expression.location,
+                            functionRefLocation = expression.varOrNameLocation)
                 }
             }
             is AmbiguousExpression.ExpressionOrNamedFunctionBinding -> {
@@ -297,12 +296,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
-                if (expression.chosenParameters.size > 0) {
-                    error("Had explicit parameters in a an expression-based function binding")
-                }
                 return Expression.ExpressionFunctionBinding(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
+                        chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
             is AmbiguousExpression.IfThen -> Expression.IfThen(
@@ -313,13 +310,11 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             )
             is AmbiguousExpression.VarOrNamedFunctionCall -> {
                 if (varIds.contains(expression.functionIdOrVariable)) {
-                    if (expression.chosenParameters.size > 0) {
-                        error("Had explicit parameters in a variable-based function call")
-                    }
                     return Expression.ExpressionFunctionCall(
                             // TODO: The position of the variable is incorrect here
                             functionExpression = Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                            chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
                     return Expression.NamedFunctionCall(
@@ -336,12 +331,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
-                if (expression.chosenParameters.size > 0) {
-                    error("Had explicit parameters in an expression-based function call")
-                }
                 return Expression.ExpressionFunctionCall(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
+                        chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
             is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.location)
@@ -459,21 +452,26 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     null
                 }
 
+                if (expression.PIPE() != null) {
+                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                        parseCommaDelimitedTypesOrUnderscores(expression.cd_types_or_underscores_nonempty())
+                    } else {
+                        listOf()
+                    }
+                    val bindings = parseBindings(expression.cd_expressions_or_underscores())
+
+                    if (functionRefOrVar != null) {
+                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                    } else {
+                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                    }
+                }
+
                 val chosenParameters = if (expression.LESS_THAN() != null) {
                     parseCommaDelimitedTypes(expression.cd_types_nonempty())
                 } else {
                     listOf()
                 }
-                if (expression.PIPE() != null) {
-                    val bindings = parseBindings(expression.cd_expressions_or_underscores())
-
-                    if (functionRefOrVar != null) {
-                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression))
-                    } else {
-                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
-                    }
-                }
-
                 val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
                 if (functionRefOrVar != null) {
                     return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
@@ -593,12 +591,26 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 TerminalNode::getText)
     }
 
+    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem1Parser.Type_or_underscoreContext): UnvalidatedType? {
+        if (typeOrUnderscore.type() != null) {
+            return parseType(typeOrUnderscore.type())
+        } else {
+            if (typeOrUnderscore.UNDERSCORE() == null) error("Unexpected case")
+            return null
+        }
+    }
+
     private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedType {
         if (type.ARROW() != null) {
             //Function type
+            val typeParameters = if (type.cd_type_parameters() != null) {
+                parseTypeParameters(type.cd_type_parameters())
+            } else {
+                listOf()
+            }
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return UnvalidatedType.FunctionType(argumentTypes, outputType, locationOf(type))
+            return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
         if (type.LESS_THAN() != null) {
@@ -624,6 +636,13 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 Sem1Parser.Cd_types_nonemptyContext::type,
                 Sem1Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
+    }
+
+    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem1Parser.Cd_types_or_underscores_nonemptyContext): List<UnvalidatedType?> {
+        return parseLinkedList(cd_types,
+                Sem1Parser.Cd_types_or_underscores_nonemptyContext::type_or_underscore,
+                Sem1Parser.Cd_types_or_underscores_nonemptyContext::cd_types_or_underscores_nonempty,
+                this::parseTypeOrUnderscore)
     }
 
     private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {

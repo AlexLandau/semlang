@@ -478,6 +478,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
             is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
+            is Type.InternalParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
         }
     }
 
@@ -517,6 +518,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             is Type.Maybe -> TODO()
             is Type.FunctionType -> TODO()
             is Type.ParameterType -> TODO()
+            is Type.InternalParameterType -> TODO()
             is Type.NamedType -> {
                 // Special cases for special SemObjects...
                 if (isNativeModule(type.ref.module)) {

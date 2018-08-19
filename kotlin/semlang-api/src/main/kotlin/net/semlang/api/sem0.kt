@@ -29,7 +29,7 @@ sealed class S0Type {
     object Boolean: S0Type()
     data class List(val parameter: S0Type): S0Type()
     data class Maybe(val parameter: S0Type): S0Type()
-    data class FunctionType(val argTypes: kotlin.collections.List<S0Type>, val outputType: S0Type): S0Type()
+    data class FunctionType(val typeParameters: kotlin.collections.List<S0TypeParameter>, val argTypes: kotlin.collections.List<S0Type>, val outputType: S0Type): S0Type()
     data class NamedType(val id: String, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<S0Type> = listOf()): S0Type()
 }
 
@@ -54,10 +54,10 @@ sealed class S0Expression {
     data class Variable(val name: String): S0Expression()
     data class IfThen(val conditionVarName: String, val thenBlock: S0Block, val elseBlock: S0Block): S0Expression()
     data class NamedFunctionCall(val functionId: String, val argumentVarNames: List<String>, val chosenParameters: List<S0Type>): S0Expression()
-    data class ExpressionFunctionCall(val functionVarName: String, val argumentVarNames: List<String>): S0Expression()
+    data class ExpressionFunctionCall(val functionVarName: String, val argumentVarNames: List<String>, val chosenParameters: List<S0Type>): S0Expression()
     data class Literal(val type: S0Type, val literal: String): S0Expression()
     data class ListLiteral(val itemVarNames: List<String>, val chosenParameter: S0Type): S0Expression()
-    data class NamedFunctionBinding(val functionId: String, val bindingVarNames: List<String?>, val chosenParameters: List<S0Type>): S0Expression()
-    data class ExpressionFunctionBinding(val functionVarName: String, val bindingVarNames: List<String?>): S0Expression()
+    data class NamedFunctionBinding(val functionId: String, val bindingVarNames: List<String?>, val chosenParameters: List<S0Type?>): S0Expression()
+    data class ExpressionFunctionBinding(val functionVarName: String, val bindingVarNames: List<String?>, val chosenParameters: List<S0Type?>): S0Expression()
     data class Follow(val structureVarName: String, val name: String): S0Expression()
 }

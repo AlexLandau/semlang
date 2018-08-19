@@ -103,7 +103,7 @@ private fun renameWithinExpression(expression: Expression, renamingMap: Map<Stri
         is Expression.ExpressionFunctionCall -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val arguments = expression.arguments.map { argument -> renameWithinExpression(argument, renamingMap) }
-            Expression.ExpressionFunctionCall(functionExpression, arguments)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, expression.chosenParameters)
         }
         is Expression.Literal -> {
             expression
@@ -123,7 +123,7 @@ private fun renameWithinExpression(expression: Expression, renamingMap: Map<Stri
         is Expression.ExpressionFunctionBinding -> {
             val functionExpression = renameWithinExpression(expression.functionExpression, renamingMap)
             val bindings = expression.bindings.map { binding -> if (binding == null) null else renameWithinExpression(binding, renamingMap) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, expression.chosenParameters)
         }
         is Expression.InlineFunction -> {
             val arguments = expression.arguments.map { argument -> renameArgument(argument, renamingMap) }

@@ -248,7 +248,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append(expression.functionRef.toString())
             if (expression.chosenParameters.isNotEmpty()) {
                 writer.append("<")
-                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(expression.chosenParameters.map { if (it == null) "_" else it }.joinToString(", "))
                         .append(">")
             }
             writer.append("|(")
@@ -268,6 +268,11 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         is Expression.ExpressionFunctionCall -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.joinToString(", "))
+                        .append(">")
+            }
             writer.append("(")
             var first = true
             for (argument in expression.arguments) {
@@ -281,6 +286,11 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         }
         is Expression.ExpressionFunctionBinding -> {
             writeExpression(expression.functionExpression, indentationLevel, writer)
+            if (expression.chosenParameters.isNotEmpty()) {
+                writer.append("<")
+                        .append(expression.chosenParameters.map { if (it == null) "_" else it }.joinToString(", "))
+                        .append(">")
+            }
             writer.append("|(")
             var first = true
             for (binding in expression.bindings) {
@@ -305,9 +315,10 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append(indent)
                     .appendln("} else {")
             writeBlock(expression.elseBlock, indentationLevel + 1, writer)
-            writer.append("}")
+            writer.append(indent).append("}")
         }
         is Expression.InlineFunction -> {
+            val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
             writer.append("function(")
             writer.append(expression.arguments.joinToString { argument ->
                 argument.name + ": " + argument.type.toString()
@@ -316,7 +327,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append(expression.returnType.toString())
             writer.appendln(" {")
             writeBlock(expression.block, indentationLevel + 1, writer)
-            writer.append("}")
+            writer.append(indent).append("}")
         }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")
     }

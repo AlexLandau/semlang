@@ -92,7 +92,8 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val arguments = expression.arguments.map(this::transformExpression)
-                Expression.ExpressionFunctionCall(functionExpression, arguments)
+                val chosenParameters = expression.chosenParameters.map(::invalidate)
+                Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
             }
             is TypedExpression.Literal -> {
                 Expression.Literal(invalidate(expression.type), expression.literal)
@@ -103,13 +104,14 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             }
             is TypedExpression.NamedFunctionBinding -> {
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
-                val chosenParameters = expression.chosenParameters.map(::invalidate)
+                val chosenParameters = expression.chosenParameters.map { it?.let(::invalidate) }
                 Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> {
                 val functionExpression = transformExpression(expression.functionExpression)
                 val bindings = expression.bindings.map{ it?.let(this::transformExpression) }
-                Expression.ExpressionFunctionBinding(functionExpression, bindings)
+                val chosenParameters = expression.chosenParameters.map { it?.let(::invalidate) }
+                Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
             }
             is TypedExpression.Follow -> {
                 val structureExpression = transformExpression(expression.structureExpression)
@@ -180,7 +182,13 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is Type.Maybe -> {
                 addTypeParameters(set, type.parameter)
             }
-            is Type.FunctionType -> {
+            is Type.FunctionType.Ground -> {
+                for (argType in type.argTypes) {
+                    addTypeParameters(set, argType)
+                }
+                addTypeParameters(set, type.outputType)
+            }
+            is Type.FunctionType.Parameterized -> {
                 for (argType in type.argTypes) {
                     addTypeParameters(set, argType)
                 }
@@ -193,6 +201,9 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
                 for (parameter in type.parameters) {
                     addTypeParameters(set, parameter)
                 }
+            }
+            is Type.InternalParameterType -> {
+                // This doesn't count
             }
         }
     }

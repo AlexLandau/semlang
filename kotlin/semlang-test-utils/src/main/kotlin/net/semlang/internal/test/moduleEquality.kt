@@ -43,9 +43,10 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             UnvalidatedType.Maybe(parameter)
         }
         is UnvalidatedType.FunctionType -> {
+            val typeParameters = type.typeParameters
             val argTypes = type.argTypes.map(::stripLocations)
             val outputType = stripLocations(type.outputType)
-            UnvalidatedType.FunctionType(argTypes, outputType)
+            UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)
@@ -87,7 +88,8 @@ private fun stripLocations(expression: Expression): Expression {
         is Expression.ExpressionFunctionCall -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val arguments = expression.arguments.map(::stripLocations)
-            Expression.ExpressionFunctionCall(functionExpression, arguments)
+            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is Expression.Literal -> {
             val type = stripLocations(expression.type)
@@ -100,13 +102,14 @@ private fun stripLocations(expression: Expression): Expression {
         }
         is Expression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else stripLocations(it) }
-            val chosenParameters = expression.chosenParameters.map(::stripLocations)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else stripLocations(it) }
             Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is Expression.ExpressionFunctionBinding -> {
             val functionExpression = stripLocations(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else stripLocations(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else stripLocations(it) }
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is Expression.Follow -> {
             val structureExpression = stripLocations(expression.structureExpression)

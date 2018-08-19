@@ -61,93 +61,93 @@ private fun <T: HasId> toMap(definitions: ArrayList<T>): Map<EntityId, T> {
 private fun addBooleanFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Boolean.not
-    definitions.add(TypeSignature(EntityId.of("Boolean", "not"), listOf(Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Boolean", "not"), listOf(Type.BOOLEAN), Type.BOOLEAN))
 
     // Boolean.and
-    definitions.add(TypeSignature(EntityId.of("Boolean", "and"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Boolean", "and"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 
     // Boolean.or
-    definitions.add(TypeSignature(EntityId.of("Boolean", "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Boolean", "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 
     // Integer.times
-    definitions.add(TypeSignature(EntityId.of("Integer", "times"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "times"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.plus
-    definitions.add(TypeSignature(EntityId.of("Integer", "plus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "plus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.minus
-    definitions.add(TypeSignature(EntityId.of("Integer", "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
 
     // Integer.dividedBy
-    definitions.add(TypeSignature(EntityId.of("Integer", "dividedBy"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "dividedBy"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
     // Integer.modulo
-    definitions.add(TypeSignature(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
 
     // Integer.equals
-    definitions.add(TypeSignature(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.lessThan
-    definitions.add(TypeSignature(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
     // Integer.greaterThan
-    definitions.add(TypeSignature(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(TypeSignature.create(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
 }
 
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
-    val typeT = Type.ParameterType(t)
-    val typeU = Type.ParameterType(u)
+    val typeT = Type.InternalParameterType(0)
+    val typeU = Type.InternalParameterType(1)
 
     // List.append
-    definitions.add(TypeSignature(EntityId.of("List", "append"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "append"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT), typeT),
             outputType = Type.List(typeT)))
 
     // List.appendFront
-    definitions.add(TypeSignature(EntityId.of("List", "appendFront"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "appendFront"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT), typeT),
             outputType = Type.List(typeT)))
 
     // List.concatenate
-    definitions.add(TypeSignature(EntityId.of("List", "concatenate"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "concatenate"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT), Type.List(typeT)),
             outputType = Type.List(typeT)))
 
     // List.subList
-    definitions.add(TypeSignature(EntityId.of("List", "subList"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "subList"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
             outputType = Type.Maybe(Type.List(typeT))))
 
     // List.map
-    definitions.add(TypeSignature(EntityId.of("List", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), typeU)),
+    definitions.add(TypeSignature.create(EntityId.of("List", "map"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), typeU)),
             outputType = Type.List(typeU)))
 
     // List.flatMap
-    definitions.add(TypeSignature(EntityId.of("List", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), Type.List(typeU))),
+    definitions.add(TypeSignature.create(EntityId.of("List", "flatMap"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.List(typeU))),
             outputType = Type.List(typeU)))
 
     // List.filter
-    definitions.add(TypeSignature(EntityId.of("List", "filter"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType(listOf(typeT), Type.BOOLEAN)),
+    definitions.add(TypeSignature.create(EntityId.of("List", "filter"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.BOOLEAN)),
             outputType = Type.List(typeT)))
 
     // List.reduce
-    definitions.add(TypeSignature(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType(listOf(typeU, typeT), typeU)),
+    definitions.add(TypeSignature.create(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
 
     // List.size
-    definitions.add(TypeSignature(EntityId.of("List", "size"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "size"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT)),
             outputType = NativeStruct.NATURAL.getType()))
 
     // List.get
-    definitions.add(TypeSignature(EntityId.of("List", "get"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("List", "get"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType()),
             outputType = Type.Maybe(typeT)))
 }
@@ -155,42 +155,42 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addMaybeFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
-    val typeT = Type.ParameterType(t)
-    val typeU = Type.ParameterType(u)
+    val typeT = Type.InternalParameterType(0)
+    val typeU = Type.InternalParameterType(1)
 
     // Maybe.success
-    definitions.add(TypeSignature(EntityId.of("Maybe", "success"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "success"), typeParameters = listOf(t),
             argumentTypes = listOf(typeT),
             outputType = Type.Maybe(typeT)))
 
     // Maybe.failure
-    definitions.add(TypeSignature(EntityId.of("Maybe", "failure"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "failure"), typeParameters = listOf(t),
             argumentTypes = listOf(),
             outputType = Type.Maybe(typeT)))
 
     // Maybe.assume
-    definitions.add(TypeSignature(EntityId.of("Maybe", "assume"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "assume"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.Maybe(typeT)),
             outputType = typeT))
 
 
     // Maybe.isSuccess
-    definitions.add(TypeSignature(EntityId.of("Maybe", "isSuccess"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "isSuccess"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.Maybe(typeT)),
             outputType = Type.BOOLEAN))
 
     // Maybe.map
-    definitions.add(TypeSignature(EntityId.of("Maybe", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType(listOf(typeT), typeU)),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "map"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(listOf(), listOf(typeT), typeU)),
             outputType = Type.Maybe(typeU)))
 
     // Maybe.flatMap
-    definitions.add(TypeSignature(EntityId.of("Maybe", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType(listOf(typeT), Type.Maybe(typeU))),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "flatMap"), typeParameters = listOf(t, u),
+            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.Maybe(typeU))),
             outputType = Type.Maybe(typeU)))
 
     // Maybe.orElse
-    definitions.add(TypeSignature(EntityId.of("Maybe", "orElse"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Maybe", "orElse"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.Maybe(typeT), typeT),
             outputType = typeT))
 
@@ -198,18 +198,18 @@ private fun addMaybeFunctions(definitions: ArrayList<TypeSignature>) {
 
 private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
-    val sequenceT = NativeStruct.SEQUENCE.getType()
+    val sequenceT = NativeStruct.SEQUENCE.getType(listOf(typeT))
 
     // Sequence.get
-    definitions.add(TypeSignature(EntityId.of("Sequence", "get"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Sequence", "get"), typeParameters = listOf(t),
             argumentTypes = listOf(sequenceT, NativeStruct.NATURAL.getType()),
             outputType = typeT))
 
     // Sequence.first
-    definitions.add(TypeSignature(EntityId.of("Sequence", "first"), typeParameters = listOf(t),
-            argumentTypes = listOf(sequenceT, Type.FunctionType(listOf(typeT), Type.BOOLEAN)),
+    definitions.add(TypeSignature.create(EntityId.of("Sequence", "first"), typeParameters = listOf(t),
+            argumentTypes = listOf(sequenceT, Type.FunctionType.create(listOf(), listOf(typeT), Type.BOOLEAN)),
             outputType = typeT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
@@ -217,52 +217,51 @@ private fun addSequenceFunctions(definitions: ArrayList<TypeSignature>) {
 
 private fun addDataFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", TypeClass.Data)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
     // Data.equals
-    definitions.add(TypeSignature(EntityId.of("Data", "equals"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("Data", "equals"), typeParameters = listOf(t),
             argumentTypes = listOf(typeT, typeT),
             outputType = Type.BOOLEAN))
 }
 
 private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
-    val typeT = Type.ParameterType(t)
+    val typeT = Type.InternalParameterType(0)
 
     // TextOut.print
-    definitions.add(TypeSignature(EntityId.of("TextOut", "print"), typeParameters = listOf(),
-            argumentTypes = listOf(NativeThreadedType.TEXT_OUT, NativeStruct.UNICODE_STRING.getType()),
-            outputType = NativeThreadedType.TEXT_OUT))
+    definitions.add(TypeSignature.create(EntityId.of("TextOut", "print"), typeParameters = listOf(),
+            argumentTypes = listOf(NativeThreadedType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
+            outputType = NativeThreadedType.TEXT_OUT.getType()))
 
-    val listBuilderT = NativeThreadedType.LIST_BUILDER
+    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType(listOf(typeT))
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "create"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "create"), typeParameters = listOf(t),
             argumentTypes = listOf(),
             outputType = listBuilderT))
 
     // ListBuilder.append
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "append"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "append"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT, typeT),
             outputType = listBuilderT))
 
     // ListBuilder.appendAll
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT, Type.List(typeT)),
             outputType = listBuilderT))
 
     // ListBuilder.build
-    definitions.add(TypeSignature(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
+    definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT),
             outputType = Type.List(typeT)))
 }
 
 object NativeStruct {
     private val t = TypeParameter("T", null)
-    private val u = TypeParameter("U", null)
     private val typeT = Type.ParameterType(t)
-    private val typeU = Type.ParameterType(u)
+
     val NATURAL = Struct(
             EntityId.of("Natural"),
             false,
@@ -289,7 +288,7 @@ object NativeStruct {
             listOf(t),
             listOf(
                     Member("base", typeT),
-                    Member("successor", Type.FunctionType(listOf(typeT), typeT))
+                    Member("successor", Type.FunctionType.create(listOf(), listOf(typeT), typeT))
             ),
             null,
             listOf()
@@ -414,10 +413,10 @@ object NativeThreadedType {
     private val t = TypeParameter("T", null)
 
     private val textOutId = EntityId.of("TextOut")
-    val TEXT_OUT = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, textOutId), EntityRef(null, textOutId), true)
+    val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
     private val listBuilderId = EntityId.of("ListBuilder")
-    val LIST_BUILDER = Type.NamedType(ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, listBuilderId), EntityRef(null, listBuilderId), true, listOf(Type.ParameterType(t)))
+    val LIST_BUILDER = OpaqueType(listBuilderId, CURRENT_NATIVE_MODULE_ID, listOf(t), true)
 }
 
 /**
@@ -428,11 +427,11 @@ object NativeThreadedType {
  * associated methods that must have a native implementation. (Obviously, these wouldn't be supported by
  * every type of runtime environment.)
  */
-fun getNativeOpaqueTypes(): Map<EntityId, Type.NamedType> {
-    val types = ArrayList<Type.NamedType>()
+fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
+    val types = ArrayList<OpaqueType>()
 
     types.add(NativeThreadedType.TEXT_OUT)
     types.add(NativeThreadedType.LIST_BUILDER)
 
-    return types.associateBy { it.ref.id }
+    return types.associateBy { it.id }
 }

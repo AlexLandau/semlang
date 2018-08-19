@@ -59,9 +59,10 @@ fun invalidate(type: Type): UnvalidatedType {
             UnvalidatedType.Maybe(invalidate(type.parameter))
         }
         is Type.FunctionType -> {
-            val argTypes = type.argTypes.map(::invalidate)
-            val outputType = invalidate(type.outputType)
-            UnvalidatedType.FunctionType(argTypes, outputType)
+            val groundType = type.getDefaultGrounding()
+            val argTypes = groundType.argTypes.map(::invalidate)
+            val outputType = invalidate(groundType.outputType)
+            UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
         }
         is Type.ParameterType -> {
             UnvalidatedType.NamedType(EntityRef.of(type.parameter.name), false)
@@ -70,6 +71,7 @@ fun invalidate(type: Type): UnvalidatedType {
             val parameters = type.parameters.map(::invalidate)
             UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
         }
+        is Type.InternalParameterType -> error("This shouldn't happen")
     }
 }
 
@@ -103,7 +105,8 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val arguments = expression.arguments.map(::invalidateExpression)
-            Expression.ExpressionFunctionCall(functionExpression, arguments)
+            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is TypedExpression.Literal -> {
             val type = invalidate(expression.type)
@@ -116,13 +119,14 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            Expression.ExpressionFunctionBinding(functionExpression, bindings)
+            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
+            Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is TypedExpression.Follow -> {
             val structureExpression = invalidateExpression(expression.structureExpression)
