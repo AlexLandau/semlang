@@ -1,0 +1,4 @@
+// Block with only assignments
+function doSomething(): Integer {
+  let foo = Integer."1"
+}
