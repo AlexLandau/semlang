@@ -9,12 +9,12 @@
   },
   "dependencies": {
     "big-integer": "1.6.26",
-    "lodash": "4.17.4",
+    "lodash.isequal": "4.5.0",
     "utfstring": "2.0.0"
   },
   "devDependencies": {
     "@types/jest": "22.0.1",
-    "@types/lodash": "4.14.92",
+    "@types/lodash.isequal": "4.5.3",
     "jest": "22.0.5",
     "jest-junit": "3.4.1",
     "typescript": "~2.5.3"
