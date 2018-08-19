@@ -292,13 +292,6 @@ private class TypeInfoCollector(
     }
 
     private fun getLocalFunctionInfo(function: Function): FunctionInfo {
-//        val typeParameters = function.typeParameters.map { it.name }
-//
-//        val argTypes = function.arguments.map { argument -> pseudoValidateType(argument.type, typeParameters) }
-//        val outputType = pseudoValidateType(function.returnType, typeParameters)
-//
-//        val type = Type.FunctionType(function.typeParameters, argTypes, outputType)
-//        return FunctionInfo(type)
         val resolvedRef = ResolvedEntityRef(moduleId, function.id)
         val type = pseudoValidateFunctionType(function.getType())
         return FunctionInfo(resolvedRef, type, function.idLocation)

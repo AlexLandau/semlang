@@ -359,7 +359,6 @@ private class Validator(
         }
         val bindingTypes = bindings.map { if (it == null) null else it.type }
 
-        // TODO: Implement this
         val providedChoices = expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
 
         val inferredTypeParameters = inferChosenTypeParameters(functionType, providedChoices, bindingTypes, functionType.toString(), expression.location) ?: return null

@@ -768,14 +768,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 unboundArgumentNames.add(argumentName)
 
                 val functionType = signature.getFunctionType().rebindTypeParameters(expression.chosenParameters)
-//                val argType = signature.getFunctionType().getArgTypes(expression.chosenParameters)[index]
                 val argType = when (functionType) {
                     is Type.FunctionType.Ground -> functionType.argTypes[index]
                     is Type.FunctionType.Parameterized -> functionType.argTypes[index]
                 }
 
-//                val unparameterizedArgType = signature.argumentTypes[index]
-//                val argType = unparameterizedArgType.replacingParameters(signature.typeParameters.map(Type::ParameterType).zip(expression.chosenParameters).toMap())
                 arguments.add(TypedExpression.Variable(argType, argumentName))
             } else {
                 arguments.add(binding)
