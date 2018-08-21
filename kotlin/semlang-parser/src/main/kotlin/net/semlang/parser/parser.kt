@@ -817,6 +817,45 @@ private class ErrorListener(val documentId: String): ANTLRErrorListener {
     }
 }
 
+private class ErrorStrategy(): DefaultErrorStrategy() {
+    override fun inErrorRecoveryMode(recognizer: Parser?): Boolean {
+        return super.inErrorRecoveryMode(recognizer)
+    }
+
+    override fun reportMatch(recognizer: Parser?) {
+        super.reportMatch(recognizer)
+    }
+
+    override fun recoverInline(recognizer: Parser): Token {
+        System.out.println("Doing a recoverInline")
+        System.out.println("  Current token: " + recognizer.currentToken)
+        System.out.println("  Expected tokens: " + recognizer.expectedTokens)
+        System.out.println("  Rule context: " + recognizer.ruleContext)
+        return super.recoverInline(recognizer)
+    }
+
+    override fun recover(recognizer: Parser?, e: RecognitionException?) {
+        System.out.println("Doing a recover with exception $e")
+        super.recover(recognizer, e)
+    }
+
+    override fun sync(recognizer: Parser?) {
+        System.out.println("Doing a sync")
+        super.sync(recognizer)
+    }
+
+    override fun reportError(recognizer: Parser?, e: RecognitionException?) {
+        System.out.println("Doing a reportError")
+        super.reportError(recognizer, e)
+    }
+
+    override fun reset(recognizer: Parser?) {
+        System.out.println("Doing a reset")
+        super.reset(recognizer)
+    }
+
+}
+
 class CancelParsingCurrentTopLevelElementException: Exception()
 class LocationAwareParsingException(message: String, val location: Location, cause: Exception? = null): Exception(message, cause)
 
@@ -827,6 +866,9 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     val tokens = CommonTokenStream(lexer)
     val parser = Sem1Parser(tokens)
     parser.addErrorListener(errorListener)
+    val errorStrategy = ErrorStrategy()
+    parser.setErrorHandler(errorStrategy)
+    parser.isTrace = true
     val tree: Sem1Parser.FileContext = parser.file()
 
     val extractor = ContextListener(documentId)
