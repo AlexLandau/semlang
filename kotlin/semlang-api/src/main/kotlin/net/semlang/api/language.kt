@@ -772,6 +772,8 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     override fun toString(): String {
         if (typeClass == null) {
             return name
+        } else if (typeClass == TypeClass.Threaded) {
+            return "~$name"
         } else {
             return "$name: $typeClass"
         }

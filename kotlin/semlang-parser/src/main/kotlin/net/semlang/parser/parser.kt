@@ -365,7 +365,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     private fun parseTypeParameter(type_parameter: Sem1Parser.Type_parameterContext): TypeParameter {
         val name = type_parameter.ID().text
-        val typeClass = parseTypeClass(type_parameter.type_class())
+        val typeClass = if (type_parameter.TILDE() != null) {
+            if (type_parameter.type_class() != null) {
+                error("Can't mark a parameter with both ~ and a type class")
+            }
+            TypeClass.Threaded
+        } else {
+            parseTypeClass(type_parameter.type_class())
+        }
         return TypeParameter(name, typeClass)
     }
 

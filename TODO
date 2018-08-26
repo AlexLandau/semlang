@@ -4,6 +4,7 @@ Major near-term projects:
   - Threaded structs
     - Destructuring statements
   - Threaded parameter types (think e.g. having ~T and then a function that accepts ~T as arguments)
+  - Support mock tests in TS
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
 - Finish converting the validator to use fine-grained errors

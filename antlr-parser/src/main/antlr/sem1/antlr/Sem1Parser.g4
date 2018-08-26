@@ -96,7 +96,7 @@ annotation_item : LITERAL | LBRACKET annotation_contents_list RBRACKET ;
 
 // cd_type_parameters is nonempty
 cd_type_parameters : type_parameter | type_parameter COMMA | type_parameter COMMA cd_type_parameters ;
-type_parameter : ID | ID COLON type_class ;
+type_parameter : ID | TILDE ID | ID COLON type_class ;
 type_class : ID ;
 
 assignments : | assignment assignments ;
