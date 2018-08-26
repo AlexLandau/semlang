@@ -643,15 +643,21 @@ private class Validator(
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
-        if (chosenType.isThreaded()) {
+        val typeClass = typeParameter.typeClass
+        if (chosenType.isThreaded() && typeClass != TypeClass.Threaded) {
             errors.add(Issue("Threaded types cannot be used as parameters", location, IssueLevel.ERROR))
         }
-        val typeClass = typeParameter.typeClass
         if (typeClass != null) {
             val unused: Any = when (typeClass) {
                 TypeClass.Data -> {
                     if (!typesInfo.isDataType(chosenType)) {
                         errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but $chosenType is not a data type", location, IssueLevel.ERROR))
+                    } else {}
+                }
+                TypeClass.Threaded -> {
+                    if (!chosenType.isThreaded()) {
+                        // TODO: Arguably we don't need to make this an error
+                        errors.add(Issue("Type parameter ${typeParameter.name} requires a threaded type, but $chosenType is not a threaded type", location, IssueLevel.ERROR))
                     } else {}
                 }
             }

@@ -765,6 +765,7 @@ sealed class Type {
 
 enum class TypeClass {
     Data,
+    Threaded,
 }
 
 data class TypeParameter(val name: String, val typeClass: TypeClass?) {
