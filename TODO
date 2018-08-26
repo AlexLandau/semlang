@@ -1,9 +1,7 @@
 Major near-term projects:
 - Threaded types, console-out support, and application functions
-  - Ability to test functions involving threaded objects
   - Threaded structs
     - Destructuring statements
-  - Threaded parameter types (think e.g. having ~T and then a function that accepts ~T as arguments)
   - Support mock tests in TS
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
