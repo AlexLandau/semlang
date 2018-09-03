@@ -90,7 +90,6 @@ class ParserNegativeTests(private val file: File) {
 
     @Test
     fun test() {
-        System.out.println("Running negative parser test for $file")
         val result = parseFile(file)
         if (result is ParsingResult.Failure) {
             Assert.assertNotEquals(0, result.errors.size)
@@ -115,7 +114,6 @@ class ValidatorNegativeTests(private val file: File) {
 
     @Test
     fun test() {
-        System.out.println("Running negative validator test for $file")
         val parsingResult = parseFile(file)
         if (parsingResult is ParsingResult.Failure) {
             throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead")

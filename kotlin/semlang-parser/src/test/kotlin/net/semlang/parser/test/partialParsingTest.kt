@@ -12,7 +12,6 @@ import java.io.File
 class PartialParsingTest {
     @Test
     fun testCanDoValidationWithPartialParsingError() {
-        System.out.println("*** test 1 ***")
         val sourceFile = File("src/test/semlang/validatorTests/partialParsing/partiallyValid.sem")
         val parsingResult = parseFile(sourceFile)
         when (parsingResult) {
@@ -38,7 +37,6 @@ class PartialParsingTest {
 
     @Test
     fun testCanDoValidationWithPartialParsingError2() {
-        System.out.println("*** test 2 ***")
         val sourceFile = File("src/test/semlang/validatorTests/partialParsing/partiallyValid2.sem")
         val parsingResult = parseFile(sourceFile)
         when (parsingResult) {
@@ -63,7 +61,6 @@ class PartialParsingTest {
 
     @Test
     fun testCanDoValidationWithPartialParsingError3() {
-        System.out.println("*** test 3 ***")
         val sourceFile = File("src/test/semlang/validatorTests/partialParsing/partiallyValid3.sem")
         val parsingResult = parseFile(sourceFile)
         when (parsingResult) {
