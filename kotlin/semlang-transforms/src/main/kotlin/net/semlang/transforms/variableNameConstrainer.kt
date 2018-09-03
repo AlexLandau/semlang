@@ -140,17 +140,6 @@ private fun renameArgument(argument: UnvalidatedArgument, renamingMap: Map<Strin
 typealias VariableRenamingStrategy = (varName: String, allVarNamesPresent: Set<String>) -> String
 
 object RenamingStrategies {
-    fun avoidNumeralAtStartByPrependingUnderscores(varName: String, allVarNamesPresent: Set<String>): String {
-        if (!varName[0].isDigit()) {
-            return varName
-        }
-        var newName = "_" + varName
-        while (allVarNamesPresent.contains(newName)) {
-            newName = "_" + newName
-        }
-        return newName
-    }
-
     fun getKeywordAvoidingStrategy(keywords: Set<String>): (varName: String, allVarNamesPresent: Set<String>) -> String {
         return fun(varName: String, allVarNamesPresent: Set<String>): String {
             if (!keywords.contains(varName)) {
