@@ -8,10 +8,10 @@ struct myStuff.Operator {
 @Test(["1"], "2")
 @Test(["11"], "12")
 function myStuff.myFunction(input: Integer): Integer {
-  let 1: Integer = Integer."1"
+  let _1: Integer = Integer."1"
   let plusOperator: myStuff.Operator = myStuff.Operator(Integer."0", Integer.plus|(_,_))
   // Use a function binding just to test that
-  let incrementer: (Integer) -> Integer = plusOperator->apply|(_, 1)
+  let incrementer: (Integer) -> Integer = plusOperator->apply|(_, _1)
   let output: Integer = incrementer(input)
   output
 }

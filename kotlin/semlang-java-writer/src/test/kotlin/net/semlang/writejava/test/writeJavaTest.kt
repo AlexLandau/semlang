@@ -83,7 +83,7 @@ class WriteJavaTest(private val file: File, private val libraries: List<Validate
         val expectedRunCount = getExpectedTestCount(linkedModule, TestsType.NON_MOCK_TESTS)
         // TODO: Figure out a way to relay failures correctly
         if (!result.wasSuccessful()) {
-            fail("Generated JUnit test was not successful. Failures were:\n" + result.failures)
+            fail("Generated JUnit test was not successful. Failures were:\n" + result.failures.map { it.trace }.joinToString("\n*****\n"))
         } else if (result.runCount != expectedRunCount) {
             fail("Expected number of tests to run was $expectedRunCount, actual was ${result.runCount}")
         }

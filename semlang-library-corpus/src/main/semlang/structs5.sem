@@ -13,9 +13,9 @@ function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
 @Test(["2"], "12")
 @Test(["3"], "20")
 function myStuff.myFunction(input: Natural): Integer {
-  let 1: Natural = Natural."1"
-  let newX: Natural = Natural.plus(input, 1)
-  let newY: Natural = Natural.plus(newX, 1)
+  let _1: Natural = Natural."1"
+  let newX: Natural = Natural.plus(input, _1)
+  let newY: Natural = Natural.plus(newX, _1)
   let object: myStuff.Point<Natural> = myStuff.Point(newX, newY)
   let partialOutput: Natural = Natural.times(object->x, object->y)
   let specificFunction: (myStuff.Point<Natural>) -> Integer = myStuff.genericFunction<Natural>|(_)

@@ -13,9 +13,9 @@ function myStuff.genericFunction<T>(input: myStuff.Point<T>): Integer {
 @Test(["2"], "3")
 @Test(["3"], "8")
 function myStuff.myFunction(input: Integer): Integer {
-  let 1: Integer = Integer."1"
-  let newX: Integer = Integer.plus(input, 1)
-  let newY: Integer = Integer.minus(input, 1)
+  let _1: Integer = Integer."1"
+  let newX: Integer = Integer.plus(input, _1)
+  let newY: Integer = Integer.minus(input, _1)
   let object: myStuff.Point<Integer> = myStuff.Point<Integer>(newX, newY)
   let partialOutput: Integer = Integer.times(object->x, object->y)
   let constantFactor: Integer = myStuff.genericFunction<Integer>(object)

@@ -877,7 +877,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeLiteralExpression(type: Type, literal: String): CodeBlock {
         return when (type) {
             Type.INTEGER -> {
-                CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+                val isValidLong = (literal.toLongOrNull() != null)
+                if (isValidLong) {
+                    CodeBlock.of("\$T.valueOf(\$LL)", BigInteger::class.java, literal)
+                } else {
+                    CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+                }
             }
             Type.BOOLEAN -> {
                 CodeBlock.of("\$L", literal)
@@ -938,8 +943,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun writeNaturalLiteral(literal: String): CodeBlock {
-        return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+        val isValidLong = (literal.toLongOrNull() != null)
+        if (isValidLong) {
+            return CodeBlock.of("\$T.valueOf(\$LL)", BigInteger::class.java, literal)
+        } else {
+            return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
+        }
     }
+
 
     private fun writeComplexLiteralExpression(type: Type, literal: String): CodeBlock {
         val parsingResult = parseComplexLiteral(literal)
