@@ -70,7 +70,14 @@ top_level_entities :
 
 function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
          | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
-//    catch[RecognitionException e] { throw e; }
+struct : annotations STRUCT optional_tilde entity_id LBRACE members maybe_requires RBRACE
+  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
+// TODO: Is there a better solution for this than mangling the name?
+interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
+  | annotations INTERFACE entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE methods RBRACE ;
+union : annotations UNION entity_id LBRACE disjuncts RBRACE
+  | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
+
 block : LBRACE assignments return_statement RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
@@ -78,9 +85,6 @@ function_arguments : | function_argument | function_argument COMMA function_argu
 function_argument : ID COLON type ;
     catch[RecognitionException e] { throw e; }
 
-struct : annotations STRUCT optional_tilde entity_id LBRACE members maybe_requires RBRACE
-  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
-//    catch[RecognitionException e] { throw e; }
 optional_tilde : | TILDE ;
     catch[RecognitionException e] { throw e; }
 members : | member members ;
@@ -90,19 +94,12 @@ member : ID COLON type ;
 maybe_requires : | REQUIRES block ;
     catch[RecognitionException e] { throw e; }
 
-// TODO: Is there a better solution for this than mangling the name?
-interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
-  | annotations INTERFACE entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE methods RBRACE ;
-//    catch[RecognitionException e] { throw e; }
 methods : | method methods ;
     catch[RecognitionException e] { throw e; }
 method : ID LPAREN function_arguments RPAREN COLON type
   | ID LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
     catch[RecognitionException e] { throw e; }
 
-union : annotations UNION entity_id LBRACE disjuncts RBRACE
-  | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
-//    catch[RecognitionException e] { throw e; }
 disjuncts: | disjunct disjuncts ;
     catch[RecognitionException e] { throw e; }
 disjunct: ID COLON type | ID ;
@@ -123,7 +120,7 @@ annotation_item : LITERAL | LBRACKET annotation_contents_list RBRACKET ;
 // cd_type_parameters is nonempty
 cd_type_parameters : type_parameter | type_parameter COMMA | type_parameter COMMA cd_type_parameters ;
     catch[RecognitionException e] { throw e; }
-type_parameter : ID | ID COLON type_class ;
+type_parameter : ID | TILDE ID | ID COLON type_class ;
     catch[RecognitionException e] { throw e; }
 type_class : ID ;
     catch[RecognitionException e] { throw e; }

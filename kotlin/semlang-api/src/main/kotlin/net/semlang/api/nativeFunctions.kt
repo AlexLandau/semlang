@@ -98,8 +98,10 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
+    val thr = TypeParameter("Thr", TypeClass.Threaded)
     val typeT = Type.InternalParameterType(0)
     val typeU = Type.InternalParameterType(1)
+    val typeThr = Type.InternalParameterType(1)
 
     // List.append
     definitions.add(TypeSignature.create(EntityId.of("List", "append"), typeParameters = listOf(t),
@@ -140,6 +142,11 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature.create(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
             argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
+
+    // List.reduceThreaded
+    definitions.add(TypeSignature.create(EntityId.of("List", "reduceThreaded"), typeParameters = listOf(t, thr),
+            argumentTypes = listOf(Type.List(typeT), typeThr, Type.FunctionType.create(listOf(), listOf(typeThr, typeT), typeThr)),
+            outputType = typeThr))
 
     // List.size
     definitions.add(TypeSignature.create(EntityId.of("List", "size"), typeParameters = listOf(t),

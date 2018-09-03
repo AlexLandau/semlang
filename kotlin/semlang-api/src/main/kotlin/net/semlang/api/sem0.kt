@@ -19,7 +19,8 @@ data class S0Struct(val id: String, val markedAsThreaded: Boolean, val typeParam
 data class S0Member(val name: String, val type: S0Type)
 
 enum class S0TypeClass {
-    Data
+    Data,
+    Threaded
 }
 
 data class S0TypeParameter(val name: String, val typeClass: S0TypeClass?)

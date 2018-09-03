@@ -1,0 +1,11 @@
+@Test.Mock(["out1"], "out3", [
+  ["TextOut.print", ["out1", "Hello!"], "out2"],
+  ["TextOut.print", ["out2", "Hello!"], "out3"]
+])
+function doublePrinter(out: ~TextOut): ~TextOut {
+  doTwice(out, TextOut.print|(_, Unicode.String."Hello!"))
+}
+
+function doTwice<~T>(object: ~T, fn: (~T) -> ~T): ~T {
+  fn(fn(object))
+}

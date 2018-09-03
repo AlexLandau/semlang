@@ -1,0 +1,15 @@
+@Test.Mock(["out1"], "out5", [
+  ["TextOut.print", ["out1", "Mercury"], "out2"],
+  ["TextOut.print", ["out2", "Venus"], "out3"],
+  ["TextOut.print", ["out3", "Earth"], "out4"],
+  ["TextOut.print", ["out4", "Mars"], "out5"],
+])
+function testListReduceThreaded(out: ~TextOut): ~TextOut {
+  let planets = [
+    Unicode.String."Mercury",
+    Unicode.String."Venus",
+    Unicode.String."Earth",
+    Unicode.String."Mars"
+  ]<Unicode.String>
+  List.reduceThreaded(planets, out, TextOut.print|(_, _))
+}

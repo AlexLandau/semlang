@@ -56,6 +56,7 @@ private class Sem1To0Converter(val input: RawContext) {
         } else {
             when (typeClass) {
                 TypeClass.Data -> S0TypeClass.Data
+                TypeClass.Threaded -> S0TypeClass.Threaded
             }
         }
     }
