@@ -1,0 +1,8 @@
+// Invalid function declaration (parsing error)
+function foo(): Natural {
+}
+
+// Valid struct declaration
+struct bar {
+  baz: Natural
+}

@@ -110,19 +110,27 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     val unions: MutableList<UnvalidatedUnion> = ArrayList()
 
     override fun exitFunction(ctx: Sem1Parser.FunctionContext) {
-        functions.add(parseFunction(ctx))
+        if (ctx.exception == null) {
+            functions.add(parseFunction(ctx))
+        }
     }
 
     override fun exitStruct(ctx: Sem1Parser.StructContext) {
-        structs.add(parseStruct(ctx))
+        if (ctx.exception == null) {
+            structs.add(parseStruct(ctx))
+        }
     }
 
     override fun exitInterfac(ctx: Sem1Parser.InterfacContext) {
-        interfaces.add(parseInterface(ctx))
+        if (ctx.exception == null) {
+            interfaces.add(parseInterface(ctx))
+        }
     }
 
     override fun exitUnion(ctx: Sem1Parser.UnionContext) {
-        unions.add(parseUnion(ctx))
+        if (ctx.exception == null) {
+            unions.add(parseUnion(ctx))
+        }
     }
 
     private fun locationOf(context: ParserRuleContext): Location {
@@ -824,7 +832,6 @@ private class ErrorListener(val documentId: String): ANTLRErrorListener {
     }
 }
 
-class CancelParsingCurrentTopLevelElementException: Exception()
 class LocationAwareParsingException(message: String, val location: Location, cause: Exception? = null): Exception(message, cause)
 
 private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String): ParsingResult {

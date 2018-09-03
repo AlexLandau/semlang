@@ -1,0 +1,8 @@
+// Invalid function declaration (parsing error)
+function foo(): Natural {
+}
+
+// Valid function declaration
+function bar(): Natural {
+  Natural."3"
+}
