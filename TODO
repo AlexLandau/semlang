@@ -177,6 +177,8 @@ Design choices to reconsider:
 - For Maybe methods, better names than "success" and "failure"
   - Option 1: Present/absent
   - Option 2: Here/absent
+- For literals of restricted structs, maybe return a Maybe<T> instead of T and leave the inference of T being valid
+  to a proof system
 
 Errors I've made in writing things:
 - (2) Used . in place of ->

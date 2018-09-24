@@ -704,10 +704,12 @@ private class Validator(
                 val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a nonexistent or non-struct type ${type.originalRef}")
 
                 if (structInfo.typeParameters.isNotEmpty()) {
+                    // See parameterizedStructLiteral1: this fails in parsing
                     fail("Can't have a literal of a type with type parameters: $type")
                 }
                 if (structInfo.memberTypes.size != 1) {
-                    fail("Can't have a literal of a struct type with more than one member")
+                    errors.add(Issue("Can't have a literal of type ${type.originalRef} because it is a struct type with more than one member", literalLocation, IssueLevel.ERROR))
+                    return null
                 }
                 val unvalidatedMemberType = structInfo.memberTypes.values.single()
                 val memberType = validateType(unvalidatedMemberType, structInfo.typeParameters.associateBy(TypeParameter::name)) ?: return null

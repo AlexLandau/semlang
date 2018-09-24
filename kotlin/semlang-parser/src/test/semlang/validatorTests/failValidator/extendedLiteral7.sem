@@ -1,0 +1,8 @@
+struct Foo {
+  foo: Integer
+  bar: Integer
+}
+
+function baz(): Foo {
+  Foo."12"
+}
