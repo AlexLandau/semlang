@@ -1,0 +1,7 @@
+@Export
+function modifyFoo(foo: CommonFoo): CommonFoo {
+  CommonFoo(
+    foo->s,
+    Integer.plus(foo->n, Integer."1")
+  )
+}

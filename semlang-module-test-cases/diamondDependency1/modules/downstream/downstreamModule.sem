@@ -1,0 +1,4 @@
+@Export
+function getModifiedFoo(): CommonFoo {
+  modifyFoo(provideFooConstant())
+}
