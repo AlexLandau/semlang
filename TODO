@@ -2,14 +2,24 @@ Major near-term projects:
 - Threaded types, console-out support, and application functions
   - Threaded structs
     - Destructuring statements
+    - Should we replace these with references?
   - Support mock tests in TS
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
-- Finish converting the validator to use fine-grained errors
+- Sem64
+  - It would be nice if threaded types were stable first
 - Sem2 and Try notation
   - Call functions like they were on the relevant objects (with IDE autocomplete support)
   - Standard operators
   - Consider a return keyword and similar imperative control structures?
+    - Vars?
+  - It would be nice if threaded types were stable first, but this might be a prereq for usability...
+- Finish converting the validator to use fine-grained errors
+  - and/or port the validator itself to Semlang?
+- Probably rename Unicode.String to just String (Ascii.String or AsciiString can still come later)
+Not as near-term but on my mind:
+- Some kind of proof system?
+- Code writing in TypeScript? Other languages?
 
 Cases to get working with "nice" dev tooling:
 - Empty struct
