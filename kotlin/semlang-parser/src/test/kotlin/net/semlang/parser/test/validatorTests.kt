@@ -116,7 +116,7 @@ class ValidatorNegativeTests(private val file: File) {
     fun test() {
         val parsingResult = parseFile(file)
         if (parsingResult is ParsingResult.Failure) {
-            throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead")
+            throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
         }
         val result = validate(parsingResult, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
         if (result is ValidationResult.Failure) {

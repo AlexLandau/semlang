@@ -848,7 +848,7 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
         val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
-        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty(), e.location, IssueLevel.ERROR)), partialContext)
+        return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty() + if (e.cause?.message != null) {": " + e.cause.message.orEmpty()} else "", e.location, IssueLevel.ERROR)), partialContext)
     }
 
     val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
