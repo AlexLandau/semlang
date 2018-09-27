@@ -1,0 +1,4 @@
+function textOutLiteral(): TextOut {
+  // This doesn't work
+  TextOut."Hello, world!"
+}
