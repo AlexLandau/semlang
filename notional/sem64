@@ -1,0 +1,25 @@
+
+Fields to include (in approximate order):
+- Magic number
+- Number of functions
+- Number of structs
+- Number of unions
+- Number of interfaces
+
+- (Indices of definitions/implementations within the file, to enable selective loading?)
+
+- Identifiers of upstream entities used (should this identify the modules and their versions as well?)
+
+- (Parameter counts/types for each type definition? Whether they are supposed to be threaded?)
+
+- Struct type definitions
+- Union type definitions
+- Interface type definitions
+- Function type definitions
+
+- Function implementations
+- Struct requires-block implementations
+
+A prereq to building the real version of this is likely enumerating and documenting all the things that
+are checked during validation, and figuring out when they should happen during sem64 loading (so things
+can be sorted accordingly).

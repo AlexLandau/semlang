@@ -1,0 +1,148 @@
+It's difficult to pass threaded stuff through the arguments of a function back through
+the return value, particularly if the return value is a struct rather than an arbitrary
+tuple of multiple values (which I haven't yet tried to get working really cleanly, but
+feels redundant with the concept of structs at the sem0 level). This is especially true
+when any struct with threaded stuff is itself threaded and subject to the one-reference
+rule. Get statements (i.e. destructuring) were supposed to fix that, but a new situation
+popped up:
+
+struct ThreadedSequence<~T> {
+  initialValue: ~T
+  successor: (~T) -> ~T
+}
+
+function ThreadedSequence.first<~T>(seq: ThreadedSequence<~T>, predicate: (~T) -> Boolean): ~T
+
+Note that ThreadedSequence.first can't actually work here because predicate would consume the
+reference to the initialValue. Yet if ~T is a struct with non-threaded values as well,
+we could easily be interested in evaluating those values in such a predicate. Right now
+we can't do that without an implementation of ThreadedSequence that ruins the intended
+semantics of ThreadedSequence, i.e. by allowing the threaded value to be modified by the
+predicate function as well as the successor function. Intuitively, we want to pass the
+predicate function a frozen version of the ~T value.
+
+I felt like Rust has done the most work around concepts similar to what I'm seeking here,
+and in particular rereading the Rust docs brought up the concepts of pass-by-value and
+pass-by-reference. This was something of a reminder that these are things that programmers
+do usually learn and know, at some level. Nor would it be especially weird for certain
+types to always be pass-by-reference; enforcing stronger guarantees around timing may be
+weirder, but Rust already does it and people live with that. (There would probably be
+a guarantee of only one reference to a reference-thing per statement, unless they were
+all frozen "copies".)
+
+So let's start the quibbling over syntax.
+
+function sayHello(out: &TextOut) {
+  TextOut.print(&out, String."Hello, world!")
+}
+
+Things to note here:
+1) No return type for the function (how will this be denoted in function types?)
+2) No "returning" final statement with a value
+3) A non-let statement (could be prefixed with "do" if needed, but that could get confusing?)
+4) The &out to indicate a reference is being passed and mutation could happen here -- the
+   & is part of the function call/argument, not the expression (i.e. you can't "let foo = &bar")
+
+What stuff are we worried about in terms of the manipulability of the language here?
+
+1) This shouldn't make breaking apart/pulling out expressions harder, but it might prevent
+   putting them together (which is fortunately not all that interesting)
+2) We should make sure inlining functions is still a simple operation
+3) This makes reordering statements within a function a bit more complex; relatedly, analyzing
+   the flow of data and control (if that makes sense) could get a bit harder to write
+
+struct ConsoleIo {
+  out: &TextOut
+  err: &TextOut
+}
+
+function sayHelloTwice(io: &ConsoleIo) {
+  TextOut.print(&io->out, String."Hello, world!")
+  TextOut.print(&io->err, String."Oops, world!")
+}
+
+Things to note here:
+
+1) Again, multiple non-let statements
+2) We have a struct with reference types, but we no longer mark the entire struct as special
+3) io->out and io->err are only accessible because io is a reference; as a rule, members of a struct with
+   reference types can only be accessed by reference access to a struct
+4) Removing the "&" in the TextOut.print calls would cause a type error for the function, that it's
+   expecting &TextOut and not TextOut
+5) These couldn't go into the same statement, though in this case it's moot since these both return
+   nothing. I was thinking there'd be some example with Function.doInOrder, but that involves function
+   bindings anyway, which aren't (yet) compatible with threaded types/references.
+6) In this case, ConsoleIo or some container thereof would be expected to be provided at the application
+   entry point, but I should consider how we "construct" a struct reference given references that would
+   be its contents (and how to avoid aliasing issues)
+
+Now let's speculate about things people will obviously try to emulate mutable variables:
+
+@Test("2")
+function beAnnoyinglyImperative(): Integer {
+  let myInt: Integer = Integer."1"
+  addOne(&myInt)
+  myInt
+}
+
+function addOne(i: ~Integer) {
+  Integer.plus(i, Integer."1")
+}
+
+Is this something we blame on the coder or something to be discouraged through lack of support in the language?
+(Or is this something that could be turned into a warning or "inspection"?) And is that really the way we
+should be declaring these things, or should myInt be an &Integer specifically? (Which might be an argument
+for var/val syntax?)
+
+function sayHelloTwiceWrapper(out: &TextOut, err: &TextOut) {
+  let io: ConsoleIo = ConsoleIo(&out, &err)
+  sayHelloTwice(&io)
+}
+
+This is basically the same question. I guess it could also be let/ref rather than val/var if we want to
+establish that terminology further (though "ref" is not parallel to a verb).
+
+There's an additional question of aliasing, given that ConsoleIo should be "binding" out and err for
+its lifetime.
+
+function (...) {
+  let io = ConsoleIo(&out, &err)
+  //Some notional code
+  doThingsWithTwoOutputsSimultaneously(&io->out, &io->err) // technically bad: two refs to io in statement
+  doThingsWithTwoOutputsSimultaneously(&out, &err) // technically bad since out and err should be bound by now
+  doThingsWithTwoOutputsSimultaneously(&io->out, &out) // actually bad
+}
+Compare:
+function (io: &ConsoleIo) {
+  get out, err from &io // This is some kind of destructuring statement with the opposite scoping effect
+  doThingsWithTwoOutputsSimultaneously(&out, &err)
+}
+
+So we'd have dual scope-affecting operations. Another couple of options to consider:
+
+function (...) {
+  let io = ConsoleIo(&out, &err) in {
+    // io is in-scope here, out and err are out
+    get out, err from &io in {
+      // out and err are in, io is out
+    }
+    // io is in, out and err are out
+  }
+  // out and err are back here
+
+  // probably-cleaner alternative, declaring blank scopes (I think Rust is like this?):
+  {
+    let io = ConsoleIo(&out, &err)
+    // io is in-scope, out and err are out-of-scope
+    {
+      get out, err from &io
+      // out and err are in, io is out
+    }
+    // io is in, out and err are out
+  }
+  // out and err are back here
+}
+
+OK, but how do we indicate in a function signature the difference between a reference argument that is only
+used for the duration of the function and one that is "consumed" for the lifetime of its input? (And what
+if it's consumed permanently, as with a DatabaseConnection.close() equivalent?)
