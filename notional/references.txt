@@ -146,3 +146,9 @@ function (...) {
 OK, but how do we indicate in a function signature the difference between a reference argument that is only
 used for the duration of the function and one that is "consumed" for the lifetime of its input? (And what
 if it's consumed permanently, as with a DatabaseConnection.close() equivalent?)
+
+One possibility: prefix with & for "borrow for duration of function", && for "borrow for scope of output",
+and &&& (or something else) for "descope permanently" if that needs to be a concept...
+
+Also, we should establish the ability for modules to be published that define additional opaque types and
+related methods (where different runtime environments may or may not support those modules).

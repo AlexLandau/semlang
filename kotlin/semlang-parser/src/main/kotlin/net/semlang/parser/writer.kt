@@ -20,7 +20,6 @@ fun writeToString(context: RawContext): String {
 }
 
 fun write(module: ValidatedModule, writer: Writer) {
-    // TODO: Just invalidate, then use the other code path
     val context = invalidate(module)
     write(context, writer)
 }

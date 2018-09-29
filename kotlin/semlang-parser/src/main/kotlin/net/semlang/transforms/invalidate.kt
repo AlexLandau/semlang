@@ -5,10 +5,11 @@ import net.semlang.api.Function
 
 // TODO: These might be better as functions (or even extension functions) on the API elements
 fun invalidate(module: ValidatedModule): RawContext {
-    val functions = module.ownFunctions.values.map(::invalidate)
-    val structs = module.ownStructs.values.map(::invalidate)
-    val interfaces = module.ownInterfaces.values.map(::invalidate)
-    val unions = module.ownUnions.values.map(::invalidate)
+    // TODO: There might be better options for how to sort these or keep them sorted...
+    val functions = module.ownFunctions.toSortedMap(EntityIdComparator).values.map(::invalidate)
+    val structs = module.ownStructs.toSortedMap(EntityIdComparator).values.map(::invalidate)
+    val interfaces = module.ownInterfaces.toSortedMap(EntityIdComparator).values.map(::invalidate)
+    val unions = module.ownUnions.toSortedMap(EntityIdComparator).values.map(::invalidate)
     return RawContext(functions, structs, interfaces, unions)
 }
 
@@ -152,4 +153,31 @@ fun invalidate(function: ValidatedFunction): Function {
     val returnType = invalidate(function.returnType)
     return Function(function.id, function.typeParameters, arguments, returnType, block,
             function.annotations)
+}
+
+private object EntityIdComparator: Comparator<EntityId> {
+    override fun compare(id1: EntityId, id2: EntityId): Int {
+        val strings1 = id1.namespacedName
+        val strings2 = id2.namespacedName
+        var i = 0
+        while (true) {
+            // When they are otherwise the same, shorter precedes longer
+            val done1 = i >= strings1.size
+            val done2 = i >= strings2.size
+            if (done1) {
+                if (done2) {
+                    return 0
+                } else {
+                    return -1
+                }
+            }
+            if (done2) {
+                return 1
+            }
+            val stringComparison = strings1[i].compareTo(strings2[i])
+            if (stringComparison != 0) {
+                return stringComparison
+            }
+        }
+    }
 }
