@@ -1,0 +1,41 @@
+So you want two libraries to share some types from a third library.
+
+First of all: Currently we don't have checks that types used in an exported function are also exported from the module.
+We should fix that.
+
+The first question is how do we declare a re-export? This could happen either in the module.conf file or in the source
+itself (as a new top-level entity). The nice thing about the latter would be the ability to stuff everything in one
+source file via concatenation (if things are set up correctly), but we can't do that yet anyway, so we might as well
+stuff them in the module.conf and leave open the possibility of later improvements.
+
+So there are still some questions to answer:
+
+1) When this gets used by the downstream code calling into the two libraries, when it references the type by a full
+reference, does it use the module name from the original library or the module name of the reexporter, or can it do
+either?
+  - Using the original library's name (only) makes it easier to say "these two types are the same". Caveat: At some
+    point I want to allow multiple names for a single version, so maybe these would have to be resolved internally.
+    That's probably fine.
+  - Using the reexporter's module name makes the resolver's job easier. We can probably work around that.
+  - It's not clear which would be more intuitive for programmers. Hopefully they wouldn't need to use the module names
+    to begin with in most cases.
+  - If people have to choose which module's version of a type to use, the space will be less polluted if we don't have
+    types be importable from every module they're re-exported from.
+  - Types from core libraries would always use the original module name in library APIs. Using the original module name
+    would be consistent with that.
+
+Advantage to: keeping and requiring the original module name, though it will require rewriting some of the tech around
+resolving types.
+
+2) Can functions be re-exported, or only type definitions (structs/unions/interfaces)?
+
+We don't need to allow functions to be re-exported; you can define a function that calls into another and they will
+behave exactly the same (as function references/definitions can't be compared for equality). By contrast, this can't be
+done with types due to nominative typing.
+
+There are also reasons why we'll probably want to end up treating functions and type definitions differently around APIs
+and versioning (though requires definitions could mess this up).
+
+
+So: Put re-exported types in the module.conf; don't allow it for functions; use the original module name when
+referencing the type.
