@@ -178,6 +178,7 @@ private object EntityIdComparator: Comparator<EntityId> {
             if (stringComparison != 0) {
                 return stringComparison
             }
+            i++
         }
     }
 }

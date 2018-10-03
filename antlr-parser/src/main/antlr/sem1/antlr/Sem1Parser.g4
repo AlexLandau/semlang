@@ -39,8 +39,8 @@ tokens {
   GREATER_THAN,
   PIPE,
   AT,
-  HYPHEN,
   TILDE,
+  MODULE_ID,
   ID,
   UNDERSCORE
 }
@@ -59,7 +59,7 @@ module_ref : module_id // Name only
   | module_id COLON module_id // Group and name
   | module_id COLON module_id COLON module_id ; // Group, name, and version
     catch[RecognitionException e] { throw e; }
-module_id : ID | ID HYPHEN module_id | ID UNDERSCORE module_id | ID DOT module_id ;
+module_id : ID | MODULE_ID ;
     catch[RecognitionException e] { throw e; }
 
 top_level_entities :
