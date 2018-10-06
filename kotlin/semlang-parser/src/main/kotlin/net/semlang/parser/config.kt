@@ -63,6 +63,16 @@ fun writeConfigFileString(module: ValidatedModule): String {
 }
 
 private fun parseDependencyNode(node: JsonNode): ModuleId {
+    if (node.isTextual) {
+        val splitContents = node.asText().split(":", limit = 3)
+        if (splitContents.size != 3) {
+            error("Expected three colon-separated components in a dependency listed in string format")
+        }
+        val group = splitContents[0]
+        val module = splitContents[1]
+        val version = splitContents[2]
+        return ModuleId(group, module, version)
+    }
     val group = node.get("group").asText()
     val module = node.get("module").asText()
     val version = node.get("version").asText()

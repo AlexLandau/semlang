@@ -23,7 +23,7 @@ class MultiModulePositiveTests(private val groupFolder: File, private val testFi
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
             return File("../../semlang-module-test-cases").listFiles().flatMap { groupFolder ->
-                File(groupFolder, "shouldPass").listFiles().map { file ->
+                File(groupFolder, "shouldPass").listFiles().orEmpty().map { file ->
                     arrayOf(groupFolder as Any?, file as Any?)
                 }
             }
@@ -45,7 +45,7 @@ class MultiModuleNegativeTests(private val groupFolder: File, private val testFi
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
             return File("../../semlang-module-test-cases").listFiles().flatMap { groupFolder ->
-                File(groupFolder, "shouldNotValidate").listFiles().map { file ->
+                File(groupFolder, "shouldNotValidate").listFiles().orEmpty().map { file ->
                     arrayOf(groupFolder as Any?, file as Any?)
                 }
             }

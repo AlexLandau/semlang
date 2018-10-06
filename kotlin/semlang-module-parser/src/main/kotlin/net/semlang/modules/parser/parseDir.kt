@@ -13,6 +13,8 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
     val parsedConfig = parseConfigFile(configFile)
     return when (parsedConfig) {
         is ModuleInfoParsingResult.Failure -> {
+            // TODO: This is for debugging, do we want it generally?
+            parsedConfig.error.printStackTrace()
             val error = Issue("Couldn't parse module.conf: ${parsedConfig.error.message}", null, IssueLevel.ERROR)
             ValidationResult.Failure(listOf(error), listOf())
         }
