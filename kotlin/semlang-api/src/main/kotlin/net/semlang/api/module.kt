@@ -9,12 +9,12 @@ data class ModuleId(val group: String, val module: String, val version: String) 
     init {
         // TODO: Consider if these restrictions can/should be relaxed
         for ((string, stringType) in listOf(group to "group",
-                module to "name",
-                version to "version"))
+                module to "name")) {
             if (!LEGAL_MODULE_PATTERN.matcher(string).matches()) {
                 // TODO: Update explanation
                 throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
             }
+        }
     }
 
     fun asRef(): ModuleRef {
