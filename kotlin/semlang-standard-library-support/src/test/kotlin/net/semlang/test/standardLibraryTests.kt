@@ -49,7 +49,8 @@ class StandardLibraryTests(private val file: File) {
 
     private fun parseAndValidateFile(file: File): ValidatedModule {
         val localRepository = getDefaultLocalRepository()
-        val libraryModule = localRepository.loadModule(libraryModuleId)
+        // TODO: May want to fix the "null" here
+        val libraryModule = localRepository.loadModule(libraryModuleId, null)
 
         val unvalidatedContext = parseFile(file).assumeSuccess()
         return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule)).assumeSuccess()

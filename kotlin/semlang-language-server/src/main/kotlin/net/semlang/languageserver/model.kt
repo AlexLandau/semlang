@@ -10,6 +10,7 @@ import net.semlang.validator.Issue
 import net.semlang.validator.IssueLevel
 import net.semlang.validator.validate
 import org.eclipse.lsp4j.*
+import java.io.File
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -248,7 +249,7 @@ class SourcesFolderModel(private val folderUri: URI,
                 val repository = getDefaultLocalRepository()
                 // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
                 // TODO: Also catch and deal with errors here
-                val loadedDependencies = moduleInfo.dependencies.map { repository.loadModule(it) }
+                val loadedDependencies = moduleInfo.dependencies.map { repository.loadModule(it, File(folderUri)) }
                 val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
 
                 val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)

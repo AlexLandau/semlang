@@ -72,7 +72,16 @@ private fun parseAndValidateModule(groupFolder: File, testFile: File): Validated
 }
 
 internal object OnlyAllowLocalModuleRepository: ModuleRepository {
-    override fun loadModule(id: ModuleId): ValidatedModule {
-        TODO("not implemented")
+    override fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule {
+        val version = id.version
+        if (!version.startsWith("file:")) {
+            error("Expected only file: versions, but was: $version")
+        }
+        val versionContents = version.drop("file:".length)
+        if (callingModuleDirectory == null) {
+            error("Need a callingModuleDirectory to be provided for this repo")
+        }
+        val location = File(callingModuleDirectory, versionContents)
+        return parseAndValidateModuleDirectory(location, CURRENT_NATIVE_MODULE_VERSION, OnlyAllowLocalModuleRepository).assumeSuccess()
     }
 }

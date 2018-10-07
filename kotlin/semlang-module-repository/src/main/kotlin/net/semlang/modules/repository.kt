@@ -8,7 +8,7 @@ import java.io.File
 import java.io.FileWriter
 
 interface ModuleRepository {
-    fun loadModule(id: ModuleId): ValidatedModule
+    fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule
 }
 
 /*
@@ -39,7 +39,8 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
         return UnvalidatedModule(moduleInfo, rawContents)
     }
 
-    override fun loadModule(id: ModuleId): ValidatedModule {
+    // TODO: Add support for file: dependencies
+    override fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule {
         return loadModuleInternal(id, HashSet())
     }
     private fun loadModuleInternal(id: ModuleId, alreadyLoading: Set<ModuleId>): ValidatedModule {

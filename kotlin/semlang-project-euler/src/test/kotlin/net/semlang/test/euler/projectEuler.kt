@@ -42,7 +42,9 @@ class ProjectEulerExamples {
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
         val rawContext = parseFileNamed(filename).assumeSuccess()
 
-        val standardLibraryContext = getDefaultLocalRepository().loadModule(ModuleId("semlang", "standard-library", "develop"))
+        val moduleId = ModuleId("semlang", "standard-library", "develop")
+        // TODO: May want to fix the "null" here
+        val standardLibraryContext = getDefaultLocalRepository().loadModule(moduleId, null)
 
         return SemlangForwardInterpreter(validateModule(rawContext, ModuleId("semlang", "eulerTestFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)).assumeSuccess(), InterpreterOptions())
     }
