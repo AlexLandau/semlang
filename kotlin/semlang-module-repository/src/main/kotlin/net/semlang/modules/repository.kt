@@ -8,7 +8,8 @@ import java.io.File
 import java.io.FileWriter
 
 interface ModuleRepository {
-    fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule
+    fun loadModule(id: ModuleUniqueId, callingModuleDirectory: File?): ValidatedModule
+    // TODO: Add method for getting a module's unique ID (and maybe also its contents) by a non-unique version
 }
 
 /*
@@ -16,6 +17,7 @@ interface ModuleRepository {
  * For now, will treat as unvalidated for safety's sake (and because we'll catch more bugs that way)
  */
 // TODO: This should be made thread-safe
+// TODO: Maybe also check that the module's contents match its version when loading it?
 class LocalRepository(private val rootDirectory: File): ModuleRepository {
     init {
         if (!rootDirectory.exists()) {
@@ -27,7 +29,7 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
     }
 
     // TODO: Cache these
-    private fun loadUnvalidatedModule(id: ModuleId): UnvalidatedModule {
+    private fun loadUnvalidatedModule(id: ModuleUniqueId): UnvalidatedModule {
         val containingDirectory = getDirectoryForId(id)
 
         // TODO: Nice-to-have: filename based on module name/version
@@ -40,31 +42,36 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
     }
 
     // TODO: Add support for file: dependencies
-    override fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule {
+    override fun loadModule(id: ModuleUniqueId, callingModuleDirectory: File?): ValidatedModule {
         return loadModuleInternal(id, HashSet())
     }
-    private fun loadModuleInternal(id: ModuleId, alreadyLoading: Set<ModuleId>): ValidatedModule {
+    private fun loadModuleInternal(id: ModuleUniqueId, alreadyLoading: Set<ModuleUniqueId>): ValidatedModule {
         val unvalidatedModule = loadUnvalidatedModule(id)
 
         val loadedDependencies = unvalidatedModule.info.dependencies.map { dependencyId ->
-            if (alreadyLoading.contains(dependencyId)) {
+            val uniqueId = getUniqueId(dependencyId)
+            if (alreadyLoading.contains(uniqueId)) {
                 error("Circular dependency involving $dependencyId")
             }
-            loadModuleInternal(dependencyId, alreadyLoading + dependencyId)
+            loadModuleInternal(uniqueId, alreadyLoading + uniqueId)
         }
 
-        return validateModule(unvalidatedModule.contents, unvalidatedModule.info.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies).assumeSuccess()
+        return validateModule(unvalidatedModule.contents, unvalidatedModule.info.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies).assumeSuccess()
     }
 
-    private fun getDirectoryForId(id: ModuleId): File {
-        val groupDirectory = File(rootDirectory, id.group)
-        val moduleDirectory = File(groupDirectory, id.module)
-        val versionDirectory = File(moduleDirectory, id.version)
+    private fun getUniqueId(dependencyId: ModuleNonUniqueId): ModuleUniqueId {
+        TODO()
+    }
+
+    private fun getDirectoryForId(id: ModuleUniqueId): File {
+        val groupDirectory = File(rootDirectory, id.name.group)
+        val moduleDirectory = File(groupDirectory, id.name.module)
+        val versionDirectory = File(moduleDirectory, id.fake0Version)
 
         return versionDirectory
     }
 
-    fun unpublishIfPresent(moduleId: ModuleId) {
+    fun unpublishIfPresent(moduleId: ModuleUniqueId) {
         val directory = getDirectoryForId(moduleId)
         if (directory.isDirectory) {
             val success = directory.deleteRecursively()

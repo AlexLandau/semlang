@@ -27,7 +27,11 @@ data class ModuleNonUniqueId(val name: ModuleName, val versionProtocol: String, 
     companion object {
         fun fromStringTriple(group: String, module: String, version: String): ModuleNonUniqueId {
             val name = ModuleName(group, module)
-            val (versionProtocol, bareVersion) = version.split(".", limit = 2)
+            val versionParts = version.split(":", limit = 2)
+            if (versionParts.size != 2) {
+                error("Expected a version string with a scheme, but was: $version")
+            }
+            val (versionProtocol, bareVersion) = versionParts
             return ModuleNonUniqueId(name, versionProtocol, bareVersion)
         }
     }
@@ -38,7 +42,8 @@ data class ModuleNonUniqueId(val name: ModuleName, val versionProtocol: String, 
  */
 data class ModuleUniqueId(val name: ModuleName, val fake0Version: String) {
     companion object {
-        val UNIQUE_VERSION_SCHEME_PREFIX = "fake0:"
+        val UNIQUE_VERSION_SCHEME = "fake0"
+        val UNIQUE_VERSION_SCHEME_PREFIX = "$UNIQUE_VERSION_SCHEME:"
     }
     fun asRef(): ModuleRef {
         return ModuleRef(name.group, name.module, UNIQUE_VERSION_SCHEME_PREFIX + fake0Version)
@@ -209,6 +214,9 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
 
     private fun getPreferredVersion(group: String, module: String, version: String): String {
         val id = ModuleNonUniqueId.fromStringTriple(group, module, version)
+        if (id.versionProtocol == ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+            return id.version
+        }
         return this.moduleVersionMappings[id]?.fake0Version ?: error("No mapping was provided for version $version of module $group:$module")
     }
 }
