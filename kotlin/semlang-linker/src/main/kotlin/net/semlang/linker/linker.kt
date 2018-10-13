@@ -41,21 +41,21 @@ private class Linker(val rootModule: ValidatedModule) {
         val transformedInterfaces = relevantEntities.interfaces.values.map(nameAssignment::applyToInterface)
         val transformedUnions = relevantEntities.unions.values.map(nameAssignment::applyToUnion)
 
-        val moduleInfo = ModuleInfo(rootModule.id, listOf())
+        val moduleInfo = ModuleInfo(rootModule.getName(), listOf())
         val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces, transformedUnions)
         return UnvalidatedModule(moduleInfo, context)
     }
 }
 
 private data class RelevantEntities(
-        val allModules: Map<ModuleId, ValidatedModule>,
+        val allModules: Map<ModuleUniqueId, ValidatedModule>,
         val functions: Map<ResolvedEntityRef, ValidatedFunction>,
         val structs: Map<ResolvedEntityRef, Struct>,
         val interfaces: Map<ResolvedEntityRef, Interface>,
         val unions: Map<ResolvedEntityRef, Union>
 )
 
-private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleId) {
+private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>, val rootModuleId: ModuleUniqueId) {
     private val EXPORT_ANNOTATION = Annotation(EntityId.of("Export"), listOf())
 
     private fun translateRef(ref: ResolvedEntityRef): EntityRef {
@@ -80,7 +80,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     }
 
     // Remove the "Export" annotation from entities not in the root module
-    private fun handleAnnotations(annotations: List<Annotation>, entityModule: ModuleId): List<Annotation> {
+    private fun handleAnnotations(annotations: List<Annotation>, entityModule: ModuleUniqueId): List<Annotation> {
         if (entityModule == rootModuleId) {
             return annotations
         }
@@ -226,7 +226,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     }
 }
 
-private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: RelevantEntities) {
+private class NameAssigner(val rootModuleId: ModuleUniqueId, val relevantEntities: RelevantEntities) {
     val newNameMap = HashMap<ResolvedEntityRef, EntityId>()
     val allNewNames = HashSet<EntityId>()
 
@@ -324,16 +324,17 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
         return NameAssignment(newNameMap, rootModuleId)
     }
 
-    private fun assignModulePrefixes(): Map<ModuleId, List<String>> {
+    private fun assignModulePrefixes(): Map<ModuleUniqueId, List<String>> {
         val modulesByName = groupModulesByName()
-        val modulePrefixes = HashMap<ModuleId, List<String>>()
+        val modulePrefixes = HashMap<ModuleUniqueId, List<String>>()
         for (moduleId in relevantEntities.allModules.keys) {
-            val modulesWithName = modulesByName[moduleId.module]!!
+            val modulesWithName = modulesByName[moduleId.name.module]!!
             val modulePrefix = if (modulesWithName.size == 1) {
-                listOf(moduleId.module)
+                listOf(moduleId.name.module)
             } else {
                 // TODO: Improve this by preferring group/module or module/version when possible
-                listOf(moduleId.group, moduleId.module, moduleId.version)
+                // TODO: Improve this by allowing non-unique versions to be used in the name?
+                listOf(moduleId.name.group, moduleId.name.module, moduleId.fake0Version)
             }
             val sanitizedModulePrefix = modulePrefix.map(::sanitize)
             modulePrefixes.put(moduleId, sanitizedModulePrefix)
@@ -341,11 +342,11 @@ private class NameAssigner(val rootModuleId: ModuleId, val relevantEntities: Rel
         return modulePrefixes
     }
 
-    private fun groupModulesByName(): Map<String, List<ModuleId>> {
-        return relevantEntities.allModules.keys.groupBy(ModuleId::module)
+    private fun groupModulesByName(): Map<String, List<ModuleUniqueId>> {
+        return relevantEntities.allModules.keys.groupBy { it.name.module }
     }
 
-    private fun getInitialName(ref: ResolvedEntityRef, modulePrefixes: Map<ModuleId, List<String>>): EntityId {
+    private fun getInitialName(ref: ResolvedEntityRef, modulePrefixes: Map<ModuleUniqueId, List<String>>): EntityId {
         val modulePrefix = modulePrefixes[ref.module]!!
         return EntityId(modulePrefix + ref.id.namespacedName)
     }
@@ -376,7 +377,7 @@ fun sanitize(s: String): String {
 }
 
 private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
-    val allModules = HashMap<ModuleId, ValidatedModule>()
+    val allModules = HashMap<ModuleUniqueId, ValidatedModule>()
     val functions = HashMap<ResolvedEntityRef, ValidatedFunction>()
     val structs = HashMap<ResolvedEntityRef, Struct>()
     val interfaces = HashMap<ResolvedEntityRef, Interface>()

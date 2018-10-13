@@ -1,7 +1,7 @@
 package net.semlang.languageserver
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
@@ -229,8 +229,8 @@ class SourcesFolderModel(private val folderUri: URI,
             if (moduleInfo == null) {
                 // Treat each file as its own module
                 parsingResultsByDocumentName.forEach { fileName, parsingResult ->
-                    val fakeModuleId = ModuleId("non-module", fileName.split(".")[0], "dev")
-                    val validationResult = validate(parsingResult, fakeModuleId, CURRENT_NATIVE_MODULE_VERSION, listOf())
+                    val fakeModuleName = ModuleName("non-module", fileName.split(".")[0])
+                    val validationResult = validate(parsingResult, fakeModuleName, CURRENT_NATIVE_MODULE_VERSION, listOf())
 
                     val diagnostics = collectDiagnostics(validationResult.getAllIssues(), listOf(getDocumentUriForFileName(fileName)))
 
@@ -249,8 +249,11 @@ class SourcesFolderModel(private val folderUri: URI,
                 val repository = getDefaultLocalRepository()
                 // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
                 // TODO: Also catch and deal with errors here
-                val loadedDependencies = moduleInfo.dependencies.map { repository.loadModule(it, File(folderUri)) }
-                val validationResult = validate(combinedParsingResult, moduleInfo.id, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
+                val loadedDependencies = moduleInfo.dependencies.map {
+                    val uniqueId = repository.getModuleUniqueId(it)
+                    repository.loadModule(uniqueId, File(folderUri))
+                }
+                val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
 
                 val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
                 val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)

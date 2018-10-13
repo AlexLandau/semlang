@@ -30,11 +30,12 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
             val combinedParsingResult = combineParsingResults(parsingResults)
 
             val dependencies = parsedConfig.info.dependencies.map { dependencyId ->
-                repository.loadModule(dependencyId, directory)
+                val uniqueId = repository.getModuleUniqueId(dependencyId, directory)
+                repository.loadModule(uniqueId)
             }
 
             // TODO: Dependencies should figure in here at some point...
-            validate(combinedParsingResult, parsedConfig.info.id, nativeModuleVersion, dependencies)
+            validate(combinedParsingResult, parsedConfig.info.name, nativeModuleVersion, dependencies)
         }
     }
 }

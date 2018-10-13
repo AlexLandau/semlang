@@ -94,7 +94,7 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
     val tempModule3 = hoistMatchingExpressions(tempModule2, { it is Expression.IfThen })
     val tempModule4 = preventDuplicateVariableNames(tempModule3)
-    val module = validateModule(tempModule4, unprocessedModule.id, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
+    val module = validateModule(tempModule4, unprocessedModule.getName(), unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
 
     return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
 }
@@ -1391,7 +1391,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getClassNameForTypeId(ref: ResolvedEntityRef): ClassName {
-        val moduleName = ref.module.module
+        val moduleName = ref.module.name.module
         val javaPackage = javaPackageString + "." + sanitizePackageName(moduleName)
         val names = ref.id.namespacedName.map(this::sanitizeClassName)
         try {

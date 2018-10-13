@@ -1,7 +1,7 @@
 package net.semlang.parser.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.assertRawContextsEqual
@@ -70,7 +70,7 @@ class ValidatorPositiveTests(private val file: File) {
 //        System.out.println(ObjectMapper().writeValueAsString(asJson))
 //        System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         assertModulesEqual(initiallyParsed, fromJsonValidated)
     }
 }
@@ -118,7 +118,7 @@ class ValidatorNegativeTests(private val file: File) {
         if (parsingResult is ParsingResult.Failure) {
             throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
         }
-        val result = validate(parsingResult, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf())
+        val result = validate(parsingResult, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf())
         if (result is ValidationResult.Failure) {
             Assert.assertNotEquals(0, result.errors.size)
         } else {
@@ -127,13 +127,13 @@ class ValidatorNegativeTests(private val file: File) {
     }
 }
 
-private val TEST_MODULE_ID = ModuleId("semlang", "validatorTestFile", "devTest")
+private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
 
 private fun parseAndValidateFile(file: File): ValidationResult {
-    return parseAndValidateFile(file, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION)
+    return parseAndValidateFile(file, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
 }
 
 private fun parseAndValidateString(string: String): ValidatedModule {
     val context = parseString(string, "testDocumentUri").assumeSuccess()
-    return validateModule(context, TEST_MODULE_ID, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+    return validateModule(context, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 }

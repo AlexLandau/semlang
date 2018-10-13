@@ -1,5 +1,6 @@
 package net.semlang.api
 
+import sun.security.pkcs11.Secmod
 import java.util.*
 import java.util.regex.Pattern
 
@@ -24,6 +25,13 @@ data class ModuleName(val group: String, val module: String) {
 
 // TODO: Rename back to ModuleId when all references are fixed
 data class ModuleNonUniqueId(val name: ModuleName, val versionProtocol: String, val version: String) {
+    fun requireUnique(): ModuleUniqueId {
+        if (versionProtocol != ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+            error("We require a unique ID here, but the ID was $this")
+        }
+        return ModuleUniqueId(name, version)
+    }
+
     companion object {
         fun fromStringTriple(group: String, module: String, version: String): ModuleNonUniqueId {
             val name = ModuleName(group, module)
@@ -237,6 +245,10 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
                                           val exportedUnions: Set<EntityId>,
                                           val upstreamModules: Map<ModuleUniqueId, ValidatedModule>,
                                           val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
+    // TODO: How do fake getters work here?
+    fun getName(): ModuleName {
+        return id.name
+    }
     init {
         if (isNativeModule(id)) {
             error("We should not be creating ValidatedModule objects for the native module")

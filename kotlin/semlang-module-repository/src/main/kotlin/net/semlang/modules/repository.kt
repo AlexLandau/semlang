@@ -8,8 +8,8 @@ import java.io.File
 import java.io.FileWriter
 
 interface ModuleRepository {
-    fun loadModule(id: ModuleUniqueId, callingModuleDirectory: File?): ValidatedModule
-    // TODO: Add method for getting a module's unique ID (and maybe also its contents) by a non-unique version
+    fun loadModule(id: ModuleUniqueId): ValidatedModule
+    fun getModuleUniqueId(dependencyId: ModuleNonUniqueId, callingModuleDirectory: File?): ModuleUniqueId
 }
 
 /*
@@ -42,14 +42,15 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
     }
 
     // TODO: Add support for file: dependencies
-    override fun loadModule(id: ModuleUniqueId, callingModuleDirectory: File?): ValidatedModule {
+    override fun loadModule(id: ModuleUniqueId): ValidatedModule {
         return loadModuleInternal(id, HashSet())
     }
     private fun loadModuleInternal(id: ModuleUniqueId, alreadyLoading: Set<ModuleUniqueId>): ValidatedModule {
         val unvalidatedModule = loadUnvalidatedModule(id)
 
         val loadedDependencies = unvalidatedModule.info.dependencies.map { dependencyId ->
-            val uniqueId = getUniqueId(dependencyId)
+            // TODO: When we store a module in the cache, we should switch its dependencies to unique versions
+            val uniqueId = dependencyId.requireUnique()
             if (alreadyLoading.contains(uniqueId)) {
                 error("Circular dependency involving $dependencyId")
             }
@@ -59,7 +60,7 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
         return validateModule(unvalidatedModule.contents, unvalidatedModule.info.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies).assumeSuccess()
     }
 
-    private fun getUniqueId(dependencyId: ModuleNonUniqueId): ModuleUniqueId {
+    override fun getModuleUniqueId(dependencyId: ModuleNonUniqueId, callingModuleDirectory: File?): ModuleUniqueId {
         TODO()
     }
 

@@ -1,10 +1,9 @@
 package net.semlang.parser.test
 
-import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.modules.ModuleRepository
+import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.modules.parser.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
 import net.semlang.validator.validateModule
@@ -65,23 +64,34 @@ class MultiModuleNegativeTests(private val groupFolder: File, private val testFi
 
 private fun parseAndValidateModule(groupFolder: File, testFile: File): ValidatedModule {
     val allModules = File(groupFolder, "modules").listFiles().map { moduleDir ->
-        parseAndValidateModuleDirectory(moduleDir, CURRENT_NATIVE_MODULE_VERSION, OnlyAllowLocalModuleRepository).assumeSuccess()
+        parseAndValidateModuleDirectory(moduleDir, CURRENT_NATIVE_MODULE_VERSION, getDefaultLocalRepository()).assumeSuccess()
     }
 
-    return validateModule(parseFile(testFile).assumeSuccess(), ModuleId("semlangTest", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, allModules).assumeSuccess()
+    return validateModule(parseFile(testFile).assumeSuccess(), ModuleName("semlangTest", "testFile"), CURRENT_NATIVE_MODULE_VERSION, allModules).assumeSuccess()
 }
 
-internal object OnlyAllowLocalModuleRepository: ModuleRepository {
-    override fun loadModule(id: ModuleId, callingModuleDirectory: File?): ValidatedModule {
-        val version = id.version
-        if (!version.startsWith("file:")) {
-            error("Expected only file: versions, but was: $version")
-        }
-        val versionContents = version.drop("file:".length)
-        if (callingModuleDirectory == null) {
-            error("Need a callingModuleDirectory to be provided for this repo")
-        }
-        val location = File(callingModuleDirectory, versionContents)
-        return parseAndValidateModuleDirectory(location, CURRENT_NATIVE_MODULE_VERSION, OnlyAllowLocalModuleRepository).assumeSuccess()
-    }
-}
+//internal object OnlyAllowLocalModuleRepository: ModuleRepository {
+//    override fun getModuleUniqueId(dependencyId: ModuleNonUniqueId, callingModuleDirectory: File?): ModuleUniqueId {
+//        if (dependencyId.versionProtocol != "file") {
+//            error("Expected only file: version schemes, but was: $dependencyId")
+//        }
+//        if (callingModuleDirectory == null) {
+//            error("Need a callingModuleDirectory to be provided for this repo")
+//        }
+//        val location = File(callingModuleDirectory, dependencyId.version)
+//
+//    }
+//
+//    override fun loadModule(id: ModuleUniqueId, callingModuleDirectory: File?): ValidatedModule {
+//        val version = id.version
+//        if (!version.startsWith("file:")) {
+//            error("Expected only file: versions, but was: $version")
+//        }
+//        val versionContents = version.drop("file:".length)
+//        if (callingModuleDirectory == null) {
+//            error("Need a callingModuleDirectory to be provided for this repo")
+//        }
+//        val location = File(callingModuleDirectory, versionContents)
+//        return parseAndValidateModuleDirectory(location, CURRENT_NATIVE_MODULE_VERSION, OnlyAllowLocalModuleRepository).assumeSuccess()
+//    }
+//}
