@@ -25,16 +25,16 @@ fun write(module: ValidatedModule, writer: Writer) {
 }
 
 fun write(context: RawContext, writer: Writer) {
-    for (struct in context.structs) {
+    for (struct in context.structs.sortedWith(HasEntityIdComparator)) {
         writeStruct(struct, writer)
     }
-    for (union in context.unions) {
+    for (union in context.unions.sortedWith(HasEntityIdComparator)) {
         writeUnion(union, writer)
     }
-    for (interfac in context.interfaces) {
+    for (interfac in context.interfaces.sortedWith(HasEntityIdComparator)) {
         writeInterface(interfac, writer)
     }
-    for (function in context.functions) {
+    for (function in context.functions.sortedWith(HasEntityIdComparator)) {
         writeFunction(function, writer)
     }
 }
@@ -348,4 +348,32 @@ fun escapeLiteralContents(literal: String): String {
         i++
     }
     return sb.toString()
+}
+
+private object HasEntityIdComparator: Comparator<HasId> {
+    override fun compare(hasId1: HasId, hasId2: HasId): Int {
+        val strings1 = hasId1.id.namespacedName
+        val strings2 = hasId2.id.namespacedName
+        var i = 0
+        while (true) {
+            // When they are otherwise the same, shorter precedes longer
+            val done1 = i >= strings1.size
+            val done2 = i >= strings2.size
+            if (done1) {
+                if (done2) {
+                    return 0
+                } else {
+                    return -1
+                }
+            }
+            if (done2) {
+                return 1
+            }
+            val stringComparison = strings1[i].compareTo(strings2[i])
+            if (stringComparison != 0) {
+                return stringComparison
+            }
+            i++
+        }
+    }
 }

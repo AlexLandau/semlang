@@ -71,9 +71,9 @@ data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
         }
     }
 }
-data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
+data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
     override fun toString(): String {
-        return "${module.group}:${module.module}:${module.version}:$id"
+        return "${module.name}:${module.fake0Version}:$id"
     }
 }
 
@@ -910,7 +910,9 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+// TODO: What do we use this moduleId for? -> resolvedRef, -> Type objects, which will be important for differentiating e.g. structs from different versions of libraries/APIs
+// TODO: Maybe what we really want is a "ValidatedModule" and then a "LoadedModule" that includes the hash-versions everywhere
+data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -934,8 +936,8 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         }
         return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
-
 }
+
 interface HasId {
     val id: EntityId
 }
@@ -972,7 +974,8 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
-data class Interface(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
+// TODO: What do we use this moduleId for?
+data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
@@ -1064,7 +1067,8 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
     }
 }
-data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
+// TODO: What do we use this moduleId for?
+data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     val whenId = EntityId(id.namespacedName + "when")
     private val optionIndexLookup: Map<EntityId, Int> = {
@@ -1149,7 +1153,8 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
-data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+// TODO: What do we use this moduleId for?
+data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {

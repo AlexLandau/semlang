@@ -3,12 +3,16 @@ package net.semlang.api
 import java.util.*
 
 val NATIVE_MODULE_GROUP = "semlang"
-val NATIVE_MODULE_NAME = "lang"
+val NATIVE_MODULE_MODULE = "lang"
 val CURRENT_NATIVE_MODULE_VERSION = "0"
-val CURRENT_NATIVE_MODULE_ID = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
+val NATIVE_MODULE_NAME = ModuleName(NATIVE_MODULE_GROUP, NATIVE_MODULE_MODULE)
+val CURRENT_NATIVE_MODULE_ID = ModuleUniqueId(NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
 
-fun isNativeModule(module: ModuleId): Boolean {
-    return module.group == NATIVE_MODULE_GROUP && module.module == NATIVE_MODULE_NAME
+fun isNativeModule(module: ModuleName): Boolean {
+    return module == NATIVE_MODULE_NAME
+}
+fun isNativeModule(id: ModuleUniqueId): Boolean {
+    return isNativeModule(id.name)
 }
 
 /**

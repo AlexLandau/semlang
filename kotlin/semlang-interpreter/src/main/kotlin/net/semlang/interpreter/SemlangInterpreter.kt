@@ -148,7 +148,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         }
     }
 
-    private fun getModule(id: ModuleId, referringModule: ValidatedModule?): ValidatedModule? {
+    private fun getModule(id: ModuleUniqueId, referringModule: ValidatedModule?): ValidatedModule? {
         if (referringModule != null) {
             if (id == referringModule.id) {
                 return referringModule
