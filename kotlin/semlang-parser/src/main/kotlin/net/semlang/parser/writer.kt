@@ -24,17 +24,29 @@ fun write(module: ValidatedModule, writer: Writer) {
     write(context, writer)
 }
 
-fun write(context: RawContext, writer: Writer) {
-    for (struct in context.structs.sortedWith(HasEntityIdComparator)) {
+fun write(context: RawContext, writer: Writer, sorted: Boolean = false) {
+//    val comparator: Comparator<HasId> = if (sorted) HasEntityIdComparator else object: Comparator<HasId> {
+//        override fun compare(o1: HasId?, o2: HasId?): Int {
+//            return 0
+//        }
+//    }
+    fun <T: HasId> maybeSort(list: List<T>): List<T> {
+        return if (sorted) {
+            list.sortedWith(HasEntityIdComparator)
+        } else {
+            list
+        }
+    }
+    for (struct in maybeSort(context.structs)) {
         writeStruct(struct, writer)
     }
-    for (union in context.unions.sortedWith(HasEntityIdComparator)) {
+    for (union in maybeSort(context.unions)) {
         writeUnion(union, writer)
     }
-    for (interfac in context.interfaces.sortedWith(HasEntityIdComparator)) {
+    for (interfac in maybeSort(context.interfaces)) {
         writeInterface(interfac, writer)
     }
-    for (function in context.functions.sortedWith(HasEntityIdComparator)) {
+    for (function in maybeSort(context.functions)) {
         writeFunction(function, writer)
     }
 }
