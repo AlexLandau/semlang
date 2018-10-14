@@ -13,9 +13,10 @@ fun writeToString(module: ValidatedModule): String {
     return writer.toString()
 }
 
-fun writeToString(context: RawContext): String {
+// TODO: Right now deterministicMode is defined just for fake0 versioning
+fun writeToString(context: RawContext, deterministicMode: Boolean = false): String {
     val writer = StringWriter()
-    write(context, writer)
+    write(context, writer, deterministicMode)
     return writer.toString()
 }
 
@@ -24,21 +25,22 @@ fun write(module: ValidatedModule, writer: Writer) {
     write(context, writer)
 }
 
-fun write(context: RawContext, writer: Writer, sorted: Boolean = false) {
+// TODO: Right now deterministicMode is defined just for fake0 versioning
+fun write(context: RawContext, writer: Writer, deterministicMode: Boolean = false) {
 //    val comparator: Comparator<HasId> = if (sorted) HasEntityIdComparator else object: Comparator<HasId> {
 //        override fun compare(o1: HasId?, o2: HasId?): Int {
 //            return 0
 //        }
 //    }
     fun <T: HasId> maybeSort(list: List<T>): List<T> {
-        return if (sorted) {
+        return if (deterministicMode) {
             list.sortedWith(HasEntityIdComparator)
         } else {
             list
         }
     }
     for (struct in maybeSort(context.structs)) {
-        writeStruct(struct, writer)
+        writeStruct(struct, writer, deterministicMode)
     }
     for (union in maybeSort(context.unions)) {
         writeUnion(union, writer)
@@ -47,11 +49,11 @@ fun write(context: RawContext, writer: Writer, sorted: Boolean = false) {
         writeInterface(interfac, writer)
     }
     for (function in maybeSort(context.functions)) {
-        writeFunction(function, writer)
+        writeFunction(function, writer, deterministicMode)
     }
 }
 
-private fun writeStruct(struct: UnvalidatedStruct, writer: Writer) {
+private fun writeStruct(struct: UnvalidatedStruct, writer: Writer, deterministicMode: Boolean) {
     writeAnnotations(struct.annotations, writer)
     writer.append("struct ")
             .append(if (struct.markedAsThreaded) "~" else "")
@@ -72,7 +74,7 @@ private fun writeStruct(struct: UnvalidatedStruct, writer: Writer) {
     if (requires != null) {
         writer.append(SINGLE_INDENTATION)
                 .appendln("requires {")
-        writeBlock(requires, 2, writer)
+        writeBlock(requires, 2, writer, deterministicMode)
         writer.append(SINGLE_INDENTATION)
                 .appendln("}")
     }
@@ -130,7 +132,7 @@ private fun writeInterface(interfac: UnvalidatedInterface, writer: Writer) {
             .appendln()
 }
 
-private fun writeFunction(function: Function, writer: Writer) {
+private fun writeFunction(function: Function, writer: Writer, deterministicMode: Boolean) {
     writeAnnotations(function.annotations, writer)
     writer.append("function ")
             .append(function.id.toString())
@@ -147,7 +149,7 @@ private fun writeFunction(function: Function, writer: Writer) {
             .append(function.returnType.toString())
 
     writer.appendln(" {")
-    writeBlock(function.block, 1, writer)
+    writeBlock(function.block, 1, writer, deterministicMode)
     writer.appendln("}")
             .appendln()
 }
@@ -188,26 +190,26 @@ private fun writeAnnotationArguments(annotationArgs: List<AnnotationArgument>, w
 }
 
 private val SINGLE_INDENTATION = "    "
-private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer) {
+private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
     val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
     for (assignment in block.assignments) {
         writer.append(indent)
                 .append("let ")
                 .append(assignment.name)
-        if (assignment.type != null) {
+        if (assignment.type != null && !deterministicMode) {
             writer.append(": ")
                     .append(assignment.type.toString())
         }
         writer.append(" = ")
-        writeExpression(assignment.expression, indentationLevel, writer)
+        writeExpression(assignment.expression, indentationLevel, writer, deterministicMode)
         writer.appendln()
     }
     writer.append(indent)
-    writeExpression(block.returnedExpression, indentationLevel, writer)
+    writeExpression(block.returnedExpression, indentationLevel, writer, deterministicMode)
     writer.appendln()
 }
 
-private fun writeExpression(expression: Expression, indentationLevel: Int, writer: Writer) {
+private fun writeExpression(expression: Expression, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
     when (expression) {
         is Expression.Variable -> {
             writer.append(expression.name)
@@ -226,14 +228,14 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                     writer.append(", ")
                 }
                 first = false
-                writeExpression(item, indentationLevel, writer)
+                writeExpression(item, indentationLevel, writer, deterministicMode)
             }
             writer.append("]<")
                     .append(expression.chosenParameter.toString())
                     .append(">")
         }
         is Expression.Follow -> {
-            writeExpression(expression.structureExpression, indentationLevel, writer)
+            writeExpression(expression.structureExpression, indentationLevel, writer, deterministicMode)
             writer.append("->")
                     .append(expression.name)
         }
@@ -251,7 +253,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                     writer.append(", ")
                 }
                 first = false
-                writeExpression(argument, indentationLevel, writer)
+                writeExpression(argument, indentationLevel, writer, deterministicMode)
             }
             writer.append(")")
         }
@@ -272,13 +274,13 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                 if (binding == null) {
                     writer.append("_")
                 } else {
-                    writeExpression(binding, indentationLevel, writer)
+                    writeExpression(binding, indentationLevel, writer, deterministicMode)
                 }
             }
             writer.append(")")
         }
         is Expression.ExpressionFunctionCall -> {
-            writeExpression(expression.functionExpression, indentationLevel, writer)
+            writeExpression(expression.functionExpression, indentationLevel, writer, deterministicMode)
             if (expression.chosenParameters.isNotEmpty()) {
                 writer.append("<")
                         .append(expression.chosenParameters.joinToString(", "))
@@ -291,12 +293,12 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                     writer.append(", ")
                 }
                 first = false
-                writeExpression(argument, indentationLevel, writer)
+                writeExpression(argument, indentationLevel, writer, deterministicMode)
             }
             writer.append(")")
         }
         is Expression.ExpressionFunctionBinding -> {
-            writeExpression(expression.functionExpression, indentationLevel, writer)
+            writeExpression(expression.functionExpression, indentationLevel, writer, deterministicMode)
             if (expression.chosenParameters.isNotEmpty()) {
                 writer.append("<")
                         .append(expression.chosenParameters.map { if (it == null) "_" else it }.joinToString(", "))
@@ -312,7 +314,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
                 if (binding == null) {
                     writer.append("_")
                 } else {
-                    writeExpression(binding, indentationLevel, writer)
+                    writeExpression(binding, indentationLevel, writer, deterministicMode)
                 }
             }
             writer.append(")")
@@ -320,12 +322,12 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
         is Expression.IfThen -> {
             val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
             writer.append("if (")
-            writeExpression(expression.condition, indentationLevel, writer)
+            writeExpression(expression.condition, indentationLevel, writer, deterministicMode)
             writer.appendln(" ) {")
-            writeBlock(expression.thenBlock, indentationLevel + 1, writer)
+            writeBlock(expression.thenBlock, indentationLevel + 1, writer, deterministicMode)
             writer.append(indent)
                     .appendln("} else {")
-            writeBlock(expression.elseBlock, indentationLevel + 1, writer)
+            writeBlock(expression.elseBlock, indentationLevel + 1, writer, deterministicMode)
             writer.append(indent).append("}")
         }
         is Expression.InlineFunction -> {
@@ -337,7 +339,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             writer.append("): ")
             writer.append(expression.returnType.toString())
             writer.appendln(" {")
-            writeBlock(expression.block, indentationLevel + 1, writer)
+            writeBlock(expression.block, indentationLevel + 1, writer, deterministicMode)
             writer.append(indent).append("}")
         }
         else -> error("Unhandled expression $expression of type ${expression.javaClass.name}")

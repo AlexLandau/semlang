@@ -1,5 +1,7 @@
 package net.semlang.parser.test
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
@@ -70,8 +72,14 @@ class ValidatorPositiveTests(private val file: File) {
 //        System.out.println(ObjectMapper().writeValueAsString(asJson))
 //        System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
-        val fromJsonValidated = validateModule(fromJson, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
-        assertModulesEqual(initiallyParsed, fromJsonValidated)
+        try {
+            val fromJsonValidated = validateModule(fromJson, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+            assertModulesEqual(initiallyParsed, fromJsonValidated)
+        } catch (t: Throwable) {
+            val objectMapper = ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
+            val jsonString = objectMapper.writeValueAsString(asJson)
+            throw AssertionError("Error while reparsing; JSON was:\n$jsonString\nContext was:\n${writeToString(fromJson)}", t)
+        }
     }
 }
 

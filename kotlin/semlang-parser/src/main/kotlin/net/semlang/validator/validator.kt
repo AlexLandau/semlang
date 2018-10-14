@@ -141,7 +141,7 @@ private class Validator(
     }
 
     private fun validateFunctions(functions: List<Function>): Map<EntityId, ValidatedFunction> {
-        val validatedFunctions = HashMap<EntityId, ValidatedFunction>()
+        val validatedFunctions = LinkedHashMap<EntityId, ValidatedFunction>()
         for (function in functions) {
             val validatedFunction = validateFunction(function)
             if (validatedFunction != null && !typesInfo.duplicateLocalFunctionIds.contains(validatedFunction.id)) {
@@ -809,7 +809,7 @@ private class Validator(
     }
 
     private fun validateStructs(structs: List<UnvalidatedStruct>): Map<EntityId, Struct> {
-        val validatedStructs = HashMap<EntityId, Struct>()
+        val validatedStructs = LinkedHashMap<EntityId, Struct>()
         for (struct in structs) {
             val validatedStruct = validateStruct(struct)
             if (validatedStruct != null) {
@@ -868,7 +868,7 @@ private class Validator(
     }
 
     private fun validateInterfaces(interfaces: List<UnvalidatedInterface>): Map<EntityId, Interface> {
-        val validatedInterfaces = HashMap<EntityId, Interface>()
+        val validatedInterfaces = LinkedHashMap<EntityId, Interface>()
         for (interfac in interfaces) {
             val validatedInterface = validateInterface(interfac)
             if (validatedInterface != null) {
@@ -895,7 +895,7 @@ private class Validator(
     }
 
     private fun validateUnions(unions: List<UnvalidatedUnion>): Map<EntityId, Union> {
-        val validatedUnions = HashMap<EntityId, Union>()
+        val validatedUnions = LinkedHashMap<EntityId, Union>()
         for (union in unions) {
             val validatedUnion = validateUnion(union)
             if (validatedUnion != null) {

@@ -24,7 +24,7 @@ private fun computeFake0Hash(context: RawContext, upstreamModules: Collection<Va
 
     md.update(xor32ByteArrays(upstreamModules.map { computeFake0Hash(it) }))
 
-    val moduleAsString = writeToString(context)
+    val moduleAsString = writeToString(context, deterministicMode = true)
     md.update(moduleAsString.toByteArray())
 
     return md.digest()
