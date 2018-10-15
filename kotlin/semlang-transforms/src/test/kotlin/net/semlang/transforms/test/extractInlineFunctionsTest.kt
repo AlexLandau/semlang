@@ -36,15 +36,15 @@ class ExtractInlineFunctionsTest(private val file: File, private val libraries: 
     }
 
     private fun testExtraction(linked: Boolean) {
-        var module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        var module = validateModule(parseFile(file).assumeSuccess(), ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         if (linked) {
             val linkedModule = linkModuleWithDependencies(module)
-            module = validateModule(linkedModule.contents, linkedModule.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+            module = validateModule(linkedModule.contents, linkedModule.info.name, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         }
 
         val withoutInlineFunctions = extractInlineFunctions(module)
         val validated = try {
-            validateModule(withoutInlineFunctions, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+            validateModule(withoutInlineFunctions, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         } catch (e: RuntimeException) {
             throw RuntimeException("Validation after extraction failed; context was:\n" + writeToString(withoutInlineFunctions), e)
         }

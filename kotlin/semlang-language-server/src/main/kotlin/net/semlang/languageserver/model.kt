@@ -250,8 +250,8 @@ class SourcesFolderModel(private val folderUri: URI,
                 // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
                 // TODO: Also catch and deal with errors here
                 val loadedDependencies = moduleInfo.dependencies.map {
-                    val uniqueId = repository.getModuleUniqueId(it)
-                    repository.loadModule(uniqueId, File(folderUri))
+                    val uniqueId = repository.getModuleUniqueId(it, File(folderUri))
+                    repository.loadModule(uniqueId)
                 }
                 val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
 

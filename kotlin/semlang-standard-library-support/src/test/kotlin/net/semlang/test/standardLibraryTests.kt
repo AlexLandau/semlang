@@ -1,12 +1,13 @@
 package net.semlang.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
+import net.semlang.api.ModuleName
+import net.semlang.api.ModuleNonUniqueId
 import net.semlang.modules.getDefaultLocalRepository
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
-import net.semlang.api.ModuleId
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
@@ -25,7 +26,7 @@ class StandardLibraryTests(private val file: File) {
         }
 
         // TODO: Can we get this from the semlang-standard-library-support project? Or should it be "too standard to fail"?
-        val libraryModuleId: ModuleId = ModuleId("semlang", "standard-library", "develop")
+        val libraryModuleId = ModuleNonUniqueId(ModuleName("semlang", "standard-library"), "file", "../../semlang-library/src/main/semlang")
     }
 
 
@@ -50,9 +51,10 @@ class StandardLibraryTests(private val file: File) {
     private fun parseAndValidateFile(file: File): ValidatedModule {
         val localRepository = getDefaultLocalRepository()
         // TODO: May want to fix the "null" here
-        val libraryModule = localRepository.loadModule(libraryModuleId, null)
+        val libraryUniqueId = localRepository.getModuleUniqueId(libraryModuleId, File("."))
+        val libraryModule = localRepository.loadModule(libraryUniqueId)
 
         val unvalidatedContext = parseFile(file).assumeSuccess()
-        return validateModule(unvalidatedContext, ModuleId("semlang", "testFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule)).assumeSuccess()
+        return validateModule(unvalidatedContext, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf(libraryModule)).assumeSuccess()
     }
 }

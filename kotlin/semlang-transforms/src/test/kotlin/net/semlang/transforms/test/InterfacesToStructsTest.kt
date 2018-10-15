@@ -1,7 +1,7 @@
 package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import net.semlang.internal.test.runAnnotationTests
@@ -34,7 +34,7 @@ class InterfacesToStructsTest(private val file: File, private val libraries: Lis
         Assert.assertEquals(0, context.interfaces.size)
 
         val validatedMaybe = try {
-            validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries)
+            validateModule(context, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries)
         } catch(e: NotImplementedError) {
             System.out.println("Transformed context for test $file:")
             System.out.println(writeToString(context))

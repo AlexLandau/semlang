@@ -1,7 +1,7 @@
 package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Assert.fail
@@ -28,14 +28,14 @@ class ToSem0Test(private val file: File, private val libraries: List<ValidatedMo
 
     @Test
     fun testSem0Conversion() {
-        val module = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val module = validateModule(parseFile(file).assumeSuccess(), ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         val converted = convertToSem0(module)
 
         // TODO: Do something with the converted module
         val afterRoundTrip = convertFromSem0(converted)
         // TODO: If/when sem0 includes linking in libraries, we shouldn't pass in libraries here
         val revalidated = try {
-            validateModule(afterRoundTrip, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+            validateModule(afterRoundTrip, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         } catch (e: RuntimeException) {
             throw RuntimeException("Pre-converted module was:\n" + writeToString(module) + "\nPost-round-trip context was:\n" + writeToString(afterRoundTrip), e)
         }
