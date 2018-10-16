@@ -1,5 +1,4 @@
 dependencies {
-  compile project(":kotlin:semlang-module-parser")
   compile project(":kotlin:semlang-module-repository")
   compile project(":kotlin:semlang-parser")
   testCompile project(":kotlin:semlang-interpreter")

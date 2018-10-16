@@ -2,9 +2,8 @@ package net.semlang.parser.test
 
 import net.semlang.api.*
 import net.semlang.internal.test.runAnnotationTests
-import net.semlang.modules.ModuleRepository
 import net.semlang.modules.getDefaultLocalRepository
-import net.semlang.modules.parser.parseAndValidateModuleDirectory
+import net.semlang.modules.parseAndValidateModuleDirectory
 import net.semlang.parser.parseFile
 import net.semlang.validator.validateModule
 import org.junit.Assert

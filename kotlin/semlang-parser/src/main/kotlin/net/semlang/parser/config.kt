@@ -20,6 +20,10 @@ fun writeConfigFile(module: ValidatedModule, writer: Writer) {
     writer.write(writeConfigFileString(module))
 }
 
+fun writeConfigFile(info: ModuleInfo, writer: Writer) {
+    writer.write(writeConfigFileString(info))
+}
+
 sealed class ModuleInfoParsingResult {
     data class Success(val info: ModuleInfo): ModuleInfoParsingResult()
     data class Failure(val error: Exception): ModuleInfoParsingResult()
@@ -42,7 +46,25 @@ fun parseConfigFileString(text: String): ModuleInfoParsingResult {
     }
 }
 
-fun writeConfigFileString(module: ValidatedModule): String {
+private fun writeConfigFileString(info: ModuleInfo): String {
+    val mapper = ObjectMapper()
+    val factory = mapper.nodeFactory
+
+    val rootNode = ObjectNode(factory)
+    rootNode.put("group", info.name.group)
+    rootNode.put("module", info.name.module)
+
+    val arrayNode = rootNode.putArray("dependencies")
+
+    for (dependencyId in info.dependencies) {
+        writeDependencyNode(arrayNode.addObject(), dependencyId)
+    }
+
+    return mapper.writeValueAsString(rootNode)
+}
+
+// TODO: Maybe just have a function to convert a ValidatedModule into its ModuleInfo?
+private fun writeConfigFileString(module: ValidatedModule): String {
     val mapper = ObjectMapper()
     val factory = mapper.nodeFactory
 
@@ -79,4 +101,10 @@ private fun writeDependencyNode(node: ObjectNode, id: ModuleUniqueId) {
     node.put("group", id.name.group)
     node.put("module", id.name.module)
     node.put("version", ModuleUniqueId.UNIQUE_VERSION_SCHEME_PREFIX + id.fake0Version)
+}
+
+private fun writeDependencyNode(node: ObjectNode, id: ModuleNonUniqueId) {
+    node.put("group", id.name.group)
+    node.put("module", id.name.module)
+    node.put("version", id.versionScheme + ":" + id.version)
 }

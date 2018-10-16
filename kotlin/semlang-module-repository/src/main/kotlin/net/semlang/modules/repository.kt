@@ -29,6 +29,7 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
     }
 
     // TODO: Cache these
+    // TODO: Also check the hash is what we expect
     private fun loadUnvalidatedModule(id: ModuleUniqueId): UnvalidatedModule {
         val containingDirectory = getDirectoryForId(id)
 
@@ -61,7 +62,35 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
     }
 
     override fun getModuleUniqueId(dependencyId: ModuleNonUniqueId, callingModuleDirectory: File?): ModuleUniqueId {
-        TODO()
+        return when (dependencyId.versionScheme) {
+            "fake0" -> {
+                ModuleUniqueId(dependencyId.name, dependencyId.version)
+            }
+            "file" -> {
+                // TODO: Figure out what kind of caching is appropriate for file system-based modules
+                val directory = File(callingModuleDirectory, dependencyId.version)
+                if (!directory.isDirectory) {
+                    error("Module $dependencyId not found at location $directory: directory does not exist or is not a directory")
+                }
+                // TODO: Refactor
+                val parsingResult = parseModuleDirectory(directory, this)
+                if (parsingResult !is ModuleDirectoryParsingResult.Success) {
+                    error("Failure for module $dependencyId: Parsing failed: ${(parsingResult as ModuleDirectoryParsingResult.Failure).errors}")
+                }
+                val upstreamModules = parsingResult.module.info.dependencies.map { transDepId ->
+                    // TODO: Add circular dependency protections
+                    val transDepUniqueId = this.getModuleUniqueId(transDepId, directory)
+                    this.loadModule(transDepUniqueId)
+                }
+                val uniqueVersion = computeFake0Version(parsingResult.module.contents, upstreamModules)
+                val uniqueId = ModuleUniqueId(dependencyId.name, uniqueVersion)
+                publishUnvalidated(parsingResult.module, uniqueId)
+                return uniqueId
+            }
+            else -> {
+                error("Unrecognized version scheme ${dependencyId.versionScheme} in module $dependencyId")
+            }
+        }
     }
 
     private fun getDirectoryForId(id: ModuleUniqueId): File {
@@ -82,6 +111,7 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
         }
     }
 
+    // TODO: Deconflict with publishUnvalidated
     fun publish(module: ValidatedModule) {
         val directory = getDirectoryForId(module.id)
         directory.mkdirs()
@@ -102,6 +132,25 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
         }
     }
 
+    private fun publishUnvalidated(module: UnvalidatedModule, uniqueId: ModuleUniqueId) {
+        val directory = getDirectoryForId(uniqueId)
+        directory.mkdirs()
+        if (!directory.isDirectory) {
+            error("Couldn't create the directory $directory")
+        }
+
+        // Publish the .sem file
+        val sourceFile = File(directory, "module.sem")
+        BufferedWriter(FileWriter(sourceFile)).use { writer ->
+            write(module.contents, writer)
+        }
+
+        // Publish the info file
+        val infoFile = File(directory, "module")
+        BufferedWriter(FileWriter(infoFile)).use { writer ->
+            writeConfigFile(module.info, writer)
+        }
+    }
 }
 
 fun getDefaultLocalRepository(): LocalRepository {

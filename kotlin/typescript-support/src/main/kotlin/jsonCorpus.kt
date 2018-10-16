@@ -2,7 +2,7 @@ import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
 import net.semlang.linker.linkModuleWithDependencies
 import net.semlang.modules.getDefaultLocalRepository
-import net.semlang.modules.parser.parseAndValidateModuleDirectory
+import net.semlang.modules.parseAndValidateModuleDirectory
 import net.semlang.parser.toJsonText
 import net.semlang.validator.parseAndValidateFile
 import net.semlang.validator.validateModule

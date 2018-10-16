@@ -24,9 +24,9 @@ data class ModuleName(val group: String, val module: String) {
 }
 
 // TODO: Rename back to ModuleId when all references are fixed
-data class ModuleNonUniqueId(val name: ModuleName, val versionProtocol: String, val version: String) {
+data class ModuleNonUniqueId(val name: ModuleName, val versionScheme: String, val version: String) {
     fun requireUnique(): ModuleUniqueId {
-        if (versionProtocol != ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+        if (versionScheme != ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
             error("We require a unique ID here, but the ID was $this")
         }
         return ModuleUniqueId(name, version)
@@ -222,7 +222,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
 
     private fun getPreferredVersion(group: String, module: String, version: String): String {
         val id = ModuleNonUniqueId.fromStringTriple(group, module, version)
-        if (id.versionProtocol == ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+        if (id.versionScheme == ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
             return id.version
         }
         return this.moduleVersionMappings[id]?.fake0Version ?: error("No mapping was provided for version $version of module $group:$module")
