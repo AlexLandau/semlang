@@ -1323,7 +1323,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-
     inner private class OptionConstructorCallStrategy(val unionClassName: ClassName, val option: Option): FunctionCallStrategy {
         override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             if (option.type != null) {
@@ -1338,7 +1337,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val outputType = (binding.type as Type.FunctionType.Ground).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf(), listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1346,8 +1345,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.Literal -> TODO()
             is TypedExpression.ListLiteral -> TODO()
             is TypedExpression.NamedFunctionBinding -> {
-                val arguments = binding.bindings.map { if (it == null) TODO() else it }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters.map { if (it == null) error("") else it })
+                val arguments = binding.bindings.map { it ?: TODO() }
+                val chosenParameters = binding.chosenParameters.map { it ?: error("") }
+                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()
@@ -1361,7 +1361,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (binding) {
             is TypedExpression.Variable -> {
                 val arguments = listOf(openBindingReplacement) + methodArguments
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf(), listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1371,8 +1371,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.NamedFunctionBinding -> {
                 // TODO: Do we need the openBindingReplacement here, too? Add a test for that
                 val arguments = binding.bindings.replacingFirst(null, openBindingReplacement)
-                        .map { if (it == null) TODO() else it }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, binding.chosenParameters.map { if (it == null) error("") else it })
+                        .map { it ?: TODO() }
+                val chosenParameters = binding.chosenParameters.map { it ?: error("") }
+                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()

@@ -6,6 +6,7 @@ function doublePrinter(out: ~TextOut): ~TextOut {
   doTwice(out, TextOut.print|(_, Unicode.String."Hello!"))
 }
 
-function doTwice<~T>(object: ~T, fn: (~T) -> ~T): ~T {
+// TODO: We might want the T types here to be written as ~T
+function doTwice<~T>(object: T, fn: (T) -> T): T {
   fn(fn(object))
 }

@@ -393,7 +393,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters)
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters, providedChoices)
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -451,7 +451,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters)
+        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -610,7 +610,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters)
+        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -647,7 +647,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {

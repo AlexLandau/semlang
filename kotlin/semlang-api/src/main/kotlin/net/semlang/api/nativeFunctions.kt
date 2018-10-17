@@ -288,6 +288,7 @@ object NativeStruct {
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
                     listOf(TypedExpression.Variable(Type.INTEGER, "integer"),
                             TypedExpression.Literal(Type.INTEGER, "-1")),
+                    listOf(),
                     listOf()
             )),
             listOf()
@@ -323,6 +324,7 @@ object NativeStruct {
                                     "integer"),
                             TypedExpression.Literal(Type.INTEGER, "1114112")
                     ),
+                    listOf(),
                     listOf()
             )),
             listOf()
@@ -338,6 +340,7 @@ object NativeStruct {
             null,
             listOf()
     )
+    // TODO: Can we move Bit and BitsBigEndian into the standard library?
     val BIT = Struct(
             EntityId.of("Bit"),
             false,
@@ -361,6 +364,7 @@ object NativeStruct {
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "0")
                             ),
+                            listOf(),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
@@ -372,9 +376,11 @@ object NativeStruct {
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "1")
                             ),
+                            listOf(),
                             listOf()
                         )
                     ),
+                    listOf(),
                     listOf()
             )),
             listOf()

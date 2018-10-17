@@ -1,10 +1,12 @@
 package net.semlang.modules
 
+import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.RawContext
 import net.semlang.api.ValidatedModule
 import net.semlang.parser.UnvalidatedModule
 import net.semlang.parser.writeToString
 import net.semlang.transforms.invalidate
+import net.semlang.validator.getTypesInfo
 import java.security.MessageDigest
 import kotlin.experimental.xor
 
