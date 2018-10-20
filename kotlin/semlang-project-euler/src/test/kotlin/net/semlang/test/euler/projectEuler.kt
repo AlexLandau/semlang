@@ -23,8 +23,6 @@ class ProjectEulerExamples {
 
     @Test
     fun problem1() {
-        // TODO: For now we disable this test in CircleCI because it causes OOMs there for reasons I don't understand.
-        Assume.assumeFalse(isRunningInCircle())
         val interpreter = parseAndValidateFile("src/test/semlang/problem1.sem")
         assertEquals(
                 "wLIPRmXQOI1WTwtuzz7cn5SAyxX/+HGYuVcB2fX+H3s=",

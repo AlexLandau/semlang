@@ -6,7 +6,7 @@ jobs:
       - image: circleci/openjdk:8
     steps:
       - checkout
-      - run: ./gradlew build --max-workers=2
+      - run: ./gradlew build --max-workers=1
       - run:
           command: |
             mkdir -p circle-test-results/junit/
