@@ -17,6 +17,7 @@ Major near-term projects:
 - Finish converting the validator to use fine-grained errors
   - and/or port the validator itself to Semlang?
 - Probably rename Unicode.String to just String (Ascii.String or AsciiString can still come later)
+  - Also consider renaming Maybe.assume to just assume? (Or have it be an alternative name?)
 Not as near-term but on my mind:
 - Some kind of proof system?
 - Code writing in TypeScript? Other languages?
