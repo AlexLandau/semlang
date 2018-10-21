@@ -85,7 +85,6 @@ class StandardLibraryTests(private val file: File) {
 
     private fun parseAndValidateFile(file: File): ValidatedModule {
         val standardLibraryModuleId = ModuleNonUniqueId(ModuleName("semlang", "standard-library"), "file", "../../semlang-library/src/main/semlang")
-        // TODO: May want to fix the "null" here
         val standardLibraryUniqueId = getDefaultLocalRepository().getModuleUniqueId(standardLibraryModuleId, File("."))
         val standardLibraryModule = getDefaultLocalRepository().loadModule(standardLibraryUniqueId)
 

@@ -63,21 +63,17 @@ private fun writeConfigFileString(info: ModuleInfo): String {
     return mapper.writeValueAsString(rootNode)
 }
 
-// TODO: Maybe just have a function to convert a ValidatedModule into its ModuleInfo?
 private fun writeConfigFileString(module: ValidatedModule): String {
-    val mapper = ObjectMapper()
-    val factory = mapper.nodeFactory
+    val info = getModuleInfo(module)
+    return writeConfigFileString(info)
+}
 
-    val rootNode = ObjectNode(factory)
-    rootNode.put("group", module.id.name.group)
-    rootNode.put("module", module.id.name.module)
-
-    val arrayNode = rootNode.putArray("dependencies")
-    for (dependencyId in module.upstreamModules.keys) {
-        writeDependencyNode(arrayNode.addObject(), dependencyId)
-    }
-
-    return mapper.writeValueAsString(rootNode)
+/**
+ * Note: This gives dependencies their unique IDs, which may be unexpected behavior.
+ */
+fun getModuleInfo(module: ValidatedModule): ModuleInfo {
+    val dependencies = module.upstreamModules.keys.map { it.asNonUniqueId() }
+    return ModuleInfo(module.name, dependencies)
 }
 
 private fun parseDependencyNode(node: JsonNode): ModuleNonUniqueId {

@@ -2,10 +2,8 @@ package net.semlang.api
 
 import java.util.*
 
-val NATIVE_MODULE_GROUP = "semlang"
-val NATIVE_MODULE_MODULE = "lang"
 val CURRENT_NATIVE_MODULE_VERSION = "0"
-val NATIVE_MODULE_NAME = ModuleName(NATIVE_MODULE_GROUP, NATIVE_MODULE_MODULE)
+val NATIVE_MODULE_NAME = ModuleName("semlang", "lang")
 val CURRENT_NATIVE_MODULE_ID = ModuleUniqueId(NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
 
 fun isNativeModule(module: ModuleName): Boolean {

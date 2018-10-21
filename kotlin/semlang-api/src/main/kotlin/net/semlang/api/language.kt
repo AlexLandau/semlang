@@ -910,8 +910,6 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-// TODO: What do we use this moduleId for? -> resolvedRef, -> Type objects, which will be important for differentiating e.g. structs from different versions of libraries/APIs
-// TODO: Maybe what we really want is a "ValidatedModule" and then a "LoadedModule" that includes the hash-versions everywhere
 data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
@@ -974,7 +972,6 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
-// TODO: What do we use this moduleId for?
 data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
@@ -1067,7 +1064,6 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
     }
 }
-// TODO: What do we use this moduleId for?
 data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     val whenId = EntityId(id.namespacedName + "when")
@@ -1153,7 +1149,6 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
-// TODO: What do we use this moduleId for?
 data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {

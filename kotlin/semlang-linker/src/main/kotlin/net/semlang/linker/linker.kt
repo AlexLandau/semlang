@@ -41,7 +41,7 @@ private class Linker(val rootModule: ValidatedModule) {
         val transformedInterfaces = relevantEntities.interfaces.values.map(nameAssignment::applyToInterface)
         val transformedUnions = relevantEntities.unions.values.map(nameAssignment::applyToUnion)
 
-        val moduleInfo = ModuleInfo(rootModule.getName(), listOf())
+        val moduleInfo = ModuleInfo(rootModule.name, listOf())
         val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces, transformedUnions)
         return UnvalidatedModule(moduleInfo, context)
     }

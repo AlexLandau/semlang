@@ -42,7 +42,6 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
         return UnvalidatedModule(moduleInfo, rawContents)
     }
 
-    // TODO: Add support for file: dependencies
     override fun loadModule(id: ModuleUniqueId): ValidatedModule {
         return loadModuleInternal(id, HashSet())
     }

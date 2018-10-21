@@ -38,9 +38,6 @@ class ValidatorPositiveTests(private val file: File) {
     fun testValidateWriteValidateEquality() {
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
-//        System.out.println("Rewritten contents for file $file:")
-//        System.out.println(writtenToString)
-//        System.out.println("(End contents)")
         try {
             val reparsed = parseAndValidateString(writtenToString)
             assertModulesEqual(initiallyParsed, reparsed)
@@ -53,9 +50,6 @@ class ValidatorPositiveTests(private val file: File) {
     fun testParseWriteParseEquality() {
         val initiallyParsed = parseFile(file).assumeSuccess()
         val writtenToString = writeToString(initiallyParsed)
-//        System.out.println("Rewritten contents for file $file:")
-//        System.out.println(writtenToString)
-//        System.out.println("(End contents)")
         try {
             val reparsed = parseString(writtenToString, "").assumeSuccess()
             assertRawContextsEqual(initiallyParsed, reparsed)
@@ -68,9 +62,6 @@ class ValidatorPositiveTests(private val file: File) {
     fun testJsonWriteParseEquality() {
         val initiallyParsed = parseAndValidateFile(file).assumeSuccess()
         val asJson = toJson(initiallyParsed)
-//        System.out.println("Contents for file $file as JSON:")
-//        System.out.println(ObjectMapper().writeValueAsString(asJson))
-//        System.out.println("(End contents)")
         val fromJson = fromJson(asJson)
         try {
             val fromJsonValidated = validateModule(fromJson, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()

@@ -50,7 +50,6 @@ class StandardLibraryTests(private val file: File) {
 
     private fun parseAndValidateFile(file: File): ValidatedModule {
         val localRepository = getDefaultLocalRepository()
-        // TODO: May want to fix the "null" here
         val libraryUniqueId = localRepository.getModuleUniqueId(libraryModuleId, File("."))
         val libraryModule = localRepository.loadModule(libraryUniqueId)
 

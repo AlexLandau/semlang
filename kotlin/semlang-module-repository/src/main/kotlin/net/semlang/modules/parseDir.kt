@@ -1,10 +1,7 @@
 package net.semlang.modules
 
 import net.semlang.parser.*
-import net.semlang.validator.Issue
-import net.semlang.validator.IssueLevel
-import net.semlang.validator.ValidationResult
-import net.semlang.validator.validate
+import net.semlang.validator.*
 import java.io.File
 
 sealed class ModuleDirectoryParsingResult {
@@ -17,8 +14,6 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
     val parsedConfig = parseConfigFile(configFile)
     return when (parsedConfig) {
         is ModuleInfoParsingResult.Failure -> {
-            // TODO: This is for debugging, do we want it generally?
-            parsedConfig.error.printStackTrace()
             val error = Issue("Couldn't parse module.conf: ${parsedConfig.error.message}", null, IssueLevel.ERROR)
             ModuleDirectoryParsingResult.Failure(listOf(error), listOf())
         }
@@ -46,34 +41,21 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
 
 }
 
-// TODO: Rewrite in terms of the other function
 fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String, repository: ModuleRepository): ValidationResult {
-    val configFile = File(directory, "module.conf")
-    val parsedConfig = parseConfigFile(configFile)
-    return when (parsedConfig) {
-        is ModuleInfoParsingResult.Failure -> {
-            // TODO: This is for debugging, do we want it generally?
-            parsedConfig.error.printStackTrace()
-            val error = Issue("Couldn't parse module.conf: ${parsedConfig.error.message}", null, IssueLevel.ERROR)
-            ValidationResult.Failure(listOf(error), listOf())
-        }
-        is ModuleInfoParsingResult.Success -> {
-            val semFiles = directory.listFiles { dir, name -> name.endsWith(".sem") }
-            val parsingResults = semFiles.map { file ->
-                try {
-                    parseFile(file)
-                } catch (e: RuntimeException) {
-                    throw RuntimeException("Error parsing file $file", e)
-                }
-            }
-            val combinedParsingResult = combineParsingResults(parsingResults)
+    val dirParseResult = parseModuleDirectory(directory, repository)
+    return when (dirParseResult) {
+        is ModuleDirectoryParsingResult.Success -> {
+            val module = dirParseResult.module
 
-            val dependencies = parsedConfig.info.dependencies.map { dependencyId ->
+            val dependencies = module.info.dependencies.map { dependencyId ->
                 val uniqueId = repository.getModuleUniqueId(dependencyId, directory)
                 repository.loadModule(uniqueId)
             }
 
-            validate(combinedParsingResult, parsedConfig.info.name, nativeModuleVersion, dependencies)
+            validateModule(module.contents, module.info.name, nativeModuleVersion, dependencies)
+        }
+        is ModuleDirectoryParsingResult.Failure -> {
+            ValidationResult.Failure(dirParseResult.errors, dirParseResult.warnings)
         }
     }
 }

@@ -27,11 +27,6 @@ fun write(module: ValidatedModule, writer: Writer) {
 
 // TODO: Right now deterministicMode is defined just for fake0 versioning
 fun write(context: RawContext, writer: Writer, deterministicMode: Boolean = false) {
-//    val comparator: Comparator<HasId> = if (sorted) HasEntityIdComparator else object: Comparator<HasId> {
-//        override fun compare(o1: HasId?, o2: HasId?): Int {
-//            return 0
-//        }
-//    }
     fun <T: HasId> maybeSort(list: List<T>): List<T> {
         return if (deterministicMode) {
             list.sortedWith(HasEntityIdComparator)

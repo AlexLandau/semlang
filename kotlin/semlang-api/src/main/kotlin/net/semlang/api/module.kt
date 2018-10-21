@@ -1,6 +1,5 @@
 package net.semlang.api
 
-import sun.security.pkcs11.Secmod
 import java.util.*
 import java.util.regex.Pattern
 
@@ -9,11 +8,9 @@ private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z
 data class ModuleName(val group: String, val module: String) {
     init {
         if (!LEGAL_MODULE_PATTERN.matcher(group).matches()) {
-            // TODO: Update explanation
             throw IllegalArgumentException("Illegal character in module group '$group'; only letters, numbers, dots, hyphens, and underscores are allowed.")
         }
         if (!LEGAL_MODULE_PATTERN.matcher(module).matches()) {
-            // TODO: Update explanation
             throw IllegalArgumentException("Illegal character in module name '$module'; only letters, numbers, dots, hyphens, and underscores are allowed.")
         }
     }
@@ -23,7 +20,6 @@ data class ModuleName(val group: String, val module: String) {
     }
 }
 
-// TODO: Rename back to ModuleId when all references are fixed
 data class ModuleNonUniqueId(val name: ModuleName, val versionScheme: String, val version: String) {
     fun requireUnique(): ModuleUniqueId {
         if (versionScheme != ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
@@ -56,23 +52,11 @@ data class ModuleUniqueId(val name: ModuleName, val fake0Version: String) {
     fun asRef(): ModuleRef {
         return ModuleRef(name.group, name.module, UNIQUE_VERSION_SCHEME_PREFIX + fake0Version)
     }
+
+    fun asNonUniqueId(): ModuleNonUniqueId {
+        return ModuleNonUniqueId(name, UNIQUE_VERSION_SCHEME, fake0Version)
+    }
 }
-//data class ModuleId(val group: String, val module: String, val version: String) {
-//    init {
-//        // TODO: Consider if these restrictions can/should be relaxed
-//        for ((string, stringType) in listOf(group to "group",
-//                module to "name")) {
-//            if (!LEGAL_MODULE_PATTERN.matcher(string).matches()) {
-//                // TODO: Update explanation
-//                throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
-//            }
-//        }
-//    }
-//
-//    fun asRef(): ModuleRef {
-//        return ModuleRef(group, module, version)
-//    }
-//}
 
 data class ModuleRef(val group: String?, val module: String, val version: String?) {
     init {
@@ -231,8 +215,6 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
 private val EXPORT_ANNOTATION_NAME = EntityId.of("Export")
 // TODO: Would storing or returning things in a non-map format improve performance?
 // TODO: When we have re-exporting implemented, check somewhere that we don't export multiple refs with the same ID
-// TODO: For module version reform, we probably want mappings from ModuleNonUniqueIds to ModuleUniqueIds (that would
-//   come from the repository)
 class ValidatedModule private constructor(val id: ModuleUniqueId,
                                           val nativeModuleVersion: String,
                                           val ownFunctions: Map<EntityId, ValidatedFunction>,
@@ -245,10 +227,7 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
                                           val exportedUnions: Set<EntityId>,
                                           val upstreamModules: Map<ModuleUniqueId, ValidatedModule>,
                                           val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
-    // TODO: How do fake getters work here?
-    fun getName(): ModuleName {
-        return id.name
-    }
+    val name get() = id.name
     init {
         if (isNativeModule(id)) {
             error("We should not be creating ValidatedModule objects for the native module")
