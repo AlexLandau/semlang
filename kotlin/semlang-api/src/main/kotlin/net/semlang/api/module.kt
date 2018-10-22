@@ -7,6 +7,7 @@ private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z
 
 data class ModuleName(val group: String, val module: String) {
     init {
+        // TODO: Consider if these restrictions can/should be relaxed
         if (!LEGAL_MODULE_PATTERN.matcher(group).matches()) {
             throw IllegalArgumentException("Illegal character in module group '$group'; only letters, numbers, dots, hyphens, and underscores are allowed.")
         }
