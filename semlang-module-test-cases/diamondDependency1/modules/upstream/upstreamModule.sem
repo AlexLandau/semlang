@@ -1,0 +1,5 @@
+@Export
+struct CommonFoo {
+  s: Unicode.String
+  n: Integer
+}

@@ -71,9 +71,9 @@ data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
         }
     }
 }
-data class ResolvedEntityRef(val module: ModuleId, val id: EntityId) {
+data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
     override fun toString(): String {
-        return "${module.group}:${module.module}:${module.version}:$id"
+        return "${module.name}:${module.fake0Version}:$id"
     }
 }
 
@@ -862,12 +862,12 @@ sealed class TypedExpression {
     abstract val type: Type
     data class Variable(override val type: Type, val name: String): TypedExpression()
     data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
-    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
+    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
     data class Literal(override val type: Type, val literal: String): TypedExpression()
     data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>) : TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
     data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }
@@ -910,7 +910,7 @@ data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Bo
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -934,8 +934,8 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         }
         return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
-
 }
+
 interface HasId {
     val id: EntityId
 }
@@ -972,7 +972,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
         return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
-data class Interface(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return methods.indexOfFirst { method -> method.name == name }
@@ -1064,7 +1064,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
     }
 }
-data class Union(override val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
+data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     val whenId = EntityId(id.namespacedName + "when")
     private val optionIndexLookup: Map<EntityId, Int> = {
@@ -1149,7 +1149,7 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
-data class OpaqueType(val id: EntityId, val moduleId: ModuleId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {

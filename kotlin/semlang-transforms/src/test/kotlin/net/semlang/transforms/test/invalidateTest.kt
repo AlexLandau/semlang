@@ -1,9 +1,6 @@
 package net.semlang.transforms.test
 
-import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
-import net.semlang.api.RawContext
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Test
@@ -28,7 +25,7 @@ class InvalidationTest(private val file: File, private val libraries: List<Valid
     @Test
     fun testInvalidateRevalidateRoundTripEquality() {
         val validate = fun(context: RawContext): ValidatedModule {
-            return validateModule(context, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+            return validateModule(context, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         }
         val initialRawContext = parseFile(file).assumeSuccess()
         val initialModule = validate(initialRawContext)

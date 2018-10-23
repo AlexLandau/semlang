@@ -1,7 +1,7 @@
 package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import org.junit.Assert.fail
@@ -29,7 +29,7 @@ class SimplifyExpressionsTest(private val file: File, private val libraries: Lis
     fun testSimplification() {
         val originalContext = parseFile(file).assumeSuccess()
         val simplifiedContext = simplifyAllExpressions(originalContext)
-        val simplifiedModule = validateModule(simplifiedContext, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val simplifiedModule = validateModule(simplifiedContext, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
         try {
             try {

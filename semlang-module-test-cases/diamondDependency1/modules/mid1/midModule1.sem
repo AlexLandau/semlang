@@ -1,0 +1,4 @@
+@Export
+function provideFooConstant(): CommonFoo {
+  CommonFoo(Unicode.String."Hello!", Integer."1")
+}

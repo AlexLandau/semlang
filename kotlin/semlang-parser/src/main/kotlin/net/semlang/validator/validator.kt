@@ -2,6 +2,7 @@ package net.semlang.validator
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import net.semlang.modules.computeFake0Version
 import net.semlang.parser.ParsingResult
 import net.semlang.parser.parseFile
 import net.semlang.parser.parseString
@@ -16,7 +17,7 @@ private fun fail(e: Exception, text: String): Nothing {
 
 // TODO: Remove once unused
 private fun fail(text: String): Nothing {
-    val fullMessage = "Validation error, position not recorded: " + text
+    val fullMessage = "Validation error, position not recorded: $text"
     error(fullMessage)
 }
 
@@ -24,20 +25,26 @@ private fun fail(text: String): Nothing {
  * Warning: Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
  *   check (albeit code that can always be run in a vacuum)
  */
-fun validateModule(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
+fun validateModule(context: RawContext, moduleName: ModuleName, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
+    val fake0Version = computeFake0Version(context, upstreamModules)
+    val moduleId = ModuleUniqueId(moduleName, fake0Version)
+
+    // TODO: Actually implement this
+    val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+
     val issuesList = ArrayList<Issue>()
-    val typesInfo = getTypesInfo(context, moduleId, nativeModuleVersion, upstreamModules, { issue -> issuesList.add(issue) })
-    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, typesInfo, issuesList)
+    val typesInfo = getTypesInfo(context, moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
+    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, issuesList)
     return validator.validate(context)
 }
 
-fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
+fun validate(parsingResult: ParsingResult, moduleName: ModuleName, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
     return when (parsingResult) {
         is ParsingResult.Success -> {
-            validateModule(parsingResult.context, moduleId, nativeModuleVersion, upstreamModules)
+            validateModule(parsingResult.context, moduleName, nativeModuleVersion, upstreamModules)
         }
         is ParsingResult.Failure -> {
-            val validationResult = validateModule(parsingResult.partialContext, moduleId, nativeModuleVersion, upstreamModules)
+            val validationResult = validateModule(parsingResult.partialContext, moduleName, nativeModuleVersion, upstreamModules)
             when (validationResult) {
                 is ValidationResult.Success -> {
                     ValidationResult.Failure(parsingResult.errors, validationResult.warnings)
@@ -50,14 +57,14 @@ fun validate(parsingResult: ParsingResult, moduleId: ModuleId, nativeModuleVersi
     }
 }
 
-fun parseAndValidateFile(file: File, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule> = listOf()): ValidationResult {
+fun parseAndValidateFile(file: File, moduleName: ModuleName, nativeModuleVersion: String, upstreamModules: List<ValidatedModule> = listOf()): ValidationResult {
     val parsingResult = parseFile(file)
-    return validate(parsingResult, moduleId, nativeModuleVersion, upstreamModules)
+    return validate(parsingResult, moduleName, nativeModuleVersion, upstreamModules)
 }
 
-fun parseAndValidateString(text: String, documentUri: String, moduleId: ModuleId, nativeModuleVersion: String): ValidationResult {
+fun parseAndValidateString(text: String, documentUri: String, moduleName: ModuleName, nativeModuleVersion: String): ValidationResult {
     val parsingResult = parseString(text, documentUri)
-    return validate(parsingResult, moduleId, nativeModuleVersion, listOf())
+    return validate(parsingResult, moduleName, nativeModuleVersion, listOf())
 }
 
 enum class IssueLevel {
@@ -110,9 +117,10 @@ private fun formatForCliOutput(allErrors: List<Issue>): String {
 }
 
 private class Validator(
-        val moduleId: ModuleId,
+        val moduleId: ModuleUniqueId,
         val nativeModuleVersion: String,
         val upstreamModules: List<ValidatedModule>,
+        val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
         val typesInfo: TypesInfo,
         initialIssues: List<Issue>) {
     val warnings = ArrayList<Issue>(initialIssues.filter { it.level == IssueLevel.WARNING })
@@ -125,7 +133,7 @@ private class Validator(
         val ownUnions = validateUnions(context.unions)
 
         if (errors.isEmpty()) {
-            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, ownUnions, upstreamModules)
+            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, ownUnions, upstreamModules, moduleVersionMappings)
             return ValidationResult.Success(createdModule, warnings)
         } else {
             return ValidationResult.Failure(errors, warnings)
@@ -133,7 +141,7 @@ private class Validator(
     }
 
     private fun validateFunctions(functions: List<Function>): Map<EntityId, ValidatedFunction> {
-        val validatedFunctions = HashMap<EntityId, ValidatedFunction>()
+        val validatedFunctions = LinkedHashMap<EntityId, ValidatedFunction>()
         for (function in functions) {
             val validatedFunction = validateFunction(function)
             if (validatedFunction != null && !typesInfo.duplicateLocalFunctionIds.contains(validatedFunction.id)) {
@@ -385,7 +393,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters)
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters, providedChoices)
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -443,7 +451,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters)
+        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -602,7 +610,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters)
+        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -639,7 +647,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters)
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
@@ -801,7 +809,7 @@ private class Validator(
     }
 
     private fun validateStructs(structs: List<UnvalidatedStruct>): Map<EntityId, Struct> {
-        val validatedStructs = HashMap<EntityId, Struct>()
+        val validatedStructs = LinkedHashMap<EntityId, Struct>()
         for (struct in structs) {
             val validatedStruct = validateStruct(struct)
             if (validatedStruct != null) {
@@ -860,7 +868,7 @@ private class Validator(
     }
 
     private fun validateInterfaces(interfaces: List<UnvalidatedInterface>): Map<EntityId, Interface> {
-        val validatedInterfaces = HashMap<EntityId, Interface>()
+        val validatedInterfaces = LinkedHashMap<EntityId, Interface>()
         for (interfac in interfaces) {
             val validatedInterface = validateInterface(interfac)
             if (validatedInterface != null) {
@@ -887,7 +895,7 @@ private class Validator(
     }
 
     private fun validateUnions(unions: List<UnvalidatedUnion>): Map<EntityId, Union> {
-        val validatedUnions = HashMap<EntityId, Union>()
+        val validatedUnions = LinkedHashMap<EntityId, Union>()
         for (union in unions) {
             val validatedUnion = validateUnion(union)
             if (validatedUnion != null) {

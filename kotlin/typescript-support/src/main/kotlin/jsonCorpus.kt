@@ -1,8 +1,8 @@
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.linker.linkModuleWithDependencies
 import net.semlang.modules.getDefaultLocalRepository
-import net.semlang.modules.parser.parseAndValidateModuleDirectory
+import net.semlang.modules.parseAndValidateModuleDirectory
 import net.semlang.parser.toJsonText
 import net.semlang.validator.parseAndValidateFile
 import net.semlang.validator.validateModule
@@ -29,7 +29,7 @@ private fun translateNativeCorpus() {
     outputDir.mkdirs()
 
     for (sourceFile in sourcesDir.listFiles()) {
-        val module = parseAndValidateFile(sourceFile, ModuleId("semlang-test", sourceFile.nameWithoutExtension, "develop"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+        val module = parseAndValidateFile(sourceFile, ModuleName("semlang-test", sourceFile.nameWithoutExtension), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
 
         val jsonText = toJsonText(module)
 
@@ -56,9 +56,9 @@ fun linkAndTranslateStandardLibraryCorpus() {
     val standardLibrary = parseAndValidateModuleDirectory(File("../../semlang-library/src/main/semlang"), CURRENT_NATIVE_MODULE_VERSION, getDefaultLocalRepository()).assumeSuccess()
 
     for (sourceFile in sourcesDir.listFiles()) {
-        val module = parseAndValidateFile(sourceFile, ModuleId("semlang-test", sourceFile.nameWithoutExtension, "develop"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibrary)).assumeSuccess()
+        val module = parseAndValidateFile(sourceFile, ModuleName("semlang-test", sourceFile.nameWithoutExtension), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibrary)).assumeSuccess()
         val linkedContext = linkModuleWithDependencies(module)
-        val linkedModule = validateModule(linkedContext.contents, linkedContext.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val linkedModule = validateModule(linkedContext.contents, linkedContext.info.name, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
         val jsonText = toJsonText(linkedModule)
 

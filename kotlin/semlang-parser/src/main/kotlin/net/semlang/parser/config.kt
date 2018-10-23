@@ -3,14 +3,12 @@ package net.semlang.parser
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import net.semlang.api.ModuleId
-import net.semlang.api.RawContext
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import java.io.File
 import java.io.Writer
 
 // This is meant to incorporate all information that would appear in a module specification file
-data class ModuleInfo(val id: ModuleId, val dependencies: List<ModuleId>)
+data class ModuleInfo(val name: ModuleName, val dependencies: List<ModuleNonUniqueId>)
 data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
 
 // TODO: In theory we could hook these directly to Jackson
@@ -20,6 +18,10 @@ fun parseConfigFile(file: File): ModuleInfoParsingResult {
 
 fun writeConfigFile(module: ValidatedModule, writer: Writer) {
     writer.write(writeConfigFileString(module))
+}
+
+fun writeConfigFile(info: ModuleInfo, writer: Writer) {
+    writer.write(writeConfigFileString(info))
 }
 
 sealed class ModuleInfoParsingResult {
@@ -34,43 +36,71 @@ fun parseConfigFileString(text: String): ModuleInfoParsingResult {
 
         val group = rootNode.get("group").asText()
         val module = rootNode.get("module").asText()
-        val version = rootNode.get("version").asText()
-        val id = ModuleId(group, module, version)
+        val name = ModuleName(group, module)
 
         val dependencies = rootNode.get("dependencies").map(::parseDependencyNode)
 
-        return ModuleInfoParsingResult.Success(ModuleInfo(id, dependencies))
+        return ModuleInfoParsingResult.Success(ModuleInfo(name, dependencies))
     } catch(e: Exception) {
         return ModuleInfoParsingResult.Failure(e)
     }
 }
 
-fun writeConfigFileString(module: ValidatedModule): String {
+private fun writeConfigFileString(info: ModuleInfo): String {
     val mapper = ObjectMapper()
     val factory = mapper.nodeFactory
 
     val rootNode = ObjectNode(factory)
-    rootNode.put("group", module.id.group)
-    rootNode.put("module", module.id.module)
-    rootNode.put("version", module.id.version)
+    rootNode.put("group", info.name.group)
+    rootNode.put("module", info.name.module)
 
     val arrayNode = rootNode.putArray("dependencies")
-    for (dependencyId in module.upstreamModules.keys) {
+
+    for (dependencyId in info.dependencies) {
         writeDependencyNode(arrayNode.addObject(), dependencyId)
     }
 
     return mapper.writeValueAsString(rootNode)
 }
 
-private fun parseDependencyNode(node: JsonNode): ModuleId {
+private fun writeConfigFileString(module: ValidatedModule): String {
+    val info = getModuleInfo(module)
+    return writeConfigFileString(info)
+}
+
+/**
+ * Note: This gives dependencies their unique IDs, which may be unexpected behavior.
+ */
+fun getModuleInfo(module: ValidatedModule): ModuleInfo {
+    val dependencies = module.upstreamModules.keys.map { it.asNonUniqueId() }
+    return ModuleInfo(module.name, dependencies)
+}
+
+private fun parseDependencyNode(node: JsonNode): ModuleNonUniqueId {
+    if (node.isTextual) {
+        val splitContents = node.asText().split(":", limit = 3)
+        if (splitContents.size != 3) {
+            error("Expected three colon-separated components in a dependency listed in string format (group, module name, version)")
+        }
+        val group = splitContents[0]
+        val module = splitContents[1]
+        val version = splitContents[2]
+        return ModuleNonUniqueId.fromStringTriple(group, module, version)
+    }
     val group = node.get("group").asText()
     val module = node.get("module").asText()
     val version = node.get("version").asText()
-    return ModuleId(group, module, version)
+    return ModuleNonUniqueId.fromStringTriple(group, module, version)
 }
 
-private fun writeDependencyNode(node: ObjectNode, id: ModuleId) {
-    node.put("group", id.group)
-    node.put("module", id.module)
-    node.put("version", id.version)
+private fun writeDependencyNode(node: ObjectNode, id: ModuleUniqueId) {
+    node.put("group", id.name.group)
+    node.put("module", id.name.module)
+    node.put("version", ModuleUniqueId.UNIQUE_VERSION_SCHEME_PREFIX + id.fake0Version)
+}
+
+private fun writeDependencyNode(node: ObjectNode, id: ModuleNonUniqueId) {
+    node.put("group", id.name.group)
+    node.put("module", id.name.module)
+    node.put("version", id.versionScheme + ":" + id.version)
 }

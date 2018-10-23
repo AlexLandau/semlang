@@ -13,7 +13,7 @@ fun convertToSem0(module: ValidatedModule): S0Context {
     val v2 = invalidate(module)
     val v3 = transformInterfacesToStructs(v2)
     // TODO: Find a way to simplify and avoid re-validating here
-    val v4 = validateModule(v3, module.id, module.nativeModuleVersion, module.upstreamModules.values.toList()).assumeSuccess()
+    val v4 = validateModule(v3, module.id.name, module.nativeModuleVersion, module.upstreamModules.values.toList()).assumeSuccess()
     val v5 = extractInlineFunctions(v4)
     val v6 = simplifyAllExpressions(v5)
 

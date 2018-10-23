@@ -13,7 +13,7 @@ class TypesInfo(
         val duplicateLocalFunctionIds: Set<EntityId>,
         val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
         val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>,
-        private val moduleId: ModuleId
+        private val moduleId: ModuleUniqueId
 ) {
     fun getTypeInfo(ref: EntityRef): TypeInfo? {
         if (isCompatibleWithThisModule(ref)) {
@@ -34,9 +34,11 @@ class TypesInfo(
         if (moduleRef == null) {
             return true
         }
-        if (moduleRef.module != moduleId.module
-                || (moduleRef.group != null && moduleRef.group != moduleId.group)
-                || (moduleRef.version != null && moduleRef.version != moduleId.version)) {
+        // TODO: Possibly also allow a "self" version here, though it seems unnecessary... Maybe assume it's some other
+        // version if a version is specified? (As-is, specifying our own version can't possibly work)
+        if (moduleRef.module != moduleId.name.module
+                || (moduleRef.group != null && moduleRef.group != moduleId.name.group)
+                || (moduleRef.version != null && moduleRef.version != moduleId.fake0Version)) {
             return false
         }
         return true
@@ -68,15 +70,16 @@ sealed class TypeInfo {
     data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
 }
 
-fun getTypesInfo(context: RawContext, moduleId: ModuleId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>, recordIssue: (Issue) -> Unit): TypesInfo {
-    return TypeInfoCollector(context, moduleId, nativeModuleVersion, upstreamModules, recordIssue).apply()
+fun getTypesInfo(context: RawContext, moduleId: ModuleUniqueId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
+    return TypeInfoCollector(context, moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, recordIssue).apply()
 }
 
 private class TypeInfoCollector(
         val context: RawContext,
-        val moduleId: ModuleId,
+        val moduleId: ModuleUniqueId,
         val nativeModuleVersion: String,
         val upstreamModules: List<ValidatedModule>,
+        val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
         val recordIssue: (Issue) -> Unit
 ) {
     val localFunctionsMultimap = HashMap<EntityId, MutableList<FunctionInfo>>()
@@ -88,7 +91,8 @@ private class TypeInfoCollector(
             mapOf(),
             listOf(),
             mapOf(),
-            upstreamModules
+            upstreamModules,
+            moduleVersionMappings
     )
 
     fun apply(): TypesInfo {

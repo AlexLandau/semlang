@@ -2,13 +2,15 @@ package net.semlang.api
 
 import java.util.*
 
-val NATIVE_MODULE_GROUP = "semlang"
-val NATIVE_MODULE_NAME = "lang"
 val CURRENT_NATIVE_MODULE_VERSION = "0"
-val CURRENT_NATIVE_MODULE_ID = ModuleId(NATIVE_MODULE_GROUP, NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
+val NATIVE_MODULE_NAME = ModuleName("semlang", "lang")
+val CURRENT_NATIVE_MODULE_ID = ModuleUniqueId(NATIVE_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION)
 
-fun isNativeModule(module: ModuleId): Boolean {
-    return module.group == NATIVE_MODULE_GROUP && module.module == NATIVE_MODULE_NAME
+fun isNativeModule(module: ModuleName): Boolean {
+    return module == NATIVE_MODULE_NAME
+}
+fun isNativeModule(id: ModuleUniqueId): Boolean {
+    return isNativeModule(id.name)
 }
 
 /**
@@ -284,6 +286,7 @@ object NativeStruct {
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
                     listOf(TypedExpression.Variable(Type.INTEGER, "integer"),
                             TypedExpression.Literal(Type.INTEGER, "-1")),
+                    listOf(),
                     listOf()
             )),
             listOf()
@@ -319,6 +322,7 @@ object NativeStruct {
                                     "integer"),
                             TypedExpression.Literal(Type.INTEGER, "1114112")
                     ),
+                    listOf(),
                     listOf()
             )),
             listOf()
@@ -334,6 +338,7 @@ object NativeStruct {
             null,
             listOf()
     )
+    // TODO: Can we move Bit and BitsBigEndian into the standard library?
     val BIT = Struct(
             EntityId.of("Bit"),
             false,
@@ -357,6 +362,7 @@ object NativeStruct {
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "0")
                             ),
+                            listOf(),
                             listOf()
                         ), TypedExpression.NamedFunctionCall(
                             Type.BOOLEAN,
@@ -368,9 +374,11 @@ object NativeStruct {
                                             "integer"),
                                     TypedExpression.Literal(Type.INTEGER, "1")
                             ),
+                            listOf(),
                             listOf()
                         )
                     ),
+                    listOf(),
                     listOf()
             )),
             listOf()

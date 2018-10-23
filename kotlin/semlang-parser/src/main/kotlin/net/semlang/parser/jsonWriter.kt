@@ -463,14 +463,16 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.NamedFunctionCall -> {
             node.put("type", "namedCall")
             node.put("function", expression.functionRef.toString())
-            addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
+            // TODO: Writing originalChosenParameters here instead of chosenParameters is kind of silly; the hope is that
+            // sem64 makes this a moot point soon. In the meanwhile, this keeps the JSON round-trip test happy.
+            addChosenParameters(node.putArray("chosenParameters"), expression.originalChosenParameters)
             addArray(node, "arguments", expression.arguments, ::addExpression)
             return
         }
         is TypedExpression.ExpressionFunctionCall -> {
             node.put("type", "expressionCall")
             addExpression(node.putObject("expression"), expression.functionExpression)
-            addChosenParameters(node.putArray("chosenParameters"), expression.chosenParameters)
+            addChosenParameters(node.putArray("chosenParameters"), expression.originalChosenParameters)
             addArray(node, "arguments", expression.arguments, ::addExpression)
             return
         }
@@ -494,14 +496,14 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.NamedFunctionBinding -> {
             node.put("type", "namedBinding")
             node.put("function", expression.functionRef.toString())
-            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.chosenParameters)
+            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.originalChosenParameters)
             addBindings(node.putArray("bindings"), expression.bindings)
             return
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             node.put("type", "expressionBinding")
             addExpression(node.putObject("expression"), expression.functionExpression)
-            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.chosenParameters)
+            addChosenOptionalParameters(node.putArray("chosenParameters"), expression.originalChosenParameters)
             addBindings(node.putArray("bindings"), expression.bindings)
             return
         }

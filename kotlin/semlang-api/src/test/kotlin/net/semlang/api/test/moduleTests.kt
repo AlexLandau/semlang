@@ -12,8 +12,8 @@ class ContextTests {
     fun testFunctionVisibility() {
         testEntityVisibility(
                 ::createFunctionWithId,
-                fun (moduleId: ModuleId, entities: Map<EntityId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), mapOf(), upstreamModules)
+                fun (moduleId: ModuleUniqueId, entities: Map<EntityId, ValidatedFunction>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -31,8 +31,8 @@ class ContextTests {
     fun testStructVisibility() {
         testEntityVisibility(
                 ::createStructWithId,
-                fun (moduleId: ModuleId, entities: Map<EntityId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), mapOf(), upstreamModules)
+                fun (moduleId: ModuleUniqueId, entities: Map<EntityId, Struct>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -49,8 +49,8 @@ class ContextTests {
     fun testInterfaceVisibility() {
         testEntityVisibility(
                 ::createInterfaceWithId,
-                fun (moduleId: ModuleId, entities: Map<EntityId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, mapOf(), upstreamModules)
+                fun (moduleId: ModuleUniqueId, entities: Map<EntityId, Interface>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -67,8 +67,8 @@ class ContextTests {
     fun testUnionVisibility() {
         testEntityVisibility(
                 ::createUnionWithId,
-                fun (moduleId: ModuleId, entities: Map<EntityId, Union>, upstreamModules: List<ValidatedModule>): ValidatedModule {
-                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), mapOf(), entities, upstreamModules)
+                fun (moduleId: ModuleUniqueId, entities: Map<EntityId, Union>, upstreamModules: List<ValidatedModule>): ValidatedModule {
+                    return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), mapOf(), entities, upstreamModules, mapOf())
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id))
@@ -81,12 +81,12 @@ class ContextTests {
                 { module, id -> module.getExportedUnion(id)?.union })
     }
 
-    fun <T> testEntityVisibility(createEntity: (id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean) -> T,
-                                 createModule: (moduleId: ModuleId, entities: Map<EntityId, T>, upstreamModules: List<ValidatedModule>) -> ValidatedModule,
+    fun <T> testEntityVisibility(createEntity: (id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean) -> T,
+                                 createModule: (moduleId: ModuleUniqueId, entities: Map<EntityId, T>, upstreamModules: List<ValidatedModule>) -> ValidatedModule,
                                  getInternalEntity: (module: ValidatedModule, id: EntityId) -> T?,
                                  getExportedEntity: (module: ValidatedModule, id: EntityId) -> T?) {
-        val upstreamModuleId = ModuleId("example", "upstream", "0.1")
-        val downstreamModuleId = ModuleId("example", "downstream", "0.1")
+        val upstreamModuleId = ModuleUniqueId(ModuleName("example", "upstream"), "0123456")
+        val downstreamModuleId = ModuleUniqueId(ModuleName("example", "downstream"), "0123456")
 
         val coincidentallySharedInternalId = EntityId.of("coincidentallySharedInternal")
         val upstreamEntityWithSharedId = createEntity(coincidentallySharedInternalId, upstreamModuleId, 1, false)
@@ -140,7 +140,7 @@ class ContextTests {
     }
 }
 
-private fun createFunctionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
+private fun createFunctionWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
     val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, uniqueAspect.toString()))
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
@@ -150,7 +150,7 @@ private fun createFunctionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect:
     return ValidatedFunction(id, listOf(), listOf(), Type.INTEGER, block, annotations)
 }
 
-private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Struct {
+private fun createStructWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): Struct {
     val member = Member(uniqueAspect.toString(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
@@ -160,7 +160,7 @@ private fun createStructWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: I
     return Struct(id, false, moduleId, listOf(), listOf(member), null, annotations)
 }
 
-private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Interface {
+private fun createInterfaceWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): Interface {
     val method = Method(uniqueAspect.toString(), listOf(), listOf(), Type.INTEGER)
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
@@ -170,7 +170,7 @@ private fun createInterfaceWithId(id: EntityId, moduleId: ModuleId, uniqueAspect
     return Interface(id, moduleId, listOf(), listOf(method), annotations)
 }
 
-private fun createUnionWithId(id: EntityId, moduleId: ModuleId, uniqueAspect: Int, exported: Boolean): Union {
+private fun createUnionWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): Union {
     val option = Option(uniqueAspect.toString(), null)
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))

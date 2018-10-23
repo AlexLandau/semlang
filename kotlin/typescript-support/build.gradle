@@ -1,6 +1,6 @@
 dependencies {
   compile project(':kotlin:semlang-linker')
-  compile project(':kotlin:semlang-module-parser')
+  compile project(':kotlin:semlang-module-repository')
 }
 
 task translateCorpusToJson(type: JavaExec) {

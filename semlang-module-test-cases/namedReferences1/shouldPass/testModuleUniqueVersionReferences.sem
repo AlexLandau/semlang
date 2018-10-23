@@ -1,0 +1,21 @@
+// Note: Doing this in human-written code is probably not the best idea. But it should work.
+
+@Test([], "1")
+function testExportedByBoth1(): Integer {
+    semlang-test:test-module-1:"fake0:3dc663329e4e27a3be89eb26698a4c81421c4fab997e9f3eafd48999f0b06c":exportedByBoth()
+}
+
+@Test([], "5")
+function testExportedByBoth2(): Integer {
+    semlang-test:test-module-2:"fake0:d7358dc2ebe26baaa09271796f1ae3e5082bb72f7c079f53d326ad18be9c":exportedByBoth()
+}
+
+@Test([], "2")
+function testExportedBy1(): Integer {
+    semlang-test:test-module-1:"fake0:3dc663329e4e27a3be89eb26698a4c81421c4fab997e9f3eafd48999f0b06c":exportedBy1()
+}
+
+@Test([], "7")
+function testExportedBy2(): Integer {
+    semlang-test:test-module-2:"fake0:d7358dc2ebe26baaa09271796f1ae3e5082bb72f7c079f53d326ad18be9c":exportedBy2()
+}

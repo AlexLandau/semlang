@@ -31,5 +31,5 @@ class CorpusInterpreterTests(private val file: File) {
 }
 
 private fun parseAndValidateFile(file: File): ValidatedModule {
-    return parseAndValidateFile(file, ModuleId("semlang", "corpusFile", "0.0.1"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
+    return parseAndValidateFile(file, ModuleName("semlang", "corpusFile"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
 }

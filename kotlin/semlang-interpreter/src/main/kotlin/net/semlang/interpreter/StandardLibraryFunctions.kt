@@ -1,9 +1,6 @@
 package net.semlang.interpreter
 
-import net.semlang.api.EntityId
-import net.semlang.api.ModuleId
-import net.semlang.api.ResolvedEntityRef
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import java.math.BigInteger
 import java.util.function.Consumer
 
@@ -46,36 +43,37 @@ fun getOptimizedStructLiteralParsers(mainModule: ValidatedModule): Map<ResolvedE
 /**
  * Returns the module IDs for the given module and all its dependencies, including transitive dependencies.
  */
-private fun getAllModuleIds(module: ValidatedModule): Set<ModuleId> {
-    val allModuleIds = HashSet<ModuleId>()
+private fun getAllModuleIds(module: ValidatedModule): Set<ModuleUniqueId> {
+    val allModuleIds = HashSet<ModuleUniqueId>()
     addAllModuleIds(allModuleIds, module)
     return allModuleIds
 }
 
-private fun addAllModuleIds(allModuleIds: HashSet<ModuleId>, module: ValidatedModule) {
+private fun addAllModuleIds(allModuleIds: HashSet<ModuleUniqueId>, module: ValidatedModule) {
     allModuleIds.add(module.id)
     for (upstreamModule in module.upstreamModules.values) {
         addAllModuleIds(allModuleIds, upstreamModule)
     }
 }
 
-private fun addFunctionsFromModule(result: HashMap<ResolvedEntityRef, NativeFunction>, moduleId: ModuleId) {
+private val standardLibraryName = ModuleName("semlang", "standard-library")
+private fun addFunctionsFromModule(result: HashMap<ResolvedEntityRef, NativeFunction>, moduleId: ModuleUniqueId) {
     // TODO: Fix the version check once we get real module versioning
-    if (moduleId.group == "semlang" && moduleId.module == "standard-library" && moduleId.version == "develop") {
+    if (moduleId.name == standardLibraryName) {
         addStandardLibraryFunctions(getFunctionAddingConsumer(moduleId, result))
     }
 }
 
-private fun addStructConstructorsFromModule(result: HashMap<ResolvedEntityRef, NativeFunction>, moduleId: ModuleId) {
+private fun addStructConstructorsFromModule(result: HashMap<ResolvedEntityRef, NativeFunction>, moduleId: ModuleUniqueId) {
     // TODO: Fix the version check once we get real module versioning
-    if (moduleId.group == "semlang" && moduleId.module == "standard-library" && moduleId.version == "develop") {
+    if (moduleId.name == standardLibraryName) {
         addStandardLibraryStructConstructors(getFunctionAddingConsumer(moduleId, result))
     }
 }
 
-private fun addStructLiteralParsersFromModule(result: HashMap<ResolvedEntityRef, (String) -> SemObject>, moduleId: ModuleId) {
+private fun addStructLiteralParsersFromModule(result: HashMap<ResolvedEntityRef, (String) -> SemObject>, moduleId: ModuleUniqueId) {
     // TODO: Fix the version check once we get real module versioning
-    if (moduleId.group == "semlang" && moduleId.module == "standard-library" && moduleId.version == "develop") {
+    if (moduleId.name == standardLibraryName) {
         // TODO: Refactor
         val entityIdsMap = HashMap<EntityId, (String) -> SemObject>()
         addStandardLibraryStructLiteralParsers(entityIdsMap)
@@ -87,7 +85,7 @@ private fun addStructLiteralParsersFromModule(result: HashMap<ResolvedEntityRef,
 }
 
 // Simplify the "addXFunctions" a little by not requiring them to restate their IDs quite so much
-private fun getFunctionAddingConsumer(moduleId: ModuleId, allFunctionsMap: HashMap<ResolvedEntityRef, NativeFunction>): Consumer<NativeFunction> {
+private fun getFunctionAddingConsumer(moduleId: ModuleUniqueId, allFunctionsMap: HashMap<ResolvedEntityRef, NativeFunction>): Consumer<NativeFunction> {
     return object: Consumer<NativeFunction> {
         override fun accept(function: NativeFunction) {
             val resolvedRef = ResolvedEntityRef(moduleId, function.id)

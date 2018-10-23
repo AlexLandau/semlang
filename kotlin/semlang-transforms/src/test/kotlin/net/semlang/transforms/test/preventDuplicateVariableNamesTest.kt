@@ -1,7 +1,7 @@
 package net.semlang.transforms.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
 import net.semlang.internal.test.runAnnotationTests
@@ -30,7 +30,7 @@ class PreventDuplicateVariableNamesTest(private val file: File, private val libr
         val context = parseFile(file).assumeSuccess()
 
         val variablesRenamed = preventDuplicateVariableNames(context)
-        val validated = validateModule(variablesRenamed, ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val validated = validateModule(variablesRenamed, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
 
         try {
             try {

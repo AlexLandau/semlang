@@ -6,7 +6,6 @@ dependencies {
   compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
 
   testCompile project(':kotlin:semlang-test-utils')
-  testCompile project(':kotlin:semlang-module-parser')
 }
 
 tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))

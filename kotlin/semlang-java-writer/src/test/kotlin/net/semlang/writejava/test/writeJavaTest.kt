@@ -1,7 +1,7 @@
 package net.semlang.writejava.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleId
+import net.semlang.api.ModuleName
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.TestsType
 import net.semlang.internal.test.getCompilableFilesWithAssociatedLibraries
@@ -35,12 +35,12 @@ class WriteJavaTest(private val file: File, private val libraries: List<Validate
 
     @Test
     fun testWritingJava() {
-        val unlinkedModule = validateModule(parseFile(file).assumeSuccess(), ModuleId("semlang", "testFile", "devTest"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
+        val unlinkedModule = validateModule(parseFile(file).assumeSuccess(), ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         val linkedModule = if (libraries.isEmpty()) {
             unlinkedModule
         } else {
             val linkedContext = linkModuleWithDependencies(unlinkedModule)
-            validateModule(linkedContext.contents, linkedContext.info.id, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+            validateModule(linkedContext.contents, linkedContext.info.name, CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         }
 
         val newSrcDir = Files.createTempDirectory("generatedJavaSource").toFile()

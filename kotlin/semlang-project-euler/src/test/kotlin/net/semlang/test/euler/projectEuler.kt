@@ -11,6 +11,7 @@ import net.semlang.interpreter.SemlangForwardInterpreter
 import net.semlang.parser.parseFileNamed
 import net.semlang.validator.validateModule
 import org.junit.Assume
+import java.io.File
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.util.*
@@ -42,9 +43,12 @@ class ProjectEulerExamples {
     private fun parseAndValidateFile(filename: String): SemlangForwardInterpreter {
         val rawContext = parseFileNamed(filename).assumeSuccess()
 
-        val standardLibraryContext = getDefaultLocalRepository().loadModule(ModuleId("semlang", "standard-library", "develop"))
+        val localRepository = getDefaultLocalRepository()
+        val libraryModuleId = ModuleNonUniqueId(ModuleName("semlang", "standard-library"), "file", "../../semlang-library/src/main/semlang")
+        val libraryUniqueId = localRepository.getModuleUniqueId(libraryModuleId, File("."))
+        val standardLibraryContext = localRepository.loadModule(libraryUniqueId)
 
-        return SemlangForwardInterpreter(validateModule(rawContext, ModuleId("semlang", "eulerTestFile", "develop-test"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)).assumeSuccess(), InterpreterOptions())
+        return SemlangForwardInterpreter(validateModule(rawContext, ModuleName("semlang", "eulerTestFile"), CURRENT_NATIVE_MODULE_VERSION, listOf(standardLibraryContext)).assumeSuccess(), InterpreterOptions())
     }
 }
 

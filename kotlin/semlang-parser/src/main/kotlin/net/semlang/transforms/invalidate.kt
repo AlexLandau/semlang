@@ -5,11 +5,10 @@ import net.semlang.api.Function
 
 // TODO: These might be better as functions (or even extension functions) on the API elements
 fun invalidate(module: ValidatedModule): RawContext {
-    // TODO: There might be better options for how to sort these or keep them sorted...
-    val functions = module.ownFunctions.toSortedMap(EntityIdComparator).values.map(::invalidate)
-    val structs = module.ownStructs.toSortedMap(EntityIdComparator).values.map(::invalidate)
-    val interfaces = module.ownInterfaces.toSortedMap(EntityIdComparator).values.map(::invalidate)
-    val unions = module.ownUnions.toSortedMap(EntityIdComparator).values.map(::invalidate)
+    val functions = module.ownFunctions.values.map(::invalidate)
+    val structs = module.ownStructs.values.map(::invalidate)
+    val interfaces = module.ownInterfaces.values.map(::invalidate)
+    val unions = module.ownUnions.values.map(::invalidate)
     return RawContext(functions, structs, interfaces, unions)
 }
 
@@ -100,13 +99,13 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionCall -> {
             val arguments = expression.arguments.map(::invalidateExpression)
-            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            val chosenParameters = expression.originalChosenParameters.map(::invalidate)
             Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionCall -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val arguments = expression.arguments.map(::invalidateExpression)
-            val chosenParameters = expression.chosenParameters.map(::invalidate)
+            val chosenParameters = expression.originalChosenParameters.map(::invalidate)
             Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
         is TypedExpression.Literal -> {
@@ -120,13 +119,13 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
         }
         is TypedExpression.NamedFunctionBinding -> {
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
+            val chosenParameters = expression.originalChosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
             val functionExpression = invalidateExpression(expression.functionExpression)
             val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
-            val chosenParameters = expression.chosenParameters.map { if (it == null) null else invalidate(it) }
+            val chosenParameters = expression.originalChosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is TypedExpression.Follow -> {
@@ -153,32 +152,4 @@ fun invalidate(function: ValidatedFunction): Function {
     val returnType = invalidate(function.returnType)
     return Function(function.id, function.typeParameters, arguments, returnType, block,
             function.annotations)
-}
-
-private object EntityIdComparator: Comparator<EntityId> {
-    override fun compare(id1: EntityId, id2: EntityId): Int {
-        val strings1 = id1.namespacedName
-        val strings2 = id2.namespacedName
-        var i = 0
-        while (true) {
-            // When they are otherwise the same, shorter precedes longer
-            val done1 = i >= strings1.size
-            val done2 = i >= strings2.size
-            if (done1) {
-                if (done2) {
-                    return 0
-                } else {
-                    return -1
-                }
-            }
-            if (done2) {
-                return 1
-            }
-            val stringComparison = strings1[i].compareTo(strings2[i])
-            if (stringComparison != 0) {
-                return stringComparison
-            }
-            i++
-        }
-    }
 }

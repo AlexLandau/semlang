@@ -22,7 +22,7 @@ class PartialParsingTest {
                 val functionIds = parsingResult.partialContext.functions.map(Function::id).map(EntityId::toString).toSet()
                 // For some reason, "bar" stays there
 //                assertEquals(setOf("foo", "baz"), functionIds)
-                val validationResult = validate(parsingResult, ModuleId("a", "b", "develop"), CURRENT_NATIVE_MODULE_VERSION, listOf())
+                val validationResult = validate(parsingResult, ModuleName("a", "b"), CURRENT_NATIVE_MODULE_VERSION, listOf())
                 when (validationResult) {
                     is ValidationResult.Success -> {
                         throw AssertionError("Should have failed validation")
@@ -46,7 +46,7 @@ class PartialParsingTest {
             is ParsingResult.Failure -> {
                 val functionIds = parsingResult.partialContext.functions.map(Function::id).map(EntityId::toString).toSet()
                 assertEquals(setOf("bar"), functionIds)
-                val validationResult = validate(parsingResult, ModuleId("a", "b", "develop"), CURRENT_NATIVE_MODULE_VERSION, listOf())
+                val validationResult = validate(parsingResult, ModuleName("a", "b"), CURRENT_NATIVE_MODULE_VERSION, listOf())
                 when (validationResult) {
                     is ValidationResult.Success -> {
                         throw AssertionError("Should have failed validation")
@@ -72,7 +72,7 @@ class PartialParsingTest {
                 assertEquals(setOf("bar"), structIds)
                 val functionIds = parsingResult.partialContext.functions.map(Function::id).map(EntityId::toString).toSet()
                 assertEquals(setOf<String>(), functionIds)
-                val validationResult = validate(parsingResult, ModuleId("a", "b", "develop"), CURRENT_NATIVE_MODULE_VERSION, listOf())
+                val validationResult = validate(parsingResult, ModuleName("a", "b"), CURRENT_NATIVE_MODULE_VERSION, listOf())
                 when (validationResult) {
                     is ValidationResult.Success -> {
                         throw AssertionError("Should have failed validation")

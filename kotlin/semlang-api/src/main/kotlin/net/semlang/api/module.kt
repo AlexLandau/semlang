@@ -5,20 +5,57 @@ import java.util.regex.Pattern
 
 private val LEGAL_MODULE_PATTERN = Pattern.compile("[0-9a-zA-Z]+([_.-][0-9a-zA-Z]+)*")
 
-data class ModuleId(val group: String, val module: String, val version: String) {
+data class ModuleName(val group: String, val module: String) {
     init {
         // TODO: Consider if these restrictions can/should be relaxed
-        for ((string, stringType) in listOf(group to "group",
-                module to "name",
-                version to "version"))
-            if (!LEGAL_MODULE_PATTERN.matcher(string).matches()) {
-                // TODO: Update explanation
-                throw IllegalArgumentException("Illegal character in module $stringType '$string'; only letters, numbers, dots, hyphens, and underscores are allowed.")
-            }
+        if (!LEGAL_MODULE_PATTERN.matcher(group).matches()) {
+            throw IllegalArgumentException("Illegal character in module group '$group'; only letters, numbers, dots, hyphens, and underscores are allowed.")
+        }
+        if (!LEGAL_MODULE_PATTERN.matcher(module).matches()) {
+            throw IllegalArgumentException("Illegal character in module name '$module'; only letters, numbers, dots, hyphens, and underscores are allowed.")
+        }
     }
 
+    override fun toString(): String {
+        return "$group:$module"
+    }
+}
+
+data class ModuleNonUniqueId(val name: ModuleName, val versionScheme: String, val version: String) {
+    fun requireUnique(): ModuleUniqueId {
+        if (versionScheme != ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+            error("We require a unique ID here, but the ID was $this")
+        }
+        return ModuleUniqueId(name, version)
+    }
+
+    companion object {
+        fun fromStringTriple(group: String, module: String, version: String): ModuleNonUniqueId {
+            val name = ModuleName(group, module)
+            val versionParts = version.split(":", limit = 2)
+            if (versionParts.size != 2) {
+                error("Expected a version string with a scheme, but was: $version")
+            }
+            val (versionProtocol, bareVersion) = versionParts
+            return ModuleNonUniqueId(name, versionProtocol, bareVersion)
+        }
+    }
+}
+
+/**
+ * Note: The fake0Version may be a different kind of version for the native module.
+ */
+data class ModuleUniqueId(val name: ModuleName, val fake0Version: String) {
+    companion object {
+        val UNIQUE_VERSION_SCHEME = "fake0"
+        val UNIQUE_VERSION_SCHEME_PREFIX = "$UNIQUE_VERSION_SCHEME:"
+    }
     fun asRef(): ModuleRef {
-        return ModuleRef(group, module, version)
+        return ModuleRef(name.group, name.module, UNIQUE_VERSION_SCHEME_PREFIX + fake0Version)
+    }
+
+    fun asNonUniqueId(): ModuleNonUniqueId {
+        return ModuleNonUniqueId(name, UNIQUE_VERSION_SCHEME, fake0Version)
     }
 }
 
@@ -48,22 +85,21 @@ data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
 data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
 data class UnionWithModule(val union: Union, val module: ValidatedModule?)
 
-class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResolution>>) {
+class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResolution>>, private val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
     companion object {
-        fun create(ownModuleId: ModuleId,
+        fun create(ownModuleId: ModuleUniqueId,
                    nativeModuleVersion: String, // TODO: This is unused
                    ownFunctions: Collection<EntityId>,
                    ownStructs: Map<EntityId, Boolean>,
                    ownInterfaces: Collection<EntityId>,
                    ownUnions: Map<EntityId, Set<String>>,
-                   upstreamModules: Collection<ValidatedModule>): EntityResolver {
+                   upstreamModules: Collection<ValidatedModule>,
+                   moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
-            val add = fun(id: EntityId, moduleId: ModuleId, type: FunctionLikeType, isThreaded: Boolean) {
-                if (!idResolutions.containsKey(id)) {
-                    idResolutions.put(id, HashSet<EntityResolution>(2))
-                }
-                idResolutions[id]!!.add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isThreaded))
+            val add = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isThreaded: Boolean) {
+                idResolutions.getOrPut(id, { HashSet(2) })
+                        .add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isThreaded))
             }
 
             // TODO: Add different things based on the native version in use
@@ -134,7 +170,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                     add(whenId, module.id, FunctionLikeType.UNION_WHEN_FUNCTION, false)
                 }
             }
-            return EntityResolver(idResolutions)
+            return EntityResolver(idResolutions, moduleVersionMappings)
         }
     }
 
@@ -157,21 +193,30 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
         if (moduleRef == null) {
             return allResolutions
         } else if (moduleRef.group == null) {
-            return allResolutions.filter { resolution -> resolution.entityRef.module.module == moduleRef.module }
+            return allResolutions.filter { resolution -> resolution.entityRef.module.name.module == moduleRef.module }
         } else if (moduleRef.version == null) {
-            return allResolutions.filter { resolution -> resolution.entityRef.module.module == moduleRef.module
-                                                         && resolution.entityRef.module.group == moduleRef.group }
+            return allResolutions.filter { resolution -> resolution.entityRef.module.name.module == moduleRef.module
+                                                         && resolution.entityRef.module.name.group == moduleRef.group }
         } else {
-            return allResolutions.filter { resolution -> resolution.entityRef.module.module == moduleRef.module
-                                                         && resolution.entityRef.module.group == moduleRef.group
-                                                         && resolution.entityRef.module.version == moduleRef.version }
+            val preferredVersion = getPreferredVersion(moduleRef.group, moduleRef.module, moduleRef.version)
+            return allResolutions.filter { resolution -> resolution.entityRef.module.name.module == moduleRef.module
+                                                         && resolution.entityRef.module.name.group == moduleRef.group
+                                                         && resolution.entityRef.module.fake0Version == preferredVersion }
         }
+    }
+
+    private fun getPreferredVersion(group: String, module: String, version: String): String {
+        val id = ModuleNonUniqueId.fromStringTriple(group, module, version)
+        if (id.versionScheme == ModuleUniqueId.UNIQUE_VERSION_SCHEME) {
+            return id.version
+        }
+        return this.moduleVersionMappings[id]?.fake0Version ?: error("No mapping was provided for version $version of module $group:$module")
     }
 }
 private val EXPORT_ANNOTATION_NAME = EntityId.of("Export")
 // TODO: Would storing or returning things in a non-map format improve performance?
 // TODO: When we have re-exporting implemented, check somewhere that we don't export multiple refs with the same ID
-class ValidatedModule private constructor(val id: ModuleId,
+class ValidatedModule private constructor(val id: ModuleUniqueId,
                                           val nativeModuleVersion: String,
                                           val ownFunctions: Map<EntityId, ValidatedFunction>,
                                           val exportedFunctions: Set<EntityId>,
@@ -181,7 +226,9 @@ class ValidatedModule private constructor(val id: ModuleId,
                                           val exportedInterfaces: Set<EntityId>,
                                           val ownUnions: Map<EntityId, Union>,
                                           val exportedUnions: Set<EntityId>,
-                                          val upstreamModules: Map<ModuleId, ValidatedModule>) {
+                                          val upstreamModules: Map<ModuleUniqueId, ValidatedModule>,
+                                          val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
+    val name get() = id.name
     init {
         if (isNativeModule(id)) {
             error("We should not be creating ValidatedModule objects for the native module")
@@ -192,16 +239,26 @@ class ValidatedModule private constructor(val id: ModuleId,
             }
         }
     }
-    private val resolver = EntityResolver.create(id, nativeModuleVersion, ownFunctions.keys, ownStructs.mapValues { it.value.isThreaded }, ownInterfaces.keys, ownUnions.mapValues { it.value.options.map(Option::name).toSet() }, upstreamModules.values)
+    private val resolver = EntityResolver.create(
+            id,
+            nativeModuleVersion,
+            ownFunctions.keys,
+            ownStructs.mapValues { it.value.isThreaded },
+            ownInterfaces.keys,
+            ownUnions.mapValues { it.value.options.map(Option::name).toSet() },
+            upstreamModules.values,
+            moduleVersionMappings
+    )
 
     companion object {
-        fun create(id: ModuleId,
+        fun create(id: ModuleUniqueId,
                    nativeModuleVersion: String,
                    ownFunctions: Map<EntityId, ValidatedFunction>,
                    ownStructs: Map<EntityId, Struct>,
                    ownInterfaces: Map<EntityId, Interface>,
                    ownUnions: Map<EntityId, Union>,
-                   upstreamModules: Collection<ValidatedModule>): ValidatedModule {
+                   upstreamModules: Collection<ValidatedModule>,
+                   moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>): ValidatedModule {
             val exportedFunctions = findExported(ownFunctions.values)
             val exportedStructs = findExported(ownStructs.values)
             val exportedInterfaces = findExported(ownInterfaces.values)
@@ -213,7 +270,8 @@ class ValidatedModule private constructor(val id: ModuleId,
                     ownStructs, exportedStructs,
                     ownInterfaces, exportedInterfaces,
                     ownUnions, exportedUnions,
-                    upstreamModules.associateBy(ValidatedModule::id))
+                    upstreamModules.associateBy(ValidatedModule::id),
+                    moduleVersionMappings)
         }
 
         private fun findExported(values: Collection<TopLevelEntity>): Set<EntityId> {

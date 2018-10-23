@@ -561,7 +561,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             } else if (module_ref.childCount == 3) {
                 ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
             } else if (module_ref.childCount == 5) {
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, module_ref.module_id(2).text)
+                val version = module_ref.LITERAL().text.drop(1).dropLast(1)
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
             } else {
                 error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
             }
@@ -580,7 +581,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             } else if (module_ref.childCount == 3) {
                 ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
             } else if (module_ref.childCount == 5) {
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, module_ref.module_id(2).text)
+                val version = module_ref.LITERAL().text.drop(1).dropLast(1)
+                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
             } else {
                 error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
             }
