@@ -31,9 +31,6 @@ class MultiModulePositiveTests(private val groupFolder: File, private val testFi
 
     @Test
     fun test() {
-        // TODO: Remove this when type reexporting has been implemented
-        Assume.assumeFalse(groupFolder.absolutePath.contains("diamondDependency1"))
-
         val module = parseAndValidateModule(groupFolder, testFile)
         val testCount = runAnnotationTests(module)
         Assert.assertNotEquals("Expected at least one @Test in $testFile", 0, testCount)
@@ -56,9 +53,6 @@ class MultiModuleNegativeTests(private val groupFolder: File, private val testFi
 
     @Test
     fun test() {
-        // TODO: Remove this when type reexporting has been implemented
-        Assume.assumeFalse(groupFolder.absolutePath.contains("diamondDependency1"))
-
         try {
             parseAndValidateModule(groupFolder, testFile)
             throw AssertionError("File ${testFile.absolutePath} should have failed validation, but passed")

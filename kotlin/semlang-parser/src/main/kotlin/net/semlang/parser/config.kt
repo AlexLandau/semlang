@@ -8,7 +8,7 @@ import java.io.File
 import java.io.Writer
 
 // This is meant to incorporate all information that would appear in a module specification file
-data class ModuleInfo(val name: ModuleName, val dependencies: List<ModuleNonUniqueId>)
+data class ModuleInfo(val name: ModuleName, val dependencies: List<ModuleNonUniqueId>, val reexports: List<EntityRef>)
 data class UnvalidatedModule(val info: ModuleInfo, val contents: RawContext)
 
 // TODO: In theory we could hook these directly to Jackson
@@ -40,9 +40,40 @@ fun parseConfigFileString(text: String): ModuleInfoParsingResult {
 
         val dependencies = rootNode.get("dependencies").map(::parseDependencyNode)
 
-        return ModuleInfoParsingResult.Success(ModuleInfo(name, dependencies))
+        val reexports = rootNode.get("reexports").map(::parseReexport)
+
+        return ModuleInfoParsingResult.Success(ModuleInfo(name, dependencies, reexports))
     } catch(e: Exception) {
         return ModuleInfoParsingResult.Failure(e)
+    }
+}
+
+fun parseReexport(jsonNode: JsonNode): EntityRef {
+    val text = jsonNode.textValue() ?: error("Expected a reexport value to be a string, but was: $jsonNode")
+
+    val numColons = text.count { it == ':' }
+    if (numColons == 0) {
+        val namespacedName = text.split(".")
+        return EntityRef(null, EntityId(namespacedName))
+    } else if (numColons == 1) {
+        val components = text.split(":")
+        val moduleRef = ModuleRef(null, components[0], null)
+        val namespacedName = components[1].split(".")
+        return EntityRef(moduleRef, EntityId(namespacedName))
+    } else if (numColons == 2) {
+        val components = text.split(":")
+        val moduleRef = ModuleRef(components[0], components[1], null)
+        val namespacedName = components[2].split(".")
+        return EntityRef(moduleRef, EntityId(namespacedName))
+    } else {
+        val components = text.split(":", limit = 3)
+        val versionAndName = components[2]
+        val lastColonIndex = versionAndName.lastIndexOf(':')
+        val version = versionAndName.substring(0, lastColonIndex)
+        val name = versionAndName.substring(lastColonIndex + 1)
+        val moduleRef = ModuleRef(components[0], components[1], version)
+        val namespacedName = name.split(".")
+        return EntityRef(moduleRef, EntityId(namespacedName))
     }
 }
 
@@ -54,13 +85,26 @@ private fun writeConfigFileString(info: ModuleInfo): String {
     rootNode.put("group", info.name.group)
     rootNode.put("module", info.name.module)
 
-    val arrayNode = rootNode.putArray("dependencies")
+    if (info.dependencies.isNotEmpty()) {
+        val dependenciesArray = rootNode.putArray("dependencies")
+        for (dependencyId in info.dependencies) {
+            writeDependencyNode(dependenciesArray.addObject(), dependencyId)
+        }
+    }
 
-    for (dependencyId in info.dependencies) {
-        writeDependencyNode(arrayNode.addObject(), dependencyId)
+    if (info.reexports.isNotEmpty()) {
+        val reexportsArray = rootNode.putArray("reexports")
+        for (reexport in info.reexports) {
+            reexportsArray.add(getReexportString(reexport))
+        }
     }
 
     return mapper.writeValueAsString(rootNode)
+}
+
+fun getReexportString(reexport: EntityRef): String {
+    // Note: Keeping this as a separate function in case the toString() here starts adding quotes around the version
+    return reexport.toString()
 }
 
 private fun writeConfigFileString(module: ValidatedModule): String {
@@ -73,7 +117,8 @@ private fun writeConfigFileString(module: ValidatedModule): String {
  */
 fun getModuleInfo(module: ValidatedModule): ModuleInfo {
     val dependencies = module.upstreamModules.keys.map { it.asNonUniqueId() }
-    return ModuleInfo(module.name, dependencies)
+    val reexports = module.reexports
+    return ModuleInfo(module.name, dependencies, reexports)
 }
 
 private fun parseDependencyNode(node: JsonNode): ModuleNonUniqueId {
