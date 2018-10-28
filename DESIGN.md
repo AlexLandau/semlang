@@ -53,10 +53,10 @@ features necessary to support expressive programming patterns. (This will inevit
 1. The code defines what the environment should do, not how it should do it. For example, there is no preference for
    eager or lazy evaluation: this is a concern of the environment, not the language itself. There is also no distinction
    between code that should run single-threaded and code that should run in parallel. The environment running the code
-   is thus given maximal flexibility to determine the 
+   is thus given maximal flexibility to determine the most efficient or desirable way to accomplish its intended effects.
 2. There are only two permitted sources of non-determinism:
-   1. The environment may crash and fail at any time, generally due to lack of resources or hardware failures.
-   2. Monads (which are not yet in the language but expected eventually).
+   1. The program may crash and fail at any time, generally due to lack of resources or hardware failures.
+   2. Monads or an equivalent construct (which are not yet in the language but expected eventually).
 3. There is no global state. The only things in the global scope are the top-level entities: functions, structs, and
    interfaces. Access to necessarily global state should be managed through monads that are passed to the "application
    function" as arguments.
