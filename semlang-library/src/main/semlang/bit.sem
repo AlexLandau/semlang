@@ -1,5 +1,20 @@
+@Export
+struct Bit {
+  natural: Natural
+  requires {
+    Boolean.or(
+      Natural.equals(natural, Natural."0"),
+      Natural.equals(natural, Natural."1")
+    )
+  }
+}
 
 @Export
 function Bit.equals(left: Bit, right: Bit): Boolean {
   Natural.equals(left->natural, right->natural)
+}
+
+@Export
+struct BitsBigEndian {
+  bits: List<Bit>
 }

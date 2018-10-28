@@ -338,62 +338,6 @@ object NativeStruct {
             null,
             listOf()
     )
-    // TODO: Can we move Bit and BitsBigEndian into the standard library?
-    val BIT = Struct(
-            EntityId.of("Bit"),
-            false,
-            CURRENT_NATIVE_MODULE_ID,
-            listOf(),
-            listOf(
-                    Member("natural", NativeStruct.NATURAL.getType())
-            ),
-            // requires: value = 0 or value = 1
-            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
-                    Type.BOOLEAN,
-                    EntityRef.of("Boolean", "or"),
-                    ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Boolean", "or")),
-                    listOf(TypedExpression.NamedFunctionCall(
-                            Type.BOOLEAN,
-                            EntityRef.of("Integer", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
-                            listOf(
-                                    TypedExpression.Follow(Type.INTEGER,
-                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
-                                            "integer"),
-                                    TypedExpression.Literal(Type.INTEGER, "0")
-                            ),
-                            listOf(),
-                            listOf()
-                        ), TypedExpression.NamedFunctionCall(
-                            Type.BOOLEAN,
-                            EntityRef.of("Integer", "equals"),
-                            ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "equals")),
-                            listOf(
-                                    TypedExpression.Follow(Type.INTEGER,
-                                            TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
-                                            "integer"),
-                                    TypedExpression.Literal(Type.INTEGER, "1")
-                            ),
-                            listOf(),
-                            listOf()
-                        )
-                    ),
-                    listOf(),
-                    listOf()
-            )),
-            listOf()
-    )
-    val BITS_BIG_ENDIAN = Struct(
-            EntityId.of("BitsBigEndian"),
-            false,
-            CURRENT_NATIVE_MODULE_ID,
-            listOf(),
-            listOf(
-                    Member("bits", Type.List(BIT.getType()))
-            ),
-            null,
-            listOf()
-    )
 }
 
 fun getNativeStructs(): Map<EntityId, Struct> {
@@ -403,8 +347,6 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     structs.add(NativeStruct.SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
-    structs.add(NativeStruct.BIT)
-    structs.add(NativeStruct.BITS_BIG_ENDIAN)
 
     return toMap(structs)
 }

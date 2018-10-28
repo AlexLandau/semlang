@@ -147,7 +147,7 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value > right.value)
     }))
 
-    // TODO: Future native library optimization
+    // TODO: Future standard library optimization
 //    // Integer.sum
 //    list.add(NativeFunction(integerDot("sum"), { args: List<SemObject>, _: InterpreterCallback ->
 //        val list = args[0] as? SemObject.SemList ?: typeError()
@@ -157,14 +157,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 //        })
 //        SemObject.Integer(sum)
 //    }))
-}
-
-private fun asBit(value: Int): SemObject.Struct {
-    return SemObject.Struct(NativeStruct.BIT, listOf(asNatural(value)))
-}
-
-private fun asBit(value: Boolean): SemObject.Struct {
-    return asBit(if (value) 1 else 0)
 }
 
 private fun asNatural(value: Int): SemObject.Natural {
