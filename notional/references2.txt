@@ -1,0 +1,43 @@
+
+
+So I think the operation of references is going to involve scopes and the suppression of variables...
+
+Rules for function arguments and otherwise
+
+Also: we'll still need to think about the case of structs containing reference and non-reference data
+(which will continue to be useful) and the ability to just use the non-reference data
+
+So, trying to spell out some of the rules here:
+
+1) There's a fundamental split in the type system between non-reference (value) types and reference types.
+   If you want to have reference-like behavior (i.e., mutable state) with value types, you'd use something
+   like a Var<T> type to work with a mutable variable.
+2) There should never be two aliases for the same reference at the same time.
+3) Passing a reference into a function with `&`: First, there should be only one such use of a reference in a
+   given statement (a `let` or standalone function call). This ensures that the reference is not passed as an
+   argument multiple times. Second, within the function, the function should finish with the argument not
+   suppressed.
+4) Passing a reference into a function with `&&`: Again, there should be only one such use of a reference in a
+   given statement. In addition, the output of the function (and anything that subsequently suppresses it) will
+   suppress the reference until it goes out of scope. The function may (and usually should) finish with the
+   argument suppressed.
+5) Rules of suppression:
+6) References and structs:
+     - Structs may have mixed reference and non-reference members
+     - Struct variables may be either reference or non-reference in nature
+     - The ref members of non-ref struct variables will be either inaccessible or useless
+     - (How do you get a non-ref value of a struct out of a reference?)
+     - Arguments to structs for reference members are && references
+     - If we add the "get" operation, that could suppress the struct like a && function; alternatively, we
+       could add a feature (possibly in dialects) to allow "safe aliases"
+7) References and function bindings:
+
+Cases to consider:
+
+What if the reference that needs to be suppressed is a single member out of a struct (or struct chain)? Could
+we keep track of just that "sub-element" in the suppressions? What about putting one of its parents into another
+var?
+
+Do we want to allow wholesale swapping of reference members in a struct, or do references need to be "the same"
+and just follow their associated methods' particular logic of progression? (I'm favoring the latter; again, could
+use something like Var<> to support the other case)
