@@ -1,0 +1,15 @@
+
+@Test(["0"], "0")
+@Test(["3"], "3")
+@Test(["-4"], "4")
+function absoluteValue(n: Integer): Natural {
+  if (Integer.equals(n, Integer."0")) {
+    Natural."0"
+  } else {
+    if (Integer.greaterThan(n, Integer."0")) {
+      Natural.plus(Natural."1", absoluteValue(Integer.minus(n, Integer."1")))
+    } else {
+      Natural.plus(Natural."1", absoluteValue(Integer.plus(n, Integer."1")))
+    }
+  }
+}

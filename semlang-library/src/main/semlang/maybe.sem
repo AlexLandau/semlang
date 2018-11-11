@@ -1,0 +1,9 @@
+// TODO: Maybe this should be fundamental and the other Maybe functions based on this?
+// (Possibly via Maybe becoming a union)
+function Maybe.when<T, U>(it: Maybe<T>, ifSuccess: (T) -> U, ifFailure: U): U {
+  if (Maybe.isSuccess(it)) {
+    ifSuccess(Maybe.assume(it))
+  } else {
+    ifFailure
+  }
+}

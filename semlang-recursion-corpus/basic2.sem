@@ -1,0 +1,17 @@
+
+@Test(["[]"], "0")
+@Test(["['0', '0']"], "0")
+@Test(["['2']"], "2")
+@Test(["['3', '18', '34']"], "55")
+@Test(["['-20', '10', '-5', '2']"], "-13")
+function sumInts(list: List<Integer>): Integer {
+  let firstMaybe: Maybe<Integer> = List.first(list)
+  let rest = List.drop(list, Natural."1")
+  if (Maybe.isSuccess(firstMaybe)) {
+    let first = Maybe.assume(firstMaybe)
+    let remainingSum = sumInts(rest)
+    Integer.plus(first, remainingSum)
+  } else {
+    Integer."0"
+  }
+}

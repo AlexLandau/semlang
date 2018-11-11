@@ -1,0 +1,18 @@
+
+@Test(["[]"], "0")
+@Test(["['false', 'false']"], "0")
+@Test(["['true']"], "1")
+@Test(["['true', 'false', 'true']"], "2")
+@Test(["['false', 'true', 'true', 'false']"], "2")
+function countTrues(list: List<Boolean>): Natural {
+  let firstMaybe: Maybe<Boolean> = List.first(list)
+  let rest = List.drop(list, Natural."1")
+  if (Maybe.isSuccess(firstMaybe)) {
+    let first = Maybe.assume(firstMaybe)
+    let firstCount = if (first) { Natural."1" } else { Natural."0" }
+    let remainingCount = countTrues(rest)
+    Natural.plus(firstCount, remainingCount)
+  } else {
+    Natural."0"
+  }
+}

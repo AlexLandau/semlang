@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import net.semlang.api.ValidatedModule
+import net.semlang.internal.test.getSemlangRecursionCorpusFiles
 import net.semlang.internal.test.getSemlangStandardLibraryCorpusFiles
 import net.semlang.internal.test.runAnnotationTests
 import net.semlang.interpreter.InterpreterOptions
@@ -22,7 +23,7 @@ class StandardLibraryTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            return getSemlangStandardLibraryCorpusFiles()
+            return getSemlangStandardLibraryCorpusFiles() + getSemlangRecursionCorpusFiles()
         }
 
         // TODO: Can we get this from the semlang-standard-library-support project? Or should it be "too standard to fail"?

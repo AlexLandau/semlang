@@ -21,6 +21,13 @@ fun getSemlangStandardLibraryCorpusFiles(): Collection<Array<Any?>> {
     }
 }
 
+fun getSemlangRecursionCorpusFiles(): Collection<Array<Any?>> {
+    val folder = File("../../semlang-recursion-corpus")
+    return folder.listFiles().map { file ->
+        arrayOf<Any?>(file)
+    }
+}
+
 /**
  * Returns the files in the semlang native corpus in the format used by the JUnit
  * Parameterized test runner. If this is used as the returned value of the data() method, it
@@ -59,6 +66,7 @@ fun getCompilableFilesWithAssociatedLibraries(): Collection<Array<Any?>> {
     val compilerTestsFolder = File("../semlang-parser/src/test/semlang/validatorTests/pass")
     val corpusFolder = File("../../semlang-corpus/src/main/semlang")
     val standardLibraryCorpusFolder = File("../../semlang-library-corpus/src/main/semlang")
+    val recursionCorpusFolder = File("../../semlang-recursion-corpus")
 
     val allResults = ArrayList<Array<Any?>>()
 
@@ -68,7 +76,8 @@ fun getCompilableFilesWithAssociatedLibraries(): Collection<Array<Any?>> {
     })
 
     val standardLibrary: ValidatedModule = validateStandardLibraryModule()
-    allResults.addAll(standardLibraryCorpusFolder.listFiles().map { file ->
+    val allStandardLibraryBasedFiles = standardLibraryCorpusFolder.listFiles() + recursionCorpusFolder.listFiles()
+    allResults.addAll(allStandardLibraryBasedFiles.map { file ->
         arrayOf<Any?>(file, listOf(standardLibrary))
     })
 
