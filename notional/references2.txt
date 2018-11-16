@@ -41,3 +41,65 @@ var?
 Do we want to allow wholesale swapping of reference members in a struct, or do references need to be "the same"
 and just follow their associated methods' particular logic of progression? (I'm favoring the latter; again, could
 use something like Var<> to support the other case)
+
+
+So here's another way to look at all of this. What are the situations that we want to avoid?
+
+Here's one case: Say we have this function:
+
+function computeSomething(foo: Foo): Bar {
+  let unused = baz(foo)
+  barify(foo)
+}
+
+It would be great if we could identify baz() as an irrelevant, unused function call (perhaps left over after some
+other optimization) and be able to remove it entirely. That relies on being able to identify baz() as a thing that has
+no side effects, which is easier if we know that foo is fundamentally not a reference to a stateful thing.
+
+Slightly tricker follow-up case, same idea, to illustrate why just introspecting baz, rather than including this in the
+type system, could be too hard:
+
+function computeSomething(foo: Foo, baz: (Foo) -> Baz): Bar {
+  let unused = baz(foo)
+  barify(foo)
+}
+
+The obvious fix here is to mark either foo the variable or Foo the type as being special/referential/mutable in some way,
+and having most types not use that where possible.
+
+Another issue is whether we can parallelize and rearrange statements without introducing non-determinism. Per my own
+goals for the language, non-determinism is a requirement, while supporting implicit parallelism is desirable. So the
+following situation is an issue:
+
+function setToOneAndTwo(a: Var<Integer>, b: Var<Integer>) {
+  // Runtimes should be able to rearrange these if desirable
+  a.set(1)
+  b.set(2)
+}
+
+function causeTrouble(): Integer {
+  let c = Var<Integer>(0)
+  setToOneAndTwo(c, c)
+  c
+}
+
+Currently, both the threaded-types and unaliasable references approaches solve this by refusing to allow c to be used
+twice in the same function call. (Though really, the threaded-types construct would look very different in the case of
+Var, essentially just forcing you to use a non-Var approach.) This does look like the easiest part to rule out while
+allowing other functions that operate similarly to setToOneAndTwo. The next-best alternative would be to impose a
+standard ordering on the arguments to setToOneAndTwo; however, this might not work well with other cases where things
+are aliased in funny ways, and could be difficult to enforce in other languages (see: Java).
+
+(Devil's advocate: Is there a good case for an imperative-styled declarative/semantic language where non-determinism is
+ensured by a very standardized interpretation of "this step happens before this step"? My worry is that this would be
+hard to translate into other languages, especially Java, piece-by-piece while maintaining all these guarantees, without
+wrecking perf by mandating single-threading everywhere.)
+
+So then the real question becomes, how do I take a large mess of these references and turn them into more useful
+structures/abstractions without getting into alias-managing hell on the one hand and argument spaghetti on the other?
+
+(Additional working assumption here: These opaque reference types, which can end up corresponding to something like a
+file system or DB or network-based API, can be defined in "native modules" that define the types and a set of associated
+functions. Different runtimes will support different such native modules. There would be additional functions implicitly
+added, which can be referenced within the code, to check if a module is supported and offer an alternative, non-crashing
+behavior if not.)
