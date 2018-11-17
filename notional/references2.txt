@@ -103,3 +103,38 @@ file system or DB or network-based API, can be defined in "native modules" that 
 functions. Different runtimes will support different such native modules. There would be additional functions implicitly
 added, which can be referenced within the code, to check if a module is supported and offer an alternative, non-crashing
 behavior if not.)
+
+Okay, here's another, more drastic example to make my point. Are these functions the same? (Includes some imperative-
+style pseudocode, assume that gets translated)
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  let items = source.popAll()
+  dest.pushAll(items) // Assume this functions as if each item is pushed iteratively in the order of the items list,
+                      // i.e. the next thing that will pop() is the last value in items
+}
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  while (!source.isEmpty()) {
+    let item = source.pop()
+    dest.push(item)
+  }
+}
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  while (!source.isEmpty()) {
+    let items = source.popBatch(BATCH_SIZE)
+    dest.pushAll(items)
+  }
+}
+
+These functions should behave the same in every case EXCEPT the one where source and dest are identical (in which case
+the first will return, the second will hang if non-empty, and the third may or may not hang based on the size of the
+stack). It would be really nice to allow the runtime environment to switch out the behavior of a function implemented
+one way to another way with better performance (achieve the performance of the more complex code with the written
+simplicity of the less complex code!). But this is only practical if the type system can distinguish whether drainStack
+allows the source and dest arguments to refer to the same thing, and that in turn requires there to be a larger system
+of alias-tracking to avoid the sameness of variables getting lost in structs and objects.
+
+I think I've made my point well enough now. The question is, what does a system look like that ensures we won't end up
+with untrackably aliased references *and* doesn't make developers tear their hair out when trying to find a way to write
+their code so it will compile?
