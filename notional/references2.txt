@@ -138,3 +138,17 @@ of alias-tracking to avoid the sameness of variables getting lost in structs and
 I think I've made my point well enough now. The question is, what does a system look like that ensures we won't end up
 with untrackably aliased references *and* doesn't make developers tear their hair out when trying to find a way to write
 their code so it will compile?
+
+Stage one -- something so simple that it can be reasonably implemented now to allow building out code so as to see what
+specific problems crop up that need to be solved -- looks like this:
+ * Have reference types.
+ * Don't allow reference types in structs, in unions, or as bound arguments in function bindings.
+ * Functions accepting reference types as arguments are understood to mutate the referenced... let's say objects, for
+   lack of a better word ("instances" sounds weird). Thus, no need to return the objects from the function, and in fact,
+   returning the object is (for now) not allowed.
+ * References can only be used as as expressions when used as arguments to function calls (so no "let foo = bar") and
+   only once per statement. (Arguably this could be "once per function call", but the order of the references matters
+   and this is a more obvious way to define it than by doing something that depends on the function's argument ordering.)
+ * Non-let statements (that are just function calls) are now allowed.
+I believe this meets the initial goal of having unaliasable references. We can then see what programming patterns most
+need restructuring of references to make them easier to work with.
