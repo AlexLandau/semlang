@@ -1,6 +1,6 @@
-
 @Script
-function sayHello(standardOut: ~TextOut): ~TextOut {
-  let standardOut2: ~TextOut = TextOut.print(standardOut, Unicode.String."Hello, world!\n")
-  standardOut2
+function sayHello(standardOut: &TextOut): Integer {
+  TextOut.print(standardOut, Unicode.String."Hello, world!\n")
+  // TODO: Remove the return value
+  Integer."0"
 }

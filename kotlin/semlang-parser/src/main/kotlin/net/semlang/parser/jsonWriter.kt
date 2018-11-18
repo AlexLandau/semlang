@@ -54,9 +54,6 @@ private fun <T> addArray(objectNode: ObjectNode, name: String,
 
 private fun addStruct(node: ObjectNode, struct: Struct) {
     node.put("id", struct.id.toString())
-    if (struct.isThreaded) {
-        node.put("isThreaded", true)
-    }
     if (struct.typeParameters.isNotEmpty()) {
         addTypeParameters(node.putArray("typeParameters"), struct.typeParameters)
     }
@@ -75,13 +72,12 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
 
     val idString = node["id"]?.asText() ?: error("Structs must have an 'id' field")
     val id = parseEntityId(idString)
-    val isThreaded = node["isThreaded"]?.asBoolean() ?: false
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, isThreaded, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<TypeParameter> {
@@ -180,7 +176,7 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.NamedType -> {
             val node = ObjectNode(factory)
-            node.put("name", (if (type.isThreaded()) "~" else "") + type.originalRef.toString())
+            node.put("name", (if (type.isReference()) "&" else "") + type.originalRef.toString())
             if (type.parameters.isNotEmpty()) {
                 val paramsArray = node.putArray("params")
                 for (parameter in type.parameters) {
@@ -219,8 +215,8 @@ private fun parseType(node: JsonNode): UnvalidatedType {
     }
 
     if (node.has("name")) {
-        val isThreaded = node["name"].textValue().startsWith("~")
-        val refName = if (isThreaded) node["name"].textValue().substring(1) else node["name"].textValue()
+        val isReference = node["name"].textValue().startsWith("&")
+        val refName = if (isReference) node["name"].textValue().substring(1) else node["name"].textValue()
         val id = parseEntityRef(refName)
         val parameters = if (node.has("params")) {
             val paramsArray = node["params"]
@@ -228,7 +224,7 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         } else {
             listOf()
         }
-        return UnvalidatedType.NamedType(id, isThreaded, parameters)
+        return UnvalidatedType.NamedType(id, isReference, parameters)
     } else if (node.has("from")) {
         val typeParameters = node["typeParameters"]?.let(::parseTypeParameters) ?: listOf()
         val argTypes = node["from"].map(::parseType)

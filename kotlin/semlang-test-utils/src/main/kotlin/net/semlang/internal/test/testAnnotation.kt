@@ -62,14 +62,14 @@ fun verifyMockTestAnnotationContents(inputs: List<AnnotationArgument>, function:
     }
     val arguments = firstInput.values.zip(function.arguments).map { (value, argument) ->
         val valueString = (value as? AnnotationArgument.Literal)?.value ?: error("Expected arguments in the first input to @Test.Mock to be strings")
-        if (argument.type.isThreaded()) {
+        if (argument.type.isReference()) {
             MockArgument.MockObjectId(valueString)
         } else {
             MockArgument.Literal(valueString)
         }
     }
 
-    val outputString = if (function.returnType.isThreaded()) {
+    val outputString = if (function.returnType.isReference()) {
         MockArgument.MockObjectId(secondInput.value)
     } else {
         MockArgument.Literal(secondInput.value)
@@ -97,14 +97,14 @@ fun verifyMockTestAnnotationContents(inputs: List<AnnotationArgument>, function:
             if (callAnnotationArgument !is AnnotationArgument.Literal) {
                 error("Expected each input of a mock call definition in a @Test.Mock to be a string")
             }
-            if (argumentType.isThreaded()) {
+            if (argumentType.isReference()) {
                 MockArgument.MockObjectId(callAnnotationArgument.value)
             } else {
                 MockArgument.Literal(callAnnotationArgument.value)
             }
         }
 
-        val outputToGive = if (signature.outputType.isThreaded()) {
+        val outputToGive = if (signature.outputType.isReference()) {
             MockArgument.MockObjectId(thirdCallElem.value)
         } else {
             MockArgument.Literal(thirdCallElem.value)

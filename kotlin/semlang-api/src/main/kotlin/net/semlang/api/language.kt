@@ -88,13 +88,13 @@ sealed class UnvalidatedType {
     // This contains some types that are inherently invalid, but should be returned by the parser so the error messages
     // can be left to the validator
     object Invalid {
-        data class ThreadedInteger(override val location: Location? = null) : UnvalidatedType() {
+        data class ReferenceInteger(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
 
             override fun getTypeString(): String {
-                return "~Integer"
+                return "&Integer"
             }
 
             override fun toString(): String {
@@ -102,13 +102,13 @@ sealed class UnvalidatedType {
             }
         }
 
-        data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
+        data class ReferenceBoolean(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
 
             override fun getTypeString(): String {
-                return "~Boolean"
+                return "&Boolean"
             }
 
             override fun toString(): String {
@@ -199,7 +199,7 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
             if (ref.moduleRef == null && ref.id.namespacedName.size == 1) {
                 val replacement = parameterReplacementMap[ref.id.namespacedName[0]]
@@ -209,7 +209,7 @@ sealed class UnvalidatedType {
             }
             return NamedType(
                     ref,
-                    isThreaded,
+                    isReference,
                     parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
                     location)
         }
@@ -222,7 +222,7 @@ sealed class UnvalidatedType {
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...
-            return (if (isThreaded) "~" else "") +
+            return (if (isReference) "&" else "") +
                     ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
@@ -247,7 +247,7 @@ sealed class UnvalidatedType {
 sealed class Type {
     protected abstract fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type
     protected abstract fun getTypeString(): String
-    abstract fun isThreaded(): Boolean
+    abstract fun isReference(): Boolean
     override fun toString(): String {
         return getTypeString()
     }
@@ -270,7 +270,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -291,7 +291,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -313,7 +313,7 @@ sealed class Type {
             return parameter.isBindableInternal(numAllowedIndices)
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -339,7 +339,7 @@ sealed class Type {
             return parameter.isBindableInternal(numAllowedIndices)
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -428,7 +428,7 @@ sealed class Type {
                 return argTypes.size
             }
 
-            override fun isThreaded(): Boolean {
+            override fun isReference(): Boolean {
                 return false
             }
 
@@ -526,7 +526,7 @@ sealed class Type {
                 return argTypes.size
             }
 
-            override fun isThreaded(): Boolean {
+            override fun isReference(): Boolean {
                 return false
             }
 
@@ -637,7 +637,7 @@ sealed class Type {
             return index < numAllowedIndices
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -672,7 +672,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -705,13 +705,13 @@ sealed class Type {
      * that types agree with one another.
      */
     // TODO: Should "ref" be an EntityResolution? Either way, stop passing originalRef to resolvers
-    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val threaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, private val isReference: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
         override fun isBindableInternal(numAllowedIndices: Int): Boolean {
             return parameters.all { it.isBindableInternal(numAllowedIndices) }
         }
 
-        override fun isThreaded(): Boolean {
-            return threaded
+        override fun isReference(): Boolean {
+            return isReference
         }
 
         override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
@@ -724,7 +724,7 @@ sealed class Type {
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...
-            return (if (threaded) "~" else "") +
+            return (if (isReference) "&" else "") +
                     ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
@@ -750,14 +750,14 @@ sealed class Type {
             if (other !is NamedType) {
                 return false
             }
-            return Objects.equals(ref, other.ref) && threaded == other.threaded && Objects.equals(parameters, other.parameters)
+            return Objects.equals(ref, other.ref) && isReference == other.isReference && Objects.equals(parameters, other.parameters)
         }
 
         /**
          * Ignores the value of [originalRef].
          */
         override fun hashCode(): Int {
-            return Objects.hash(ref, threaded, parameters)
+            return Objects.hash(ref, isReference, parameters)
         }
     }
 
@@ -765,15 +765,12 @@ sealed class Type {
 
 enum class TypeClass {
     Data,
-    Threaded,
 }
 
 data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     override fun toString(): String {
         if (typeClass == null) {
             return name
-        } else if (typeClass == TypeClass.Threaded) {
-            return "~$name"
         } else {
             return "$name: $typeClass"
         }
@@ -898,19 +895,19 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
+            UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
+            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -920,7 +917,7 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         if (chosenParameters.size != typeParameters.size) {
             error("Incorrect number of type parameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), false, chosenParameters)
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -928,9 +925,9 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type::ParameterType)
         val outputType = if (requires == null) {
-            Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters)
+            Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
         } else {
-            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
+            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
         }
         return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -1149,13 +1146,13 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
-data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isReference: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {
             error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), isReference, chosenParameters)
     }
 }
 

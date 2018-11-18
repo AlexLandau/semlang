@@ -174,7 +174,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is Type.NamedType -> {
                 val newRef = translateRef(type.ref)
                 val parameters = type.parameters.map(this::apply)
-                UnvalidatedType.NamedType(newRef, type.isThreaded(), parameters)
+                UnvalidatedType.NamedType(newRef, type.isReference(), parameters)
             }
             is Type.ParameterType -> {
                 val newRef = EntityRef.of(type.parameter.name)
@@ -190,7 +190,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         val requires = struct.requires?.let(this::apply)
         val annotations = handleAnnotations(struct.annotations, struct.moduleId)
 
-        return UnvalidatedStruct(newId, struct.isThreaded, struct.typeParameters, members, requires, annotations)
+        return UnvalidatedStruct(newId, struct.typeParameters, members, requires, annotations)
     }
 
     private fun apply(member: Member): UnvalidatedMember {

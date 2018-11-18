@@ -39,7 +39,7 @@ fun invalidate(argument: Argument): UnvalidatedArgument {
 fun invalidate(struct: Struct): UnvalidatedStruct {
     val requires = struct.requires?.let { invalidate(it) }
     val members = struct.members.map(::invalidate)
-    return UnvalidatedStruct(struct.id, struct.isThreaded, struct.typeParameters, members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
 }
 
 fun invalidate(block: TypedBlock): Block {
@@ -69,7 +69,7 @@ fun invalidate(type: Type): UnvalidatedType {
         }
         is Type.NamedType -> {
             val parameters = type.parameters.map(::invalidate)
-            UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
+            UnvalidatedType.NamedType(type.originalRef, type.isReference(), parameters)
         }
         is Type.InternalParameterType -> error("This shouldn't happen")
     }

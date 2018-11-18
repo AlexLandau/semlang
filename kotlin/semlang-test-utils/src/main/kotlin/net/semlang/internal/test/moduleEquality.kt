@@ -50,10 +50,10 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)
-            UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters)
+            UnvalidatedType.NamedType(type.ref, type.isReference, parameters)
         }
-        is UnvalidatedType.Invalid.ThreadedInteger -> UnvalidatedType.Invalid.ThreadedInteger()
-        is UnvalidatedType.Invalid.ThreadedBoolean -> UnvalidatedType.Invalid.ThreadedBoolean()
+        is UnvalidatedType.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger()
+        is UnvalidatedType.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean()
     }
 }
 
@@ -132,7 +132,7 @@ private fun stripLocations(argument: UnvalidatedArgument): UnvalidatedArgument {
 private fun stripLocations(struct: UnvalidatedStruct): UnvalidatedStruct {
     val requires = struct.requires?.let(::stripLocations)
     val members = struct.members.map(::stripLocations)
-    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
 }
 
 private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface {

@@ -44,7 +44,7 @@ fun getNativeFunctionOnlyDefinitions(): Map<EntityId, TypeSignature> {
     addMaybeFunctions(definitions)
     addSequenceFunctions(definitions)
     addDataFunctions(definitions)
-    addThreadedFunctions(definitions)
+    addOpaqueTypeFunctions(definitions)
 
     return toMap(definitions)
 }
@@ -100,10 +100,8 @@ private fun addIntegerFunctions(definitions: ArrayList<TypeSignature>) {
 private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val u = TypeParameter("U", null)
-    val thr = TypeParameter("Thr", TypeClass.Threaded)
     val typeT = Type.InternalParameterType(0)
     val typeU = Type.InternalParameterType(1)
-    val typeThr = Type.InternalParameterType(1)
 
     // List.append
     definitions.add(TypeSignature.create(EntityId.of("List", "append"), typeParameters = listOf(t),
@@ -144,11 +142,6 @@ private fun addListFunctions(definitions: ArrayList<TypeSignature>) {
     definitions.add(TypeSignature.create(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
             argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
-
-    // List.reduceThreaded
-    definitions.add(TypeSignature.create(EntityId.of("List", "reduceThreaded"), typeParameters = listOf(t, thr),
-            argumentTypes = listOf(Type.List(typeT), typeThr, Type.FunctionType.create(listOf(), listOf(typeThr, typeT), typeThr)),
-            outputType = typeThr))
 
     // List.size
     definitions.add(TypeSignature.create(EntityId.of("List", "size"), typeParameters = listOf(t),
@@ -234,16 +227,17 @@ private fun addDataFunctions(definitions: ArrayList<TypeSignature>) {
             outputType = Type.BOOLEAN))
 }
 
-private fun addThreadedFunctions(definitions: ArrayList<TypeSignature>) {
+// TODO: These should probably go elsewhere; at least TextOut should be in a separate module
+private fun addOpaqueTypeFunctions(definitions: ArrayList<TypeSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.InternalParameterType(0)
 
     // TextOut.print
     definitions.add(TypeSignature.create(EntityId.of("TextOut", "print"), typeParameters = listOf(),
-            argumentTypes = listOf(NativeThreadedType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
-            outputType = NativeThreadedType.TEXT_OUT.getType()))
+            argumentTypes = listOf(NativeOpaqueType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
+            outputType = NativeOpaqueType.TEXT_OUT.getType()))
 
-    val listBuilderT = NativeThreadedType.LIST_BUILDER.getType(listOf(typeT))
+    val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(listOf(typeT))
 
     // ListBuilder constructor
     // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
@@ -273,7 +267,6 @@ object NativeStruct {
 
     val NATURAL = Struct(
             EntityId.of("Natural"),
-            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -293,7 +286,6 @@ object NativeStruct {
     )
     val SEQUENCE = Struct(
             EntityId.of("Sequence"),
-            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(t),
             listOf(
@@ -305,7 +297,6 @@ object NativeStruct {
     )
     val UNICODE_CODE_POINT = Struct(
             EntityId.of("Unicode", "CodePoint"),
-            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -329,7 +320,6 @@ object NativeStruct {
     )
     val UNICODE_STRING = Struct(
             EntityId.of("Unicode", "String"),
-            false,
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -366,7 +356,7 @@ fun getNativeUnions(): Map<EntityId, Union> {
     return toMap(unions)
 }
 
-object NativeThreadedType {
+object NativeOpaqueType {
     private val t = TypeParameter("T", null)
 
     private val textOutId = EntityId.of("TextOut")
@@ -378,7 +368,7 @@ object NativeThreadedType {
 
 /**
  * An "opaque" type is a named type that doesn't represent a struct or interface and isn't
- * a native type like Integer or Boolean. This includes native threaded types.
+ * a native type like Integer or Boolean. This includes native reference types.
  *
  * TODO: We should have a way for the module system to include ways to specify additional opaque types and
  * associated methods that must have a native implementation. (Obviously, these wouldn't be supported by
@@ -387,8 +377,8 @@ object NativeThreadedType {
 fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     val types = ArrayList<OpaqueType>()
 
-    types.add(NativeThreadedType.TEXT_OUT)
-    types.add(NativeThreadedType.LIST_BUILDER)
+    types.add(NativeOpaqueType.TEXT_OUT)
+    types.add(NativeOpaqueType.LIST_BUILDER)
 
     return types.associateBy { it.id }
 }

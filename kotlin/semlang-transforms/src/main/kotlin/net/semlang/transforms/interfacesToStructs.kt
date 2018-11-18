@@ -96,7 +96,7 @@ private class InterfaceToStructConverter(private val context: RawContext) {
         val members = interfac.methods.map { method ->
             UnvalidatedMember(method.name, method.functionType)
         }
-        val struct = UnvalidatedStruct(interfac.id, false, interfac.typeParameters,
+        val struct = UnvalidatedStruct(interfac.id, interfac.typeParameters,
                 members, null, interfac.annotations)
         newStructs.add(struct)
     }

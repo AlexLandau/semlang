@@ -178,16 +178,10 @@ private class Validator(
             is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                if (parameter.isThreaded()) {
-                    errors.add(Issue("Lists cannot have a threaded parameter type", null, IssueLevel.ERROR))
-                }
                 Type.List(parameter)
             }
             is UnvalidatedType.Maybe -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                if (parameter.isThreaded()) {
-                    errors.add(Issue("Tries cannot have a threaded parameter type", null, IssueLevel.ERROR))
-                }
                 Type.Maybe(parameter)
             }
             is UnvalidatedType.FunctionType -> {
@@ -223,25 +217,25 @@ private class Validator(
                     errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                     return null
                 }
-                val shouldBeThreaded = typeInfo.isThreaded
+                val shouldBeReference = typeInfo.isReference
 
-                if (shouldBeThreaded && !type.isThreaded) {
-                    errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
+                if (shouldBeReference && !type.isReference) {
+                    errors.add(Issue("Type $type is a reference type and should be marked as such with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
-                if (type.isThreaded && !shouldBeThreaded) {
-                    errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
+                if (type.isReference && !shouldBeReference) {
+                    errors.add(Issue("Type $type is not a reference type and should not be marked with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
                 val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope, internalParameters) ?: return null }
-                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isThreaded, parameters)
+                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isReference, parameters)
             }
-            is UnvalidatedType.Invalid.ThreadedInteger -> {
-                errors.add(Issue("Integer is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+            is UnvalidatedType.Invalid.ReferenceInteger -> {
+                errors.add(Issue("Integer is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
                 null
             }
-            is UnvalidatedType.Invalid.ThreadedBoolean -> {
-                errors.add(Issue("Boolean is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+            is UnvalidatedType.Invalid.ReferenceBoolean -> {
+                errors.add(Issue("Boolean is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
                 null
             }
         }
@@ -329,8 +323,8 @@ private class Validator(
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
         val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
         for (varToBindWithType in varsToBindWithTypes) {
-            if (varToBindWithType.type.isThreaded()) {
-                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a threaded type", expression.location, IssueLevel.ERROR))
+            if (varToBindWithType.type.isReference()) {
+                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a reference type", expression.location, IssueLevel.ERROR))
             }
         }
 
@@ -385,8 +379,8 @@ private class Validator(
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
-                if (binding.type.isThreaded()) {
-                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                if (binding.type.isReference()) {
+                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
             }
         }
@@ -443,8 +437,8 @@ private class Validator(
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
-                if (binding.type.isThreaded()) {
-                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                if (binding.type.isReference()) {
+                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
             }
         }
@@ -526,8 +520,8 @@ private class Validator(
                 val typeParameters = structureTypeInfo.typeParameters
                 val chosenTypes = structureNamedType.parameters
                 for (chosenParameter in chosenTypes) {
-                    if (chosenParameter.isThreaded()) {
-                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    if (chosenParameter.isReference()) {
+                        errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
 
@@ -550,8 +544,8 @@ private class Validator(
                 val typeParameters = interfac.typeParameters
                 val chosenTypes = interfaceType.parameters
                 for (chosenParameter in chosenTypes) {
-                    if (chosenParameter.isThreaded()) {
-                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    if (chosenParameter.isReference()) {
+                        errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
 
@@ -652,20 +646,14 @@ private class Validator(
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
         val typeClass = typeParameter.typeClass
-        if (chosenType.isThreaded() && typeClass != TypeClass.Threaded) {
-            errors.add(Issue("Threaded types cannot be used as parameters", location, IssueLevel.ERROR))
+        if (chosenType.isReference()) {
+            errors.add(Issue("Reference types cannot be used as parameters", location, IssueLevel.ERROR))
         }
         if (typeClass != null) {
             val unused: Any = when (typeClass) {
                 TypeClass.Data -> {
                     if (!typesInfo.isDataType(chosenType)) {
                         errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but $chosenType is not a data type", location, IssueLevel.ERROR))
-                    } else {}
-                }
-                TypeClass.Threaded -> {
-                    if (!chosenType.isThreaded()) {
-                        // TODO: Arguably we don't need to make this an error
-                        errors.add(Issue("Type parameter ${typeParameter.name} requires a threaded type, but $chosenType is not a threaded type", location, IssueLevel.ERROR))
                     } else {}
                 }
             }
@@ -738,8 +726,8 @@ private class Validator(
 
     private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val chosenParameter = validateType(expression.chosenParameter, typeParametersInScope) ?: return null
-        if (chosenParameter.isThreaded()) {
-            errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+        if (chosenParameter.isReference()) {
+            errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
         }
 
         val listType = Type.List(chosenParameter)
@@ -798,7 +786,7 @@ private class Validator(
         }
         val type = variableTypes[expression.name]
         if (type != null) {
-            if (type.isThreaded()) {
+            if (type.isReference()) {
                 consumedThreadedVars.add(expression.name)
             }
             return TypedExpression.Variable(type, expression.name)
@@ -837,15 +825,11 @@ private class Validator(
             errors.add(Issue(message, location, IssueLevel.ERROR))
         }
 
-        val anyMemberTypesAreThreaded = memberTypes.values.any(Type::isThreaded)
-        if (struct.markedAsThreaded && !anyMemberTypesAreThreaded) {
-            errors.add(Issue("Struct ${struct.id} is marked as threaded but has no members with threaded types", struct.idLocation, IssueLevel.ERROR))
-        }
-        if (!struct.markedAsThreaded && anyMemberTypesAreThreaded) {
-            errors.add(Issue("Struct ${struct.id} is not marked as threaded but has members with threaded types", struct.idLocation, IssueLevel.ERROR))
+        if (memberTypes.values.any(Type::isReference)) {
+            errors.add(Issue("Struct ${struct.id} has members with reference types, which are not allowed", struct.idLocation, IssueLevel.ERROR))
         }
 
-        return Struct(struct.id, struct.markedAsThreaded, moduleId, struct.typeParameters, members, requires, struct.annotations)
+        return Struct(struct.id, moduleId, struct.typeParameters, members, requires, struct.annotations)
     }
 
 
@@ -919,8 +903,8 @@ private class Validator(
         return options.map { option ->
             val unvalidatedType = option.type
             val type = if (unvalidatedType == null) null else validateType(unvalidatedType, unionTypeParameters)
-            if (type != null && type.isThreaded()) {
-                error("Threaded types are currently not allowed in unions; this case needs to be considered further")
+            if (type != null && type.isReference()) {
+                error("Reference types are not allowed in unions")
             }
             if (option.name == "when") {
                 errors.add(Issue("Union options cannot be named 'when'", option.idLocation, IssueLevel.ERROR))

@@ -52,7 +52,6 @@ private fun writeStruct(struct: UnvalidatedStruct, writer: Writer, deterministic
     val newline = if (deterministicMode) "\n" else System.lineSeparator()
     writeAnnotations(struct.annotations, writer, deterministicMode)
     writer.append("struct ")
-            .append(if (struct.markedAsThreaded) "~" else "")
             .append(struct.id.toString())
     if (struct.typeParameters.isNotEmpty()) {
         writer.append("<")
