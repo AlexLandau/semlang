@@ -781,7 +781,7 @@ private class Validator(
 
     private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         if (refsAlreadyUsedInStatement.contains(expression.name)) {
-            errors.add(Issue("Variable ${expression.name} is threaded and cannot be used more than once", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("Variable ${expression.name} is a reference and cannot be used more than once in a statement", expression.location, IssueLevel.ERROR))
             return null
         }
         val type = variableTypes[expression.name]

@@ -1162,7 +1162,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("List", "map"), StaticFunctionCallStrategy(javaLists, "map"))
         map.put(EntityId.of("List", "flatMap"), StaticFunctionCallStrategy(javaLists, "flatMap"))
         map.put(EntityId.of("List", "reduce"), StaticFunctionCallStrategy(javaLists, "reduce"))
-        map.put(EntityId.of("List", "reduceThreaded"), StaticFunctionCallStrategy(javaLists, "reduce"))
 
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls

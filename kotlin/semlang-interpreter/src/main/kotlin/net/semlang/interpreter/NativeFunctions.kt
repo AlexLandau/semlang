@@ -17,7 +17,7 @@ fun getNativeFunctions(): Map<EntityId, NativeFunction> {
     addMaybeFunctions(list)
     addSequenceFunctions(list)
     addDataFunctions(list)
-    addNativeThreadedFunctions(list)
+    addNativeOpaqueTypeFunctions(list)
 
     return toMap(list)
 }
@@ -455,7 +455,7 @@ private fun addDataFunctions(list: MutableList<NativeFunction>) {
     }))
 }
 
-private fun addNativeThreadedFunctions(list: MutableList<NativeFunction>) {
+private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
     // TextOut.print
     list.add(NativeFunction(EntityId.of("TextOut", "print"), { args: List<SemObject>, _: InterpreterCallback ->
         val out = args[0] as? SemObject.TextOut ?: typeError()

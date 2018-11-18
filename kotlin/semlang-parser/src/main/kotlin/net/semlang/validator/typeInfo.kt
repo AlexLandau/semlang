@@ -255,12 +255,10 @@ private class TypeInfoCollector(
 
 
     private fun getLocalTypeInfo(union: UnvalidatedUnion): TypeInfo.Union {
-        // TODO: Consider allowing threaded unions
         val resolvedRef = ResolvedEntityRef(moduleId, union.id)
         return TypeInfo.Union(resolvedRef, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
     }
     private fun getTypeInfo(union: Union, idLocation: Location?): TypeInfo.Union {
-        // TODO: Consider allowing threaded unions
         return TypeInfo.Union(union.resolvedRef, union.typeParameters, getUnionTypeMap(union.options), false, idLocation)
     }
 

@@ -48,14 +48,14 @@ sealed class SemObject {
     // Absence of a containing module indicates the native module.
     data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject()
 
-    // Types for threaded object types
+    // Types for native reference types
     data class TextOut(val out: PrintStream): SemObject()
     data class ListBuilder(val listSoFar: ArrayList<SemObject>): SemObject()
 
     // Special cases for standard library optimizations
     data class Int64(val value: Long): SemObject()
 
-    // Used by mock tests to represent mocked objects of threaded types
+    // Used by mock tests to represent mocked references
     data class Mock(val name: String) : SemObject()
 }
 
