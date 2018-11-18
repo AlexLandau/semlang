@@ -1,8 +1,0 @@
-struct IntStruct {
-  value: Integer
-}
-
-// Incorrectly marks IntStruct as threaded
-function increment(intStruct: ~IntStruct): Integer {
-  Integer.plus(intStruct->value, Integer."1")
-}

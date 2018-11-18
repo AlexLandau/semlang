@@ -11,8 +11,8 @@ internal fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
 }
 
 private fun collectVars(varsReferenced: MutableCollection<String>, block: TypedBlock) {
-    for (assignment in block.assignments) {
-        collectVars(varsReferenced, assignment.expression)
+    for (statement in block.statements) {
+        collectVars(varsReferenced, statement.expression)
     }
     collectVars(varsReferenced, block.returnedExpression)
 }

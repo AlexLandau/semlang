@@ -336,12 +336,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
-        for ((name, _, expression) in block.assignments) {
+        for ((name, _, expression) in block.statements) {
             val value = evaluateExpression(expression, assignments, containingModule)
             if (assignments.containsKey(name)) {
                 throw IllegalStateException("Tried to double-assign variable $name")
             }
-            assignments.put(name, value)
+            if (name != null) {
+                assignments.put(name, value)
+            }
         }
         return evaluateExpression(block.returnedExpression, assignments, containingModule)
     }

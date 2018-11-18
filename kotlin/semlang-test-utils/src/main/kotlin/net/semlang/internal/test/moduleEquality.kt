@@ -58,15 +58,15 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
 }
 
 private fun stripLocations(block: Block): Block {
-    val assignments = block.assignments.map(::stripLocations)
+    val assignments = block.statements.map(::stripLocations)
     val returnedExpression = stripLocations(block.returnedExpression)
     return Block(assignments, returnedExpression)
 }
 
-private fun stripLocations(assignment: Assignment): Assignment {
-    val type = assignment.type?.let(::stripLocations)
-    val expression = stripLocations(assignment.expression)
-    return Assignment(assignment.name, type, expression)
+private fun stripLocations(statement: Statement): Statement {
+    val type = statement.type?.let(::stripLocations)
+    val expression = stripLocations(statement.expression)
+    return Statement(statement.name, type, expression)
 }
 
 private fun stripLocations(expression: Expression): Expression {

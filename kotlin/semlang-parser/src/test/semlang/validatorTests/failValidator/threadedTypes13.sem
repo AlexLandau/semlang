@@ -1,4 +1,0 @@
-// Disallow Lists with threaded parameter types for now
-function listTextOut(): ~TextOut {
-  Try.assume<~TextOut>(List.get<~TextOut>([]<~TextOut>, Natural."0"))
-}

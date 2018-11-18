@@ -43,7 +43,7 @@ fun invalidate(struct: Struct): UnvalidatedStruct {
 }
 
 fun invalidate(block: TypedBlock): Block {
-    val assignments = block.assignments.map(::invalidateAssignment)
+    val assignments = block.statements.map(::invalidateStatement)
     val returnedExpression = invalidateExpression(block.returnedExpression)
     return Block(assignments, returnedExpression)
 }
@@ -141,9 +141,9 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
     }
 }
 
-private fun invalidateAssignment(assignment: ValidatedAssignment): Assignment {
-    val expression = invalidateExpression(assignment.expression)
-    return Assignment(assignment.name, invalidate(assignment.type), expression)
+private fun invalidateStatement(statement: ValidatedStatement): Statement {
+    val expression = invalidateExpression(statement.expression)
+    return Statement(statement.name, invalidate(statement.type), expression)
 }
 
 fun invalidate(function: ValidatedFunction): Function {

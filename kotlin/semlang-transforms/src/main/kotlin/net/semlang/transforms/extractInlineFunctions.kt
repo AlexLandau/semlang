@@ -66,8 +66,8 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     }
 
     private fun transformBlock(block: TypedBlock): Block {
-        val assignments = block.assignments.map { assignment ->
-            Assignment(assignment.name, invalidate(assignment.type), transformExpression(assignment.expression))
+        val assignments = block.statements.map { statement ->
+            Statement(statement.name, invalidate(statement.type), transformExpression(statement.expression))
         }
         val returnedExpression = transformExpression(block.returnedExpression)
         return Block(assignments, returnedExpression)

@@ -869,14 +869,16 @@ sealed class TypedExpression {
     data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }
 
-data class AmbiguousAssignment(val name: String, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
-data class Assignment(val name: String, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
-data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
+// Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
+// effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
+data class AmbiguousStatement(val name: String?, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
+data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
+data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
-data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
-data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
-data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
+data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
+data class Block(val statements: List<Statement>, val returnedExpression: Expression, val location: Location? = null)
+data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val returnedExpression: TypedExpression)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(

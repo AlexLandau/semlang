@@ -1,8 +1,0 @@
-// Threaded objects shouldn't be bound as arguments to functions (currently)
-function bindTextOut(out: ~TextOut): () -> ~TextOut {
-  sayHello|(out)
-}
-
-function sayHello(standardOut: ~TextOut): ~TextOut {
-  TextOut.print(standardOut, Unicode.String."Hello, world!\n")
-}

@@ -1,6 +1,0 @@
-@Test.Mock(["out1"], "out2", [
-  ["TextOut.print", ["out1", "Hello!"], "out2"]
-])
-function sayHello(out: ~TextOut): ~TextOut {
-  TextOut.print(out, Unicode.String."Hello!")
-}

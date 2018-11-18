@@ -78,7 +78,7 @@ interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE assignments return_statement RBRACE ;
+block : LBRACE statements return_statement RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }
@@ -121,6 +121,11 @@ cd_type_parameters : type_parameter | type_parameter COMMA | type_parameter COMM
 type_parameter : ID | ID COLON type_class ;
     catch[RecognitionException e] { throw e; }
 type_class : ID ;
+    catch[RecognitionException e] { throw e; }
+
+statements : | statement statements ;
+    catch[RecognitionException e] { throw e; }
+statement : assignment | expression ;
     catch[RecognitionException e] { throw e; }
 
 assignments : | assignment assignments ;

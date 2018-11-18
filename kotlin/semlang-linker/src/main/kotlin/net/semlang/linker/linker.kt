@@ -88,14 +88,14 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     }
 
     private fun apply(block: TypedBlock): Block {
-        val assignments = block.assignments.map(this::apply)
+        val assignments = block.statements.map(this::apply)
         val returnedExpression = apply(block.returnedExpression)
         return Block(assignments, returnedExpression)
     }
 
-    private fun apply(assignment: ValidatedAssignment): Assignment {
-        val expression = apply(assignment.expression)
-        return Assignment(assignment.name, null, expression)
+    private fun apply(statement: ValidatedStatement): Statement {
+        val expression = apply(statement.expression)
+        return Statement(statement.name, null, expression)
     }
 
     private fun apply(expression: TypedExpression): Expression {
@@ -497,9 +497,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
 
     // TODO: The type enqueueings here are probably redundant; confirm or show otherwise once testing is sufficient
     private fun enqueueBlock(block: TypedBlock, containingModule: ValidatedModule) {
-        for (assignment in block.assignments) {
-            enqueueType(assignment.type, containingModule)
-            enqueueExpression(assignment.expression, containingModule)
+        for (statement in block.statements) {
+            enqueueType(statement.type, containingModule)
+            enqueueExpression(statement.expression, containingModule)
         }
         enqueueType(block.type, containingModule)
         enqueueExpression(block.returnedExpression, containingModule)

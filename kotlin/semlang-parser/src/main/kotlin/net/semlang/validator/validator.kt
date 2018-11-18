@@ -256,30 +256,35 @@ private class Validator(
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
-        val validatedAssignments = ArrayList<ValidatedAssignment>()
-        for (assignment in block.assignments) {
-            if (variableTypes.containsKey(assignment.name)) {
-                errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.nameLocation, IssueLevel.ERROR))
-            }
-            if (isInvalidVariableName(assignment.name)) {
-                errors.add(Issue("Invalid variable name ${assignment.name}", assignment.nameLocation, IssueLevel.ERROR))
+        val validatedStatements = ArrayList<ValidatedStatement>()
+        for (statement in block.statements) {
+            val varName = statement.name
+            if (varName != null) {
+                if (variableTypes.containsKey(varName)) {
+                    errors.add(Issue("The already-assigned variable ${varName} cannot be reassigned", statement.nameLocation, IssueLevel.ERROR))
+                }
+                if (isInvalidVariableName(varName)) {
+                    errors.add(Issue("Invalid variable name ${varName}", statement.nameLocation, IssueLevel.ERROR))
+                }
             }
 
-            val validatedExpression = validateExpression(assignment.expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
-            val unvalidatedAssignmentType = assignment.type
+            val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+            val unvalidatedAssignmentType = statement.type
             if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
-                    fail("In function $containingFunctionId, the variable ${assignment.name} is supposed to be of type $assignmentType, " +
+                    fail("In function $containingFunctionId, the variable $varName is supposed to be of type $assignmentType, " +
                             "but the expression given has actual type ${validatedExpression.type}")
                 }
             }
 
-            validatedAssignments.add(ValidatedAssignment(assignment.name, validatedExpression.type, validatedExpression))
-            variableTypes.put(assignment.name, validatedExpression.type)
+            validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
+            if (varName != null) {
+                variableTypes.put(varName, validatedExpression.type)
+            }
         }
         val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
-        return TypedBlock(returnedExpression.type, validatedAssignments, returnedExpression)
+        return TypedBlock(returnedExpression.type, validatedStatements, returnedExpression)
     }
 
     //TODO: Construct this more sensibly from more centralized lists

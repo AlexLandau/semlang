@@ -41,13 +41,17 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
     }
 
     private fun apply(block: Block, varTransformations: MutableMap<String, String>): Block {
-        val assignments = block.assignments.map { assignment ->
-            val expression = applyTransformations(assignment.expression, varTransformations)
-            val originalVarName = assignment.name
-            val newVarName = ensureUnusedVarName(originalVarName)
-            varTransformations[originalVarName] = newVarName
-            alreadyUsedNames.add(newVarName)
-            Assignment(newVarName, assignment.type, expression)
+        val assignments = block.statements.map { statement ->
+            val expression = applyTransformations(statement.expression, varTransformations)
+            val originalVarName = statement.name
+            if (originalVarName == null) {
+                Statement(null, statement.type, expression)
+            } else {
+                val newVarName = ensureUnusedVarName(originalVarName)
+                varTransformations[originalVarName] = newVarName
+                alreadyUsedNames.add(newVarName)
+                Statement(newVarName, statement.type, expression)
+            }
         }
         val returnedExpression = applyTransformations(block.returnedExpression, varTransformations)
         return Block(assignments, returnedExpression)

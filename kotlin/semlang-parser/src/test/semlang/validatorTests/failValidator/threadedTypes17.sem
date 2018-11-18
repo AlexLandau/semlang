@@ -1,4 +1,0 @@
-// Boolean should not be marked as threaded
-function flip(value: ~Boolean): ~Boolean {
-  Boolean.not(value)
-}

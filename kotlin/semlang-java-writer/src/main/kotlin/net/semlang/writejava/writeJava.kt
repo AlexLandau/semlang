@@ -568,20 +568,26 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeBlock(block: TypedBlock, varToAssign: String?): CodeBlock {
         val builder = CodeBlock.builder()
 
-        for ((name, type, expression) in block.assignments) {
+        for ((name, type, expression) in block.statements) {
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
-            if (expression is TypedExpression.IfThen) {
-                // The variable gets added to our scope early in this case
-                addToVariableScope(name)
-                builder.addStatement("final \$T \$L", getType(type, false), name)
-                builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
-                builder.add(writeBlock(expression.thenBlock, name))
-                builder.nextControlFlow("else")
-                builder.add(writeBlock(expression.elseBlock, name))
-                builder.endControlFlow()
+            if (name != null) {
+                // Assignment case
+                if (expression is TypedExpression.IfThen) {
+                    // The variable gets added to our scope early in this case
+                    addToVariableScope(name)
+                    builder.addStatement("final \$T \$L", getType(type, false), name)
+                    builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
+                    builder.add(writeBlock(expression.thenBlock, name))
+                    builder.nextControlFlow("else")
+                    builder.add(writeBlock(expression.elseBlock, name))
+                    builder.endControlFlow()
+                } else {
+                    builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
+                    addToVariableScope(name)
+                }
             } else {
-                builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
-                addToVariableScope(name)
+                // Non-assignment expression
+                builder.addStatement("\$L", writeExpression(expression))
             }
         }
 
@@ -592,8 +598,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             builder.addStatement("\$L = \$L", varToAssign, writeExpression(block.returnedExpression))
         }
 
-        for (assignment in block.assignments) {
-            removeFromVariableScope(assignment.name)
+        for (assignment in block.statements) {
+            assignment.name?.let { removeFromVariableScope(it) }
         }
 
         return builder.build()
