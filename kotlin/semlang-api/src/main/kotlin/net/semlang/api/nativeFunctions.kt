@@ -380,6 +380,7 @@ object NativeOpaqueType {
 fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     val types = ArrayList<OpaqueType>()
 
+    types.add(NativeOpaqueType.VOID)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
 
