@@ -1,0 +1,4 @@
+// Don't allow reference types as members in unions
+union Foo {
+  OneType: &TextOut
+}

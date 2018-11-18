@@ -159,6 +159,10 @@ private class Validator(
         val arguments = validateArguments(function.arguments, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         val returnType = validateType(function.returnType, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
 
+        if (returnType.isReference()) {
+            errors.add(Issue("Reference types cannot be returned from functions", function.returnTypeLocation, IssueLevel.ERROR))
+        }
+
         //TODO: Validate that type parameters don't share a name with something important
         val variableTypes = getArgumentVariableTypes(arguments)
         val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), function.id) ?: return null
@@ -904,7 +908,7 @@ private class Validator(
             val unvalidatedType = option.type
             val type = if (unvalidatedType == null) null else validateType(unvalidatedType, unionTypeParameters)
             if (type != null && type.isReference()) {
-                error("Reference types are not allowed in unions")
+                errors.add(Issue("Reference types are not allowed in unions", option.idLocation, IssueLevel.ERROR))
             }
             if (option.name == "when") {
                 errors.add(Issue("Union options cannot be named 'when'", option.idLocation, IssueLevel.ERROR))

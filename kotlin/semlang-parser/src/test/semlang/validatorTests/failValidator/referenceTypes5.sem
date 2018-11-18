@@ -1,0 +1,11 @@
+// Reference types cannot be called multiple times in one statement
+function doSomething(out: &TextOut): Void {
+  ignoreTwoVoids(TextOut.print(out, Unicode.String."chicken"), TextOut.print(out, Unicode.String."egg"))
+}
+
+function ignoreTwoVoids(v1: Void, v2: Void): Void {
+  // TODO: It might be reasonable now to allow an empty function in this case; and/or, allow a Void literal or have a Void() function
+  // For now... hacks
+  let builder = ListBuilder.create<Integer>()
+  builder.append(Integer."0")
+}

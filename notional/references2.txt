@@ -146,7 +146,9 @@ specific problems crop up that need to be solved -- looks like this:
  * Functions accepting reference types as arguments are understood to mutate the referenced... let's say objects, for
    lack of a better word ("instances" sounds weird). Thus, no need to return the objects from the function, and in fact,
    returning the object is (for now) not allowed.
- * References can only be used as as expressions when used as arguments to function calls (so no "let foo = bar") and
+   * Possible follow-up would allow it to be returned if it was from e.g. ListBuild.create() or another function rather
+     than passed in as an argument? Would still need to be coordinated with other changes.
+ * References can only be used as expressions when used as arguments to function calls (so no "let foo = bar") and
    only once per statement. (Arguably this could be "once per function call", but the order of the references matters
    and this is a more obvious way to define it than by doing something that depends on the function's argument ordering.)
  * Non-let statements (that are just function calls) are now allowed.

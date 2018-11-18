@@ -1,0 +1,11 @@
+// Reference types cannot be aliased via if/then statements
+function duplicateAnAlias(out1: &TextOut, out2: &TextOut, useTwo: Boolean): Void {
+  let out3 = if (useTwo) {
+    out2
+  } else {
+    out1
+  }
+  TextOut.print(out1, Unicode.String."Larry")
+  TextOut.print(out2, Unicode.String."Curly")
+  TextOut.print(out3, Unicode.String."Moe")
+}

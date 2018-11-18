@@ -1,0 +1,9 @@
+// Reference types cannot be called multiple times in one statement
+function doSomething(out: &TextOut): Void {
+  doubleSayHi(out, out)
+}
+
+function doubleSayHi(out1: &TextOut, out2: &TextOut): Void {
+  TextOut.print(out1, Unicode.String."Hi!\n")
+  TextOut.print(out2, Unicode.String."Hi!\n")
+}
