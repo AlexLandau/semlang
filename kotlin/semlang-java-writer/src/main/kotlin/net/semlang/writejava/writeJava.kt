@@ -1049,6 +1049,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
             listOf("TextOut") -> ClassName.get(PrintStream::class.java)
             listOf("ListBuilder") -> ClassName.get(java.util.List::class.java)
+            listOf("Void") -> ClassName.bestGuess("net.semlang.java.Void")
             else -> null
         }
 

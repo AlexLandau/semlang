@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isAssignment, Expression, Type, isNamedType, isMaybeType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
+import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -177,7 +177,7 @@ export class InterpreterContext {
 
     private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
         for (const blockElement of block) {
-            if (isAssignment(blockElement)) {
+            if (isStatement(blockElement)) {
                 const varName = blockElement.let;
                 const expression = blockElement.be;
     
@@ -185,7 +185,9 @@ export class InterpreterContext {
                 if (evaluatedExpression == undefined) {
                     throw new Error(`Evaluated expression was undefined; expression was: ${expression}`);
                 }
-                alreadyBoundVars[varName] = evaluatedExpression;
+                if (varName !== undefined) {
+                    alreadyBoundVars[varName] = evaluatedExpression;
+                }
             } else {
                 const expression = blockElement.return;
                 return this.evaluateExpression(expression, alreadyBoundVars);
@@ -495,7 +497,7 @@ function getVarNamesReferencedInBlock(block: Block): string[] {
 
 function addVarNamesReferencedInBlock(block: Block, varNamesSet: DumbStringSet) {
     for (const blockEntry of block) {
-        if (isAssignment(blockEntry)) {
+        if (isStatement(blockEntry)) {
             addVarNamesReferencedInExpression(blockEntry.be, varNamesSet);
         } else {
             addVarNamesReferencedInExpression(blockEntry.return, varNamesSet);

@@ -1,9 +1,0 @@
-
-@Test([], "Hello, world!")
-function testStringBuilder(): Unicode.String {
-  let sb1 = StringBuilder.create()
-  let sb2 = StringBuilder.append(sb1, Unicode.String."Hello, ")
-  let sb3 = StringBuilder.append(sb2, Unicode.String."")
-  let sb4 = StringBuilder.append(sb3, Unicode.String."world!")
-  StringBuilder.build(sb4)
-}

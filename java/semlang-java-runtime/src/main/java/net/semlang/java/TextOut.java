@@ -7,9 +7,9 @@ public class TextOut {
         // Not instantiable
     }
 
-    public static PrintStream print(PrintStream textOut, String text) {
+    public static Void print(PrintStream textOut, String text) {
         textOut.print(text);
         textOut.flush();
-        return textOut;
+        return null;
     }
 }
