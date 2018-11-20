@@ -284,6 +284,9 @@ private class Validator(
 
             validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
             if (varName != null) {
+                if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
+                    errors.add(Issue("We are assigning a reference to the variable $varName, but it may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
+                }
                 variableTypes.put(varName, validatedExpression.type)
             }
         }
@@ -344,7 +347,7 @@ private class Validator(
 
         val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
 
-        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
+        return TypedExpression.InlineFunction(functionType, AliasType.NotAliased, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
 
     private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -396,7 +399,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression.aliasType, functionExpression, bindings, inferredTypeParameters, providedChoices)
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -454,7 +457,7 @@ private class Validator(
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -538,7 +541,7 @@ private class Validator(
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
-                return TypedExpression.Follow(type, structureExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
 
             }
             is TypeInfo.Interface -> {
@@ -562,7 +565,7 @@ private class Validator(
                 val parameterizedType = replaceAndValidateExternalTypeParameters(methodType, typeParameters, chosenTypes)
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
 
-                return TypedExpression.Follow(type, structureExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
             }
             is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
@@ -613,7 +616,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -650,7 +653,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
@@ -681,7 +684,7 @@ private class Validator(
                 errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.location, IssueLevel.ERROR))
             }
             // TODO: Someday we need to check for literal values that violate "requires" blocks at validation time
-            return TypedExpression.Literal(typeChain.last(), expression.literal)
+            return TypedExpression.Literal(typeChain.last(), AliasType.NotAliased, expression.literal)
         } else if (errors.isEmpty()) {
             fail("Something went wrong")
         }
@@ -750,7 +753,7 @@ private class Validator(
             }
         }
 
-        return TypedExpression.ListLiteral(listType, contents, chosenParameter)
+        return TypedExpression.ListLiteral(listType, AliasType.NotAliased, contents, chosenParameter)
     }
 
     private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
@@ -771,7 +774,13 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.IfThen(type, condition, thenBlock, elseBlock)
+        val aliasType = if (thenBlock.returnedExpression.aliasType == AliasType.NotAliased && elseBlock.returnedExpression.aliasType == AliasType.NotAliased) {
+            AliasType.NotAliased
+        } else {
+            AliasType.PossiblyAliased
+        }
+
+        return TypedExpression.IfThen(type, aliasType, condition, thenBlock, elseBlock)
     }
 
     private fun typeUnion(type1: Type, type2: Type): Type {
@@ -793,7 +802,7 @@ private class Validator(
             if (type.isReference()) {
                 refsAlreadyUsedInStatement.add(expression.name)
             }
-            return TypedExpression.Variable(type, expression.name)
+            return TypedExpression.Variable(type, AliasType.PossiblyAliased, expression.name)
         } else {
             errors.add(Issue("Unknown variable ${expression.name}", expression.location, IssueLevel.ERROR))
             return null

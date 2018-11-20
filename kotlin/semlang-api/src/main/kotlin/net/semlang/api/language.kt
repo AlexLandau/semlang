@@ -855,18 +855,48 @@ sealed class Expression {
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
 }
 // Post-type-analysis
+enum class AliasType {
+    /**
+     * Indicates that the expression represents a reference or value without an existing alias, and thus can be assigned
+     * to a variable if it's a reference type.
+     */
+    NotAliased,
+    /**
+     * Indicates that the expression represents a reference or value that either is guaranteed to have
+     * or conditionally may have an existing alias, and thus cannot be assigned to a variable if it's a reference type.
+     *
+     * Note that this category includes expressions that may be "definitely aliased", but there's no need to distinguish
+     * them from expressions that are "possibly aliased" (such as may result from an if-expression where one possible
+     * result is aliased and the other is not).
+     */
+    PossiblyAliased,
+    ;
+    companion object {
+        // I'd really rather this be named "for", but that's not an option
+        fun of(possiblyAliased: Boolean): AliasType {
+            if (possiblyAliased) {
+                return PossiblyAliased
+            } else {
+                return NotAliased
+            }
+        }
+    }
+}
 sealed class TypedExpression {
     abstract val type: Type
-    data class Variable(override val type: Type, val name: String): TypedExpression()
-    data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
-    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
-    data class Literal(override val type: Type, val literal: String): TypedExpression()
-    data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
-    data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
-    data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
+    // TODO: Consider auto-setting some alias types; i.e. always aliased for Variable, never aliased for Literal/ListLiteral/maybe FunctionCalls
+    // (Non-obvious correction: Follows wouldn't be aliased if their structure expressions are unaliased, e.g. foo()->bar)
+    abstract val aliasType: AliasType
+    data class Variable(override val type: Type, override val aliasType: AliasType, val name: String): TypedExpression()
+    data class IfThen(override val type: Type, override val aliasType: AliasType, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, override val aliasType: AliasType, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
+    data class ExpressionFunctionCall(override val type: Type, override val aliasType: AliasType, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
+    data class Literal(override val type: Type, override val aliasType: AliasType, val literal: String): TypedExpression()
+    data class ListLiteral(override val type: Type, override val aliasType: AliasType, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, override val aliasType: AliasType, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, override val aliasType: AliasType, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
+    data class Follow(override val type: Type, override val aliasType: AliasType, val structureExpression: TypedExpression, val name: String): TypedExpression()
+    data class InlineFunction(override val type: Type, override val aliasType: AliasType, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative

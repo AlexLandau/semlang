@@ -141,7 +141,7 @@ class ContextTests {
 }
 
 private fun createFunctionWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
-    val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, uniqueAspect.toString()))
+    val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, uniqueAspect.toString()))
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {

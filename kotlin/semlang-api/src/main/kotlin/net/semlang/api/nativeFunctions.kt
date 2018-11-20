@@ -275,10 +275,11 @@ object NativeStruct {
             // requires: value > -1
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
+                    AliasType.NotAliased,
                     EntityRef.of("Integer", "greaterThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
-                    listOf(TypedExpression.Variable(Type.INTEGER, "integer"),
-                            TypedExpression.Literal(Type.INTEGER, "-1")),
+                    listOf(TypedExpression.Variable(Type.INTEGER, AliasType.PossiblyAliased, "integer"),
+                            TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, "-1")),
                     listOf(),
                     listOf()
             )),
@@ -305,13 +306,15 @@ object NativeStruct {
             // requires: value < 1114112
             TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
                     Type.BOOLEAN,
+                    AliasType.NotAliased,
                     EntityRef.of("Integer", "lessThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
                     listOf(
                             TypedExpression.Follow(Type.INTEGER,
-                                    TypedExpression.Variable(NativeStruct.NATURAL.getType(), "natural"),
+                                    AliasType.PossiblyAliased,
+                                    TypedExpression.Variable(NativeStruct.NATURAL.getType(), AliasType.PossiblyAliased, "natural"),
                                     "integer"),
-                            TypedExpression.Literal(Type.INTEGER, "1114112")
+                            TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, "1114112")
                     ),
                     listOf(),
                     listOf()
