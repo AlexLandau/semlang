@@ -1218,6 +1218,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // BitsBigEndian constructor
         map.put(EntityId.of("BitsBigEndian"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.BitsBigEndian"), "create"))
 
+        // Void "constructor"
+        map.put(EntityId.of("Void"), NullConstantStrategy)
+
         return map
     }
 
@@ -1247,6 +1250,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             } else {
                 return CodeBlock.of("\$L.equals(\$L)", left, right)
             }
+        }
+    }
+
+    val NullConstantStrategy = object: FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
+            return CodeBlock.of("null")
         }
     }
 

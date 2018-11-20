@@ -235,7 +235,7 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<TypeSignature>) {
     // TextOut.print
     definitions.add(TypeSignature.create(EntityId.of("TextOut", "print"), typeParameters = listOf(),
             argumentTypes = listOf(NativeOpaqueType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
-            outputType = NativeOpaqueType.VOID.getType()))
+            outputType = NativeStruct.VOID.getType()))
 
     val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(listOf(typeT))
 
@@ -248,12 +248,12 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<TypeSignature>) {
     // ListBuilder.append
     definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "append"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT, typeT),
-            outputType = NativeOpaqueType.VOID.getType()))
+            outputType = NativeStruct.VOID.getType()))
 
     // ListBuilder.appendAll
     definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT, Type.List(typeT)),
-            outputType = NativeOpaqueType.VOID.getType()))
+            outputType = NativeStruct.VOID.getType()))
 
     // ListBuilder.build
     definitions.add(TypeSignature.create(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
@@ -331,6 +331,14 @@ object NativeStruct {
             null,
             listOf()
     )
+    val VOID = Struct(
+            EntityId.of("Void"),
+            CURRENT_NATIVE_MODULE_ID,
+            listOf(),
+            listOf(),
+            null,
+            listOf()
+    )
 }
 
 fun getNativeStructs(): Map<EntityId, Struct> {
@@ -340,6 +348,7 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     structs.add(NativeStruct.SEQUENCE)
     structs.add(NativeStruct.UNICODE_CODE_POINT)
     structs.add(NativeStruct.UNICODE_STRING)
+    structs.add(NativeStruct.VOID)
 
     return toMap(structs)
 }
@@ -362,9 +371,6 @@ fun getNativeUnions(): Map<EntityId, Union> {
 object NativeOpaqueType {
     private val t = TypeParameter("T", null)
 
-    private val voidId = EntityId.of("Void")
-    val VOID = OpaqueType(voidId, CURRENT_NATIVE_MODULE_ID, listOf(), false)
-
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
@@ -383,7 +389,6 @@ object NativeOpaqueType {
 fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     val types = ArrayList<OpaqueType>()
 
-    types.add(NativeOpaqueType.VOID)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
 
