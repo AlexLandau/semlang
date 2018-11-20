@@ -1,0 +1,8 @@
+// Reference types cannot be called multiple times in one statement
+function doSomething(out: &TextOut): Void {
+  ignoreTwoVoids(TextOut.print(out, Unicode.String."chicken"), TextOut.print(out, Unicode.String."egg"))
+}
+
+function ignoreTwoVoids(v1: Void, v2: Void): Void {
+  Void()
+}

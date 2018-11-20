@@ -1,4 +1,0 @@
-struct ~DoubleListBuilder {
-  forwardBuilder: ~ListBuilder<Integer>
-  backwardsBuilder: ~ListBuilder<Integer>
-}

@@ -39,11 +39,11 @@ fun invalidate(argument: Argument): UnvalidatedArgument {
 fun invalidate(struct: Struct): UnvalidatedStruct {
     val requires = struct.requires?.let { invalidate(it) }
     val members = struct.members.map(::invalidate)
-    return UnvalidatedStruct(struct.id, struct.isThreaded, struct.typeParameters, members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
 }
 
 fun invalidate(block: TypedBlock): Block {
-    val assignments = block.assignments.map(::invalidateAssignment)
+    val assignments = block.statements.map(::invalidateStatement)
     val returnedExpression = invalidateExpression(block.returnedExpression)
     return Block(assignments, returnedExpression)
 }
@@ -69,7 +69,7 @@ fun invalidate(type: Type): UnvalidatedType {
         }
         is Type.NamedType -> {
             val parameters = type.parameters.map(::invalidate)
-            UnvalidatedType.NamedType(type.originalRef, type.isThreaded(), parameters)
+            UnvalidatedType.NamedType(type.originalRef, type.isReference(), parameters)
         }
         is Type.InternalParameterType -> error("This shouldn't happen")
     }
@@ -141,9 +141,9 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
     }
 }
 
-private fun invalidateAssignment(assignment: ValidatedAssignment): Assignment {
-    val expression = invalidateExpression(assignment.expression)
-    return Assignment(assignment.name, invalidate(assignment.type), expression)
+private fun invalidateStatement(statement: ValidatedStatement): Statement {
+    val expression = invalidateExpression(statement.expression)
+    return Statement(statement.name, invalidate(statement.type), expression)
 }
 
 fun invalidate(function: ValidatedFunction): Function {

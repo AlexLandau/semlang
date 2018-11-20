@@ -50,23 +50,23 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)
-            UnvalidatedType.NamedType(type.ref, type.isThreaded, parameters)
+            UnvalidatedType.NamedType(type.ref, type.isReference, parameters)
         }
-        is UnvalidatedType.Invalid.ThreadedInteger -> UnvalidatedType.Invalid.ThreadedInteger()
-        is UnvalidatedType.Invalid.ThreadedBoolean -> UnvalidatedType.Invalid.ThreadedBoolean()
+        is UnvalidatedType.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger()
+        is UnvalidatedType.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean()
     }
 }
 
 private fun stripLocations(block: Block): Block {
-    val assignments = block.assignments.map(::stripLocations)
+    val assignments = block.statements.map(::stripLocations)
     val returnedExpression = stripLocations(block.returnedExpression)
     return Block(assignments, returnedExpression)
 }
 
-private fun stripLocations(assignment: Assignment): Assignment {
-    val type = assignment.type?.let(::stripLocations)
-    val expression = stripLocations(assignment.expression)
-    return Assignment(assignment.name, type, expression)
+private fun stripLocations(statement: Statement): Statement {
+    val type = statement.type?.let(::stripLocations)
+    val expression = stripLocations(statement.expression)
+    return Statement(statement.name, type, expression)
 }
 
 private fun stripLocations(expression: Expression): Expression {
@@ -132,7 +132,7 @@ private fun stripLocations(argument: UnvalidatedArgument): UnvalidatedArgument {
 private fun stripLocations(struct: UnvalidatedStruct): UnvalidatedStruct {
     val requires = struct.requires?.let(::stripLocations)
     val members = struct.members.map(::stripLocations)
-    return UnvalidatedStruct(struct.id, struct.markedAsThreaded, struct.typeParameters, members, requires, struct.annotations)
+    return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
 }
 
 private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface {

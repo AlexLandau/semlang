@@ -19,8 +19,8 @@ fun getAllDeclaredVarNames(block: Block): Set<String> {
 }
 
 private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
-    for (assignment in block.assignments) {
-        addAllDeclaredVarNames(assignment, varNames)
+    for (statement in block.statements) {
+        addAllDeclaredVarNames(statement, varNames)
     }
     addAllDeclaredVarNames(block.returnedExpression, varNames)
 }
@@ -76,9 +76,9 @@ private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<Str
     }
 }
 
-private fun addAllDeclaredVarNames(assignment: Assignment, varNames: HashSet<String>) {
-    varNames.add(assignment.name)
-    addAllDeclaredVarNames(assignment.expression, varNames)
+private fun addAllDeclaredVarNames(statement: Statement, varNames: HashSet<String>) {
+    statement.name?.let { varNames.add(it) }
+    addAllDeclaredVarNames(statement.expression, varNames)
 }
 
 fun replaceLocalFunctionNameReferences(function: Function, replacements: Map<EntityId, EntityId>): Function {
@@ -122,7 +122,7 @@ fun replaceSomeExpressionsPostvisit(block: Block, transformation: (Expression) -
 
 private class PostvisitExpressionReplacer(val transformation: (Expression) -> Expression?) {
     fun apply(block: Block): Block {
-        val assignments = block.assignments.map(this::apply)
+        val assignments = block.statements.map(this::apply)
         val returnedExpression = apply(block.returnedExpression)
         return Block(assignments, returnedExpression, block.location)
     }
@@ -176,8 +176,8 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
         }
     }
 
-    private fun apply(assignment: Assignment): Assignment {
+    private fun apply(assignment: Statement): Statement {
         val expression = apply(assignment.expression)
-        return Assignment(assignment.name, assignment.type, expression, assignment.nameLocation)
+        return Statement(assignment.name, assignment.type, expression, assignment.nameLocation)
     }
 }

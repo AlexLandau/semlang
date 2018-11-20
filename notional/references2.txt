@@ -146,9 +146,24 @@ specific problems crop up that need to be solved -- looks like this:
  * Functions accepting reference types as arguments are understood to mutate the referenced... let's say objects, for
    lack of a better word ("instances" sounds weird). Thus, no need to return the objects from the function, and in fact,
    returning the object is (for now) not allowed.
- * References can only be used as as expressions when used as arguments to function calls (so no "let foo = bar") and
+   * Possible follow-up would allow it to be returned if it was from e.g. ListBuild.create() or another function rather
+     than passed in as an argument? Would still need to be coordinated with other changes.
+ * References can only be used as expressions when used as arguments to function calls (so no "let foo = bar") and
    only once per statement. (Arguably this could be "once per function call", but the order of the references matters
    and this is a more obvious way to define it than by doing something that depends on the function's argument ordering.)
+   * "References can only be used as expressions when used as arguments to function calls" -- this creates a problem
+     with ListBuilder.create(), since we can't just check the type of the value returned...
  * Non-let statements (that are just function calls) are now allowed.
 I believe this meets the initial goal of having unaliasable references. We can then see what programming patterns most
 need restructuring of references to make them easier to work with.
+
+Idea for solving the `let builder = ListBuilder.create()` vs. `let builder = existingBuilder` validation problem:
+Include in the type system a distinction (for named types) between thing-with-alias and thing-with-no-alias. This could
+be implemented as an AliasType property on the type, with NOT_A_REFERENCE, NOT_ALIASED, and POSSIBLY_ALIASED as options
+(the name of the last accounting for cases of `let foo = if(...) { ListBuilder.create } else { bar }`).
+
+This might create small complications in that there is now a subtyping relationship of sorts between two "types", the
+NOT_ALIASED and POSSIBLY_ALIASED versions of the type, though at least this kind of subtyping doesn't require external
+information (only the two variants of the type with the same name are related to one another, and more importantly, the
+interaction with generics may not require any awareness of the subtyping). There may also be issues with equality tests
+between types, though this probably won't be an issue.

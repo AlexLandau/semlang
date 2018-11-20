@@ -51,7 +51,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     private fun transformStruct(struct: Struct): UnvalidatedStruct {
         val members = struct.members.map(::invalidate)
         val requires = struct.requires?.let { transformBlock(it) }
-        return UnvalidatedStruct(struct.id, struct.isThreaded, struct.typeParameters, members, requires, struct.annotations)
+        return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
     }
 
     private fun transformFunctions(functions: Map<EntityId, ValidatedFunction>): List<Function> {
@@ -66,8 +66,8 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     }
 
     private fun transformBlock(block: TypedBlock): Block {
-        val assignments = block.assignments.map { assignment ->
-            Assignment(assignment.name, invalidate(assignment.type), transformExpression(assignment.expression))
+        val assignments = block.statements.map { statement ->
+            Statement(statement.name, invalidate(statement.type), transformExpression(statement.expression))
         }
         val returnedExpression = transformExpression(block.returnedExpression)
         return Block(assignments, returnedExpression)

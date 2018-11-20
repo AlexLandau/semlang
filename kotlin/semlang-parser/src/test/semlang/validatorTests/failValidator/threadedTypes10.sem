@@ -1,4 +1,0 @@
-// Disallow Tries with threaded parameter types for now
-function tryTextOut(out: ~TextOut): Try<~TextOut> {
-  Try.success<~TextOut>(out)
-}

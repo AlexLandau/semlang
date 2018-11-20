@@ -15,7 +15,6 @@ import net.semlang.validator.Issue
 import net.semlang.validator.IssueLevel
 import java.io.File
 import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
 
 private fun parseLiteral(literalFromParser: TerminalNode): String {
     val innerString = literalFromParser.text.drop(1).dropLast(1)
@@ -177,8 +176,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     private fun parseStruct(ctx: Sem1Parser.StructContext): UnvalidatedStruct {
         val id: EntityId = parseEntityId(ctx.entity_id())
 
-        val isMarkedThreaded = ctx.optional_tilde().TILDE() != null
-
         val typeParameters: List<TypeParameter> = if (ctx.cd_type_parameters() != null) {
             parseTypeParameters(ctx.cd_type_parameters())
         } else {
@@ -193,7 +190,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val annotations = parseAnnotations(ctx.annotations())
 
-        return UnvalidatedStruct(id, isMarkedThreaded, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
+        return UnvalidatedStruct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
     }
 
     private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {
@@ -264,14 +261,17 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): Block {
         val localVariableIds = ArrayList(externalVariableIds)
-        val assignments: MutableList<Assignment> = ArrayList()
-        for (assignment in ambiguousBlock.assignments) {
-            val expression = scopeExpression(localVariableIds, assignment.expression)
-            localVariableIds.add(EntityRef.of(assignment.name))
-            assignments.add(Assignment(assignment.name, assignment.type, expression, assignment.nameLocation))
+        val statements: MutableList<Statement> = ArrayList()
+        for (statement in ambiguousBlock.statements) {
+            val expression = scopeExpression(localVariableIds, statement.expression)
+            val name = statement.name
+            if (name != null) {
+                localVariableIds.add(EntityRef.of(name))
+            }
+            statements.add(Statement(statement.name, statement.type, expression, statement.nameLocation))
         }
         val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
-        return Block(assignments, returnedExpression, ambiguousBlock.location)
+        return Block(statements, returnedExpression, ambiguousBlock.location)
     }
 
     // TODO: Is it inefficient for varIds to be an ArrayList here?
@@ -373,14 +373,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     private fun parseTypeParameter(type_parameter: Sem1Parser.Type_parameterContext): TypeParameter {
         val name = type_parameter.ID().text
-        val typeClass = if (type_parameter.TILDE() != null) {
-            if (type_parameter.type_class() != null) {
-                error("Can't mark a parameter with both ~ and a type class")
-            }
-            TypeClass.Threaded
-        } else {
-            parseTypeClass(type_parameter.type_class())
-        }
+        val typeClass = parseTypeClass(type_parameter.type_class())
         return TypeParameter(name, typeClass)
     }
 
@@ -408,23 +401,29 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
-        val assignments = parseAssignments(block.assignments())
+        val statements = parseStatements(block.statements())
         val returnedExpression = parseExpression(block.return_statement().expression())
-        return AmbiguousBlock(assignments, returnedExpression, locationOf(block))
+        return AmbiguousBlock(statements, returnedExpression, locationOf(block))
     }
 
-    private fun parseAssignments(assignments: Sem1Parser.AssignmentsContext): List<AmbiguousAssignment> {
-        return parseLinkedList(assignments,
-                Sem1Parser.AssignmentsContext::assignment,
-                Sem1Parser.AssignmentsContext::assignments,
-                this::parseAssignment)
+    private fun parseStatements(statements: Sem1Parser.StatementsContext): List<AmbiguousStatement> {
+        return parseLinkedList(statements,
+                Sem1Parser.StatementsContext::statement,
+                Sem1Parser.StatementsContext::statements,
+                this::parseStatement)
     }
 
-    private fun parseAssignment(assignment: Sem1Parser.AssignmentContext): AmbiguousAssignment {
-        val name = assignment.ID().text
-        val type = if (assignment.type() != null) parseType(assignment.type()) else null
-        val expression = parseExpression(assignment.expression())
-        return AmbiguousAssignment(name, type, expression, locationOf(assignment.ID().symbol))
+    private fun parseStatement(statement: Sem1Parser.StatementContext): AmbiguousStatement {
+        if (statement.assignment() != null) {
+            val assignment = statement.assignment()
+            val name = assignment.ID().text
+            val type = if (assignment.type() != null) parseType(assignment.type()) else null
+            val expression = parseExpression(assignment.expression())
+            return AmbiguousStatement(name, type, expression, locationOf(assignment.ID().symbol))
+        } else {
+            val expression = parseExpression(statement.expression())
+            return AmbiguousStatement(null, null, expression, locationOf(statement))
+        }
     }
 
     private fun parseExpression(expression: Sem1Parser.ExpressionContext): AmbiguousExpression {
@@ -663,33 +662,33 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
     private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {
-        val isThreaded = type_ref.TILDE() != null
+        val isReference = type_ref.AMPERSAND() != null
         if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isThreaded, parameters, typeLocation)
+            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isReference, parameters, typeLocation)
         }
 
         val typeId = type_ref.entity_id().ID().text
         if (typeId == "Integer") {
-            if (isThreaded) {
-                return UnvalidatedType.Invalid.ThreadedInteger(typeLocation)
+            if (isReference) {
+                return UnvalidatedType.Invalid.ReferenceInteger(typeLocation)
             }
             return UnvalidatedType.Integer(typeLocation)
         } else if (typeId == "Boolean") {
-            if (isThreaded) {
-                return UnvalidatedType.Invalid.ThreadedBoolean(typeLocation)
+            if (isReference) {
+                return UnvalidatedType.Invalid.ReferenceBoolean(typeLocation)
             }
             return UnvalidatedType.Boolean(typeLocation)
         } else if (typeId == "List") {
-            if (isThreaded) {
-                throw LocationAwareParsingException("List is not a threaded type; remove the ~", locationOf(type_ref))
+            if (isReference) {
+                throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))
             }
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
             return UnvalidatedType.List(parameters[0], typeLocation)
         } else if (typeId == "Maybe") {
-            if (isThreaded) {
-                throw LocationAwareParsingException("Maybe is not a threaded type; remove the ~", locationOf(type_ref))
+            if (isReference) {
+                throw LocationAwareParsingException("Maybe is not a reference type; remove the &", locationOf(type_ref))
             }
             if (parameters.size != 1) {
                 error("Maybe should only accept a single parameter; parameters were: $parameters")
@@ -697,7 +696,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             return UnvalidatedType.Maybe(parameters[0], typeLocation)
         }
 
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), isThreaded, parameters, typeLocation)
+        return UnvalidatedType.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
     }
 
     private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {

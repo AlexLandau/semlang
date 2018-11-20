@@ -1,0 +1,7 @@
+function sayHelloMaybe(out: &TextOut, isGoodbye: Boolean): Void {
+  if (isGoodbye) {
+    TextOut.print(out, Unicode.String."Goodbye, world!\n")
+  } else {
+    TextOut.print(out, Unicode.String."Hello, world!\n")
+  }
+}

@@ -86,14 +86,14 @@ export interface Annotation {
 export type AnnotationArgument = string | (string | any[])[];
 
 // TODO: Maybe reconsider these two and Block?
-export type BlockElement = Assignment | { return: Expression };
+export type BlockElement = Statement | { return: Expression };
 
-export function isAssignment(blockElement: BlockElement): blockElement is Assignment {
-    return "let" in blockElement;
+export function isStatement(blockElement: BlockElement): blockElement is Statement {
+    return "be" in blockElement;
 }
 
-export interface Assignment {
-    let: string;
+export interface Statement {
+    let?: string;
     be: Expression;
 }
 

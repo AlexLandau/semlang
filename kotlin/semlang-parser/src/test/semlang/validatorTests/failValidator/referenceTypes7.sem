@@ -1,0 +1,6 @@
+// Reference types cannot be aliased
+function duplicateAnAlias(out: &TextOut): Void {
+  let outDuplicate = out
+  TextOut.print(out, Unicode.String."chicken")
+  TextOut.print(outDuplicate, Unicode.String."egg")
+}

@@ -90,16 +90,16 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
         fun create(ownModuleId: ModuleUniqueId,
                    nativeModuleVersion: String, // TODO: This is unused
                    ownFunctions: Collection<EntityId>,
-                   ownStructs: Map<EntityId, Boolean>,
+                   ownStructs: Collection<EntityId>,
                    ownInterfaces: Collection<EntityId>,
                    ownUnions: Map<EntityId, Set<String>>,
                    upstreamModules: Collection<ValidatedModule>,
                    moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>): EntityResolver {
 
             val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
-            val add = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isThreaded: Boolean) {
+            val add = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isReference: Boolean) {
                 idResolutions.getOrPut(id, { HashSet(2) })
-                        .add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isThreaded))
+                        .add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isReference))
             }
 
             // TODO: Add different things based on the native version in use
@@ -130,8 +130,8 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                 add(id, ownModuleId, FunctionLikeType.FUNCTION, false)
             }
 
-            for ((id, isThreaded) in ownStructs) {
-                add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, isThreaded)
+            for (id in ownStructs) {
+                add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
             }
 
             for (id in ownInterfaces) {
@@ -154,7 +154,7 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                     add(id, module.id, FunctionLikeType.FUNCTION, false)
                 }
                 module.getAllExportedStructs().forEach { id, struct ->
-                    add(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR, struct.isThreaded)
+                    add(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
                 }
                 module.getAllExportedInterfaces().keys.forEach { id ->
                     add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
@@ -243,7 +243,7 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
             id,
             nativeModuleVersion,
             ownFunctions.keys,
-            ownStructs.mapValues { it.value.isThreaded },
+            ownStructs.keys,
             ownInterfaces.keys,
             ownUnions.mapValues { it.value.options.map(Option::name).toSet() },
             upstreamModules.values,
@@ -475,4 +475,4 @@ enum class FunctionLikeType {
     OPAQUE_TYPE
 }
 
-data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType, val isThreaded: Boolean)
+data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType, val isReference: Boolean)

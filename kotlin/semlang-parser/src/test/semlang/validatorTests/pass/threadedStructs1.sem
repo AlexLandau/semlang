@@ -1,3 +1,0 @@
-struct ~StringBuilder {
-  listBuilder: ~ListBuilder<Unicode.String>
-}

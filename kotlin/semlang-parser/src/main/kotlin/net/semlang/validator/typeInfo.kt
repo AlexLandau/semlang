@@ -63,11 +63,11 @@ data class FunctionInfo(val resolvedRef: ResolvedEntityRef, val type: Type.Funct
 sealed class TypeInfo {
     abstract val resolvedRef: ResolvedEntityRef
     abstract val idLocation: Location?
-    abstract val isThreaded: Boolean
-    data class Struct(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
-    data class Interface(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
-    data class Union(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
-    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isThreaded: Boolean, override val idLocation: Location?): TypeInfo()
+    abstract val isReference: Boolean
+    data class Struct(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class Interface(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class Union(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
 }
 
 fun getTypesInfo(context: RawContext, moduleId: ModuleUniqueId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
@@ -88,7 +88,7 @@ private class TypeInfoCollector(
             moduleId,
             nativeModuleVersion,
             listOf(),
-            mapOf(),
+            listOf(),
             listOf(),
             mapOf(),
             upstreamModules,
@@ -194,10 +194,10 @@ private class TypeInfoCollector(
 
     private fun getLocalTypeInfo(struct: UnvalidatedStruct): TypeInfo.Struct {
         val resolvedRef = ResolvedEntityRef(moduleId, struct.id)
-        return TypeInfo.Struct(resolvedRef, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, struct.markedAsThreaded, struct.idLocation)
+        return TypeInfo.Struct(resolvedRef, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, false, struct.idLocation)
     }
     private fun getTypeInfo(struct: Struct, idLocation: Location?): TypeInfo.Struct {
-        return TypeInfo.Struct(struct.resolvedRef, struct.typeParameters, getMemberTypeMap(struct.members), struct.requires != null, struct.isThreaded, idLocation)
+        return TypeInfo.Struct(struct.resolvedRef, struct.typeParameters, getMemberTypeMap(struct.members), struct.requires != null, false, idLocation)
     }
     private fun getUnvalidatedMemberTypeMap(members: List<UnvalidatedMember>): Map<String, UnvalidatedType> {
         val typeMap = HashMap<String, UnvalidatedType>()
@@ -255,12 +255,10 @@ private class TypeInfoCollector(
 
 
     private fun getLocalTypeInfo(union: UnvalidatedUnion): TypeInfo.Union {
-        // TODO: Consider allowing threaded unions
         val resolvedRef = ResolvedEntityRef(moduleId, union.id)
         return TypeInfo.Union(resolvedRef, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
     }
     private fun getTypeInfo(union: Union, idLocation: Location?): TypeInfo.Union {
-        // TODO: Consider allowing threaded unions
         return TypeInfo.Union(union.resolvedRef, union.typeParameters, getUnionTypeMap(union.options), false, idLocation)
     }
 
@@ -307,8 +305,8 @@ private class TypeInfoCollector(
     private fun pseudoValidateTypeInternal(type: UnvalidatedType, internalTypeParameters: List<String>): Type {
         return when (type) {
             // Note: These errors will be caught later; just do something reasonable
-            is UnvalidatedType.Invalid.ThreadedInteger -> Type.INTEGER
-            is UnvalidatedType.Invalid.ThreadedBoolean -> Type.BOOLEAN
+            is UnvalidatedType.Invalid.ReferenceInteger -> Type.INTEGER
+            is UnvalidatedType.Invalid.ReferenceBoolean -> Type.BOOLEAN
             is UnvalidatedType.Integer -> Type.INTEGER
             is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
@@ -347,7 +345,7 @@ private class TypeInfoCollector(
                 }
 
                 // TODO: Should this also be capable of returning Type.ParameterType?
-                return Type.NamedType(resolvedRef, ref, type.isThreaded, parameters)
+                return Type.NamedType(resolvedRef, ref, type.isReference, parameters)
             }
         }
     }
@@ -389,7 +387,7 @@ private class TypeInfoCollector(
     }
 
     private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): TypeInfo {
-        return TypeInfo.OpaqueType(opaqueType.resolvedRef, opaqueType.typeParameters, opaqueType.isThreaded, idLocation)
+        return TypeInfo.OpaqueType(opaqueType.resolvedRef, opaqueType.typeParameters, opaqueType.isReference, idLocation)
     }
 
     private fun getUpstreamFunctions(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, FunctionInfo> {
@@ -457,7 +455,7 @@ fun TypesInfo.isDataType(type: Type): Boolean {
         }
         is Type.NamedType -> {
             // TODO: We might want some caching here
-            if (type.threaded) {
+            if (type.isReference()) {
                 false
             } else {
                 val typeInfo = getTypeInfo(type.originalRef)!!
@@ -489,7 +487,7 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
         is UnvalidatedType.FunctionType -> false
         is UnvalidatedType.NamedType -> {
             // TODO: We might want some caching here
-            if (type.isThreaded) {
+            if (type.isReference) {
                 false
             } else {
                 val typeInfo = getTypeInfo(type.ref)!!
@@ -508,7 +506,7 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                 }
             }
         }
-        is UnvalidatedType.Invalid.ThreadedInteger -> false
-        is UnvalidatedType.Invalid.ThreadedBoolean -> false
+        is UnvalidatedType.Invalid.ReferenceInteger -> false
+        is UnvalidatedType.Invalid.ReferenceBoolean -> false
     }
 }

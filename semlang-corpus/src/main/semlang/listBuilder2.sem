@@ -1,13 +1,13 @@
 @Test([], "['1', '4', '9']")
 function buildListUsingBuilder(): List<Integer> {
-  let builder1: ~ListBuilder<Integer> = ListBuilder.create<Integer>()
-  let builder2 = armsLengthAppend(builder1, Integer."1")
-  let builder3 = armsLengthAppend(builder2, Integer."4")
-  let builder4 = armsLengthAppend(builder3, Integer."9")
-  let result: List<Integer> = ListBuilder.build<Integer>(builder4)
+  let builder: &ListBuilder<Integer> = ListBuilder.create<Integer>()
+  armsLengthAppend(builder, Integer."1")
+  armsLengthAppend(builder, Integer."4")
+  armsLengthAppend(builder, Integer."9")
+  let result: List<Integer> = ListBuilder.build<Integer>(builder)
   result
 }
 
-function armsLengthAppend(builder: ~ListBuilder<Integer>, value: Integer): ~ListBuilder<Integer> {
+function armsLengthAppend(builder: &ListBuilder<Integer>, value: Integer): Void {
   ListBuilder.append<Integer>(builder, value)
 }

@@ -73,15 +73,16 @@ private fun renameWithinFunction(function: Function, renamingMap: Map<String, St
 }
 
 private fun renameBlock(block: Block, renamingMap: Map<String, String>): Block {
-    val assignments = block.assignments.map { assignment -> renameWithinAssignment(assignment, renamingMap) }
+    val assignments = block.statements.map { statement -> renameWithinStatement(statement, renamingMap) }
     val returnedExpression = renameWithinExpression(block.returnedExpression, renamingMap)
     return Block(assignments, returnedExpression)
 }
 
-private fun renameWithinAssignment(assignment: Assignment, renamingMap: Map<String, String>): Assignment {
-    val newName = renamingMap[assignment.name] ?: error("Bug in renaming")
-    val expression = renameWithinExpression(assignment.expression, renamingMap)
-    return Assignment(newName, assignment.type, expression)
+private fun renameWithinStatement(statement: Statement, renamingMap: Map<String, String>): Statement {
+    val varName = statement.name
+    val newName = if (varName == null) null else (renamingMap[varName] ?: error("Bug in renaming"))
+    val expression = renameWithinExpression(statement.expression, renamingMap)
+    return Statement(newName, statement.type, expression)
 }
 
 private fun renameWithinExpression(expression: Expression, renamingMap: Map<String, String>): Expression {

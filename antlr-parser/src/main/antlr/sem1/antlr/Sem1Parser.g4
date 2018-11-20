@@ -39,7 +39,7 @@ tokens {
   GREATER_THAN,
   PIPE,
   AT,
-  TILDE,
+  AMPERSAND,
   MODULE_ID,
   ID,
   UNDERSCORE
@@ -53,7 +53,7 @@ entity_id : ID | namespace DOT ID ;
     catch[RecognitionException e] { throw e; }
 entity_ref : entity_id | module_ref COLON entity_id ;
     catch[RecognitionException e] { throw e; }
-type_ref : entity_id | TILDE entity_id | module_ref COLON entity_id | module_ref COLON TILDE entity_id ;
+type_ref : entity_id | AMPERSAND entity_id | module_ref COLON entity_id | module_ref COLON AMPERSAND entity_id ;
     catch[RecognitionException e] { throw e; }
 module_ref : module_id // Name only
   | module_id COLON module_id // Group and name
@@ -70,23 +70,21 @@ top_level_entities :
 
 function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
          | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
-struct : annotations STRUCT optional_tilde entity_id LBRACE members maybe_requires RBRACE
-  | annotations STRUCT optional_tilde entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
+struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
+  | annotations STRUCT entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
 // TODO: Is there a better solution for this than mangling the name?
 interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
   | annotations INTERFACE entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE methods RBRACE ;
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE assignments return_statement RBRACE ;
+block : LBRACE statements return_statement RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }
 function_argument : ID COLON type ;
     catch[RecognitionException e] { throw e; }
 
-optional_tilde : | TILDE ;
-    catch[RecognitionException e] { throw e; }
 members : | member members ;
     catch[RecognitionException e] { throw e; }
 member : ID COLON type ;
@@ -120,9 +118,14 @@ annotation_item : LITERAL | LBRACKET annotation_contents_list RBRACKET ;
 // cd_type_parameters is nonempty
 cd_type_parameters : type_parameter | type_parameter COMMA | type_parameter COMMA cd_type_parameters ;
     catch[RecognitionException e] { throw e; }
-type_parameter : ID | TILDE ID | ID COLON type_class ;
+type_parameter : ID | ID COLON type_class ;
     catch[RecognitionException e] { throw e; }
 type_class : ID ;
+    catch[RecognitionException e] { throw e; }
+
+statements : | statement statements ;
+    catch[RecognitionException e] { throw e; }
+statement : assignment | expression ;
     catch[RecognitionException e] { throw e; }
 
 assignments : | assignment assignments ;
