@@ -8,6 +8,11 @@ dependencies {
   testCompile project(':kotlin:semlang-test-utils')
 }
 
+task regenerateFailValidatorTests(type: JavaExec) {
+  classpath = sourceSets.test.runtimeClasspath
+  main = 'net.semlang.parser.test.RegenerateFailValidatorTestsKt'
+}
+
 tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
 tasks.test.inputs.files(fileTree("../../semlang-module-test-cases"))
 tasks.test.inputs.files(fileTree("src/test/semlang"))

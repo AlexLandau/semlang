@@ -1,0 +1,7 @@
+// Can't have a union option named "when"
+union Foobar {
+      ~~~~~~ Duplicate ID Foobar.when
+  Foo: Integer
+  when: Natural
+  ~~~~ Union options cannot be named 'when'
+}

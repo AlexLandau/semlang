@@ -1,8 +1,0 @@
-struct MyStruct {
-  foo: Integer
-  bar: Boolean
-}
-
-function myStuff.myFunction(input: MyStruct): Integer {
-  input->somethingElse
-}

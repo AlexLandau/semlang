@@ -1,4 +1,0 @@
-function myStuff.myFunction(): Integer {
-  let Integer: Integer = Integer."1"
-  Integer
-}

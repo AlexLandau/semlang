@@ -1,0 +1,10 @@
+
+interface Foo {
+          ~~~ Duplicate ID Foo.Adapter
+  a(): Integer
+}
+
+struct Foo.Adapter {
+       ~~~~~~~~~~~ Duplicate ID Foo.Adapter
+  b: Integer
+}

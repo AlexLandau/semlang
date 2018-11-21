@@ -1,0 +1,5 @@
+
+function myFunction(unknownType: UnknownType): Integer {
+                                 ~~~~~~~~~~~ Unresolved type reference: UnknownType
+  Integer."1"
+}

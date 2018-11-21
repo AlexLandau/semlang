@@ -1,0 +1,10 @@
+
+function shadowedVariable(i: Integer): Integer {
+  let myFunction = function(a: Integer): Integer {
+    // This kind of shadowing is disallowed
+    let i = Integer.times(a, a)
+        ~ The already-assigned variable i cannot be reassigned
+    Integer.plus(i, Integer."1")
+  }
+  myFunction(i)
+}

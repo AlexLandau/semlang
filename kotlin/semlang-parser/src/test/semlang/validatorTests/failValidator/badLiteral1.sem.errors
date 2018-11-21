@@ -1,0 +1,5 @@
+function textOutLiteral(): TextOut {
+                           ~~~~~~~ Type TextOut is a reference type and should be marked as such with '&'
+  // This doesn't work
+  TextOut."Hello, world!"
+}

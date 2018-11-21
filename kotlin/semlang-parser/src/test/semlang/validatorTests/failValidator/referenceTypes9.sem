@@ -1,4 +1,0 @@
-// Can't have a list literal containing reference types
-function duplicateAnAlias(out1: &TextOut, out2: &TextOut): List<&TextOut> {
-  [out1, out2]<&TextOut>
-}

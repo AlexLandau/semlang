@@ -1,0 +1,5 @@
+
+function myFunction(): Integer {
+  someBadFunctionName()
+  ~~~~~~~~~~~~~~~~~~~ Function someBadFunctionName not found
+}

@@ -1,6 +1,0 @@
-// Double definition of same member name, same type
-
-struct Foo {
-  a: Integer
-  a: Integer
-}

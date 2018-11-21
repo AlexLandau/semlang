@@ -1,5 +1,0 @@
-// Can't have a union option named "when"
-union Foobar {
-  Foo: Integer
-  when: Natural
-}

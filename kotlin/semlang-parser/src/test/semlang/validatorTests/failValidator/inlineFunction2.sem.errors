@@ -1,0 +1,13 @@
+struct Foo {
+  natural: Natural
+  requires {
+    Boolean."true"
+  }
+}
+
+function fooTest(i: Natural): Try<Natural> {
+                              ~~~~~~~~~~~~ Unresolved type reference: Try
+    let foo: Try<Foo> = Foo(i)
+    // This kind of shadowing is disallowed
+    Try.map<Foo, Natural>(foo, function(foo: Foo): Natural { foo->natural })
+}

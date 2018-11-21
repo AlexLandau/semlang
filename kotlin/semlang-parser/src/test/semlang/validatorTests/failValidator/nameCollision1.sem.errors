@@ -1,0 +1,10 @@
+
+struct Foo {
+       ~~~ Duplicate ID Foo
+  a: Integer
+}
+
+struct Foo {
+       ~~~ Duplicate ID Foo
+  b: Integer
+}

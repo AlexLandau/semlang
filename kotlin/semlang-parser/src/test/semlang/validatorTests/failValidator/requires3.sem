@@ -1,9 +1,0 @@
-
-// Non-boolean requires block
-
-struct Foo {
-  a: Integer
-  requires {
-    Integer."1"
-  }
-}

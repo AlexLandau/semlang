@@ -1,0 +1,19 @@
+struct Digit {
+  value: Natural
+  requires {
+    Natural.lessThan(value, Natural."10")
+    ~~~~~~~~~~~~~~~~ Function Natural.lessThan not found
+  }
+}
+
+struct EvenDigit {
+  value: Digit
+  requires {
+    Natural.equals(Natural."0", Natural.remainder(value->value, Natural."2"))
+    ~~~~~~~~~~~~~~ Function Natural.equals not found
+  }
+}
+
+function getEvenDigit(): EvenDigit {
+  EvenDigit."-2"
+}

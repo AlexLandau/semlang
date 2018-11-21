@@ -1,4 +1,0 @@
-// Reference types are not data types
-function areListBuildersEqual(left: &ListBuilder, right: &ListBuilder): Boolean {
-  Data.equals<&ListBuilder>(left, right)
-}

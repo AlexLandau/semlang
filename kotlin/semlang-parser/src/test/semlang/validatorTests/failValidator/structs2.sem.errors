@@ -1,0 +1,11 @@
+// Double definition of same struct name, different contents
+
+struct Foo {
+       ~~~ Duplicate ID Foo
+  a: Integer
+}
+
+struct Foo {
+       ~~~ Duplicate ID Foo
+  b: Boolean
+}

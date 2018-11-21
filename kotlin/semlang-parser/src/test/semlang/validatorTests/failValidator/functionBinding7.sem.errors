@@ -1,0 +1,6 @@
+function myStuff.myFunction(): () -> Integer {
+  let increment = Integer.plus|(_, Integer."1")
+  // Too many arguments
+  increment|(Integer."1", Integer."2")
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function binding here expects 1 arguments, but 2 were given
+}

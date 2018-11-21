@@ -1,0 +1,7 @@
+// Reference types cannot be aliased
+function duplicateAnAlias(out: &TextOut): Void {
+  let outDuplicate = out
+      ~~~~~~~~~~~~ We are assigning a reference to the variable outDuplicate, but it may already have an alias; references are not allowed to have more than one alias
+  TextOut.print(out, Unicode.String."chicken")
+  TextOut.print(outDuplicate, Unicode.String."egg")
+}

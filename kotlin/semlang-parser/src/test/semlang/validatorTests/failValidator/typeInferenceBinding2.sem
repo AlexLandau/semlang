@@ -1,4 +1,0 @@
-// Type inference in a function binding when the type is a parameter of an unknown argument type
-function myFunction(): (List<Integer>) -> Natural {
-  List.size|(_)
-}

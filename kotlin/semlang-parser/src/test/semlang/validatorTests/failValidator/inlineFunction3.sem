@@ -1,8 +1,0 @@
-
-function doStuff(i: Integer): Integer {
-  // Explicit return type is incorrect
-  let myFunction = function(a: Integer): Natural {
-    Integer.plus(a, Integer."1")
-  }
-  myFunction(i)
-}

@@ -1,0 +1,6 @@
+// Type inference in a function binding when there aren't enough arguments
+function myFunction(): Maybe<Integer> {
+  let toSuccess: () -> Maybe<Integer> = Maybe.success()
+                                        ~~~~~~~~~~~~~ The function Maybe.success expects 1 arguments (with types [T]), but 0 were given
+  toSuccess()
+}

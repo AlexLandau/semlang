@@ -1,0 +1,4 @@
+function myStuff.myFunction(): Integer {
+  Integer."0x1337"
+  ~~~~~~~~~~~~~~~~ Invalid literal value '0x1337' for type 'Integer'
+}
