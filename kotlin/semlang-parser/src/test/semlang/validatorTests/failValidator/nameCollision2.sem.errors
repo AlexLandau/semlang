@@ -1,0 +1,10 @@
+
+struct Bar {
+       ~~~ Duplicate ID Bar
+  a: Integer
+}
+
+interface Bar {
+          ~~~ Duplicate ID Bar
+  b(): Integer
+}

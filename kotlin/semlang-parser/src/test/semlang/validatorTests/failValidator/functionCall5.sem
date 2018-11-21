@@ -1,4 +1,0 @@
-function myStuff.myFunction(): Integer {
-  // Call with too many arguments
-  Integer.plus(Integer."1")
-}

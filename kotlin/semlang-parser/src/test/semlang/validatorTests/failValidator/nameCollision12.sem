@@ -1,8 +1,0 @@
-
-function Foo(): Integer {
-  Integer."1"
-}
-
-struct Foo {
-  a: Integer
-}

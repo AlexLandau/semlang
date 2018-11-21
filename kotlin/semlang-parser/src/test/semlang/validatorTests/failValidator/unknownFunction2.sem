@@ -1,4 +1,0 @@
-
-function myFunction(): Integer {
-  Namespace.someBadFunctionName()
-}

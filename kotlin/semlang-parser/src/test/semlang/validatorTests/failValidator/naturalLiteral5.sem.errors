@@ -1,0 +1,4 @@
+function myStuff.myFunction(): Natural {
+  Natural."01"
+  ~~~~~~~~~~~~ Invalid literal value '01' for type 'Natural'
+}

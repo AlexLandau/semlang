@@ -1,0 +1,8 @@
+
+function doStuff(i: Natural): Natural {
+                              ~~~~~~~ Stated return type Natural does not match the block's actual return type Integer
+  // Implicit return type is incorrect
+  let myFunction = function(a: Natural): Natural { Integer.plus(a->integer, Integer."1") }
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The inline function has a return type semlang:lang:0:Natural, but the actual type returned is Integer
+  myFunction(i)
+}

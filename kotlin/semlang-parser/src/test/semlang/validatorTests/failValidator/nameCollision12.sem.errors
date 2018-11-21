@@ -1,0 +1,10 @@
+
+function Foo(): Integer {
+         ~~~ Duplicate ID Foo
+  Integer."1"
+}
+
+struct Foo {
+       ~~~ Duplicate ID Foo
+  a: Integer
+}

@@ -1,0 +1,5 @@
+// Don't allow reference types as members in structs
+struct Foo {
+       ~~~ Struct Foo has members with reference types, which are not allowed
+  out: &TextOut
+}

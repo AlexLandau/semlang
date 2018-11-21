@@ -1,0 +1,5 @@
+// Type inference in a function call when the type could be gotten from a missing argument
+function myFunction(): Maybe<Integer> {
+  Maybe.success()
+  ~~~~~~~~~~~~~ The function Maybe.success expects 1 arguments (with types [T]), but 0 were given
+}

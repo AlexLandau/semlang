@@ -114,43 +114,7 @@ class ValidatorNegativeTests(private val file: File) {
     }
 
     @Test
-    fun testOld() {
-        Assume.assumeFalse(file.name.endsWith(".errors"))
-
-        if (file.readText().contains('\r')) {
-            throw AssertionError("File ${file} contains a \\r character; convert to *nix newlines for accurate test results")
-        }
-        val parsingResult = parseFile(file)
-        if (parsingResult is ParsingResult.Failure) {
-            throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
-        }
-        val result = validate(parsingResult, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf())
-
-        if (result is ValidationResult.Failure) {
-            val errorFile = ErrorFile(file.readLines(), result.errors.toSet())
-            val errorFileText = writeErrorFileText(errorFile)
-            System.out.println(errorFileText)
-            val outputFile = file.resolveSibling(file.name + ".errors")
-            outputFile.writeText(errorFileText)
-            // Parse the error file back out
-            val reparsedErrorFile = parseErrorFileText(errorFileText, file.absolutePath)
-            System.out.println("Old errors: " + result.errors)
-            System.out.println("New errors: " + reparsedErrorFile.errors)
-            System.out.println("Old error ranges: " + result.errors.map { it.location!!.range.fullToString() })
-            System.out.println("New error ranges: " + reparsedErrorFile.errors.map { it.location!!.range.fullToString() })
-            Assert.assertEquals(errorFile, reparsedErrorFile)
-
-            Assert.assertNotEquals(0, result.errors.size)
-        } else {
-            throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
-        }
-    }
-
-    @Test
-    fun testNew() {
-        Assume.assumeTrue(file.name.endsWith(".errors"))
-
-        // TODO: New-style test
+    fun test() {
         if (file.readText().contains('\r')) {
             throw AssertionError("File ${file} contains a \\r character; convert to *nix newlines for accurate test results")
         }

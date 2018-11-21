@@ -1,4 +1,0 @@
-// Type inference in a function binding when the type is an unbound argument type
-function myFunction(): (Integer) -> Maybe<Integer> {
-  Maybe.success|(_)
-}

@@ -1,0 +1,9 @@
+struct MyStruct {
+  foo: Integer
+  bar: Boolean
+}
+
+function myStuff.myFunction(input: MyStruct): Integer {
+  input->somethingElse
+  ~~~~~~~~~~~~~~~~~~~~ Struct type semlang:validatorTestFile:57261dab3f16bbb1bce7903cb7f234bcc557f3ab3cfe466b78579474e364cbd:MyStruct does not have a member named 'somethingElse'
+}

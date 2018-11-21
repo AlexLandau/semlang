@@ -1,0 +1,10 @@
+
+struct Bar {
+       ~~~ Duplicate ID Bar
+  a: Integer
+}
+
+function Bar(): Integer {
+         ~~~ Duplicate ID Bar
+  Integer."1"
+}

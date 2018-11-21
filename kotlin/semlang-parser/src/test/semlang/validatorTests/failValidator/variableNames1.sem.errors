@@ -1,0 +1,6 @@
+function myStuff.myFunction(): Integer {
+  let myVar: Integer = Integer."1"
+  let myVar: Integer = Integer."2"
+      ~~~~~ The already-assigned variable myVar cannot be reassigned
+  myVar
+}

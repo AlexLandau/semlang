@@ -1,5 +1,0 @@
-// Data.equals requires the parameter type passed in to be of type class Data
-function dataEqualsWrapper<T>(): (T, T) -> Boolean {
-  // Named function binding
-  Data.equals<T>|(_, _)
-}

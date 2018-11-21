@@ -1,0 +1,7 @@
+// Double definition of same member name, same type
+
+struct Foo {
+       ~~~ Struct Foo has multiple members named a
+  a: Integer
+  a: Integer
+}

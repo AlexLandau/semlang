@@ -1,0 +1,7 @@
+// Type inference in a function binding where we can pass two arguments (explicit) or none (inferred)
+// but not one
+function myFunction(): (Maybe<Integer>) -> Maybe<Integer> {
+  let input: Maybe<Integer> = Maybe.success<Integer>(Integer."0")
+  Maybe.map<Maybe<Integer>>|(_, Integer.plus|(_, Integer."1"))
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function binding for Maybe.map did not supply all type parameters, but supplied more than the appropriate number for type parameter inference
+}

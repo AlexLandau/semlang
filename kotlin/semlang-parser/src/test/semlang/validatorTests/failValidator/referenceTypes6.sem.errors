@@ -1,0 +1,5 @@
+// Reference types cannot be returned by a function
+function duplicateAnAlias(out: &TextOut): &TextOut {
+                                          ~~~~~~~~ Reference types cannot be returned from functions
+  out
+}

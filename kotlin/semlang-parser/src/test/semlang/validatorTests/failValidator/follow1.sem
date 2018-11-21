@@ -1,4 +1,0 @@
-function myStuff.myFunction(): Integer {
-  let i = Integer."1"
-  i->cannotFollowAnInteger
-}

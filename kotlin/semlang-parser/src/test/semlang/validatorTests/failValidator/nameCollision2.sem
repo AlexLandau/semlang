@@ -1,8 +1,0 @@
-
-struct Bar {
-  a: Integer
-}
-
-interface Bar {
-  b(): Integer
-}

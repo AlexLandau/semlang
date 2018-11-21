@@ -10,9 +10,12 @@ import java.io.File
 
 private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
 
-fun main() {
-    for (file in File("src/test/semlang/validatorTests/failValidator").listFiles()) {
-        if (!file.endsWith(".errors")) {
+fun main(args: Array<String>) {
+    var filesCount = 0
+    val failValidatorDir = File("src/test/semlang/validatorTests/failValidator")
+    for (file in failValidatorDir.listFiles()) {
+        if (!file.name.endsWith(".errors")) {
+            System.out.println("Skipping non-.errors file $file")
             continue
         }
 
@@ -27,6 +30,8 @@ fun main() {
             error("Cannot regenerate the failValidator files: File $file has no reported validation errors")
         }
         val regeneratedErrorFile = ErrorFile(errorFile.lines, validationResult.errors.toSet())
-        file.writeText(regeneratedErrorFile.getText())
+        file.writeText(writeErrorFileText(regeneratedErrorFile))
+        filesCount++
     }
+    System.out.println("Regenerated $filesCount files.")
 }

@@ -1,8 +1,0 @@
-
-interface Bar {
-  a(): Integer
-}
-
-interface Bar.Adapter {
-  b(): Integer
-}

@@ -1,0 +1,10 @@
+
+interface Baz {
+          ~~~ Duplicate ID Baz
+  a(): Integer
+}
+
+function Baz(): Integer {
+         ~~~ Duplicate ID Baz
+  Integer."1"
+}

@@ -1,0 +1,5 @@
+// Type inference in a function binding when too many parameters are given
+function myFunction(): (List<Integer>) -> Natural {
+  List.size<Integer, Natural>|(_)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Too many type parameters were supplied for function call/binding for List.size; provided 2, but 1 were expected, function type was <T>(List<InternalParameterType(index=0)>) -> semlang:lang:0:Natural
+}

@@ -1,0 +1,5 @@
+function myStuff.myFunction(): () -> Integer {
+  // Too many arguments
+  Integer.plus|(Integer."1", Integer."2", Integer."3")
+  ~~~~~~~~~~~~ The function Integer.plus expects 2 arguments (with types [Integer, Integer]), but 3 were given
+}

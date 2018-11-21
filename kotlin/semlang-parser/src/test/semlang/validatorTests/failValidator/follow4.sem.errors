@@ -1,0 +1,4 @@
+function myStuff.myFunction(foo: Foo): Integer {
+                                 ~~~ Unresolved type reference: Foo
+  foo->doesThisHaveAnything
+}

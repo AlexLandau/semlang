@@ -1,0 +1,6 @@
+function myStuff.myFunction(): Integer {
+  let successor: (Integer) -> Integer = Integer.plus|(_, Integer."1")
+  // Too many arguments
+  successor(Integer."1", Integer."2")
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function binding here expects 1 arguments (with types [Integer]), but 2 were given
+}
