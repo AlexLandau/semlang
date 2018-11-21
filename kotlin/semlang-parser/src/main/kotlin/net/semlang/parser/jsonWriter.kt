@@ -10,9 +10,6 @@ import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
 
-//TODO: Before trying to write an interpreter in another language, I think we
-//actually want to have the sem0 version of this, for which the validation and
-//interpreter will be simpler
 val LANGUAGE = "sem1"
 val FORMAT_VERSION = "0.1.0"
 

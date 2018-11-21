@@ -5,7 +5,6 @@ import net.semlang.api.Function
 
 typealias ExpressionPredicate = (Expression) -> Boolean
 
-// TODO: Test
 // TODO: Better document
 fun simplifyAllExpressions(context: RawContext): RawContext {
     return ExpressionHoister(context, {true}).apply()
