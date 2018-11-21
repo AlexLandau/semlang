@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
+import net.semlang.api.Range
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.assertRawContextsEqual
@@ -118,12 +119,32 @@ class ValidatorNegativeTests(private val file: File) {
             throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
         }
         val result = validate(parsingResult, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf())
+
         if (result is ValidationResult.Failure) {
+            val errorFile = ErrorFile(file.readLines(), result.errors.toSet())
+            val errorFileText = writeErrorFileText(errorFile)
+            System.out.println(errorFileText)
+            val outputFile = file.resolveSibling(file.name + ".errors")
+            outputFile.writeText(errorFileText)
+            // Parse the error file back out
+            val reparsedErrorFile = parseErrorFileText(errorFileText, file.absolutePath)
+            System.out.println("Old errors: " + result.errors)
+            System.out.println("New errors: " + reparsedErrorFile.errors)
+            System.out.println("Old error ranges: " + result.errors.map { it.location!!.range.fullToString() })
+            System.out.println("New error ranges: " + reparsedErrorFile.errors.map { it.location!!.range.fullToString() })
+            Assert.assertEquals(errorFile, reparsedErrorFile)
+
             Assert.assertNotEquals(0, result.errors.size)
         } else {
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         }
     }
+}
+
+private fun Range.fullToString(): String {
+    val start = this.start
+    val end = this.end
+    return "${start.rawIndex}(${start.lineNumber}:${start.column})-${end.rawIndex}(${end.lineNumber}:${end.column})"
 }
 
 private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")

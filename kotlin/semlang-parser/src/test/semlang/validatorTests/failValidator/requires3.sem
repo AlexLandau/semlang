@@ -3,7 +3,5 @@
 
 struct Foo {
   a: Integer
-  requires {
-    Integer."1"
-  }
+  requires { Integer."1" }
 }

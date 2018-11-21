@@ -1,8 +1,6 @@
 
 function doStuff(i: Natural): Natural {
   // Implicit return type is incorrect
-  let myFunction = function(a: Natural): Natural {
-    Integer.plus(a->integer, Integer."1")
-  }
+  let myFunction = function(a: Natural): Natural { Integer.plus(a->integer, Integer."1") }
   myFunction(i)
 }
