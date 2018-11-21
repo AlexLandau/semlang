@@ -135,12 +135,6 @@ class ValidatorNegativeTests(private val file: File) {
     }
 }
 
-private fun Range.fullToString(): String {
-    val start = this.start
-    val end = this.end
-    return "${start.rawIndex}(${start.lineNumber}:${start.column})-${end.rawIndex}(${end.lineNumber}:${end.column})"
-}
-
 private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
 
 private fun parseAndValidateFile(file: File): ValidationResult {

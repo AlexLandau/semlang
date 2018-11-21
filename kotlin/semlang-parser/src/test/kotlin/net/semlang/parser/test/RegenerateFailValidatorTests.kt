@@ -10,6 +10,13 @@ import java.io.File
 
 private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
 
+/**
+ * This goes through the .errors files in the failValidator directory and replaces the errors with the
+ * current set of errors found through validation.
+ *
+ * This can be used to more easily generate a new test, for example, by writing the code by itself and
+ * running this to add the errors.
+ */
 fun main(args: Array<String>) {
     var filesCount = 0
     val failValidatorDir = File("src/test/semlang/validatorTests/failValidator")
