@@ -8,7 +8,11 @@ import net.semlang.validator.IssueLevel
 import java.io.File
 import java.util.regex.Pattern
 
-data class ErrorFile(val lines: List<String>, val errors: Set<Issue>)
+data class ErrorFile(val lines: List<String>, val errors: Set<Issue>) {
+    fun getText(): String {
+        return lines.joinToString("\n")
+    }
+}
 
 fun loadErrorFile(file: File): ErrorFile {
     val contents = file.readText()

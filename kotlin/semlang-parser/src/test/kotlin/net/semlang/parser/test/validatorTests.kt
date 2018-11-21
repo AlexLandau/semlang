@@ -15,6 +15,7 @@ import net.semlang.validator.parseAndValidateFile
 import net.semlang.validator.validate
 import net.semlang.validator.validateModule
 import org.junit.Assert
+import org.junit.Assume
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -113,7 +114,12 @@ class ValidatorNegativeTests(private val file: File) {
     }
 
     @Test
-    fun test() {
+    fun testOld() {
+        Assume.assumeFalse(file.name.endsWith(".errors"))
+
+        if (file.readText().contains('\r')) {
+            throw AssertionError("File ${file} contains a \\r character; convert to *nix newlines for accurate test results")
+        }
         val parsingResult = parseFile(file)
         if (parsingResult is ParsingResult.Failure) {
             throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
@@ -135,6 +141,30 @@ class ValidatorNegativeTests(private val file: File) {
             Assert.assertEquals(errorFile, reparsedErrorFile)
 
             Assert.assertNotEquals(0, result.errors.size)
+        } else {
+            throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
+        }
+    }
+
+    @Test
+    fun testNew() {
+        Assume.assumeTrue(file.name.endsWith(".errors"))
+
+        // TODO: New-style test
+        if (file.readText().contains('\r')) {
+            throw AssertionError("File ${file} contains a \\r character; convert to *nix newlines for accurate test results")
+        }
+
+        val errorFile = loadErrorFile(file)
+        val parsingResult = parseString(errorFile.getText(), file.absolutePath)
+        if (parsingResult is ParsingResult.Failure) {
+            throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
+        }
+        val result = validate(parsingResult, TEST_MODULE_NAME, CURRENT_NATIVE_MODULE_VERSION, listOf())
+
+        if (result is ValidationResult.Failure) {
+            Assert.assertNotEquals(0, result.errors.size)
+            Assert.assertEquals(errorFile.errors, result.errors.toSet())
         } else {
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         }
