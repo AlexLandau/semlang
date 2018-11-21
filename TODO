@@ -1,11 +1,11 @@
 Major near-term projects:
-- Threaded types, console-out support, and application functions
-  - Threaded structs
-    - Destructuring statements
-    - Should we replace these with references?
-  - Support mock tests in TS
+- Reference types, console-out support, and application functions
+  - Recreate mock tests
+  - Support for actually running @Scripts
+  - Give TextOut and @Script their own module (also with Script.ExitValue?)
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
+- Module reexports
 - Sem64
   - It would be nice if threaded types were stable first
 - Sem2 and Try notation
@@ -42,6 +42,7 @@ Stuff that feels blocked or hasn't been implemented:
     reexporting parts of other modules (and not where those modules are used purely for their implementations, though
     those might also be candidates for updates-by-consumer in cases like time zones)
   - How do other languages currently deal with this?
+  - This might be unblocked now with the new module approach and reexports
 - Lemmas and proofs
   - Needs more consideration of both the predicates we should be operating on (how to reference parts of code?) and syntax
 - Normal form
@@ -68,7 +69,6 @@ Stuff that feels blocked or hasn't been implemented:
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
 - Continue to shrink the set of native functions where possible
-- Sem0: Link native types (structs, perhaps some library functions) into sem0 code
 - Versioned publication of code corpuses
 - Validation-time "requires" checking for extended literals
 - Add ability for modules to re-export their imports (probably just specified in the config file for now)

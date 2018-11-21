@@ -2,3 +2,19 @@
 function Integer.sum(integers: List<Integer>): Integer {
   List.reduce(integers, Integer."0", Integer.plus|(_, _))
 }
+
+@Export
+function Integer.negative(i: Integer): Integer {
+  Integer.times(i, Integer."-1")
+}
+
+@Export
+function Integer.toString(i: Integer): Unicode.String {
+  if (Integer.lessThan(i, Integer."0")) {
+    let absoluteValue = Maybe.assume(Natural(Integer.negative(i)))
+    Unicode.String.join([Unicode.String."-", Natural.toString(absoluteValue)]<Unicode.String>, Unicode.String."")
+  } else {
+    let asNatural = Maybe.assume(Natural(i))
+    Natural.toString(asNatural)
+  }
+}

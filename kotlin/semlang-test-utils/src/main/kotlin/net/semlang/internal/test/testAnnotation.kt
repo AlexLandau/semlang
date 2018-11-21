@@ -36,6 +36,7 @@ fun runAnnotationTests(module: ValidatedModule, options: InterpreterOptions = In
     return testCount
 }
 
+// TODO: This is currently unused
 private fun doMockTest(function: ValidatedFunction, module: ValidatedModule, values: List<AnnotationArgument>, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
     val contents = verifyMockTestAnnotationContents(values, function)
 
