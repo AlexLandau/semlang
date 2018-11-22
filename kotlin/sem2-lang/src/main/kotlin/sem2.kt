@@ -504,3 +504,5 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     }
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
+
+data class RawContext(val functions: List<Function>, val structs: List<UnvalidatedStruct>, val interfaces: List<UnvalidatedInterface>, val unions: List<UnvalidatedUnion>)

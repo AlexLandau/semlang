@@ -1,0 +1,13 @@
+dependencies {
+  compile project(':antlr-parser')
+  compile project(':kotlin:sem2-lang')
+  compile "org.antlr:antlr4:4.5"
+
+  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
+
+//  testCompile project(':kotlin:semlang-test-utils')
+}
+
+//tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
+//tasks.test.inputs.files(fileTree("../../semlang-module-test-cases"))
+//tasks.test.inputs.files(fileTree("src/test/semlang"))
