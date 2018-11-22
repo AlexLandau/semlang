@@ -1,0 +1,17 @@
+struct Digit {
+  value: Natural
+  requires {
+    Integer.lessThan(value->integer, Integer."10")
+  }
+}
+
+struct EvenDigit {
+  value: Digit
+  requires {
+    Integer.equals(Integer."0", Maybe.assume(Integer.modulo(value->value->integer, Integer."2")))
+  }
+}
+
+function getEvenDigit(): EvenDigit {
+  EvenDigit."-2"
+}

@@ -285,7 +285,7 @@ private class Validator(
             validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
             if (varName != null) {
                 if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
-                    errors.add(Issue("We are assigning a reference to the variable $varName, but it may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
+                    errors.add(Issue("We are assigning a reference to the variable $varName, but the reference may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
                 }
                 variableTypes.put(varName, validatedExpression.type)
             }
@@ -345,7 +345,7 @@ private class Validator(
             errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
         }
 
-        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
+        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), returnType)
 
         return TypedExpression.InlineFunction(functionType, AliasType.NotAliased, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
@@ -709,7 +709,11 @@ private class Validator(
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
-                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a nonexistent or non-struct type ${type.originalRef}")
+                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct
+                if (structInfo == null) {
+                    errors.add(Issue("Trying to get a literal of a non-struct or nonexistent type ${type.originalRef}", literalLocation, IssueLevel.ERROR))
+                    return null
+                }
 
                 if (structInfo.typeParameters.isNotEmpty()) {
                     // See parameterizedStructLiteral1: this fails in parsing
