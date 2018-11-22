@@ -1,0 +1,4 @@
+function doSomething(): Integer {
+  module-group:module-name:"version-without-scheme":delegateIt()
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Function module-group:module-name:version-without-scheme:delegateIt not found
+}

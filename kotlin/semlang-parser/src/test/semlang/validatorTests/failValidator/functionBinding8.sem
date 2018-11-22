@@ -1,4 +1,0 @@
-function myStuff.myFunction(): (Integer) -> Integer {
-  // Binding with an argument of an incorrect type
-  Integer.plus|(_, Boolean."true")
-}

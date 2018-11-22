@@ -1,4 +1,0 @@
-// Type inference in a function binding when too many parameters are given
-function myFunction(): (List<Integer>) -> Natural {
-  List.size<Integer, Natural>|(_)
-}

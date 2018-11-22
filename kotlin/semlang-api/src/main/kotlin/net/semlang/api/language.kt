@@ -88,13 +88,13 @@ sealed class UnvalidatedType {
     // This contains some types that are inherently invalid, but should be returned by the parser so the error messages
     // can be left to the validator
     object Invalid {
-        data class ThreadedInteger(override val location: Location? = null) : UnvalidatedType() {
+        data class ReferenceInteger(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
 
             override fun getTypeString(): String {
-                return "~Integer"
+                return "&Integer"
             }
 
             override fun toString(): String {
@@ -102,13 +102,13 @@ sealed class UnvalidatedType {
             }
         }
 
-        data class ThreadedBoolean(override val location: Location? = null) : UnvalidatedType() {
+        data class ReferenceBoolean(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
 
             override fun getTypeString(): String {
-                return "~Boolean"
+                return "&Boolean"
             }
 
             override fun toString(): String {
@@ -199,7 +199,7 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, val isThreaded: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
             if (ref.moduleRef == null && ref.id.namespacedName.size == 1) {
                 val replacement = parameterReplacementMap[ref.id.namespacedName[0]]
@@ -209,7 +209,7 @@ sealed class UnvalidatedType {
             }
             return NamedType(
                     ref,
-                    isThreaded,
+                    isReference,
                     parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
                     location)
         }
@@ -222,7 +222,7 @@ sealed class UnvalidatedType {
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...
-            return (if (isThreaded) "~" else "") +
+            return (if (isReference) "&" else "") +
                     ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
@@ -247,7 +247,7 @@ sealed class UnvalidatedType {
 sealed class Type {
     protected abstract fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type
     protected abstract fun getTypeString(): String
-    abstract fun isThreaded(): Boolean
+    abstract fun isReference(): Boolean
     override fun toString(): String {
         return getTypeString()
     }
@@ -270,7 +270,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -291,7 +291,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -313,7 +313,7 @@ sealed class Type {
             return parameter.isBindableInternal(numAllowedIndices)
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -339,7 +339,7 @@ sealed class Type {
             return parameter.isBindableInternal(numAllowedIndices)
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -428,7 +428,7 @@ sealed class Type {
                 return argTypes.size
             }
 
-            override fun isThreaded(): Boolean {
+            override fun isReference(): Boolean {
                 return false
             }
 
@@ -526,7 +526,7 @@ sealed class Type {
                 return argTypes.size
             }
 
-            override fun isThreaded(): Boolean {
+            override fun isReference(): Boolean {
                 return false
             }
 
@@ -637,7 +637,7 @@ sealed class Type {
             return index < numAllowedIndices
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -672,7 +672,7 @@ sealed class Type {
             return true
         }
 
-        override fun isThreaded(): Boolean {
+        override fun isReference(): Boolean {
             return false
         }
 
@@ -705,13 +705,13 @@ sealed class Type {
      * that types agree with one another.
      */
     // TODO: Should "ref" be an EntityResolution? Either way, stop passing originalRef to resolvers
-    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, val threaded: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
+    data class NamedType(val ref: ResolvedEntityRef, val originalRef: EntityRef, private val isReference: Boolean, val parameters: kotlin.collections.List<Type> = listOf()): Type() {
         override fun isBindableInternal(numAllowedIndices: Int): Boolean {
             return parameters.all { it.isBindableInternal(numAllowedIndices) }
         }
 
-        override fun isThreaded(): Boolean {
-            return threaded
+        override fun isReference(): Boolean {
+            return isReference
         }
 
         override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
@@ -724,7 +724,7 @@ sealed class Type {
 
         override fun getTypeString(): String {
             // TODO: This might be wrong if the ref includes a module...
-            return (if (threaded) "~" else "") +
+            return (if (isReference) "&" else "") +
                     ref.toString() +
                     if (parameters.isEmpty()) {
                         ""
@@ -750,14 +750,14 @@ sealed class Type {
             if (other !is NamedType) {
                 return false
             }
-            return Objects.equals(ref, other.ref) && threaded == other.threaded && Objects.equals(parameters, other.parameters)
+            return Objects.equals(ref, other.ref) && isReference == other.isReference && Objects.equals(parameters, other.parameters)
         }
 
         /**
          * Ignores the value of [originalRef].
          */
         override fun hashCode(): Int {
-            return Objects.hash(ref, threaded, parameters)
+            return Objects.hash(ref, isReference, parameters)
         }
     }
 
@@ -765,15 +765,12 @@ sealed class Type {
 
 enum class TypeClass {
     Data,
-    Threaded,
 }
 
 data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     override fun toString(): String {
         if (typeClass == null) {
             return name
-        } else if (typeClass == TypeClass.Threaded) {
-            return "~$name"
         } else {
             return "$name: $typeClass"
         }
@@ -858,28 +855,60 @@ sealed class Expression {
     data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
 }
 // Post-type-analysis
+enum class AliasType {
+    /**
+     * Indicates that the expression represents a reference or value without an existing alias, and thus can be assigned
+     * to a variable if it's a reference type.
+     */
+    NotAliased,
+    /**
+     * Indicates that the expression represents a reference or value that either is guaranteed to have
+     * or conditionally may have an existing alias, and thus cannot be assigned to a variable if it's a reference type.
+     *
+     * Note that this category includes expressions that may be "definitely aliased", but there's no need to distinguish
+     * them from expressions that are "possibly aliased" (such as may result from an if-expression where one possible
+     * result is aliased and the other is not).
+     */
+    PossiblyAliased,
+    ;
+    companion object {
+        // I'd really rather this be named "for", but that's not an option
+        fun of(possiblyAliased: Boolean): AliasType {
+            if (possiblyAliased) {
+                return PossiblyAliased
+            } else {
+                return NotAliased
+            }
+        }
+    }
+}
 sealed class TypedExpression {
     abstract val type: Type
-    data class Variable(override val type: Type, val name: String): TypedExpression()
-    data class IfThen(override val type: Type, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
-    data class NamedFunctionCall(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
-    data class ExpressionFunctionCall(override val type: Type, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
-    data class Literal(override val type: Type, val literal: String): TypedExpression()
-    data class ListLiteral(override val type: Type, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
-    data class NamedFunctionBinding(override val type: Type, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
-    data class ExpressionFunctionBinding(override val type: Type, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
-    data class Follow(override val type: Type, val structureExpression: TypedExpression, val name: String): TypedExpression()
-    data class InlineFunction(override val type: Type, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
+    // TODO: Consider auto-setting some alias types; i.e. always aliased for Variable, never aliased for Literal/ListLiteral/maybe FunctionCalls
+    // (Non-obvious correction: Follows wouldn't be aliased if their structure expressions are unaliased, e.g. foo()->bar)
+    abstract val aliasType: AliasType
+    data class Variable(override val type: Type, override val aliasType: AliasType, val name: String): TypedExpression()
+    data class IfThen(override val type: Type, override val aliasType: AliasType, val condition: TypedExpression, val thenBlock: TypedBlock, val elseBlock: TypedBlock): TypedExpression()
+    data class NamedFunctionCall(override val type: Type, override val aliasType: AliasType, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
+    data class ExpressionFunctionCall(override val type: Type, override val aliasType: AliasType, val functionExpression: TypedExpression, val arguments: List<TypedExpression>, val chosenParameters: List<Type>, val originalChosenParameters: List<Type>): TypedExpression()
+    data class Literal(override val type: Type, override val aliasType: AliasType, val literal: String): TypedExpression()
+    data class ListLiteral(override val type: Type, override val aliasType: AliasType, val contents: List<TypedExpression>, val chosenParameter: Type): TypedExpression()
+    data class NamedFunctionBinding(override val type: Type, override val aliasType: AliasType, val functionRef: EntityRef, val resolvedFunctionRef: ResolvedEntityRef, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
+    data class ExpressionFunctionBinding(override val type: Type, override val aliasType: AliasType, val functionExpression: TypedExpression, val bindings: List<TypedExpression?>, val chosenParameters: List<Type?>, val originalChosenParameters: List<Type?>) : TypedExpression()
+    data class Follow(override val type: Type, override val aliasType: AliasType, val structureExpression: TypedExpression, val name: String): TypedExpression()
+    data class InlineFunction(override val type: Type, override val aliasType: AliasType, val arguments: List<Argument>, val boundVars: List<Argument>, val returnType: Type, val block: TypedBlock): TypedExpression()
 }
 
-data class AmbiguousAssignment(val name: String, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
-data class Assignment(val name: String, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
-data class ValidatedAssignment(val name: String, val type: Type, val expression: TypedExpression)
+// Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
+// effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
+data class AmbiguousStatement(val name: String?, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
+data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
+data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
-data class AmbiguousBlock(val assignments: List<AmbiguousAssignment>, val returnedExpression: AmbiguousExpression, val location: Location?)
-data class Block(val assignments: List<Assignment>, val returnedExpression: Expression, val location: Location? = null)
-data class TypedBlock(val type: Type, val assignments: List<ValidatedAssignment>, val returnedExpression: TypedExpression)
+data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
+data class Block(val statements: List<Statement>, val returnedExpression: Expression, val location: Location? = null)
+data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val returnedExpression: TypedExpression)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(
@@ -898,19 +927,19 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
     }
 }
 
-data class UnvalidatedStruct(override val id: EntityId, val markedAsThreaded: Boolean, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
+data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedTypeSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation)
+            UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), markedAsThreaded, typeParameters, idLocation), idLocation)
+            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
         }
         return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
-data class Struct(override val id: EntityId, val isThreaded: Boolean, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
+data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getIndexForName(name: String): Int {
         return members.indexOfFirst { member -> member.name == name }
@@ -920,7 +949,7 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         if (chosenParameters.size != typeParameters.size) {
             error("Incorrect number of type parameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), false, chosenParameters)
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -928,9 +957,9 @@ data class Struct(override val id: EntityId, val isThreaded: Boolean, val module
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type::ParameterType)
         val outputType = if (requires == null) {
-            Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters)
+            Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
         } else {
-            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), isThreaded, typeParameters))
+            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
         }
         return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -1149,13 +1178,13 @@ fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
     return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
-data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isThreaded: Boolean) {
+data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isReference: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {
             error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), isThreaded, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), isReference, chosenParameters)
     }
 }
 

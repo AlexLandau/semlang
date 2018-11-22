@@ -1,0 +1,19 @@
+
+struct myStuff.Point<T> {
+  x: T
+  y: T
+}
+
+function myStuff.myFunction(input: Integer): Integer {
+  let _1: Integer = Integer."1"
+  let newX: Integer = Integer.plus(input, _1)
+  let newY: Integer = Integer.minus(input, _1)
+  let object: myStuff.Point<Integer> = myStuff.Point<Integer>(newX, newY)
+  let output: Natural = Natural.times(object->x, object->y)
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Natural.times expects arguments with types [semlang:lang:0:Natural, semlang:lang:0:Natural], but was given arguments with types [Integer, Integer]
+  output
+}
+
+function Natural.times(left: Natural, right: Natural): Natural {
+  Maybe.assume(Natural(Integer.times(left->integer, right->integer)))
+}

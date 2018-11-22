@@ -12,13 +12,13 @@ public class ListBuilders {
         return new ArrayList<T>();
     }
 
-    public static <T> List<T> append(List<T> list, T element) {
+    public static <T> Void append(List<T> list, T element) {
         list.add(element);
-        return list;
+        return null;
     }
 
-    public static <T> List<T> appendAll(List<T> list, List<T> toAdd) {
+    public static <T> Void appendAll(List<T> list, List<T> toAdd) {
         list.addAll(toAdd);
-        return list;
+        return null;
     }
 }

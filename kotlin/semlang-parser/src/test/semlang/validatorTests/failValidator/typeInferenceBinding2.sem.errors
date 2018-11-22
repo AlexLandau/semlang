@@ -1,0 +1,5 @@
+// Type inference in a function binding when the type is a parameter of an unknown argument type
+function myFunction(): (List<Integer>) -> Natural {
+  List.size|(_)
+  ~~~~~~~~~~~~~ Not enough type parameters were supplied for function call/binding for List.size
+}

@@ -1,0 +1,6 @@
+function textOutLiteral(): &TextOut {
+                           ~~~~~~~~ Reference types cannot be returned from functions
+  // This doesn't work
+  &TextOut."Hello, world!"
+  ~~~~~~~~~~~~~~~~~~~~~~~~ Trying to get a literal of a non-struct or nonexistent type TextOut
+}

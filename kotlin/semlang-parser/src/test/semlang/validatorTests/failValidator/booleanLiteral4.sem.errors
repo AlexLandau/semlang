@@ -1,0 +1,4 @@
+function myStuff.myFunction(): Boolean {
+  Boolean."n"
+  ~~~~~~~~~~~ Invalid literal value 'n' for type 'Boolean'
+}

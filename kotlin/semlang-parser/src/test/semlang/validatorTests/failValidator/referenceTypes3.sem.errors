@@ -1,0 +1,9 @@
+// Don't allow function bindings of reference types
+function doSomething(out: &TextOut): () -> Boolean {
+  helper|(out)
+  ~~~~~~~~~~~~ Reference objects can't be bound in function bindings
+}
+
+function helper(out: &TextOut): Boolean {
+  Boolean."true"
+}

@@ -52,7 +52,6 @@ private fun writeStruct(struct: UnvalidatedStruct, writer: Writer, deterministic
     val newline = if (deterministicMode) "\n" else System.lineSeparator()
     writeAnnotations(struct.annotations, writer, deterministicMode)
     writer.append("struct ")
-            .append(if (struct.markedAsThreaded) "~" else "")
             .append(struct.id.toString())
     if (struct.typeParameters.isNotEmpty()) {
         writer.append("<")
@@ -189,16 +188,18 @@ private val SINGLE_INDENTATION = "    "
 private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
     val newline = if (deterministicMode) "\n" else System.lineSeparator()
     val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
-    for (assignment in block.assignments) {
-        writer.append(indent)
-                .append("let ")
-                .append(assignment.name)
-        if (assignment.type != null && !deterministicMode) {
-            writer.append(": ")
-                    .append(assignment.type.toString())
+    for (statement in block.statements) {
+        if (statement.name != null) {
+            writer.append(indent)
+                    .append("let ")
+                    .append(statement.name)
+            if (statement.type != null && !deterministicMode) {
+                writer.append(": ")
+                        .append(statement.type.toString())
+            }
+            writer.append(" = ")
         }
-        writer.append(" = ")
-        writeExpression(assignment.expression, indentationLevel, writer, deterministicMode)
+        writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
         writer.append(newline)
     }
     writer.append(indent)

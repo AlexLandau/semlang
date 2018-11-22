@@ -1,6 +1,0 @@
-function myStuff.myFunction(): Integer {
-  let myVar3: Integer = Integer.plus(myVar1, myVar2)
-  let myVar2: Integer = Integer."2"
-  let myVar1: Integer = Integer."1"
-  myVar3
-}

@@ -1,0 +1,13 @@
+struct Foo {
+  natural: Natural
+  requires {
+    Boolean."true"
+  }
+}
+
+function fooTest(i: Natural): Maybe<Natural> {
+    let foo: Maybe<Foo> = Foo(i)
+    // This kind of shadowing is disallowed
+    Maybe.map<Foo, Natural>(foo, function(foo: Foo): Natural { foo->natural })
+                                          ~~~~~~~~ Argument name foo shadows an existing variable name
+}

@@ -1,0 +1,12 @@
+
+interface Bar {
+          ~~~ Duplicate ID Bar
+          ~~~ Duplicate ID Bar.Adapter
+  a(): Integer
+}
+
+interface Bar {
+          ~~~ Duplicate ID Bar
+          ~~~ Duplicate ID Bar.Adapter
+  b(): Integer
+}

@@ -10,9 +10,6 @@ import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
 
-//TODO: Before trying to write an interpreter in another language, I think we
-//actually want to have the sem0 version of this, for which the validation and
-//interpreter will be simpler
 val LANGUAGE = "sem1"
 val FORMAT_VERSION = "0.1.0"
 
@@ -54,9 +51,6 @@ private fun <T> addArray(objectNode: ObjectNode, name: String,
 
 private fun addStruct(node: ObjectNode, struct: Struct) {
     node.put("id", struct.id.toString())
-    if (struct.isThreaded) {
-        node.put("isThreaded", true)
-    }
     if (struct.typeParameters.isNotEmpty()) {
         addTypeParameters(node.putArray("typeParameters"), struct.typeParameters)
     }
@@ -75,13 +69,12 @@ private fun parseStruct(node: JsonNode): UnvalidatedStruct {
 
     val idString = node["id"]?.asText() ?: error("Structs must have an 'id' field")
     val id = parseEntityId(idString)
-    val isThreaded = node["isThreaded"]?.asBoolean() ?: false
     val typeParameters = parseTypeParameters(node["typeParameters"])
     val annotations = parseAnnotations(node["annotations"])
     val members = parseMembers(node["members"])
     val requires = node["requires"]?.let { parseBlock(it) }
 
-    return UnvalidatedStruct(id, isThreaded, typeParameters, members, requires, annotations)
+    return UnvalidatedStruct(id, typeParameters, members, requires, annotations)
 }
 
 private fun parseTypeParameters(node: JsonNode?): List<TypeParameter> {
@@ -180,7 +173,7 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.NamedType -> {
             val node = ObjectNode(factory)
-            node.put("name", (if (type.isThreaded()) "~" else "") + type.originalRef.toString())
+            node.put("name", (if (type.isReference()) "&" else "") + type.originalRef.toString())
             if (type.parameters.isNotEmpty()) {
                 val paramsArray = node.putArray("params")
                 for (parameter in type.parameters) {
@@ -219,8 +212,8 @@ private fun parseType(node: JsonNode): UnvalidatedType {
     }
 
     if (node.has("name")) {
-        val isThreaded = node["name"].textValue().startsWith("~")
-        val refName = if (isThreaded) node["name"].textValue().substring(1) else node["name"].textValue()
+        val isReference = node["name"].textValue().startsWith("&")
+        val refName = if (isReference) node["name"].textValue().substring(1) else node["name"].textValue()
         val id = parseEntityRef(refName)
         val parameters = if (node.has("params")) {
             val paramsArray = node["params"]
@@ -228,7 +221,7 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         } else {
             listOf()
         }
-        return UnvalidatedType.NamedType(id, isThreaded, parameters)
+        return UnvalidatedType.NamedType(id, isReference, parameters)
     } else if (node.has("from")) {
         val typeParameters = node["typeParameters"]?.let(::parseTypeParameters) ?: listOf()
         val argTypes = node["from"].map(::parseType)
@@ -408,8 +401,8 @@ private fun parseFunction(node: JsonNode): Function {
 }
 
 private fun addBlock(node: ArrayNode, block: TypedBlock) {
-    for (assignment in block.assignments) {
-        addAssignment(node.addObject(), assignment)
+    for (statement in block.statements) {
+        addStatement(node.addObject(), statement)
     }
     val returnNode = node.addObject()
     addExpression(returnNode.putObject("return"), block.returnedExpression)
@@ -422,27 +415,29 @@ private fun parseBlock(node: JsonNode): Block {
     if (size < 1) {
         error("Expected at least one entry in the block array")
     }
-    val assignments = ArrayList<Assignment>()
+    val statements = ArrayList<Statement>()
     for (index in 0..(node.size() - 2)) {
-        assignments.add(parseAssignment(node[index]))
+        statements.add(parseStatement(node[index]))
     }
     val returnedExpression = parseExpression(node.last()["return"])
 
-    return Block(assignments, returnedExpression)
+    return Block(statements, returnedExpression)
 }
 
-private fun addAssignment(node: ObjectNode, assignment: ValidatedAssignment) {
-    node.put("let", assignment.name)
+private fun addStatement(node: ObjectNode, assignment: ValidatedStatement) {
+    if (assignment.name != null) {
+        node.put("let", assignment.name)
+    }
     addExpression(node.putObject("be"), assignment.expression)
 }
 
-private fun parseAssignment(node: JsonNode): Assignment {
+private fun parseStatement(node: JsonNode): Statement {
     if (!node.isObject()) error("Expected an assignment to be an object")
 
-    val name = node["let"]?.textValue() ?: error("Assignments should have a 'let' field indicating the variable name")
+    val name = node["let"]?.textValue()
     val expression = parseExpression(node["be"] ?: error("Assignments should have a '=' field indicating the expression"))
 
-    return Assignment(name, null, expression)
+    return Statement(name, null, expression)
 }
 
 private fun addExpression(node: ObjectNode, expression: TypedExpression) {

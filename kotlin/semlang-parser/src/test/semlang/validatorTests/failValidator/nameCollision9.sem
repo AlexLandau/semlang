@@ -1,8 +1,0 @@
-
-interface Foo {
-  a(): Integer
-}
-
-struct Foo.Adapter {
-  b: Integer
-}

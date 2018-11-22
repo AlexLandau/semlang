@@ -488,9 +488,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         } else {
             Type.FunctionType.create(listOf(), listOf(), whenType)
         }
-        val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, "when" + option.name))
+        val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, AliasType.PossiblyAliased, "when" + option.name))
         if (option.type != null) {
-            whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf(TypedExpression.Variable(option.type!!, "data"))))
+            whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf(TypedExpression.Variable(option.type!!, AliasType.PossiblyAliased, "data"))))
         } else {
             whenBuilder.addStatement("return \$L", callStrategy.apply(listOf(whenType), listOf()))
         }
@@ -568,20 +568,26 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeBlock(block: TypedBlock, varToAssign: String?): CodeBlock {
         val builder = CodeBlock.builder()
 
-        for ((name, type, expression) in block.assignments) {
+        for ((name, type, expression) in block.statements) {
             // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
-            if (expression is TypedExpression.IfThen) {
-                // The variable gets added to our scope early in this case
-                addToVariableScope(name)
-                builder.addStatement("final \$T \$L", getType(type, false), name)
-                builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
-                builder.add(writeBlock(expression.thenBlock, name))
-                builder.nextControlFlow("else")
-                builder.add(writeBlock(expression.elseBlock, name))
-                builder.endControlFlow()
+            if (name != null) {
+                // Assignment case
+                if (expression is TypedExpression.IfThen) {
+                    // The variable gets added to our scope early in this case
+                    addToVariableScope(name)
+                    builder.addStatement("final \$T \$L", getType(type, false), name)
+                    builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
+                    builder.add(writeBlock(expression.thenBlock, name))
+                    builder.nextControlFlow("else")
+                    builder.add(writeBlock(expression.elseBlock, name))
+                    builder.endControlFlow()
+                } else {
+                    builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
+                    addToVariableScope(name)
+                }
             } else {
-                builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
-                addToVariableScope(name)
+                // Non-assignment expression
+                builder.addStatement("\$L", writeExpression(expression))
             }
         }
 
@@ -592,8 +598,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             builder.addStatement("\$L = \$L", varToAssign, writeExpression(block.returnedExpression))
         }
 
-        for (assignment in block.assignments) {
-            removeFromVariableScope(assignment.name)
+        for (assignment in block.statements) {
+            assignment.name?.let { removeFromVariableScope(it) }
         }
 
         return builder.build()
@@ -704,7 +710,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     is Type.FunctionType.Parameterized -> outputType.argTypes[unboundArgumentIndex]
                 }
 
-                arguments.add(TypedExpression.Variable(argType, argumentName))
+                arguments.add(TypedExpression.Variable(argType, AliasType.PossiblyAliased, argumentName))
                 unboundArgumentIndex++
             } else {
                 arguments.add(binding)
@@ -772,7 +778,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     is Type.FunctionType.Parameterized -> functionType.argTypes[index]
                 }
 
-                arguments.add(TypedExpression.Variable(argType, argumentName))
+                arguments.add(TypedExpression.Variable(argType, AliasType.PossiblyAliased, argumentName))
             } else {
                 arguments.add(binding)
             }
@@ -917,7 +923,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     if (struct.members.size == 1) {
                         val delegateType = struct.members[0].type
                         val constructorStrategy = getNamedFunctionCallStrategy(type.ref)
-                        val constructorCall = constructorStrategy.apply(listOf(), listOf(TypedExpression.Literal(delegateType, literal)))
+                        val constructorCall = constructorStrategy.apply(listOf(), listOf(TypedExpression.Literal(delegateType, AliasType.NotAliased, literal)))
                         if (struct.requires != null) {
                             return CodeBlock.of("\$L.get()", constructorCall)
                         } else {
@@ -1043,6 +1049,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
             listOf("TextOut") -> ClassName.get(PrintStream::class.java)
             listOf("ListBuilder") -> ClassName.get(java.util.List::class.java)
+            listOf("Void") -> ClassName.bestGuess("net.semlang.java.Void")
             else -> null
         }
 
@@ -1088,11 +1095,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val newCount: Int = if (curCount == null) 1 else (curCount + 1)
         testClassCounts[testClassName.toString()] = newCount
 
-        val outputExpression = TypedExpression.Literal(function.returnType, testContents.outputLiteral)
+        val outputExpression = TypedExpression.Literal(function.returnType, AliasType.NotAliased, testContents.outputLiteral)
         val outputCode = writeLiteralExpression(outputExpression)
         val argExpressions = function.arguments.map { arg -> arg.type }
                 .zip(testContents.argLiterals)
-                .map { (type, literal) -> TypedExpression.Literal(type, literal) }
+                .map { (type, literal) -> TypedExpression.Literal(type, AliasType.NotAliased, literal) }
 
         if (function.typeParameters.isNotEmpty()) {
             TODO()
@@ -1155,7 +1162,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("List", "map"), StaticFunctionCallStrategy(javaLists, "map"))
         map.put(EntityId.of("List", "flatMap"), StaticFunctionCallStrategy(javaLists, "flatMap"))
         map.put(EntityId.of("List", "reduce"), StaticFunctionCallStrategy(javaLists, "reduce"))
-        map.put(EntityId.of("List", "reduceThreaded"), StaticFunctionCallStrategy(javaLists, "reduce"))
 
         val javaIntegers = ClassName.bestGuess("net.semlang.java.Integers")
         // TODO: Add ability to use non-static function calls
@@ -1212,6 +1218,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // BitsBigEndian constructor
         map.put(EntityId.of("BitsBigEndian"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.BitsBigEndian"), "create"))
 
+        // Void "constructor"
+        map.put(EntityId.of("Void"), NullConstantStrategy)
+
         return map
     }
 
@@ -1241,6 +1250,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             } else {
                 return CodeBlock.of("\$L.equals(\$L)", left, right)
             }
+        }
+    }
+
+    val NullConstantStrategy = object: FunctionCallStrategy {
+        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
+            return CodeBlock.of("null")
         }
     }
 
@@ -1276,7 +1291,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-                val returnValue = convertBindingToCall(constructorArgument, method.arguments.map { TypedExpression.Variable(it.type, it.name) })
+                val returnValue = convertBindingToCall(constructorArgument, method.arguments.map { TypedExpression.Variable(it.type, AliasType.PossiblyAliased, it.name) })
 
                 methodSpec.addStatement("return \$L", writeExpression(returnValue))
                 instanceAnonymousClass.addMethod(methodSpec.build())
@@ -1311,7 +1326,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }
 
                 // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-                val returnValue = convertBindingToCallReplacingOnlyOpenBinding(adapterArgument, TypedExpression.Variable(dataType, "data"), method.arguments.map { TypedExpression.Variable(it.type, it.name) })
+                val returnValue = convertBindingToCallReplacingOnlyOpenBinding(
+                        adapterArgument,
+                        TypedExpression.Variable(dataType, AliasType.PossiblyAliased, "data"),
+                        method.arguments.map { TypedExpression.Variable(it.type, AliasType.PossiblyAliased, it.name) }
+                )
 
                 methodSpec.addStatement("return \$L", writeExpression(returnValue))
                 instanceAnonymousClass.addMethod(methodSpec.build())
@@ -1337,7 +1356,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val outputType = (binding.type as Type.FunctionType.Ground).outputType
         return when (binding) {
             is TypedExpression.Variable -> {
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, methodArguments, listOf(), listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, AliasType.NotAliased, binding, methodArguments, listOf(), listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1347,7 +1366,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is TypedExpression.NamedFunctionBinding -> {
                 val arguments = binding.bindings.map { it ?: TODO() }
                 val chosenParameters = binding.chosenParameters.map { it ?: error("") }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
+                return TypedExpression.NamedFunctionCall(outputType, AliasType.NotAliased, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()
@@ -1361,7 +1380,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (binding) {
             is TypedExpression.Variable -> {
                 val arguments = listOf(openBindingReplacement) + methodArguments
-                return TypedExpression.ExpressionFunctionCall(outputType, binding, arguments, listOf(), listOf())
+                return TypedExpression.ExpressionFunctionCall(outputType, AliasType.NotAliased, binding, arguments, listOf(), listOf())
             }
             is TypedExpression.IfThen -> TODO()
             is TypedExpression.NamedFunctionCall -> TODO()
@@ -1373,7 +1392,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 val arguments = binding.bindings.replacingFirst(null, openBindingReplacement)
                         .map { it ?: TODO() }
                 val chosenParameters = binding.chosenParameters.map { it ?: error("") }
-                return TypedExpression.NamedFunctionCall(outputType, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
+                return TypedExpression.NamedFunctionCall(outputType, AliasType.NotAliased, binding.functionRef, binding.resolvedFunctionRef, arguments, chosenParameters, chosenParameters)
             }
             is TypedExpression.ExpressionFunctionBinding -> TODO()
             is TypedExpression.Follow -> TODO()

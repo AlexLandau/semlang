@@ -159,9 +159,13 @@ private class Validator(
         val arguments = validateArguments(function.arguments, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         val returnType = validateType(function.returnType, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
 
+        if (returnType.isReference()) {
+            errors.add(Issue("Reference types cannot be returned from functions", function.returnTypeLocation, IssueLevel.ERROR))
+        }
+
         //TODO: Validate that type parameters don't share a name with something important
         val variableTypes = getArgumentVariableTypes(arguments)
-        val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), HashSet(), function.id) ?: return null
+        val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), function.id) ?: return null
         if (returnType != block.type) {
             errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypeLocation, IssueLevel.ERROR))
         }
@@ -178,16 +182,10 @@ private class Validator(
             is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                if (parameter.isThreaded()) {
-                    errors.add(Issue("Lists cannot have a threaded parameter type", null, IssueLevel.ERROR))
-                }
                 Type.List(parameter)
             }
             is UnvalidatedType.Maybe -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                if (parameter.isThreaded()) {
-                    errors.add(Issue("Tries cannot have a threaded parameter type", null, IssueLevel.ERROR))
-                }
                 Type.Maybe(parameter)
             }
             is UnvalidatedType.FunctionType -> {
@@ -223,25 +221,25 @@ private class Validator(
                     errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                     return null
                 }
-                val shouldBeThreaded = typeInfo.isThreaded
+                val shouldBeReference = typeInfo.isReference
 
-                if (shouldBeThreaded && !type.isThreaded) {
-                    errors.add(Issue("Type $type is threaded and should be marked as such with '~'", type.location, IssueLevel.ERROR))
+                if (shouldBeReference && !type.isReference) {
+                    errors.add(Issue("Type $type is a reference type and should be marked as such with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
-                if (type.isThreaded && !shouldBeThreaded) {
-                    errors.add(Issue("Type $type is not threaded and should not be marked with '~'", type.location, IssueLevel.ERROR))
+                if (type.isReference && !shouldBeReference) {
+                    errors.add(Issue("Type $type is not a reference type and should not be marked with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
                 val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope, internalParameters) ?: return null }
-                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isThreaded, parameters)
+                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isReference, parameters)
             }
-            is UnvalidatedType.Invalid.ThreadedInteger -> {
-                errors.add(Issue("Integer is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+            is UnvalidatedType.Invalid.ReferenceInteger -> {
+                errors.add(Issue("Integer is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
                 null
             }
-            is UnvalidatedType.Invalid.ThreadedBoolean -> {
-                errors.add(Issue("Boolean is not a threaded type and should not be marked with ~", type.location, IssueLevel.ERROR))
+            is UnvalidatedType.Invalid.ReferenceBoolean -> {
+                errors.add(Issue("Boolean is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
                 null
             }
         }
@@ -260,32 +258,40 @@ private class Validator(
         return arguments.associate { argument -> Pair(argument.name, argument.type) }
     }
 
-    private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedBlock? {
+    private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
-        val validatedAssignments = ArrayList<ValidatedAssignment>()
-        for (assignment in block.assignments) {
-            if (variableTypes.containsKey(assignment.name)) {
-                errors.add(Issue("The already-assigned variable ${assignment.name} cannot be reassigned", assignment.nameLocation, IssueLevel.ERROR))
-            }
-            if (isInvalidVariableName(assignment.name)) {
-                errors.add(Issue("Invalid variable name ${assignment.name}", assignment.nameLocation, IssueLevel.ERROR))
+        val validatedStatements = ArrayList<ValidatedStatement>()
+        for (statement in block.statements) {
+            val varName = statement.name
+            if (varName != null) {
+                if (variableTypes.containsKey(varName)) {
+                    errors.add(Issue("The already-assigned variable ${varName} cannot be reassigned", statement.nameLocation, IssueLevel.ERROR))
+                }
+                if (isInvalidVariableName(varName)) {
+                    errors.add(Issue("Invalid variable name ${varName}", statement.nameLocation, IssueLevel.ERROR))
+                }
             }
 
-            val validatedExpression = validateExpression(assignment.expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
-            val unvalidatedAssignmentType = assignment.type
+            val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope, HashSet<String>(), containingFunctionId) ?: return null
+            val unvalidatedAssignmentType = statement.type
             if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
-                    fail("In function $containingFunctionId, the variable ${assignment.name} is supposed to be of type $assignmentType, " +
+                    fail("In function $containingFunctionId, the variable $varName is supposed to be of type $assignmentType, " +
                             "but the expression given has actual type ${validatedExpression.type}")
                 }
             }
 
-            validatedAssignments.add(ValidatedAssignment(assignment.name, validatedExpression.type, validatedExpression))
-            variableTypes.put(assignment.name, validatedExpression.type)
+            validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
+            if (varName != null) {
+                if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
+                    errors.add(Issue("We are assigning a reference to the variable $varName, but the reference may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
+                }
+                variableTypes.put(varName, validatedExpression.type)
+            }
         }
-        val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
-        return TypedBlock(returnedExpression.type, validatedAssignments, returnedExpression)
+        val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, HashSet<String>(), containingFunctionId) ?: return null
+        return TypedBlock(returnedExpression.type, validatedStatements, returnedExpression)
     }
 
     //TODO: Construct this more sensibly from more centralized lists
@@ -298,17 +304,17 @@ private class Validator(
     }
 
     // TODO: Remove containingFunctionId argument when no longer needed
-    private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         return when (expression) {
-            is Expression.Variable -> validateVariableExpression(expression, variableTypes, consumedThreadedVars, containingFunctionId)
-            is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            is Expression.Follow -> validateFollowExpression(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
+            is Expression.Variable -> validateVariableExpression(expression, variableTypes, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.Follow -> validateFollowExpression(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
             is Expression.Literal -> validateLiteralExpression(expression, typeParametersInScope)
-            is Expression.ListLiteral -> validateListLiteralExpression(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
-            is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(expression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
+            is Expression.ListLiteral -> validateListLiteralExpression(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
+            is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(expression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
             is Expression.InlineFunction -> validateInlineFunction(expression, variableTypes, typeParametersInScope, containingFunctionId)
         }
     }
@@ -322,15 +328,15 @@ private class Validator(
         val validatedArguments = validateArguments(expression.arguments, typeParametersInScope) ?: return null
 
         val incomingVariableTypes: Map<String, Type> = variableTypes + validatedArguments.asVariableTypesMap()
-        val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeParametersInScope, HashSet(), containingFunctionId) ?: return null
+        val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeParametersInScope, containingFunctionId) ?: return null
 
         // Note: This is the source of the canonical in-memory ordering
         val varsToBind = ArrayList<String>(variableTypes.keys)
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
         val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
         for (varToBindWithType in varsToBindWithTypes) {
-            if (varToBindWithType.type.isThreaded()) {
-                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a threaded type", expression.location, IssueLevel.ERROR))
+            if (varToBindWithType.type.isReference()) {
+                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a reference type", expression.location, IssueLevel.ERROR))
             }
         }
 
@@ -339,13 +345,13 @@ private class Validator(
             errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
         }
 
-        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), validatedBlock.type)
+        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), returnType)
 
-        return TypedExpression.InlineFunction(functionType, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
+        return TypedExpression.InlineFunction(functionType, AliasType.NotAliased, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
 
-    private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+    private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
@@ -362,7 +368,7 @@ private class Validator(
             if (binding == null) {
                 null
             } else {
-                validateExpression(binding, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
+                validateExpression(binding, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
             }
         }
         val bindingTypes = bindings.map { if (it == null) null else it.type }
@@ -385,18 +391,18 @@ private class Validator(
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
-                if (binding.type.isThreaded()) {
-                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                if (binding.type.isReference()) {
+                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
             }
         }
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression.aliasType, functionExpression, bindings, inferredTypeParameters, providedChoices)
     }
 
-    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
 
@@ -409,7 +415,7 @@ private class Validator(
             if (binding == null) {
                 null
             } else {
-                validateExpression(binding, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId)
+                validateExpression(binding, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId)
             }
         }
         val bindingTypes = bindings.map { binding ->
@@ -443,15 +449,15 @@ private class Validator(
                 if (binding.type != expectedType) {
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
-                if (binding.type.isThreaded()) {
-                    errors.add(Issue("Threaded objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                if (binding.type.isReference()) {
+                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                 }
             }
         }
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -502,8 +508,8 @@ private class Validator(
         return chosenParameters
     }
 
-    private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        val structureExpression = validateExpression(expression.structureExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+    private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        val structureExpression = validateExpression(expression.structureExpression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
 
         val structureNamedType = structureExpression.type as? Type.NamedType
         if (structureNamedType == null) {
@@ -526,8 +532,8 @@ private class Validator(
                 val typeParameters = structureTypeInfo.typeParameters
                 val chosenTypes = structureNamedType.parameters
                 for (chosenParameter in chosenTypes) {
-                    if (chosenParameter.isThreaded()) {
-                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    if (chosenParameter.isReference()) {
+                        errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
 
@@ -535,7 +541,7 @@ private class Validator(
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
                 //TODO: Ground this if needed
 
-                return TypedExpression.Follow(type, structureExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
 
             }
             is TypeInfo.Interface -> {
@@ -550,8 +556,8 @@ private class Validator(
                 val typeParameters = interfac.typeParameters
                 val chosenTypes = interfaceType.parameters
                 for (chosenParameter in chosenTypes) {
-                    if (chosenParameter.isThreaded()) {
-                        errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+                    if (chosenParameter.isReference()) {
+                        errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
                     }
                 }
 
@@ -559,7 +565,7 @@ private class Validator(
                 val parameterizedType = replaceAndValidateExternalTypeParameters(methodType, typeParameters, chosenTypes)
                 val type = validateType(parameterizedType, typeParametersInScope) ?: return null
 
-                return TypedExpression.Follow(type, structureExpression, expression.name)
+                return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
             }
             is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
@@ -577,8 +583,8 @@ private class Validator(
         return replacedType
     }
 
-    private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+    private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
@@ -595,7 +601,7 @@ private class Validator(
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
-            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
             arguments.add(argument)
         }
         val argumentTypes = arguments.map(TypedExpression::type)
@@ -610,10 +616,10 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
-    private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
 
         val functionInfo = typesInfo.getFunctionInfo(functionRef)
@@ -626,7 +632,7 @@ private class Validator(
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
-            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
             arguments.add(argument)
         }
         val argumentTypes = arguments.map(TypedExpression::type)
@@ -647,25 +653,19 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
         val typeClass = typeParameter.typeClass
-        if (chosenType.isThreaded() && typeClass != TypeClass.Threaded) {
-            errors.add(Issue("Threaded types cannot be used as parameters", location, IssueLevel.ERROR))
+        if (chosenType.isReference()) {
+            errors.add(Issue("Reference types cannot be used as parameters", location, IssueLevel.ERROR))
         }
         if (typeClass != null) {
             val unused: Any = when (typeClass) {
                 TypeClass.Data -> {
                     if (!typesInfo.isDataType(chosenType)) {
                         errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but $chosenType is not a data type", location, IssueLevel.ERROR))
-                    } else {}
-                }
-                TypeClass.Threaded -> {
-                    if (!chosenType.isThreaded()) {
-                        // TODO: Arguably we don't need to make this an error
-                        errors.add(Issue("Type parameter ${typeParameter.name} requires a threaded type, but $chosenType is not a threaded type", location, IssueLevel.ERROR))
                     } else {}
                 }
             }
@@ -684,7 +684,7 @@ private class Validator(
                 errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.location, IssueLevel.ERROR))
             }
             // TODO: Someday we need to check for literal values that violate "requires" blocks at validation time
-            return TypedExpression.Literal(typeChain.last(), expression.literal)
+            return TypedExpression.Literal(typeChain.last(), AliasType.NotAliased, expression.literal)
         } else if (errors.isEmpty()) {
             fail("Something went wrong")
         }
@@ -709,7 +709,11 @@ private class Validator(
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
-                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct ?: fail("Trying to get a literal of a nonexistent or non-struct type ${type.originalRef}")
+                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct
+                if (structInfo == null) {
+                    errors.add(Issue("Trying to get a literal of a non-struct or nonexistent type ${type.originalRef}", literalLocation, IssueLevel.ERROR))
+                    return null
+                }
 
                 if (structInfo.typeParameters.isNotEmpty()) {
                     // See parameterizedStructLiteral1: this fails in parsing
@@ -736,16 +740,16 @@ private class Validator(
         return list
     }
 
-    private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
         val chosenParameter = validateType(expression.chosenParameter, typeParametersInScope) ?: return null
-        if (chosenParameter.isThreaded()) {
-            errors.add(Issue("Threaded types cannot be used as parameters", expression.location, IssueLevel.ERROR))
+        if (chosenParameter.isReference()) {
+            errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
         }
 
         val listType = Type.List(chosenParameter)
 
         val contents = expression.contents.map { item ->
-            validateExpression(item, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+            validateExpression(item, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
         }
         for (item in contents) {
             if (item.type != chosenParameter) {
@@ -753,24 +757,19 @@ private class Validator(
             }
         }
 
-        return TypedExpression.ListLiteral(listType, contents, chosenParameter)
+        return TypedExpression.ListLiteral(listType, AliasType.NotAliased, contents, chosenParameter)
     }
 
-    private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope, consumedThreadedVars, containingFunctionId) ?: return null
+    private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope, refsAlreadyUsedInStatement, containingFunctionId) ?: return null
 
         if (condition.type != Type.BOOLEAN) {
             fail("In function $containingFunctionId, an if-then expression has a non-boolean condition expression: $condition")
         }
 
-        // Threaded variables can be consumed in each of the two blocks, but is considered used if used in either
-        val thenConsumedThreadedVars = HashSet(consumedThreadedVars)
-        val elseConsumedThreadedVars = HashSet(consumedThreadedVars)
-        val thenBlock = validateBlock(expression.thenBlock, variableTypes, typeParametersInScope, thenConsumedThreadedVars, containingFunctionId) ?: return null
-        val elseBlock = validateBlock(expression.elseBlock, variableTypes, typeParametersInScope, elseConsumedThreadedVars, containingFunctionId) ?: return null
-        // Don't add variable names that were defined in the blocks themselves
-        consumedThreadedVars.addAll(thenConsumedThreadedVars.intersect(variableTypes.keys))
-        consumedThreadedVars.addAll(elseConsumedThreadedVars.intersect(variableTypes.keys))
+        // TODO: Reconsider how references interact with if/then expressions
+        val thenBlock = validateBlock(expression.thenBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+        val elseBlock = validateBlock(expression.elseBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
 
         val type = try {
             typeUnion(thenBlock.type, elseBlock.type)
@@ -779,7 +778,13 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.IfThen(type, condition, thenBlock, elseBlock)
+        val aliasType = if (thenBlock.returnedExpression.aliasType == AliasType.NotAliased && elseBlock.returnedExpression.aliasType == AliasType.NotAliased) {
+            AliasType.NotAliased
+        } else {
+            AliasType.PossiblyAliased
+        }
+
+        return TypedExpression.IfThen(type, aliasType, condition, thenBlock, elseBlock)
     }
 
     private fun typeUnion(type1: Type, type2: Type): Type {
@@ -791,17 +796,17 @@ private class Validator(
         fail("Types $type1 and $type2 cannot be unioned")
     }
 
-    private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, consumedThreadedVars: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
-        if (consumedThreadedVars.contains(expression.name)) {
-            errors.add(Issue("Variable ${expression.name} is threaded and cannot be used more than once", expression.location, IssueLevel.ERROR))
+    private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, refsAlreadyUsedInStatement: MutableSet<String>, containingFunctionId: EntityId): TypedExpression? {
+        if (refsAlreadyUsedInStatement.contains(expression.name)) {
+            errors.add(Issue("Variable ${expression.name} is a reference and cannot be used more than once in a statement", expression.location, IssueLevel.ERROR))
             return null
         }
         val type = variableTypes[expression.name]
         if (type != null) {
-            if (type.isThreaded()) {
-                consumedThreadedVars.add(expression.name)
+            if (type.isReference()) {
+                refsAlreadyUsedInStatement.add(expression.name)
             }
-            return TypedExpression.Variable(type, expression.name)
+            return TypedExpression.Variable(type, AliasType.PossiblyAliased, expression.name)
         } else {
             errors.add(Issue("Unknown variable ${expression.name}", expression.location, IssueLevel.ERROR))
             return null
@@ -827,7 +832,7 @@ private class Validator(
         val fakeContainingFunctionId = EntityId(struct.id.namespacedName + "requires")
         val uncheckedRequires = struct.requires
         val requires = if (uncheckedRequires != null) {
-            validateBlock(uncheckedRequires, memberTypes, struct.typeParameters.associateBy(TypeParameter::name), HashSet(), fakeContainingFunctionId) ?: return null
+            validateBlock(uncheckedRequires, memberTypes, struct.typeParameters.associateBy(TypeParameter::name), fakeContainingFunctionId) ?: return null
         } else {
             null
         }
@@ -837,15 +842,11 @@ private class Validator(
             errors.add(Issue(message, location, IssueLevel.ERROR))
         }
 
-        val anyMemberTypesAreThreaded = memberTypes.values.any(Type::isThreaded)
-        if (struct.markedAsThreaded && !anyMemberTypesAreThreaded) {
-            errors.add(Issue("Struct ${struct.id} is marked as threaded but has no members with threaded types", struct.idLocation, IssueLevel.ERROR))
-        }
-        if (!struct.markedAsThreaded && anyMemberTypesAreThreaded) {
-            errors.add(Issue("Struct ${struct.id} is not marked as threaded but has members with threaded types", struct.idLocation, IssueLevel.ERROR))
+        if (memberTypes.values.any(Type::isReference)) {
+            errors.add(Issue("Struct ${struct.id} has members with reference types, which are not allowed", struct.idLocation, IssueLevel.ERROR))
         }
 
-        return Struct(struct.id, struct.markedAsThreaded, moduleId, struct.typeParameters, members, requires, struct.annotations)
+        return Struct(struct.id, moduleId, struct.typeParameters, members, requires, struct.annotations)
     }
 
 
@@ -919,8 +920,8 @@ private class Validator(
         return options.map { option ->
             val unvalidatedType = option.type
             val type = if (unvalidatedType == null) null else validateType(unvalidatedType, unionTypeParameters)
-            if (type != null && type.isThreaded()) {
-                error("Threaded types are currently not allowed in unions; this case needs to be considered further")
+            if (type != null && type.isReference()) {
+                errors.add(Issue("Reference types are not allowed in unions", option.idLocation, IssueLevel.ERROR))
             }
             if (option.name == "when") {
                 errors.add(Issue("Union options cannot be named 'when'", option.idLocation, IssueLevel.ERROR))

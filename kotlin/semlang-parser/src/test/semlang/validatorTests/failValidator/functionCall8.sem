@@ -1,4 +1,0 @@
-function myStuff.myFunction(): Integer {
-  // Call with an argument of an incorrect type
-  Integer.plus(Integer."0", Boolean."true")
-}

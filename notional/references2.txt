@@ -41,3 +41,129 @@ var?
 Do we want to allow wholesale swapping of reference members in a struct, or do references need to be "the same"
 and just follow their associated methods' particular logic of progression? (I'm favoring the latter; again, could
 use something like Var<> to support the other case)
+
+
+So here's another way to look at all of this. What are the situations that we want to avoid?
+
+Here's one case: Say we have this function:
+
+function computeSomething(foo: Foo): Bar {
+  let unused = baz(foo)
+  barify(foo)
+}
+
+It would be great if we could identify baz() as an irrelevant, unused function call (perhaps left over after some
+other optimization) and be able to remove it entirely. That relies on being able to identify baz() as a thing that has
+no side effects, which is easier if we know that foo is fundamentally not a reference to a stateful thing.
+
+Slightly tricker follow-up case, same idea, to illustrate why just introspecting baz, rather than including this in the
+type system, could be too hard:
+
+function computeSomething(foo: Foo, baz: (Foo) -> Baz): Bar {
+  let unused = baz(foo)
+  barify(foo)
+}
+
+The obvious fix here is to mark either foo the variable or Foo the type as being special/referential/mutable in some way,
+and having most types not use that where possible.
+
+Another issue is whether we can parallelize and rearrange statements without introducing non-determinism. Per my own
+goals for the language, non-determinism is a requirement, while supporting implicit parallelism is desirable. So the
+following situation is an issue:
+
+function setToOneAndTwo(a: Var<Integer>, b: Var<Integer>) {
+  // Runtimes should be able to rearrange these if desirable
+  a.set(1)
+  b.set(2)
+}
+
+function causeTrouble(): Integer {
+  let c = Var<Integer>(0)
+  setToOneAndTwo(c, c)
+  c
+}
+
+Currently, both the threaded-types and unaliasable references approaches solve this by refusing to allow c to be used
+twice in the same function call. (Though really, the threaded-types construct would look very different in the case of
+Var, essentially just forcing you to use a non-Var approach.) This does look like the easiest part to rule out while
+allowing other functions that operate similarly to setToOneAndTwo. The next-best alternative would be to impose a
+standard ordering on the arguments to setToOneAndTwo; however, this might not work well with other cases where things
+are aliased in funny ways, and could be difficult to enforce in other languages (see: Java).
+
+(Devil's advocate: Is there a good case for an imperative-styled declarative/semantic language where non-determinism is
+ensured by a very standardized interpretation of "this step happens before this step"? My worry is that this would be
+hard to translate into other languages, especially Java, piece-by-piece while maintaining all these guarantees, without
+wrecking perf by mandating single-threading everywhere.)
+
+So then the real question becomes, how do I take a large mess of these references and turn them into more useful
+structures/abstractions without getting into alias-managing hell on the one hand and argument spaghetti on the other?
+
+(Additional working assumption here: These opaque reference types, which can end up corresponding to something like a
+file system or DB or network-based API, can be defined in "native modules" that define the types and a set of associated
+functions. Different runtimes will support different such native modules. There would be additional functions implicitly
+added, which can be referenced within the code, to check if a module is supported and offer an alternative, non-crashing
+behavior if not.)
+
+Okay, here's another, more drastic example to make my point. Are these functions the same? (Includes some imperative-
+style pseudocode, assume that gets translated)
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  let items = source.popAll()
+  dest.pushAll(items) // Assume this functions as if each item is pushed iteratively in the order of the items list,
+                      // i.e. the next thing that will pop() is the last value in items
+}
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  while (!source.isEmpty()) {
+    let item = source.pop()
+    dest.push(item)
+  }
+}
+
+function drainStack<T>(source: MutableStack<T>, dest: MutableStack<T>) {
+  while (!source.isEmpty()) {
+    let items = source.popBatch(BATCH_SIZE)
+    dest.pushAll(items)
+  }
+}
+
+These functions should behave the same in every case EXCEPT the one where source and dest are identical (in which case
+the first will return, the second will hang if non-empty, and the third may or may not hang based on the size of the
+stack). It would be really nice to allow the runtime environment to switch out the behavior of a function implemented
+one way to another way with better performance (achieve the performance of the more complex code with the written
+simplicity of the less complex code!). But this is only practical if the type system can distinguish whether drainStack
+allows the source and dest arguments to refer to the same thing, and that in turn requires there to be a larger system
+of alias-tracking to avoid the sameness of variables getting lost in structs and objects.
+
+I think I've made my point well enough now. The question is, what does a system look like that ensures we won't end up
+with untrackably aliased references *and* doesn't make developers tear their hair out when trying to find a way to write
+their code so it will compile?
+
+Stage one -- something so simple that it can be reasonably implemented now to allow building out code so as to see what
+specific problems crop up that need to be solved -- looks like this:
+ * Have reference types.
+ * Don't allow reference types in structs, in unions, or as bound arguments in function bindings.
+ * Functions accepting reference types as arguments are understood to mutate the referenced... let's say objects, for
+   lack of a better word ("instances" sounds weird). Thus, no need to return the objects from the function, and in fact,
+   returning the object is (for now) not allowed.
+   * Possible follow-up would allow it to be returned if it was from e.g. ListBuild.create() or another function rather
+     than passed in as an argument? Would still need to be coordinated with other changes.
+ * References can only be used as expressions when used as arguments to function calls (so no "let foo = bar") and
+   only once per statement. (Arguably this could be "once per function call", but the order of the references matters
+   and this is a more obvious way to define it than by doing something that depends on the function's argument ordering.)
+   * "References can only be used as expressions when used as arguments to function calls" -- this creates a problem
+     with ListBuilder.create(), since we can't just check the type of the value returned...
+ * Non-let statements (that are just function calls) are now allowed.
+I believe this meets the initial goal of having unaliasable references. We can then see what programming patterns most
+need restructuring of references to make them easier to work with.
+
+Idea for solving the `let builder = ListBuilder.create()` vs. `let builder = existingBuilder` validation problem:
+Include in the type system a distinction (for named types) between thing-with-alias and thing-with-no-alias. This could
+be implemented as an AliasType property on the type, with NOT_A_REFERENCE, NOT_ALIASED, and POSSIBLY_ALIASED as options
+(the name of the last accounting for cases of `let foo = if(...) { ListBuilder.create } else { bar }`).
+
+This might create small complications in that there is now a subtyping relationship of sorts between two "types", the
+NOT_ALIASED and POSSIBLY_ALIASED versions of the type, though at least this kind of subtyping doesn't require external
+information (only the two variants of the type with the same name are related to one another, and more importantly, the
+interaction with generics may not require any awareness of the subtyping). There may also be issues with equality tests
+between types, though this probably won't be an issue.

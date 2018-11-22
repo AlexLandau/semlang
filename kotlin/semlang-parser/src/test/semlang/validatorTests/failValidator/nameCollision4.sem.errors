@@ -1,0 +1,10 @@
+
+struct Baz.Adapter {
+       ~~~~~~~~~~~ Duplicate ID Baz.Adapter
+  a: Integer
+}
+
+interface Baz {
+          ~~~ Duplicate ID Baz.Adapter
+  b(): Integer
+}

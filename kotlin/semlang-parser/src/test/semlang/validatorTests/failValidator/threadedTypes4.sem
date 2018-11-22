@@ -1,4 +1,0 @@
-// Integer should not be marked as threaded
-function increment(value: ~Integer): ~Integer {
-  Integer.plus(value, Integer."1")
-}

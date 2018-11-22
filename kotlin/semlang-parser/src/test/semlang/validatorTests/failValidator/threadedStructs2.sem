@@ -1,4 +1,0 @@
-// Threaded structs must have at least one member with a threaded type
-struct ~StringBuilder {
-  list: List<Unicode.String>
-}

@@ -1,0 +1,10 @@
+
+function Bar(): Integer {
+         ~~~ Duplicate ID Bar
+  Integer."1"
+}
+
+function Bar(): Integer {
+         ~~~ Duplicate ID Bar
+  Integer."1"
+}

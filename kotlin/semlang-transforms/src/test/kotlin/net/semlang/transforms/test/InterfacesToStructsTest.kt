@@ -62,8 +62,6 @@ class InterfacesToStructsTest(private val file: File, private val libraries: Lis
         } catch (e: RuntimeException) {
             throw RuntimeException("Simplified context was:\n" + writeToString(validated), e)
         }
-
-        // TODO: Test sem0 output and parsing round-trip
     }
 
 }

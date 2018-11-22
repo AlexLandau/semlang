@@ -1,0 +1,3 @@
+union Foo {
+      ~~~ A union must include at least one option
+}

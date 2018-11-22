@@ -1,0 +1,12 @@
+struct Tweedledee {
+  value: Tweedledum
+}
+
+struct Tweedledum {
+  value: Tweedledee
+}
+
+function getSomething(): Tweedledee {
+  Tweedledee."Hello"
+  ~~~~~~~~~~~~~~~~~~ Error: Literal type involves cycle of structs: [semlang:validatorTestFile:6b34e9c43ba03c3674bb55cfe029855b439da0cf84aebd6fd8f3a03c78c84024:Tweedledee, semlang:validatorTestFile:6b34e9c43ba03c3674bb55cfe029855b439da0cf84aebd6fd8f3a03c78c84024:Tweedledum]
+}

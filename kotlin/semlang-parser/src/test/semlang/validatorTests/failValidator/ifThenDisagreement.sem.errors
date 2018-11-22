@@ -1,0 +1,5 @@
+// Both blocks of an if/then statement must return the same type
+function myFunction(): Integer {
+  if (Boolean."true") { Integer."1" } else { Boolean."false" }
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Cannot reconcile types of 'then' block (Integer) and 'else' block (Boolean)
+}

@@ -5,7 +5,6 @@ import net.semlang.api.Function
 
 typealias ExpressionPredicate = (Expression) -> Boolean
 
-// TODO: Test
 // TODO: Better document
 fun simplifyAllExpressions(context: RawContext): RawContext {
     return ExpressionHoister(context, {true}).apply()
@@ -48,22 +47,22 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     val varNamesInScope = HashSet<String>(varsAlreadyInScope)
     val varNamesToPreserve = HashSet<String>(varsAlreadyInScope + getAllDeclaredVarNames(block))
 
-    val newAssignments = ArrayList<Assignment>()
+    val newStatements = ArrayList<Statement>()
 
     fun apply(): Block {
-        for (assignment in block.assignments) {
+        for (assignment in block.statements) {
             val splitResult = trySplitting(assignment.expression)
-            newAssignments.add(Assignment(assignment.name, assignment.type, splitResult))
+            newStatements.add(Statement(assignment.name, assignment.type, splitResult))
         }
 
         val newReturnedExpression = tryMakingIntoVar(block.returnedExpression)
 
-        return Block(newAssignments, newReturnedExpression)
+        return Block(newStatements, newReturnedExpression)
     }
 
     /**
      * Returns an expression of the same expression type, with this transformation applied. As a side effect, adds any
-     * additional needed assignments to [newAssignments].
+     * additional needed assignments to [newStatements].
      *
      * Note that expressions containing blocks (namely if-then expressions) will have their blocks simplified, but will
      * not have their contents flattened (i.e. moved outside of the blocks).
@@ -152,7 +151,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     /**
      * Returns a transformed version of the expression or a variable. This transformation will also be applied to any
      * components of the expression. As a side effect, adds any additional assignments needed to define any newly
-     * required variables to [newAssignments]. The assignments will give the new expression the same value as the given
+     * required variables to [newStatements]. The assignments will give the new expression the same value as the given
      * expression.
      */
     private fun tryMakingIntoVar(expression: Expression): Expression {
@@ -242,7 +241,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
         }
         return if (shouldHoist(expressionWithNewContents)) {
             val replacementName = createAndRecordNewVarName()
-            newAssignments.add(Assignment(replacementName, null, expressionWithNewContents))
+            newStatements.add(Statement(replacementName, null, expressionWithNewContents))
             Expression.Variable(replacementName)
         } else {
             expressionWithNewContents

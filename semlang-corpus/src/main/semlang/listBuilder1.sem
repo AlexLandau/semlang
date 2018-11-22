@@ -1,9 +1,9 @@
 @Test([], "['1', '4', '9']")
 function buildListUsingBuilder(): List<Integer> {
-  let builder1: ~ListBuilder<Integer> = ListBuilder.create<Integer>()
-  let builder2 = ListBuilder.append<Integer>(builder1, Integer."1")
-  let builder3 = ListBuilder.append<Integer>(builder2, Integer."4")
-  let builder4 = ListBuilder.append<Integer>(builder3, Integer."9")
-  let result: List<Integer> = ListBuilder.build<Integer>(builder4)
+  let builder: &ListBuilder<Integer> = ListBuilder.create<Integer>()
+  ListBuilder.append<Integer>(builder, Integer."1")
+  ListBuilder.append<Integer>(builder, Integer."4")
+  ListBuilder.append<Integer>(builder, Integer."9")
+  let result: List<Integer> = ListBuilder.build<Integer>(builder)
   result
 }
