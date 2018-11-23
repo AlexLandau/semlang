@@ -1,6 +1,8 @@
+package net.semlang.sem2.parser
+
 import net.semlang.sem2.api.*
 import net.semlang.sem2.api.Function
-import net.semlang.sem2.api.Annotation
+import net.semlang.sem2.api.S2Annotation
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
@@ -99,10 +101,10 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
 }
 
 private class ContextListener(val documentId: String) : Sem2ParserBaseListener() {
-    val structs: MutableList<UnvalidatedStruct> = ArrayList()
+    val structs: MutableList<S2Struct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
-    val interfaces: MutableList<UnvalidatedInterface> = ArrayList()
-    val unions: MutableList<UnvalidatedUnion> = ArrayList()
+    val interfaces: MutableList<S2Interface> = ArrayList()
+    val unions: MutableList<S2Union> = ArrayList()
 
     override fun exitFunction(ctx: Sem2Parser.FunctionContext) {
         if (ctx.exception == null) {
@@ -154,11 +156,11 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     + "\n block:" + function.block()
             )
         }
-        val arguments: List<UnvalidatedArgument> = parseFunctionArguments(function.function_arguments())
+        val arguments: List<S2Argument> = parseFunctionArguments(function.function_arguments())
         if (function.type() == null) {
             throw LocationAwareParsingException("Functions must specify a return type", locationOf(function))
         }
-        val returnType: UnvalidatedType = parseType(function.type())
+        val returnType: S2Type = parseType(function.type())
 
         val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
         val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
@@ -169,7 +171,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return Function(id, typeParameters, arguments, returnType, block, annotations, locationOf(function.entity_id()), locationOf(function.type()))
     }
 
-    private fun parseStruct(ctx: Sem2Parser.StructContext): UnvalidatedStruct {
+    private fun parseStruct(ctx: Sem2Parser.StructContext): S2Struct {
         val id: EntityId = parseEntityId(ctx.entity_id())
 
         val typeParameters: List<TypeParameter> = if (ctx.cd_type_parameters() != null) {
@@ -179,17 +181,17 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
 
         val members: List<UnvalidatedMember> = parseMembers(ctx.members())
-        val requires: Block? = ctx.maybe_requires().block()?.let {
+        val requires: S2Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             scopeBlock(externalVarIds, parseBlock(it))
         }
 
         val annotations = parseAnnotations(ctx.annotations())
 
-        return UnvalidatedStruct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
+        return S2Struct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
     }
 
-    private fun parseInterface(interfac: Sem2Parser.InterfacContext): UnvalidatedInterface {
+    private fun parseInterface(interfac: Sem2Parser.InterfacContext): S2Interface {
         val id = parseEntityId(interfac.entity_id())
         val typeParameters = if (interfac.GREATER_THAN() != null) {
             parseTypeParameters(interfac.cd_type_parameters())
@@ -200,10 +202,10 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
         val annotations = parseAnnotations(interfac.annotations())
 
-        return UnvalidatedInterface(id, typeParameters, methods, annotations, locationOf(interfac.entity_id()))
+        return S2Interface(id, typeParameters, methods, annotations, locationOf(interfac.entity_id()))
     }
 
-    private fun parseUnion(union: Sem2Parser.UnionContext): UnvalidatedUnion {
+    private fun parseUnion(union: Sem2Parser.UnionContext): S2Union {
         val id = parseEntityId(union.entity_id())
         val typeParameters = if (union.GREATER_THAN() != null) {
             parseTypeParameters(union.cd_type_parameters())
@@ -214,11 +216,11 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
         val annotations = parseAnnotations(union.annotations())
 
-        return UnvalidatedUnion(id, typeParameters, options, annotations, locationOf(union.entity_id()))
+        return S2Union(id, typeParameters, options, annotations, locationOf(union.entity_id()))
     }
 
 
-    private fun parseAnnotations(annotations: Sem2Parser.AnnotationsContext?): List<Annotation> {
+    private fun parseAnnotations(annotations: Sem2Parser.AnnotationsContext?): List<S2Annotation> {
         if (annotations == null) {
             return listOf()
         }
@@ -229,7 +231,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 this::parseAnnotation)
     }
 
-    private fun parseAnnotation(annotation: Sem2Parser.AnnotationContext): Annotation {
+    private fun parseAnnotation(annotation: Sem2Parser.AnnotationContext): S2Annotation {
         val name = parseEntityId(annotation.annotation_name().entity_id())
         val args = if (annotation.annotation_contents_list() != null) {
             parseAnnotationArgumentsList(annotation.annotation_contents_list())
@@ -237,7 +239,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             listOf()
         }
 
-        return Annotation(name, args)
+        return S2Annotation(name, args)
     }
 
     private fun parseAnnotationArgumentsList(list: Sem2Parser.Annotation_contents_listContext): List<AnnotationArgument> {
@@ -255,39 +257,39 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
     }
 
-    private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): Block {
+    private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): S2Block {
         val localVariableIds = ArrayList(externalVariableIds)
-        val statements: MutableList<Statement> = ArrayList()
+        val statements: MutableList<S2Statement> = ArrayList()
         for (statement in ambiguousBlock.statements) {
             val expression = scopeExpression(localVariableIds, statement.expression)
             val name = statement.name
             if (name != null) {
                 localVariableIds.add(EntityRef.of(name))
             }
-            statements.add(Statement(statement.name, statement.type, expression, statement.nameLocation))
+            statements.add(S2Statement(statement.name, statement.type, expression, statement.nameLocation))
         }
         val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
-        return Block(statements, returnedExpression, ambiguousBlock.location)
+        return S2Block(statements, returnedExpression, ambiguousBlock.location)
     }
 
     // TODO: Is it inefficient for varIds to be an ArrayList here?
 // TODO: See if we can pull out the scoping step entirely, or rewrite (has seen too many changes now)
-    private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): Expression {
+    private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): S2Expression {
         return when (expression) {
-            is AmbiguousExpression.Follow -> Expression.Follow(
+            is AmbiguousExpression.Follow -> S2Expression.Follow(
                     scopeExpression(varIds, expression.structureExpression),
                     expression.name,
                     expression.location)
             is AmbiguousExpression.VarOrNamedFunctionBinding -> {
                 if (varIds.contains(expression.functionIdOrVariable)) {
                     // TODO: The position of the variable is incorrect here
-                    return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
+                    return S2Expression.ExpressionFunctionBinding(S2Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                             chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
 
-                    return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
+                    return S2Expression.NamedFunctionBinding(expression.functionIdOrVariable,
                             bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                             chosenParameters = expression.chosenParameters,
                             location = expression.location,
@@ -300,13 +302,13 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
-                return Expression.ExpressionFunctionBinding(
+                return S2Expression.ExpressionFunctionBinding(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
                         chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
-            is AmbiguousExpression.IfThen -> Expression.IfThen(
+            is AmbiguousExpression.IfThen -> S2Expression.IfThen(
                     scopeExpression(varIds, expression.condition),
                     thenBlock = scopeBlock(varIds, expression.thenBlock),
                     elseBlock = scopeBlock(varIds, expression.elseBlock),
@@ -314,14 +316,14 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             )
             is AmbiguousExpression.VarOrNamedFunctionCall -> {
                 if (varIds.contains(expression.functionIdOrVariable)) {
-                    return Expression.ExpressionFunctionCall(
+                    return S2Expression.ExpressionFunctionCall(
                             // TODO: The position of the variable is incorrect here
-                            functionExpression = Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
+                            functionExpression = S2Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
                             arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                             chosenParameters = expression.chosenParameters,
                             location = expression.location)
                 } else {
-                    return Expression.NamedFunctionCall(
+                    return S2Expression.NamedFunctionCall(
                             functionRef = expression.functionIdOrVariable,
                             arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                             chosenParameters = expression.chosenParameters,
@@ -335,22 +337,22 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
                     error("The parser is not supposed to create this situation")
                 }
-                return Expression.ExpressionFunctionCall(
+                return S2Expression.ExpressionFunctionCall(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
                         chosenParameters = expression.chosenParameters,
                         location = expression.location)
             }
-            is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.location)
+            is AmbiguousExpression.Literal -> S2Expression.Literal(expression.type, expression.literal, expression.location)
             is AmbiguousExpression.ListLiteral -> {
                 val contents = expression.contents.map { item -> scopeExpression(varIds, item) }
-                Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
+                S2Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
             }
-            is AmbiguousExpression.Variable -> Expression.Variable(expression.name, expression.location)
+            is AmbiguousExpression.Variable -> S2Expression.Variable(expression.name, expression.location)
             is AmbiguousExpression.InlineFunction -> {
                 val varIdsOutsideBlock = varIds + expression.arguments.map { arg -> EntityRef.of(arg.name) }
                 val scopedBlock = scopeBlock(varIdsOutsideBlock, expression.block)
-                Expression.InlineFunction(
+                S2Expression.InlineFunction(
                         expression.arguments,
                         expression.returnType,
                         scopedBlock,
@@ -533,17 +535,17 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 this::parseExpression)
     }
 
-    private fun parseFunctionArguments(function_arguments: Sem2Parser.Function_argumentsContext): List<UnvalidatedArgument> {
+    private fun parseFunctionArguments(function_arguments: Sem2Parser.Function_argumentsContext): List<S2Argument> {
         return parseLinkedList(function_arguments,
                 Sem2Parser.Function_argumentsContext::function_argument,
                 Sem2Parser.Function_argumentsContext::function_arguments,
                 this::parseFunctionArgument)
     }
 
-    private fun parseFunctionArgument(function_argument: Sem2Parser.Function_argumentContext): UnvalidatedArgument {
+    private fun parseFunctionArgument(function_argument: Sem2Parser.Function_argumentContext): S2Argument {
         val name = function_argument.ID().text
         val type = parseType(function_argument.type())
-        return UnvalidatedArgument(name, type, locationOf(function_argument))
+        return S2Argument(name, type, locationOf(function_argument))
     }
 
     private fun parseTypeRef(type_ref: Sem2Parser.Type_refContext): EntityRef {
@@ -552,12 +554,12 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             null
         } else {
             if (module_ref.childCount == 1) {
-                ModuleRef(null, module_ref.module_id(0).text, null)
+                S2ModuleRef(null, module_ref.module_id(0).text, null)
             } else if (module_ref.childCount == 3) {
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
+                S2ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
             } else if (module_ref.childCount == 5) {
                 val version = module_ref.LITERAL().text.drop(1).dropLast(1)
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
+                S2ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
             } else {
                 error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
             }
@@ -572,12 +574,12 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             null
         } else {
             if (module_ref.childCount == 1) {
-                ModuleRef(null, module_ref.module_id(0).text, null)
+                S2ModuleRef(null, module_ref.module_id(0).text, null)
             } else if (module_ref.childCount == 3) {
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
+                S2ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, null)
             } else if (module_ref.childCount == 5) {
                 val version = module_ref.LITERAL().text.drop(1).dropLast(1)
-                ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
+                S2ModuleRef(module_ref.module_id(0).text, module_ref.module_id(1).text, version)
             } else {
                 error("module_ref was $module_ref, childCount was ${module_ref.childCount}")
             }
@@ -603,7 +605,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 TerminalNode::getText)
     }
 
-    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem2Parser.Type_or_underscoreContext): UnvalidatedType? {
+    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem2Parser.Type_or_underscoreContext): S2Type? {
         if (typeOrUnderscore.type() != null) {
             return parseType(typeOrUnderscore.type())
         } else {
@@ -612,7 +614,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
     }
 
-    private fun parseType(type: Sem2Parser.TypeContext): UnvalidatedType {
+    private fun parseType(type: Sem2Parser.TypeContext): S2Type {
         if (type.ARROW() != null) {
             //Function type
             val typeParameters = if (type.cd_type_parameters() != null) {
@@ -622,7 +624,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType, locationOf(type))
+            return S2Type.FunctionType(typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
         if (type.LESS_THAN() != null) {
@@ -636,44 +638,44 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         throw IllegalArgumentException("Unparsed type " + type.text)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem2Parser.Cd_typesContext): List<UnvalidatedType> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem2Parser.Cd_typesContext): List<S2Type> {
         return parseLinkedList(cd_types,
                 Sem2Parser.Cd_typesContext::type,
                 Sem2Parser.Cd_typesContext::cd_types,
                 this::parseType)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem2Parser.Cd_types_nonemptyContext): List<UnvalidatedType> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem2Parser.Cd_types_nonemptyContext): List<S2Type> {
         return parseLinkedList(cd_types,
                 Sem2Parser.Cd_types_nonemptyContext::type,
                 Sem2Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
     }
 
-    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem2Parser.Cd_types_or_underscores_nonemptyContext): List<UnvalidatedType?> {
+    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem2Parser.Cd_types_or_underscores_nonemptyContext): List<S2Type?> {
         return parseLinkedList(cd_types,
                 Sem2Parser.Cd_types_or_underscores_nonemptyContext::type_or_underscore,
                 Sem2Parser.Cd_types_or_underscores_nonemptyContext::cd_types_or_underscores_nonempty,
                 this::parseTypeOrUnderscore)
     }
 
-    private fun parseTypeGivenParameters(type_ref: Sem2Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {
+    private fun parseTypeGivenParameters(type_ref: Sem2Parser.Type_refContext, parameters: List<S2Type>, typeLocation: Location): S2Type {
         val isReference = type_ref.AMPERSAND() != null
         if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isReference, parameters, typeLocation)
+            return S2Type.NamedType(parseTypeRef(type_ref), isReference, parameters, typeLocation)
         }
 
         val typeId = type_ref.entity_id().ID().text
         if (typeId == "Integer") {
             if (isReference) {
-                return UnvalidatedType.Invalid.ReferenceInteger(typeLocation)
+                return S2Type.Invalid.ReferenceInteger(typeLocation)
             }
-            return UnvalidatedType.Integer(typeLocation)
+            return S2Type.Integer(typeLocation)
         } else if (typeId == "Boolean") {
             if (isReference) {
-                return UnvalidatedType.Invalid.ReferenceBoolean(typeLocation)
+                return S2Type.Invalid.ReferenceBoolean(typeLocation)
             }
-            return UnvalidatedType.Boolean(typeLocation)
+            return S2Type.Boolean(typeLocation)
         } else if (typeId == "List") {
             if (isReference) {
                 throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))
@@ -681,7 +683,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             if (parameters.size != 1) {
                 error("List should only accept a single parameter; parameters were: $parameters")
             }
-            return UnvalidatedType.List(parameters[0], typeLocation)
+            return S2Type.List(parameters[0], typeLocation)
         } else if (typeId == "Maybe") {
             if (isReference) {
                 throw LocationAwareParsingException("Maybe is not a reference type; remove the &", locationOf(type_ref))
@@ -689,20 +691,20 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             if (parameters.size != 1) {
                 error("Maybe should only accept a single parameter; parameters were: $parameters")
             }
-            return UnvalidatedType.Maybe(parameters[0], typeLocation)
+            return S2Type.Maybe(parameters[0], typeLocation)
         }
 
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
+        return S2Type.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
     }
 
-    private fun parseMethods(methods: Sem2Parser.MethodsContext): List<UnvalidatedMethod> {
+    private fun parseMethods(methods: Sem2Parser.MethodsContext): List<S2Method> {
         return parseLinkedList(methods,
                 Sem2Parser.MethodsContext::method,
                 Sem2Parser.MethodsContext::methods,
                 this::parseMethod)
     }
 
-    private fun parseMethod(method: Sem2Parser.MethodContext): UnvalidatedMethod {
+    private fun parseMethod(method: Sem2Parser.MethodContext): S2Method {
         val name = method.ID().text
         val typeParameters = if (method.GREATER_THAN() != null) {
             parseTypeParameters(method.cd_type_parameters())
@@ -712,38 +714,38 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         val arguments = parseFunctionArguments(method.function_arguments())
         val returnType = parseType(method.type())
 
-        return UnvalidatedMethod(name, typeParameters, arguments, returnType)
+        return S2Method(name, typeParameters, arguments, returnType)
     }
 
-    private fun parseOptions(options: Sem2Parser.DisjunctsContext): List<UnvalidatedOption> {
+    private fun parseOptions(options: Sem2Parser.DisjunctsContext): List<S2Option> {
         return parseLinkedList(options,
                 Sem2Parser.DisjunctsContext::disjunct,
                 Sem2Parser.DisjunctsContext::disjuncts,
                 this::parseOption)
     }
 
-    private fun parseOption(option: Sem2Parser.DisjunctContext): UnvalidatedOption {
+    private fun parseOption(option: Sem2Parser.DisjunctContext): S2Option {
         val name = option.ID().text
-        val type: UnvalidatedType? = option.type()?.let { parseType(it) }
+        val type: S2Type? = option.type()?.let { parseType(it) }
 
-        return UnvalidatedOption(name, type, locationOf(option.ID().symbol))
+        return S2Option(name, type, locationOf(option.ID().symbol))
     }
 }
 
 sealed class ParsingResult {
-    abstract fun assumeSuccess(): RawContext
-    data class Success(val context: RawContext): ParsingResult() {
-        override fun assumeSuccess(): RawContext {
+    abstract fun assumeSuccess(): S2Context
+    data class Success(val context: S2Context): ParsingResult() {
+        override fun assumeSuccess(): S2Context {
             return context
         }
     }
-    data class Failure(val errors: List<Issue>, val partialContext: RawContext): ParsingResult() {
+    data class Failure(val errors: List<Issue>, val partialContext: S2Context): ParsingResult() {
         init {
             if (errors.isEmpty()) {
                 error("We are reporting a parsing failure, but no errors were recorded")
             }
         }
-        override fun assumeSuccess(): RawContext {
+        override fun assumeSuccess(): S2Context {
             error("Parsing was not successful. Errors: $errors")
         }
     }
@@ -751,9 +753,9 @@ sealed class ParsingResult {
 
 fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
     val allFunctions = ArrayList<Function>()
-    val allStructs = ArrayList<UnvalidatedStruct>()
-    val allInterfaces = ArrayList<UnvalidatedInterface>()
-    val allUnions = ArrayList<UnvalidatedUnion>()
+    val allStructs = ArrayList<S2Struct>()
+    val allInterfaces = ArrayList<S2Interface>()
+    val allUnions = ArrayList<S2Union>()
     val allErrors = ArrayList<Issue>()
     for (parsingResult in results) {
         if (parsingResult is ParsingResult.Success) {
@@ -771,7 +773,7 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
             allUnions.addAll(context.unions)
         }
     }
-    val combinedContext = RawContext(allFunctions, allStructs, allInterfaces, allUnions)
+    val combinedContext = S2Context(allFunctions, allStructs, allInterfaces, allUnions)
     if (allErrors.isEmpty()) {
         return ParsingResult.Success(combinedContext)
     } else {
@@ -844,11 +846,11 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+        val partialContext = S2Context(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
         return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty() + if (e.cause?.message != null) {": " + e.cause.message.orEmpty()} else "", e.location, IssueLevel.ERROR)), partialContext)
     }
 
-    val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+    val context = S2Context(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
     if (!errorListener.errorsFound.isEmpty()) {
         return ParsingResult.Failure(errorListener.errorsFound, context)
     }
