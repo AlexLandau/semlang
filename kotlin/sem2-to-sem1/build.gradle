@@ -2,7 +2,7 @@ dependencies {
   compile project(':kotlin:sem2-lang')
   compile project(':kotlin:semlang-api')
   testCompile project(':kotlin:sem2-parser')
-//  testCompile project(':kotlin:semlang-test-utils')
+  testCompile project(':kotlin:semlang-test-utils')
 }
 
 //tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))

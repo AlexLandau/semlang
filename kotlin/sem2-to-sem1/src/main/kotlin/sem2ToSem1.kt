@@ -14,8 +14,6 @@ import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 
 fun translateSem2ContextToSem1(context: S2Context): RawContext {
-//    val functions = context.functions.map
-//    return RawContext(functions, structs, interfaces, unions)
     return Sem1ToSem2Translator(context).translate()
 }
 
@@ -116,7 +114,80 @@ private class Sem1ToSem2Translator(val context: S2Context) {
 
     private fun translate(expression: S2Expression): Expression {
         return when (expression) {
-
+            // TODO: Revamp how Sem2 deals with expressions
+            is S2Expression.Variable -> {
+                Expression.Variable(name = expression.name, location = translate(expression.location))
+            }
+            is S2Expression.IfThen -> {
+                Expression.IfThen(
+                        condition = translate(expression.condition),
+                        thenBlock = translate(expression.thenBlock),
+                        elseBlock = translate(expression.elseBlock),
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.NamedFunctionCall -> {
+                Expression.NamedFunctionCall(
+                        functionRef = translate(expression.functionRef),
+                        arguments = expression.arguments.map(::translate),
+                        chosenParameters = expression.chosenParameters.map(::translate),
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.ExpressionFunctionCall -> {
+                Expression.ExpressionFunctionCall(
+                        functionExpression = translate(expression.functionExpression),
+                        arguments = expression.arguments.map(::translate),
+                        chosenParameters = expression.chosenParameters.map(::translate),
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.Literal -> {
+                Expression.Literal(
+                        type = translate(expression.type),
+                        literal = expression.literal,
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.ListLiteral -> {
+                Expression.ListLiteral(
+                        contents = expression.contents.map(::translate),
+                        chosenParameter = translate(expression.chosenParameter),
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.NamedFunctionBinding -> {
+                Expression.NamedFunctionBinding(
+                        functionRef = translate(expression.functionRef),
+                        bindings = expression.bindings.map { if (it == null) null else translate(it) },
+                        chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
+                        location = translate(expression.location),
+                        functionRefLocation = translate(expression.functionRefLocation)
+                )
+            }
+            is S2Expression.ExpressionFunctionBinding -> {
+                Expression.ExpressionFunctionBinding(
+                        functionExpression = translate(expression.functionExpression),
+                        bindings = expression.bindings.map { if (it == null) null else translate(it) },
+                        chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.Follow -> {
+                Expression.Follow(
+                        structureExpression = translate(expression.structureExpression),
+                        name = expression.name,
+                        location = translate(expression.location)
+                )
+            }
+            is S2Expression.InlineFunction -> {
+                Expression.InlineFunction(
+                        arguments = expression.arguments.map(::translate),
+                        returnType = translate(expression.returnType),
+                        block = translate(expression.block),
+                        location = translate(expression.location)
+                )
+            }
         }
     }
 
@@ -209,3 +280,35 @@ private class Sem1ToSem2Translator(val context: S2Context) {
                 idLocation = translate(option.idLocation))
     }
 }
+
+/*
+Okay, let's speculate a bit on how sem2 expressions will work
+
+We want to be able to use . for pretty much everything:
+
+Namespaces (like in sem1): List.get(myList, 1)
+Method-like functions: myList.get(1)
+ - This looks for a method in the namespace of the type of the variable that takes a thing of that type as its first arg
+Struct access: myPair.left
+
+So these will presumably just be parsed as a.sequence.of.arbitrary.strings.with.unknown.expression.type and leave
+figuring out what looks like a variable or a namespace or an entity until translation time, when we have a list of
+entity IDs (and we'll track variables in scope as well).
+
+We'll also want different kinds of literals (eventually, at least) and operators, which will correspond to functions
+with specific expected names and signatures, as in Kotlin. (Maybe some magic around struct comparisons: myInt + myNatural
+and myNatural + myInt should both work via some sort of coercion to Integer.plus(myInt, myNatural->integer).)
+
+Stuff to consider:
+
+- DottedSequences can be followed by () or |()
+- Are all () and |() preceded by DottedSequences? Not quite, they can also be connected to each other
+- We'll also want some cleaner lambda expression notation with (args) -> output, probably
+- Also :: notation for some shortcut references to things, or should we just use .? How about e.g. Pair::left for struct
+  references?
+- While loops and for loops - these might test our ability to handle references in these situations, or we might just
+  disallow references in these for now
+- Similarly: val and var as options (vars being necessary for while/for loops to be useful)
+- Eventually: Contexts
+
+ */

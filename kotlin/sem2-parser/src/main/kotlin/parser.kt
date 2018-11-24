@@ -1,7 +1,7 @@
 package net.semlang.sem2.parser
 
 import net.semlang.sem2.api.*
-import net.semlang.sem2.api.Function
+import net.semlang.sem2.api.S2Function
 import net.semlang.sem2.api.S2Annotation
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
@@ -102,7 +102,7 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
 
 private class ContextListener(val documentId: String) : Sem2ParserBaseListener() {
     val structs: MutableList<S2Struct> = ArrayList()
-    val functions: MutableList<Function> = ArrayList()
+    val functions: MutableList<S2Function> = ArrayList()
     val interfaces: MutableList<S2Interface> = ArrayList()
     val unions: MutableList<S2Union> = ArrayList()
 
@@ -138,7 +138,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return Location(documentId, rangeOf(token))
     }
 
-    private fun parseFunction(function: Sem2Parser.FunctionContext): Function {
+    private fun parseFunction(function: Sem2Parser.FunctionContext): S2Function {
         // TODO: Frequently get "entity_id() must not be null" here when editing code
         val id: EntityId = parseEntityId(function.entity_id())
 
@@ -168,7 +168,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
         val annotations = parseAnnotations(function.annotations())
 
-        return Function(id, typeParameters, arguments, returnType, block, annotations, locationOf(function.entity_id()), locationOf(function.type()))
+        return S2Function(id, typeParameters, arguments, returnType, block, annotations, locationOf(function.entity_id()), locationOf(function.type()))
     }
 
     private fun parseStruct(ctx: Sem2Parser.StructContext): S2Struct {
@@ -180,7 +180,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             listOf()
         }
 
-        val members: List<UnvalidatedMember> = parseMembers(ctx.members())
+        val members: List<S2Member> = parseMembers(ctx.members())
         val requires: S2Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             scopeBlock(externalVarIds, parseBlock(it))
@@ -242,19 +242,19 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return S2Annotation(name, args)
     }
 
-    private fun parseAnnotationArgumentsList(list: Sem2Parser.Annotation_contents_listContext): List<AnnotationArgument> {
+    private fun parseAnnotationArgumentsList(list: Sem2Parser.Annotation_contents_listContext): List<S2AnnotationArgument> {
         return parseLinkedList(list,
                 Sem2Parser.Annotation_contents_listContext::annotation_item,
                 Sem2Parser.Annotation_contents_listContext::annotation_contents_list,
                 this::parseAnnotationArgument)
     }
 
-    private fun parseAnnotationArgument(annotationArg: Sem2Parser.Annotation_itemContext): AnnotationArgument {
+    private fun parseAnnotationArgument(annotationArg: Sem2Parser.Annotation_itemContext): S2AnnotationArgument {
         if (annotationArg.LBRACKET() != null) {
             val contents = parseAnnotationArgumentsList(annotationArg.annotation_contents_list())
-            return AnnotationArgument.List(contents)
+            return S2AnnotationArgument.List(contents)
         }
-        return AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
+        return S2AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
     }
 
     private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): S2Block {
@@ -385,17 +385,17 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         throw IllegalArgumentException("Couldn't parse type class: ${type_class}")
     }
 
-    private fun parseMembers(members: Sem2Parser.MembersContext): List<UnvalidatedMember> {
+    private fun parseMembers(members: Sem2Parser.MembersContext): List<S2Member> {
         return parseLinkedList(members,
                 Sem2Parser.MembersContext::member,
                 Sem2Parser.MembersContext::members,
                 this::parseMember)
     }
 
-    private fun parseMember(member: Sem2Parser.MemberContext): UnvalidatedMember {
+    private fun parseMember(member: Sem2Parser.MemberContext): S2Member {
         val name = member.ID().text
         val type = parseType(member.type())
-        return UnvalidatedMember(name, type)
+        return S2Member(name, type)
     }
 
     private fun parseBlock(block: Sem2Parser.BlockContext): AmbiguousBlock {
@@ -752,7 +752,7 @@ sealed class ParsingResult {
 }
 
 fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
-    val allFunctions = ArrayList<Function>()
+    val allFunctions = ArrayList<S2Function>()
     val allStructs = ArrayList<S2Struct>()
     val allInterfaces = ArrayList<S2Interface>()
     val allUnions = ArrayList<S2Union>()
