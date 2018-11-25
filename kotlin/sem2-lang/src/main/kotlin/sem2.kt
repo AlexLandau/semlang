@@ -294,11 +294,11 @@ sealed class S2AnnotationArgument {
 // Pre-scoping
 sealed class AmbiguousExpression {
     abstract val location: Location
-    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<S2Type?>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
+//    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
+    data class DottedSequence(val strings: List<String>, override val location: Location): AmbiguousExpression()
+    // TODO: Renames to remove "ExpressionOrNamed"
     data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<S2Type?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<S2Type>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
     data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<S2Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
     data class Literal(val type: S2Type, val literal: String, override val location: Location): AmbiguousExpression()
     data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: S2Type, override val location: Location): AmbiguousExpression()

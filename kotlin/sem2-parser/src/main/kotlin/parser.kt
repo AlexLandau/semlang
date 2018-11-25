@@ -6,10 +6,12 @@ import net.semlang.sem2.api.S2Annotation
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
+import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.tree.TerminalNode
 import sem2.antlr.Sem2Lexer
 import sem2.antlr.Sem2Parser
+import sem2.antlr.Sem2Parser.ID
 import sem2.antlr.Sem2ParserBaseListener
 import java.io.File
 import java.util.*
@@ -280,28 +282,8 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     scopeExpression(varIds, expression.structureExpression),
                     expression.name,
                     expression.location)
-            is AmbiguousExpression.VarOrNamedFunctionBinding -> {
-                if (varIds.contains(expression.functionIdOrVariable)) {
-                    // TODO: The position of the variable is incorrect here
-                    return S2Expression.ExpressionFunctionBinding(S2Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
-                            bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location)
-                } else {
-
-                    return S2Expression.NamedFunctionBinding(expression.functionIdOrVariable,
-                            bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location,
-                            functionRefLocation = expression.varOrNameLocation)
-                }
-            }
             is AmbiguousExpression.ExpressionOrNamedFunctionBinding -> {
                 val innerExpression = expression.expression
-                if (innerExpression is AmbiguousExpression.Variable) {
-                    // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
-                    error("The parser is not supposed to create this situation")
-                }
                 return S2Expression.ExpressionFunctionBinding(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
@@ -314,29 +296,8 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     elseBlock = scopeBlock(varIds, expression.elseBlock),
                     location = expression.location
             )
-            is AmbiguousExpression.VarOrNamedFunctionCall -> {
-                if (varIds.contains(expression.functionIdOrVariable)) {
-                    return S2Expression.ExpressionFunctionCall(
-                            // TODO: The position of the variable is incorrect here
-                            functionExpression = S2Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
-                            arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location)
-                } else {
-                    return S2Expression.NamedFunctionCall(
-                            functionRef = expression.functionIdOrVariable,
-                            arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location,
-                            functionRefLocation = expression.varOrNameLocation)
-                }
-            }
             is AmbiguousExpression.ExpressionOrNamedFunctionCall -> {
                 val innerExpression = expression.expression
-                if (innerExpression is AmbiguousExpression.Variable) {
-                    // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
-                    error("The parser is not supposed to create this situation")
-                }
                 return S2Expression.ExpressionFunctionCall(
                         functionExpression = scopeExpression(varIds, innerExpression),
                         arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
@@ -348,7 +309,8 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 val contents = expression.contents.map { item -> scopeExpression(varIds, item) }
                 S2Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
             }
-            is AmbiguousExpression.Variable -> S2Expression.Variable(expression.name, expression.location)
+            is AmbiguousExpression.DottedSequence -> {
+            }
             is AmbiguousExpression.InlineFunction -> {
                 val varIdsOutsideBlock = varIds + expression.arguments.map { arg -> EntityRef.of(arg.name) }
                 val scopedBlock = scopeBlock(varIdsOutsideBlock, expression.block)
@@ -458,11 +420,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 } else {
                     null
                 }
-                val functionRefOrVar = if (expression.entity_ref() != null) {
-                    parseEntityRef(expression.entity_ref())
-                } else {
-                    null
-                }
 
                 if (expression.PIPE() != null) {
                     val chosenParameters = if (expression.LESS_THAN() != null) {
@@ -472,11 +429,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     }
                     val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-                    if (functionRefOrVar != null) {
-                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
-                    } else {
-                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression), locationOf(expression.expression()))
-                    }
+                    return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression), locationOf(expression.expression()))
                 }
 
                 val chosenParameters = if (expression.LESS_THAN() != null) {
@@ -485,11 +438,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     listOf()
                 }
                 val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-                if (functionRefOrVar != null) {
-                    return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
-                } else {
-                    return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
-                }
+                return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
             }
 
             if (expression.LBRACKET() != null) {
@@ -498,9 +447,14 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return AmbiguousExpression.ListLiteral(contents, chosenParameter, locationOf(expression))
             }
 
-            if (expression.ID() != null) {
-                return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
+            if (expression.dotted_sequence() != null) {
+                val strings = parseDottedSequence(expression.dotted_sequence())
+                return AmbiguousExpression.DottedSequence(strings, locationOf(expression))
             }
+
+//            if (expression.ID() != null) {
+//                return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
+//            }
 
             throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
         } catch (e: Exception) {
@@ -512,6 +466,13 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
     }
 
+    private fun parseDottedSequence(dotted_sequence: Sem2Parser.Dotted_sequenceContext): List<String> {
+        return parseLinkedList(dotted_sequence,
+                Sem2Parser.Dotted_sequenceContext::ID,
+                Sem2Parser.Dotted_sequenceContext::dotted_sequence,
+                { it: TerminalNode -> it.text}
+        )
+    }
 
     private fun parseBindings(cd_expressions_or_underscores: Sem2Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
         return parseLinkedList(cd_expressions_or_underscores,

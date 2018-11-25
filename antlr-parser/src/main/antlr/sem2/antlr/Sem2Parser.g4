@@ -154,16 +154,15 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | LBRACKET cd_expressions RBRACKET LESS_THAN type GREATER_THAN
   | expression ARROW ID
   | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
-  | entity_ref PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
   | expression LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
-  | entity_ref LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
   | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
-  | entity_ref LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
-  | entity_ref LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
-  | ID // Variable
+  | dotted_sequence
   ;
+    catch[RecognitionException e] { throw e; }
+
+dotted_sequence : ID | ID DOT dotted_sequence ;
     catch[RecognitionException e] { throw e; }
 
 // cd_expressions may be empty
