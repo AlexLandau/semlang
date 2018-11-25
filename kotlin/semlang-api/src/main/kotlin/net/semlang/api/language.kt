@@ -825,22 +825,7 @@ sealed class AnnotationArgument {
     data class List(val values: kotlin.collections.List<AnnotationArgument>): AnnotationArgument()
 }
 
-// Pre-scoping
-sealed class AmbiguousExpression {
-    abstract val location: Location
-    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionBinding(val functionIdOrVariable: EntityRef, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-    data class VarOrNamedFunctionCall(val functionIdOrVariable: EntityRef, val arguments: List<AmbiguousExpression>, val chosenParameters: List<UnvalidatedType>, override val location: Location, val varOrNameLocation: Location): AmbiguousExpression()
-    data class ExpressionOrNamedFunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<UnvalidatedType>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-    data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location): AmbiguousExpression()
-    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: UnvalidatedType, override val location: Location): AmbiguousExpression()
-    data class Follow(val structureExpression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
-    data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-}
-
-// Post-scoping, pre-type-analysis
+// Pre-type-analysis
 sealed class Expression {
     abstract val location: Location?
     data class Variable(val name: String, override val location: Location? = null): Expression()
@@ -901,12 +886,10 @@ sealed class TypedExpression {
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
 // effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-data class AmbiguousStatement(val name: String?, val type: UnvalidatedType?, val expression: AmbiguousExpression, val nameLocation: Location?)
 data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
 data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
-data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
 data class Block(val statements: List<Statement>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val returnedExpression: TypedExpression)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {

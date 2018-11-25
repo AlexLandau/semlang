@@ -102,6 +102,35 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
     return results
 }
 
+/**
+ * A common pattern in our parsing is defining a list of things as something like:
+ *
+ * annotations : | annotation annotations ;
+ *
+ * This is a utility method for converting such a "linked list" pattern to an ArrayList
+ * of the parsed equivalent.
+ */
+private fun <ThingContext, ThingsContext, Thing, AddedArg> parseLinkedList(linkedListRoot: ThingsContext,
+                                                                 getHead: (ThingsContext) -> ThingContext?,
+                                                                 getRestOf: (ThingsContext) -> ThingsContext?,
+                                                                 parseUnit: (ThingContext, AddedArg) -> Thing,
+                                                                 additionalArgument: AddedArg): ArrayList<Thing> {
+    val results = ArrayList<Thing>()
+    var inputs = linkedListRoot
+    while (true) {
+        val head = getHead(inputs)
+        if (head != null) {
+            results.add(parseUnit(head, additionalArgument))
+        }
+        val rest = getRestOf(inputs)
+        if (rest == null) {
+            break
+        }
+        inputs = rest
+    }
+    return results
+}
+
 private class ContextListener(val documentId: String) : Sem1ParserBaseListener() {
     val structs: MutableList<UnvalidatedStruct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
@@ -164,9 +193,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         }
         val returnType: UnvalidatedType = parseType(function.type())
 
-        val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
-        val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
-        val block = scopeBlock(argumentVariableIds, ambiguousBlock)
+        val block: Block = parseBlock(function.block(), arguments.map { it.name }.toSet())
 
         val annotations = parseAnnotations(function.annotations())
 
@@ -184,8 +211,8 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
         val members: List<UnvalidatedMember> = parseMembers(ctx.members())
         val requires: Block? = ctx.maybe_requires().block()?.let {
-            val externalVarIds = members.map { member -> EntityRef.of(member.name) }
-            scopeBlock(externalVarIds, parseBlock(it))
+            val externalVarNames = members.map { member -> member.name }.toSet()
+            parseBlock(it, externalVarNames)
         }
 
         val annotations = parseAnnotations(ctx.annotations())
@@ -259,111 +286,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
     }
 
-    private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): Block {
-        val localVariableIds = ArrayList(externalVariableIds)
-        val statements: MutableList<Statement> = ArrayList()
-        for (statement in ambiguousBlock.statements) {
-            val expression = scopeExpression(localVariableIds, statement.expression)
-            val name = statement.name
-            if (name != null) {
-                localVariableIds.add(EntityRef.of(name))
-            }
-            statements.add(Statement(statement.name, statement.type, expression, statement.nameLocation))
-        }
-        val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
-        return Block(statements, returnedExpression, ambiguousBlock.location)
-    }
-
-    // TODO: Is it inefficient for varIds to be an ArrayList here?
-// TODO: See if we can pull out the scoping step entirely, or rewrite (has seen too many changes now)
-    private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): Expression {
-        return when (expression) {
-            is AmbiguousExpression.Follow -> Expression.Follow(
-                    scopeExpression(varIds, expression.structureExpression),
-                    expression.name,
-                    expression.location)
-            is AmbiguousExpression.VarOrNamedFunctionBinding -> {
-                if (varIds.contains(expression.functionIdOrVariable)) {
-                    // TODO: The position of the variable is incorrect here
-                    return Expression.ExpressionFunctionBinding(Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
-                            bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location)
-                } else {
-
-                    return Expression.NamedFunctionBinding(expression.functionIdOrVariable,
-                            bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location,
-                            functionRefLocation = expression.varOrNameLocation)
-                }
-            }
-            is AmbiguousExpression.ExpressionOrNamedFunctionBinding -> {
-                val innerExpression = expression.expression
-                if (innerExpression is AmbiguousExpression.Variable) {
-                    // This is better parsed as a VarOrNamedFunctionBinding, which is easier to deal with.
-                    error("The parser is not supposed to create this situation")
-                }
-                return Expression.ExpressionFunctionBinding(
-                        functionExpression = scopeExpression(varIds, innerExpression),
-                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-                        chosenParameters = expression.chosenParameters,
-                        location = expression.location)
-            }
-            is AmbiguousExpression.IfThen -> Expression.IfThen(
-                    scopeExpression(varIds, expression.condition),
-                    thenBlock = scopeBlock(varIds, expression.thenBlock),
-                    elseBlock = scopeBlock(varIds, expression.elseBlock),
-                    location = expression.location
-            )
-            is AmbiguousExpression.VarOrNamedFunctionCall -> {
-                if (varIds.contains(expression.functionIdOrVariable)) {
-                    return Expression.ExpressionFunctionCall(
-                            // TODO: The position of the variable is incorrect here
-                            functionExpression = Expression.Variable(expression.functionIdOrVariable.id.namespacedName.last(), expression.location),
-                            arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location)
-                } else {
-                    return Expression.NamedFunctionCall(
-                            functionRef = expression.functionIdOrVariable,
-                            arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                            chosenParameters = expression.chosenParameters,
-                            location = expression.location,
-                            functionRefLocation = expression.varOrNameLocation)
-                }
-            }
-            is AmbiguousExpression.ExpressionOrNamedFunctionCall -> {
-                val innerExpression = expression.expression
-                if (innerExpression is AmbiguousExpression.Variable) {
-                    // This is better parsed as a VarOrNamedFunctionCall, which is easier to deal with.
-                    error("The parser is not supposed to create this situation")
-                }
-                return Expression.ExpressionFunctionCall(
-                        functionExpression = scopeExpression(varIds, innerExpression),
-                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-                        chosenParameters = expression.chosenParameters,
-                        location = expression.location)
-            }
-            is AmbiguousExpression.Literal -> Expression.Literal(expression.type, expression.literal, expression.location)
-            is AmbiguousExpression.ListLiteral -> {
-                val contents = expression.contents.map { item -> scopeExpression(varIds, item) }
-                Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
-            }
-            is AmbiguousExpression.Variable -> Expression.Variable(expression.name, expression.location)
-            is AmbiguousExpression.InlineFunction -> {
-                val varIdsOutsideBlock = varIds + expression.arguments.map { arg -> EntityRef.of(arg.name) }
-                val scopedBlock = scopeBlock(varIdsOutsideBlock, expression.block)
-                Expression.InlineFunction(
-                        expression.arguments,
-                        expression.returnType,
-                        scopedBlock,
-                        expression.location)
-            }
-        }
-    }
-
-
     private fun parseTypeParameters(cd_type_parameters: Sem1Parser.Cd_type_parametersContext): List<TypeParameter> {
         return parseLinkedList(cd_type_parameters,
                 Sem1Parser.Cd_type_parametersContext::type_parameter,
@@ -400,63 +322,74 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return UnvalidatedMember(name, type)
     }
 
-    private fun parseBlock(block: Sem1Parser.BlockContext): AmbiguousBlock {
-        val statements = parseStatements(block.statements())
-        val returnedExpression = parseExpression(block.return_statement().expression())
-        return AmbiguousBlock(statements, returnedExpression, locationOf(block))
+    private fun parseBlock(block: Sem1Parser.BlockContext, externalVars: Set<String>): Block {
+        val varsInBlockScope = HashSet(externalVars)
+
+        val statements = ArrayList<Statement>()
+        val statementContexts = getStatementContexts(block.statements())
+        for (statementContext in statementContexts) {
+            val statement = parseStatement(statementContext, varsInBlockScope)
+            if (statement.name != null) {
+                varsInBlockScope.add(statement.name)
+            }
+            statements.add(statement)
+        }
+
+        val returnedExpression = parseExpression(block.return_statement().expression(), varsInBlockScope)
+        return Block(statements, returnedExpression, locationOf(block))
     }
 
-    private fun parseStatements(statements: Sem1Parser.StatementsContext): List<AmbiguousStatement> {
+    private fun getStatementContexts(statements: Sem1Parser.StatementsContext): List<Sem1Parser.StatementContext> {
         return parseLinkedList(statements,
                 Sem1Parser.StatementsContext::statement,
                 Sem1Parser.StatementsContext::statements,
-                this::parseStatement)
+                { it })
     }
 
-    private fun parseStatement(statement: Sem1Parser.StatementContext): AmbiguousStatement {
+    private fun parseStatement(statement: Sem1Parser.StatementContext, varsInScope: Set<String>): Statement {
         if (statement.assignment() != null) {
             val assignment = statement.assignment()
             val name = assignment.ID().text
             val type = if (assignment.type() != null) parseType(assignment.type()) else null
-            val expression = parseExpression(assignment.expression())
-            return AmbiguousStatement(name, type, expression, locationOf(assignment.ID().symbol))
+            val expression = parseExpression(assignment.expression(), varsInScope)
+            return Statement(name, type, expression, locationOf(assignment.ID().symbol))
         } else {
-            val expression = parseExpression(statement.expression())
-            return AmbiguousStatement(null, null, expression, locationOf(statement))
+            val expression = parseExpression(statement.expression(), varsInScope)
+            return Statement(null, null, expression, locationOf(statement))
         }
     }
 
-    private fun parseExpression(expression: Sem1Parser.ExpressionContext): AmbiguousExpression {
+    private fun parseExpression(expression: Sem1Parser.ExpressionContext, varsInScope: Set<String>): Expression {
         try {
             if (expression.IF() != null) {
-                val condition = parseExpression(expression.expression())
-                val thenBlock = parseBlock(expression.block(0))
-                val elseBlock = parseBlock(expression.block(1))
-                return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
+                val condition = parseExpression(expression.expression(), varsInScope)
+                val thenBlock = parseBlock(expression.block(0), varsInScope)
+                val elseBlock = parseBlock(expression.block(1), varsInScope)
+                return Expression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
             }
 
             if (expression.FUNCTION() != null) {
                 val arguments = parseFunctionArguments(expression.function_arguments())
                 val returnType = parseType(expression.type())
-                val block = parseBlock(expression.block(0))
-                return AmbiguousExpression.InlineFunction(arguments, returnType, block, locationOf(expression))
+                val block = parseBlock(expression.block(0), varsInScope + arguments.map { it.name })
+                return Expression.InlineFunction(arguments, returnType, block, locationOf(expression))
             }
 
             if (expression.LITERAL() != null) {
                 val type = parseTypeGivenParameters(expression.type_ref(), listOf(), locationOf(expression.type_ref()))
                 val literal = parseLiteral(expression.LITERAL())
-                return AmbiguousExpression.Literal(type, literal, locationOf(expression))
+                return Expression.Literal(type, literal, locationOf(expression))
             }
 
             if (expression.ARROW() != null) {
-                val inner = parseExpression(expression.expression())
+                val inner = parseExpression(expression.expression(), varsInScope)
                 val name = expression.ID().text
-                return AmbiguousExpression.Follow(inner, name, locationOf(expression))
+                return Expression.Follow(inner, name, locationOf(expression))
             }
 
             if (expression.LPAREN() != null) {
                 val innerExpression = if (expression.expression() != null) {
-                    parseExpression(expression.expression())
+                    parseExpression(expression.expression(), varsInScope)
                 } else {
                     null
                 }
@@ -472,12 +405,21 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     } else {
                         listOf()
                     }
-                    val bindings = parseBindings(expression.cd_expressions_or_underscores())
+                    val bindings = parseBindings(expression.cd_expressions_or_underscores(), varsInScope)
 
                     if (functionRefOrVar != null) {
-                        return AmbiguousExpression.VarOrNamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                        // Check if it's a known variable; otherwise, assume it's a function name
+                        if (functionRefOrVar.moduleRef == null
+                                && functionRefOrVar.id.namespacedName.size == 1
+                                && varsInScope.contains(functionRefOrVar.id.namespacedName[0])) {
+                            val variable = Expression.Variable(functionRefOrVar.id.namespacedName[0], locationOf(expression.entity_ref()))
+                            return Expression.ExpressionFunctionBinding(variable, bindings, chosenParameters, locationOf(expression))
+                        } else {
+                            return Expression.NamedFunctionBinding(functionRefOrVar, bindings, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                        }
                     } else {
-                        return AmbiguousExpression.ExpressionOrNamedFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                        // Named functions are expected to be handled by entityRef
+                        return Expression.ExpressionFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                     }
                 }
 
@@ -486,22 +428,31 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 } else {
                     listOf()
                 }
-                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions(), varsInScope)
                 if (functionRefOrVar != null) {
-                    return AmbiguousExpression.VarOrNamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                    // Check if it's a known variable; otherwise, assume it's a function name
+                    if (functionRefOrVar.moduleRef == null
+                            && functionRefOrVar.id.namespacedName.size == 1
+                            && varsInScope.contains(functionRefOrVar.id.namespacedName[0])) {
+                        val variable = Expression.Variable(functionRefOrVar.id.namespacedName[0], locationOf(expression.entity_ref()))
+                        return Expression.ExpressionFunctionCall(variable, arguments, chosenParameters, locationOf(expression))
+                    } else {
+                        return Expression.NamedFunctionCall(functionRefOrVar, arguments, chosenParameters, locationOf(expression), locationOf(expression.entity_ref()))
+                    }
                 } else {
-                    return AmbiguousExpression.ExpressionOrNamedFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                    // Named functions are expected to be handled by entityRef
+                    return Expression.ExpressionFunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
             }
 
             if (expression.LBRACKET() != null) {
-                val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
+                val contents = parseCommaDelimitedExpressions(expression.cd_expressions(), varsInScope)
                 val chosenParameter = parseType(expression.type())
-                return AmbiguousExpression.ListLiteral(contents, chosenParameter, locationOf(expression))
+                return Expression.ListLiteral(contents, chosenParameter, locationOf(expression))
             }
 
             if (expression.ID() != null) {
-                return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
+                return Expression.Variable(expression.ID().text, locationOf(expression))
             }
 
             throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
@@ -515,26 +466,28 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     }
 
 
-    private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+    private fun parseBindings(cd_expressions_or_underscores: Sem1Parser.Cd_expressions_or_underscoresContext, varsInScope: Set<String>): List<Expression?> {
         return parseLinkedList(cd_expressions_or_underscores,
                 Sem1Parser.Cd_expressions_or_underscoresContext::expression_or_underscore,
                 Sem1Parser.Cd_expressions_or_underscoresContext::cd_expressions_or_underscores,
-                this::parseBinding)
+                this::parseBinding,
+                varsInScope)
     }
 
-    private fun parseBinding(expression_or_underscore: Sem1Parser.Expression_or_underscoreContext): AmbiguousExpression? {
+    private fun parseBinding(expression_or_underscore: Sem1Parser.Expression_or_underscoreContext, varsInScope: Set<String>): Expression? {
         if (expression_or_underscore.UNDERSCORE() != null) {
             return null
         } else {
-            return parseExpression(expression_or_underscore.expression())
+            return parseExpression(expression_or_underscore.expression(), varsInScope)
         }
     }
 
-    private fun parseCommaDelimitedExpressions(cd_expressions: Sem1Parser.Cd_expressionsContext): List<AmbiguousExpression> {
+    private fun parseCommaDelimitedExpressions(cd_expressions: Sem1Parser.Cd_expressionsContext, varsInScope: Set<String>): List<Expression> {
         return parseLinkedList(cd_expressions,
                 Sem1Parser.Cd_expressionsContext::expression,
                 Sem1Parser.Cd_expressionsContext::cd_expressions,
-                this::parseExpression)
+                this::parseExpression,
+                varsInScope)
     }
 
     private fun parseFunctionArguments(function_arguments: Sem1Parser.Function_argumentsContext): List<UnvalidatedArgument> {

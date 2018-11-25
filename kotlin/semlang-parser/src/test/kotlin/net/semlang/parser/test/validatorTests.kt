@@ -128,7 +128,13 @@ class ValidatorNegativeTests(private val file: File) {
 
         if (result is ValidationResult.Failure) {
             Assert.assertNotEquals(0, result.errors.size)
-            Assert.assertEquals(errorFile.errors, result.errors.toSet())
+            if (!errorFile.errors.equals(result.errors.toSet())) {
+                val message = "Expected errors:\n" +
+                        writeErrorFileText(errorFile) +
+                        "\nActual errors:\n" +
+                        writeErrorFileText(ErrorFile(errorFile.lines, result.errors.toSet()))
+                Assert.fail(message)
+            }
         } else {
             throw AssertionError("File ${file.absolutePath} should have failed validation, but passed")
         }
