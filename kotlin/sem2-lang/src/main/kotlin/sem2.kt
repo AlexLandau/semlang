@@ -262,8 +262,7 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     }
 }
 
-// TODO: Maybe rename TypeSignature -> FunctionSignature?
-data class S2TypeSignature(override val id: EntityId, val argumentTypes: List<S2Type>, val outputType: S2Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
+data class S2FunctionSignature(override val id: EntityId, val argumentTypes: List<S2Type>, val outputType: S2Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): S2Type.FunctionType {
         return S2Type.FunctionType(typeParameters, argumentTypes, outputType)
     }
@@ -292,41 +291,42 @@ sealed class S2AnnotationArgument {
 }
 
 // Pre-scoping
-sealed class AmbiguousExpression {
-    abstract val location: Location
-//    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-    data class DottedSequence(val strings: List<String>, override val location: Location): AmbiguousExpression()
-    // TODO: Renames to remove "ExpressionOrNamed"
-    data class FunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<S2Type?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-    data class FunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<S2Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-    data class Literal(val type: S2Type, val literal: String, override val location: Location): AmbiguousExpression()
-    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: S2Type, override val location: Location): AmbiguousExpression()
-    data class Follow(val structureExpression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
-    data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-}
+//sealed class AmbiguousExpression {
+//    abstract val location: Location
+////    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
+////    data class DottedSequence(val strings: List<String>, override val location: Location): AmbiguousExpression()
+//    // TODO: Renames to remove "ExpressionOrNamed"
+//    data class FunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<S2Type?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
+//    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
+//    data class FunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<S2Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
+//    data class Literal(val type: S2Type, val literal: String, override val location: Location): AmbiguousExpression()
+//    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: S2Type, override val location: Location): AmbiguousExpression()
+//    data class Follow(val structureExpression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
+//    data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
+//}
 
 // Post-scoping, pre-type-analysis
 sealed class S2Expression {
     abstract val location: Location?
-    data class Variable(val name: String, override val location: Location? = null): S2Expression()
+//    data class Variable(val name: String, override val location: Location? = null): S2Expression()
+    data class DottedSequence(val strings: List<String>, override val location: Location): S2Expression()
     data class IfThen(val condition: S2Expression, val thenBlock: S2Block, val elseBlock: S2Block, override val location: Location? = null): S2Expression()
-    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null, val functionRefLocation: Location? = null): S2Expression()
-    data class ExpressionFunctionCall(val functionExpression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
+    data class FunctionCall(val expression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
+//    data class ExpressionFunctionCall(val functionExpression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
     data class Literal(val type: S2Type, val literal: String, override val location: Location? = null): S2Expression()
     data class ListLiteral(val contents: List<S2Expression>, val chosenParameter: S2Type, override val location: Location? = null): S2Expression()
-    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null, val functionRefLocation: Location? = null): S2Expression()
-    data class ExpressionFunctionBinding(val functionExpression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
+    data class FunctionBinding(val expression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
+//    data class ExpressionFunctionBinding(val functionExpression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
     data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val location: Location? = null): S2Expression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
 // effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-data class AmbiguousStatement(val name: String?, val type: S2Type?, val expression: AmbiguousExpression, val nameLocation: Location?)
+//data class AmbiguousStatement(val name: String?, val type: S2Type?, val expression: AmbiguousExpression, val nameLocation: Location?)
 data class S2Statement(val name: String?, val type: S2Type?, val expression: S2Expression, val nameLocation: Location? = null)
 data class S2Argument(val name: String, val type: S2Type, val location: Location? = null)
-data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
+//data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
 data class S2Block(val statements: List<S2Statement>, val returnedExpression: S2Expression, val location: Location? = null)
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): S2Type.FunctionType {
@@ -336,10 +336,14 @@ data class S2Function(override val id: EntityId, val typeParameters: List<TypePa
                 returnType
         )
     }
+
+    fun getSignature(): S2FunctionSignature {
+        return S2FunctionSignature(id, arguments.map { it.type }, returnType, typeParameters)
+    }
 }
 
 data class S2Struct(override val id: EntityId, val typeParameters: List<TypeParameter>, val members: List<S2Member>, val requires: S2Block?, override val annotations: List<S2Annotation>, val idLocation: Location? = null) : TopLevelEntity {
-    fun getConstructorSignature(): S2TypeSignature {
+    fun getConstructorSignature(): S2FunctionSignature {
         val argumentTypes = members.map(S2Member::type)
         val typeParameters = typeParameters.map { S2Type.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
@@ -347,7 +351,7 @@ data class S2Struct(override val id: EntityId, val typeParameters: List<TypePara
         } else {
             S2Type.Maybe(S2Type.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
         }
-        return S2TypeSignature(id, argumentTypes, outputType, this.typeParameters)
+        return S2FunctionSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
 
@@ -366,13 +370,13 @@ data class S2Interface(override val id: EntityId, val typeParameters: List<TypeP
 
     val instanceType = S2Type.NamedType(this.id.asRef(), false, typeParameters.map { name -> S2Type.NamedType.forParameter(name, null) }, idLocation)
 
-    fun getInstanceConstructorSignature(): S2TypeSignature {
+    fun getInstanceConstructorSignature(): S2FunctionSignature {
         val typeParameters = this.typeParameters
         val argumentTypes = this.methods.map(S2Method::functionType)
 
-        return S2TypeSignature(this.id, argumentTypes, instanceType, typeParameters)
+        return S2FunctionSignature(this.id, argumentTypes, instanceType, typeParameters)
     }
-    fun getAdapterFunctionSignature(): S2TypeSignature {
+    fun getAdapterFunctionSignature(): S2FunctionSignature {
         val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
         val dataStructType = S2Type.NamedType.forParameter(adapterTypeParameters[0], null)
@@ -383,7 +387,7 @@ data class S2Interface(override val id: EntityId, val typeParameters: List<TypeP
 
         val outputType = S2Type.FunctionType(listOf(), listOf(dataType), instanceType)
 
-        return S2TypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
+        return S2FunctionSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
 data class S2Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type) {
@@ -401,7 +405,7 @@ data class S2Union(override val id: EntityId, val typeParameters: List<TypeParam
         val functionParameters = typeParameters.map { S2Type.NamedType.forParameter(it) }
         return S2Type.NamedType(id.asRef(), false, functionParameters)
     }
-    fun getConstructorSignature(option: S2Option): S2TypeSignature {
+    fun getConstructorSignature(option: S2Option): S2FunctionSignature {
         if (!options.contains(option)) {
             error("Invalid option $option")
         }
@@ -411,10 +415,10 @@ data class S2Union(override val id: EntityId, val typeParameters: List<TypeParam
         } else {
             listOf(option.type)
         }
-        return S2TypeSignature(optionId, argumentTypes, getType(), typeParameters)
+        return S2FunctionSignature(optionId, argumentTypes, getType(), typeParameters)
     }
 
-    fun getWhenSignature(): S2TypeSignature {
+    fun getWhenSignature(): S2FunctionSignature {
         val whenId = EntityId(id.namespacedName + "when")
         val outputParameterName = getUnusedTypeParameterName(typeParameters)
         val outputParameterType = S2Type.NamedType(EntityId.of(outputParameterName).asRef(), false)
@@ -430,7 +434,7 @@ data class S2Union(override val id: EntityId, val typeParameters: List<TypeParam
             S2Type.FunctionType(listOf(), optionArgTypes, outputParameterType)
         }
 
-        return S2TypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
+        return S2FunctionSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
     }
 }
 data class S2Option(val name: String, val type: S2Type?, val idLocation: Location? = null)

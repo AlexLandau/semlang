@@ -12,7 +12,7 @@ import net.semlang.validator.validateModule
 import java.io.File
 
 @RunWith(Parameterized::class)
-class SimplifyExpressionsTest(private val file: File) {
+class Sem2ToSem1Test(private val file: File) {
     companion object ParametersSource {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
@@ -24,7 +24,7 @@ class SimplifyExpressionsTest(private val file: File) {
     }
 
     @Test
-    fun testSimplification() {
+    fun testTranslation() {
 //        val originalContext = parseFile(file).assumeSuccess()
 //        val simplifiedContext = simplifyAllExpressions(originalContext)
 //        val simplifiedModule = validateModule(simplifiedContext, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()

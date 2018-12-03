@@ -164,9 +164,9 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
         val returnType: S2Type = parseType(function.type())
 
-        val ambiguousBlock: AmbiguousBlock = parseBlock(function.block())
         val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
-        val block = scopeBlock(argumentVariableIds, ambiguousBlock)
+        val block: S2Block = parseBlock(function.block())
+//        val block = scopeBlock(argumentVariableIds, ambiguousBlock)
 
         val annotations = parseAnnotations(function.annotations())
 
@@ -185,7 +185,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         val members: List<S2Member> = parseMembers(ctx.members())
         val requires: S2Block? = ctx.maybe_requires().block()?.let {
             val externalVarIds = members.map { member -> EntityRef.of(member.name) }
-            scopeBlock(externalVarIds, parseBlock(it))
+            parseBlock(it)
         }
 
         val annotations = parseAnnotations(ctx.annotations())
@@ -360,58 +360,58 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return S2Member(name, type)
     }
 
-    private fun parseBlock(block: Sem2Parser.BlockContext): AmbiguousBlock {
+    private fun parseBlock(block: Sem2Parser.BlockContext): S2Block {
         val statements = parseStatements(block.statements())
         val returnedExpression = parseExpression(block.return_statement().expression())
-        return AmbiguousBlock(statements, returnedExpression, locationOf(block))
+        return S2Block(statements, returnedExpression, locationOf(block))
     }
 
-    private fun parseStatements(statements: Sem2Parser.StatementsContext): List<AmbiguousStatement> {
+    private fun parseStatements(statements: Sem2Parser.StatementsContext): List<S2Statement> {
         return parseLinkedList(statements,
                 Sem2Parser.StatementsContext::statement,
                 Sem2Parser.StatementsContext::statements,
                 this::parseStatement)
     }
 
-    private fun parseStatement(statement: Sem2Parser.StatementContext): AmbiguousStatement {
+    private fun parseStatement(statement: Sem2Parser.StatementContext): S2Statement {
         if (statement.assignment() != null) {
             val assignment = statement.assignment()
             val name = assignment.ID().text
             val type = if (assignment.type() != null) parseType(assignment.type()) else null
             val expression = parseExpression(assignment.expression())
-            return AmbiguousStatement(name, type, expression, locationOf(assignment.ID().symbol))
+            return S2Statement(name, type, expression, locationOf(assignment.ID().symbol))
         } else {
             val expression = parseExpression(statement.expression())
-            return AmbiguousStatement(null, null, expression, locationOf(statement))
+            return S2Statement(null, null, expression, locationOf(statement))
         }
     }
 
-    private fun parseExpression(expression: Sem2Parser.ExpressionContext): AmbiguousExpression {
+    private fun parseExpression(expression: Sem2Parser.ExpressionContext): S2Expression {
         try {
             if (expression.IF() != null) {
                 val condition = parseExpression(expression.expression())
                 val thenBlock = parseBlock(expression.block(0))
                 val elseBlock = parseBlock(expression.block(1))
-                return AmbiguousExpression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
+                return S2Expression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
             }
 
             if (expression.FUNCTION() != null) {
                 val arguments = parseFunctionArguments(expression.function_arguments())
                 val returnType = parseType(expression.type())
                 val block = parseBlock(expression.block(0))
-                return AmbiguousExpression.InlineFunction(arguments, returnType, block, locationOf(expression))
+                return S2Expression.InlineFunction(arguments, returnType, block, locationOf(expression))
             }
 
             if (expression.LITERAL() != null) {
                 val type = parseTypeGivenParameters(expression.type_ref(), listOf(), locationOf(expression.type_ref()))
                 val literal = parseLiteral(expression.LITERAL())
-                return AmbiguousExpression.Literal(type, literal, locationOf(expression))
+                return S2Expression.Literal(type, literal, locationOf(expression))
             }
 
             if (expression.ARROW() != null) {
                 val inner = parseExpression(expression.expression())
                 val name = expression.ID().text
-                return AmbiguousExpression.Follow(inner, name, locationOf(expression))
+                return S2Expression.Follow(inner, name, locationOf(expression))
             }
 
             if (expression.LPAREN() != null) {
@@ -429,7 +429,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     }
                     val bindings = parseBindings(expression.cd_expressions_or_underscores())
 
-                    return AmbiguousExpression.FunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                    return S2Expression.FunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                 }
 
                 val chosenParameters = if (expression.LESS_THAN() != null) {
@@ -438,18 +438,18 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     listOf()
                 }
                 val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-                return AmbiguousExpression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression), locationOf(expression.expression()))
+                return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
             }
 
             if (expression.LBRACKET() != null) {
                 val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
                 val chosenParameter = parseType(expression.type())
-                return AmbiguousExpression.ListLiteral(contents, chosenParameter, locationOf(expression))
+                return S2Expression.ListLiteral(contents, chosenParameter, locationOf(expression))
             }
 
             if (expression.dotted_sequence() != null) {
                 val strings = parseDottedSequence(expression.dotted_sequence())
-                return AmbiguousExpression.DottedSequence(strings, locationOf(expression))
+                return S2Expression.DottedSequence(strings, locationOf(expression))
             }
 
 //            if (expression.ID() != null) {
@@ -474,14 +474,14 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         )
     }
 
-    private fun parseBindings(cd_expressions_or_underscores: Sem2Parser.Cd_expressions_or_underscoresContext): List<AmbiguousExpression?> {
+    private fun parseBindings(cd_expressions_or_underscores: Sem2Parser.Cd_expressions_or_underscoresContext): List<S2Expression?> {
         return parseLinkedList(cd_expressions_or_underscores,
                 Sem2Parser.Cd_expressions_or_underscoresContext::expression_or_underscore,
                 Sem2Parser.Cd_expressions_or_underscoresContext::cd_expressions_or_underscores,
                 this::parseBinding)
     }
 
-    private fun parseBinding(expression_or_underscore: Sem2Parser.Expression_or_underscoreContext): AmbiguousExpression? {
+    private fun parseBinding(expression_or_underscore: Sem2Parser.Expression_or_underscoreContext): S2Expression? {
         if (expression_or_underscore.UNDERSCORE() != null) {
             return null
         } else {
@@ -489,7 +489,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
     }
 
-    private fun parseCommaDelimitedExpressions(cd_expressions: Sem2Parser.Cd_expressionsContext): List<AmbiguousExpression> {
+    private fun parseCommaDelimitedExpressions(cd_expressions: Sem2Parser.Cd_expressionsContext): List<S2Expression> {
         return parseLinkedList(cd_expressions,
                 Sem2Parser.Cd_expressionsContext::expression,
                 Sem2Parser.Cd_expressionsContext::cd_expressions,

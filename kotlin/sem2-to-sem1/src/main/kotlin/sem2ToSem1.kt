@@ -12,13 +12,18 @@ import net.semlang.sem2.api.Position
 import net.semlang.sem2.api.Range
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
+import java.util.*
 
 fun translateSem2ContextToSem1(context: S2Context): RawContext {
     return Sem1ToSem2Translator(context).translate()
 }
 
 private class Sem1ToSem2Translator(val context: S2Context) {
+    lateinit var typeInfo: TypeInfo
+
     fun translate(): RawContext {
+        this.typeInfo = collectTypeInfo(context)
+
         val functions = context.functions.map(::translate)
         val structs = context.structs.map(::translate)
         val interfaces = context.interfaces.map(::translate)
@@ -32,7 +37,7 @@ private class Sem1ToSem2Translator(val context: S2Context) {
                 typeParameters = function.typeParameters.map(::translate),
                 arguments = function.arguments.map(::translate),
                 returnType = translate(function.returnType),
-                block = translate(function.block),
+                block = translate(function.block, function.arguments.map { it.name }.toSet()),
                 annotations = function.annotations.map(::translate),
                 idLocation = translate(function.idLocation),
                 returnTypeLocation = translate(function.returnTypeLocation)
@@ -98,46 +103,83 @@ private class Sem1ToSem2Translator(val context: S2Context) {
         )
     }
 
-    private fun translate(block: S2Block): Block {
-        return Block(statements = block.statements.map(::translate),
-                returnedExpression = translate(block.returnedExpression),
+    private fun translate(block: S2Block, externalVarNames: Set<String>): Block {
+        val varNamesInScope = HashSet<String>(externalVarNames)
+        val s1Statements = ArrayList<Statement>()
+
+        for (s2Statement in block.statements) {
+            val s1Statement = translate(s2Statement, varNamesInScope)
+            s1Statement.name?.let { varNamesInScope.add(it) }
+        }
+        val returnedExpression = translate(block.returnedExpression, varNamesInScope)
+
+        return Block(statements = s1Statements,
+                returnedExpression = returnedExpression,
                 location = translate(block.location))
     }
 
-    private fun translate(statement: S2Statement): Statement {
+    private fun translate(statement: S2Statement, varNamesInScope: Set<String>): Statement {
         return Statement(
                 name = statement.name,
                 type = statement.type?.let(::translate),
-                expression = translate(statement.expression),
+                expression = translate(statement.expression, varNamesInScope),
                 nameLocation = translate(statement.nameLocation))
     }
 
-    private fun translate(expression: S2Expression): Expression {
+    private fun translate(expression: S2Expression, varNamesInScope: Set<String>): Expression {
         return when (expression) {
-            // TODO: Revamp how Sem2 deals with expressions
-            is S2Expression.Variable -> {
-                Expression.Variable(name = expression.name, location = translate(expression.location))
+            is S2Expression.DottedSequence -> {
+                // If this precedes a FunctionCall or FunctionBinding (i.e. is a functionExpression), those should perhaps
+                // use separate functions to indicate that this can be something different?
+                // Alternatively, I *think* we can translate special things to be Bindings and then have FunctionCall/Binding
+                // translation look at the expressions to combine the special cases into simpler expressions
+
+                // First, look at the first string in the sequence, which is the only one that is a candidate to be a
+                // variable (in which case we consider follow expressions and __)
+                val strings = expression.strings
+                if (strings.isEmpty()) {
+                    error("A DottedSequence should not be empty; bug in the compiler")
+                }
+                val firstString = strings[0]
+
+                // Okay, thing to worry about with this design/approach:
+                // If I want to take this approach AND support both foo.method() and foo.member, I need to know foo's type
+                // This is... also true generally if I want to turn list.get(i) into List.get(list, i)!
+                // Which means we need to track types in this stage
+
+                // TODO: Implement things other than variables
+                if (varNamesInScope.contains(firstString)) {
+                    if (strings.size > 1) {
+                        TODO("Using . after variables isn't implemented yet")
+                    }
+                    return Expression.Variable(firstString, translate(expression.location))
+                } else {
+                    // Assume it's a function name, treat it as an empty function binding
+                    val functionSignature = typeInfo.functionSignatures[EntityId(expression.strings)]
+                    if (functionSignature == null) {
+                        TODO("Handle this case")
+                    }
+                    val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(expression.strings))
+
+                    val bindings = Collections.nCopies(functionSignature.argumentTypes.size, null)
+                    val chosenParameters = Collections.nCopies(functionSignature.typeParameters.size, null)
+
+                    return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, translate(expression.location), translate(expression.location))
+                }
             }
             is S2Expression.IfThen -> {
                 Expression.IfThen(
-                        condition = translate(expression.condition),
-                        thenBlock = translate(expression.thenBlock),
-                        elseBlock = translate(expression.elseBlock),
+                        condition = translate(expression.condition, varNamesInScope),
+                        thenBlock = translate(expression.thenBlock, varNamesInScope),
+                        elseBlock = translate(expression.elseBlock, varNamesInScope),
                         location = translate(expression.location)
                 )
             }
-            is S2Expression.NamedFunctionCall -> {
-                Expression.NamedFunctionCall(
-                        functionRef = translate(expression.functionRef),
-                        arguments = expression.arguments.map(::translate),
-                        chosenParameters = expression.chosenParameters.map(::translate),
-                        location = translate(expression.location)
-                )
-            }
-            is S2Expression.ExpressionFunctionCall -> {
+            is S2Expression.FunctionCall -> {
+                // TODO: If the translated expression is a function binding, compress this
                 Expression.ExpressionFunctionCall(
-                        functionExpression = translate(expression.functionExpression),
-                        arguments = expression.arguments.map(::translate),
+                        functionExpression = translate(expression.expression, varNamesInScope),
+                        arguments = expression.arguments.map { translate(it, varNamesInScope) },
                         chosenParameters = expression.chosenParameters.map(::translate),
                         location = translate(expression.location)
                 )
@@ -151,31 +193,23 @@ private class Sem1ToSem2Translator(val context: S2Context) {
             }
             is S2Expression.ListLiteral -> {
                 Expression.ListLiteral(
-                        contents = expression.contents.map(::translate),
+                        contents = expression.contents.map { translate(it, varNamesInScope) },
                         chosenParameter = translate(expression.chosenParameter),
                         location = translate(expression.location)
                 )
             }
-            is S2Expression.NamedFunctionBinding -> {
-                Expression.NamedFunctionBinding(
-                        functionRef = translate(expression.functionRef),
-                        bindings = expression.bindings.map { if (it == null) null else translate(it) },
-                        chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
-                        location = translate(expression.location),
-                        functionRefLocation = translate(expression.functionRefLocation)
-                )
-            }
-            is S2Expression.ExpressionFunctionBinding -> {
+            is S2Expression.FunctionBinding -> {
+                // TODO: If the translated expression is a function binding, compress this
                 Expression.ExpressionFunctionBinding(
-                        functionExpression = translate(expression.functionExpression),
-                        bindings = expression.bindings.map { if (it == null) null else translate(it) },
+                        functionExpression = translate(expression.expression, varNamesInScope),
+                        bindings = expression.bindings.map { if (it == null) null else translate(it, varNamesInScope) },
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = translate(expression.location)
                 )
             }
             is S2Expression.Follow -> {
                 Expression.Follow(
-                        structureExpression = translate(expression.structureExpression),
+                        structureExpression = translate(expression.structureExpression, varNamesInScope),
                         name = expression.name,
                         location = translate(expression.location)
                 )
@@ -184,7 +218,7 @@ private class Sem1ToSem2Translator(val context: S2Context) {
                 Expression.InlineFunction(
                         arguments = expression.arguments.map(::translate),
                         returnType = translate(expression.returnType),
-                        block = translate(expression.block),
+                        block = translate(expression.block, varNamesInScope),
                         location = translate(expression.location)
                 )
             }
@@ -232,7 +266,7 @@ private class Sem1ToSem2Translator(val context: S2Context) {
                 id = translate(struct.id),
                 typeParameters = struct.typeParameters.map(::translate),
                 members = struct.members.map(::translate),
-                requires = struct.requires?.let(::translate),
+                requires = struct.requires?.let { translate(it, struct.members.map { it.name }.toSet()) },
                 annotations = struct.annotations.map(::translate),
                 idLocation = translate(struct.idLocation)
         )
