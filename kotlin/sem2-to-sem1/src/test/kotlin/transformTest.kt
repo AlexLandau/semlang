@@ -29,8 +29,8 @@ class Sem2ToSem1Test(private val file: File) {
 //        val simplifiedContext = simplifyAllExpressions(originalContext)
 //        val simplifiedModule = validateModule(simplifiedContext, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, libraries).assumeSuccess()
         val context = parseFile(file).assumeSuccess()
-        val sem1Context = translateSem2ContextToSem1(context)
-        val validatedModule = validateModule(sem1Context, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"))
+        val validatedModule = validateModule(sem1Context, ModuleName("sem2", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
 
         try {
             try {

@@ -777,25 +777,24 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
     }
 }
 
-// TODO: Maybe rename TypeSignature -> FunctionSignature?
-data class UnvalidatedTypeSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
+data class UnvalidatedFunctionSignature(override val id: EntityId, val argumentTypes: List<UnvalidatedType>, val outputType: UnvalidatedType, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(typeParameters, argumentTypes, outputType)
     }
 }
-data class TypeSignature private constructor(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
+data class FunctionSignature private constructor(override val id: EntityId, val argumentTypes: List<Type>, val outputType: Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
     companion object {
         /**
          * Note: This converts instances of the given type parameters into internal parameters in the argument and output types.
          */
-        fun create(id: EntityId, argumentTypes: List<Type>, outputType: Type, typeParameters: List<TypeParameter> = listOf()): TypeSignature {
+        fun create(id: EntityId, argumentTypes: List<Type>, outputType: Type, typeParameters: List<TypeParameter> = listOf()): FunctionSignature {
             val newParameterIndices = HashMap<String, Int>()
             typeParameters.mapIndexed { index, typeParameter ->
                 newParameterIndices.put(typeParameter.name, index)
             }
             val newArgTypes = argumentTypes.map { it.internalizeParameters(newParameterIndices, 0) }
             val newOutputType = outputType.internalizeParameters(newParameterIndices, 0)
-            return TypeSignature(id, newArgTypes, newOutputType, typeParameters)
+            return FunctionSignature(id, newArgTypes, newOutputType, typeParameters)
         }
     }
     fun getFunctionType(): Type.FunctionType {
@@ -902,8 +901,8 @@ data class Function(override val id: EntityId, val typeParameters: List<TypePara
     }
 }
 data class ValidatedFunction(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type, val block: TypedBlock, override val annotations: List<Annotation>) : TopLevelEntity {
-    fun getTypeSignature(): TypeSignature {
-        return TypeSignature.create(id,
+    fun getTypeSignature(): FunctionSignature {
+        return FunctionSignature.create(id,
                 arguments.map(Argument::type),
                 returnType,
                 typeParameters)
@@ -911,7 +910,7 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
 }
 
 data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
-    fun getConstructorSignature(): UnvalidatedTypeSignature {
+    fun getConstructorSignature(): UnvalidatedFunctionSignature {
         val argumentTypes = members.map(UnvalidatedMember::type)
         val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
         val outputType = if (requires == null) {
@@ -919,7 +918,7 @@ data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List
         } else {
             UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
         }
-        return UnvalidatedTypeSignature(id, argumentTypes, outputType, this.typeParameters)
+        return UnvalidatedFunctionSignature(id, argumentTypes, outputType, this.typeParameters)
     }
 }
 data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val members: List<Member>, val requires: TypedBlock?, override val annotations: List<Annotation>) : TopLevelEntity {
@@ -936,7 +935,7 @@ data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val t
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
-    fun getConstructorSignature(): TypeSignature {
+    fun getConstructorSignature(): FunctionSignature {
         val argumentTypes = members.map(Member::type)
         val typeParameters = typeParameters.map(Type::ParameterType)
         val outputType = if (requires == null) {
@@ -944,7 +943,7 @@ data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val t
         } else {
             Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
         }
-        return TypeSignature.create(id, argumentTypes, outputType, this.typeParameters)
+        return FunctionSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
 }
 
@@ -964,13 +963,13 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
 
     val instanceType = UnvalidatedType.NamedType(this.id.asRef(), false, typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
 
-    fun getInstanceConstructorSignature(): UnvalidatedTypeSignature {
+    fun getInstanceConstructorSignature(): UnvalidatedFunctionSignature {
         val typeParameters = this.typeParameters
         val argumentTypes = this.methods.map(UnvalidatedMethod::functionType)
 
-        return UnvalidatedTypeSignature(this.id, argumentTypes, instanceType, typeParameters)
+        return UnvalidatedFunctionSignature(this.id, argumentTypes, instanceType, typeParameters)
     }
-    fun getAdapterFunctionSignature(): UnvalidatedTypeSignature {
+    fun getAdapterFunctionSignature(): UnvalidatedFunctionSignature {
         val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
         val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0], null)
@@ -981,7 +980,7 @@ data class UnvalidatedInterface(override val id: EntityId, val typeParameters: L
 
         val outputType = UnvalidatedType.FunctionType(listOf(), listOf(dataType), instanceType)
 
-        return UnvalidatedTypeSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
+        return UnvalidatedFunctionSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
 data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
@@ -1000,13 +999,13 @@ data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, va
         return instanceType
     }
 
-    fun getInstanceConstructorSignature(): TypeSignature {
+    fun getInstanceConstructorSignature(): FunctionSignature {
         val typeParameters = this.typeParameters
         val argumentTypes = this.methods.map(Method::functionType)
 
-        return TypeSignature.create(this.id, argumentTypes, instanceType, typeParameters)
+        return FunctionSignature.create(this.id, argumentTypes, instanceType, typeParameters)
     }
-    fun getAdapterFunctionSignature(): TypeSignature {
+    fun getAdapterFunctionSignature(): FunctionSignature {
         val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
 
         val dataStructType = Type.InternalParameterType(0)
@@ -1017,7 +1016,7 @@ data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, va
 
         val outputType = adapterType
 
-        return TypeSignature.create(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
+        return FunctionSignature.create(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
 }
 data class UnvalidatedMethod(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
@@ -1044,7 +1043,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
         return UnvalidatedType.NamedType(id.asRef(), false, functionParameters)
     }
-    fun getConstructorSignature(option: UnvalidatedOption): UnvalidatedTypeSignature {
+    fun getConstructorSignature(option: UnvalidatedOption): UnvalidatedFunctionSignature {
         if (!options.contains(option)) {
             error("Invalid option $option")
         }
@@ -1054,10 +1053,10 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         } else {
             listOf(option.type)
         }
-        return UnvalidatedTypeSignature(optionId, argumentTypes, getType(), typeParameters)
+        return UnvalidatedFunctionSignature(optionId, argumentTypes, getType(), typeParameters)
     }
 
-    fun getWhenSignature(): UnvalidatedTypeSignature {
+    fun getWhenSignature(): UnvalidatedFunctionSignature {
         val whenId = EntityId(id.namespacedName + "when")
         val outputParameterName = getUnusedTypeParameterName(typeParameters)
         val outputParameterType = UnvalidatedType.NamedType(EntityId.of(outputParameterName).asRef(), false)
@@ -1073,7 +1072,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
             UnvalidatedType.FunctionType(listOf(), optionArgTypes, outputParameterType)
         }
 
-        return UnvalidatedTypeSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
+        return UnvalidatedFunctionSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
     }
 }
 data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val options: List<Option>, override val annotations: List<Annotation>): TopLevelEntity {
@@ -1095,14 +1094,14 @@ data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val ty
         return Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
     }
 
-    fun getOptionConstructorSignatureForId(optionId: EntityId): TypeSignature {
+    fun getOptionConstructorSignatureForId(optionId: EntityId): FunctionSignature {
         val optionIndex = optionIndexLookup[optionId] ?: error("The union ${id} has no option with ID $optionId")
         val option = options[optionIndex]
         val optionType = option.type
         if (optionType != null) {
-            return TypeSignature.create(optionId, listOf(optionType), this.getType(), typeParameters)
+            return FunctionSignature.create(optionId, listOf(optionType), this.getType(), typeParameters)
         } else {
-            return TypeSignature.create(optionId, listOf(), this.getType(), typeParameters)
+            return FunctionSignature.create(optionId, listOf(), this.getType(), typeParameters)
         }
     }
 
