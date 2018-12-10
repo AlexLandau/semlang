@@ -236,6 +236,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
 
 /*
 Okay, let's speculate a bit on how sem2 expressions will work
+(TODO: Move the following into documentation somewhere about how these things are expected to work.)
 
 We want to be able to use . for pretty much everything:
 

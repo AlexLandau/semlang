@@ -290,43 +290,23 @@ sealed class S2AnnotationArgument {
     data class List(val values: kotlin.collections.List<S2AnnotationArgument>): S2AnnotationArgument()
 }
 
-// Pre-scoping
-//sealed class AmbiguousExpression {
-//    abstract val location: Location
-////    data class Variable(val name: String, override val location: Location): AmbiguousExpression()
-////    data class DottedSequence(val strings: List<String>, override val location: Location): AmbiguousExpression()
-//    // TODO: Renames to remove "ExpressionOrNamed"
-//    data class FunctionBinding(val expression: AmbiguousExpression, val bindings: List<AmbiguousExpression?>, val chosenParameters: List<S2Type?>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-//    data class IfThen(val condition: AmbiguousExpression, val thenBlock: AmbiguousBlock, val elseBlock: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-//    data class FunctionCall(val expression: AmbiguousExpression, val arguments: List<AmbiguousExpression>, val chosenParameters: List<S2Type>, override val location: Location, val expressionOrNameLocation: Location): AmbiguousExpression()
-//    data class Literal(val type: S2Type, val literal: String, override val location: Location): AmbiguousExpression()
-//    data class ListLiteral(val contents: List<AmbiguousExpression>, val chosenParameter: S2Type, override val location: Location): AmbiguousExpression()
-//    data class Follow(val structureExpression: AmbiguousExpression, val name: String, override val location: Location): AmbiguousExpression()
-//    data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: AmbiguousBlock, override val location: Location): AmbiguousExpression()
-//}
-
 // Post-scoping, pre-type-analysis
 sealed class S2Expression {
     abstract val location: Location?
-//    data class Variable(val name: String, override val location: Location? = null): S2Expression()
     data class DottedSequence(val strings: List<String>, override val location: Location): S2Expression()
     data class IfThen(val condition: S2Expression, val thenBlock: S2Block, val elseBlock: S2Block, override val location: Location? = null): S2Expression()
     data class FunctionCall(val expression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
-//    data class ExpressionFunctionCall(val functionExpression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
     data class Literal(val type: S2Type, val literal: String, override val location: Location? = null): S2Expression()
     data class ListLiteral(val contents: List<S2Expression>, val chosenParameter: S2Type, override val location: Location? = null): S2Expression()
     data class FunctionBinding(val expression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
-//    data class ExpressionFunctionBinding(val functionExpression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
     data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val location: Location? = null): S2Expression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
 // effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-//data class AmbiguousStatement(val name: String?, val type: S2Type?, val expression: AmbiguousExpression, val nameLocation: Location?)
 data class S2Statement(val name: String?, val type: S2Type?, val expression: S2Expression, val nameLocation: Location? = null)
 data class S2Argument(val name: String, val type: S2Type, val location: Location? = null)
-//data class AmbiguousBlock(val statements: List<AmbiguousStatement>, val returnedExpression: AmbiguousExpression, val location: Location?)
 data class S2Block(val statements: List<S2Statement>, val returnedExpression: S2Expression, val location: Location? = null)
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): S2Type.FunctionType {

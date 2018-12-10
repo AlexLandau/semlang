@@ -164,9 +164,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
         val returnType: S2Type = parseType(function.type())
 
-        val argumentVariableIds = arguments.map { arg -> EntityRef.of(arg.name) }
         val block: S2Block = parseBlock(function.block())
-//        val block = scopeBlock(argumentVariableIds, ambiguousBlock)
 
         val annotations = parseAnnotations(function.annotations())
 
@@ -184,7 +182,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
         val members: List<S2Member> = parseMembers(ctx.members())
         val requires: S2Block? = ctx.maybe_requires().block()?.let {
-            val externalVarIds = members.map { member -> EntityRef.of(member.name) }
             parseBlock(it)
         }
 
@@ -258,71 +255,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
         return S2AnnotationArgument.Literal(parseLiteral(annotationArg.LITERAL()))
     }
-
-//    private fun scopeBlock(externalVariableIds: List<EntityRef>, ambiguousBlock: AmbiguousBlock): S2Block {
-//        val localVariableIds = ArrayList(externalVariableIds)
-//        val statements: MutableList<S2Statement> = ArrayList()
-//        for (statement in ambiguousBlock.statements) {
-//            val expression = scopeExpression(localVariableIds, statement.expression)
-//            val name = statement.name
-//            if (name != null) {
-//                localVariableIds.add(EntityRef.of(name))
-//            }
-//            statements.add(S2Statement(statement.name, statement.type, expression, statement.nameLocation))
-//        }
-//        val returnedExpression = scopeExpression(localVariableIds, ambiguousBlock.returnedExpression)
-//        return S2Block(statements, returnedExpression, ambiguousBlock.location)
-//    }
-
-    // TODO: Is it inefficient for varIds to be an ArrayList here?
-// TODO: See if we can pull out the scoping step entirely, or rewrite (has seen too many changes now)
-//    private fun scopeExpression(varIds: ArrayList<EntityRef>, expression: AmbiguousExpression): S2Expression {
-//        return when (expression) {
-//            is AmbiguousExpression.Follow -> S2Expression.Follow(
-//                    scopeExpression(varIds, expression.structureExpression),
-//                    expression.name,
-//                    expression.location)
-//            is AmbiguousExpression.FunctionBinding -> {
-//                val innerExpression = expression.expression
-//                return S2Expression.ExpressionFunctionBinding(
-//                        functionExpression = scopeExpression(varIds, innerExpression),
-//                        bindings = expression.bindings.map { expr -> if (expr != null) scopeExpression(varIds, expr) else null },
-//                        chosenParameters = expression.chosenParameters,
-//                        location = expression.location)
-//            }
-//            is AmbiguousExpression.IfThen -> S2Expression.IfThen(
-//                    scopeExpression(varIds, expression.condition),
-//                    thenBlock = scopeBlock(varIds, expression.thenBlock),
-//                    elseBlock = scopeBlock(varIds, expression.elseBlock),
-//                    location = expression.location
-//            )
-//            is AmbiguousExpression.FunctionCall -> {
-//                val innerExpression = expression.expression
-//                return S2Expression.ExpressionFunctionCall(
-//                        functionExpression = scopeExpression(varIds, innerExpression),
-//                        arguments = expression.arguments.map { expr -> scopeExpression(varIds, expr) },
-//                        chosenParameters = expression.chosenParameters,
-//                        location = expression.location)
-//            }
-//            is AmbiguousExpression.Literal -> S2Expression.Literal(expression.type, expression.literal, expression.location)
-//            is AmbiguousExpression.ListLiteral -> {
-//                val contents = expression.contents.map { item -> scopeExpression(varIds, item) }
-//                S2Expression.ListLiteral(contents, expression.chosenParameter, expression.location)
-//            }
-//            is AmbiguousExpression.DottedSequence -> {
-//            }
-//            is AmbiguousExpression.InlineFunction -> {
-//                val varIdsOutsideBlock = varIds + expression.arguments.map { arg -> EntityRef.of(arg.name) }
-//                val scopedBlock = scopeBlock(varIdsOutsideBlock, expression.block)
-//                S2Expression.InlineFunction(
-//                        expression.arguments,
-//                        expression.returnType,
-//                        scopedBlock,
-//                        expression.location)
-//            }
-//        }
-//    }
-
 
     private fun parseTypeParameters(cd_type_parameters: Sem2Parser.Cd_type_parametersContext): List<TypeParameter> {
         return parseLinkedList(cd_type_parameters,
@@ -451,10 +383,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 val strings = parseDottedSequence(expression.dotted_sequence())
                 return S2Expression.DottedSequence(strings, locationOf(expression))
             }
-
-//            if (expression.ID() != null) {
-//                return AmbiguousExpression.Variable(expression.ID().text, locationOf(expression))
-//            }
 
             throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
         } catch (e: Exception) {
