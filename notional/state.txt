@@ -1,0 +1,53 @@
+Some thoughts about states, an idea for a replacement for threaded structs, and an equivalent more broadly for classes:
+
+A state would be a new type of top-level element defining a type, looking vaguely like this (need a real example):
+
+state MyState {
+  foo: Foo
+  bar: Bar
+
+  initializer(fooArg: Foo, barArg: Bar) {
+    foo = fooArg
+    bar = barArg
+  }
+
+  mutator setFoo(newFoo: Foo) {
+    foo = newFoo
+  }
+
+  view getFoo(): Foo {
+    foo
+  }
+}
+
+//Using looks like this if we have .-access
+let myState: &MyState = MyState(foo, bar)
+if (blah) {
+    myState.setFoo(neverMindThisFooIsBetter)
+}
+let theChosenFoo = myState.getFoo()
+
+I'm being ambiguous here about whether Foo is a value or reference type; not sure about the implications yet.
+
+But part of the idea here is that you have a bunch of fields joined together like you'd have in a struct, except the
+internals are private instead of exposed, plus there's a sort of state machine component with the mutators. This reflects
+the design of a lot of "business logic" (i.e. non-data) classes in OO languages.
+
+A selection of thoughts to iron out further:
+
+1) If these functions all had to live inside the state block, it would be kind of a weird exception to how things
+generally work in sem1. I suspect we'll want something more like a "mutator function MyState.setFoo(...) { ... }", and
+it just has to be in the same module. Then language dialects (or linters for sem1 itself) can enforce the locality of
+the functions being near/in the same file/inside the state definition.
+2) Can an initializer reject a set of inputs, like a struct with a requires block? Should it return the state via having
+an implicit "this" or "init" function that can actually generate a MyState? (That feels cleaner than saying "you have to
+return all these things".)
+3) How do we make states composable? Related: If I want to modify Foo, is that always allowed? Should I just put
+@Constant or @Final if a field shouldn't get changed by any mutators?
+4) Implicit assumption here: Mutators should always be called in a well-defined serialized order, due to the restrictions
+of unaliasable references. (These are reference types.)
+5) Views are meant to pull non-reference values out of the state. Are there cases where we'd want to allow pulling
+reference values out (e.g. fields that are other state types)? This goes back to the question of what composition looks
+like.
+6) StringBuilder in this case would just be a state containing a ListBuilder. Would ListBuilder be implemented as a
+state that just contains a List, with the assumption that runtimes do something smarter than copy-on-write?
