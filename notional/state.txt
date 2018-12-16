@@ -50,4 +50,17 @@ of unaliasable references. (These are reference types.)
 reference values out (e.g. fields that are other state types)? This goes back to the question of what composition looks
 like.
 6) StringBuilder in this case would just be a state containing a ListBuilder. Would ListBuilder be implemented as a
-state that just contains a List, with the assumption that runtimes do something smarter than copy-on-write?
+state that just contains a List, with the assumption that runtimes do something smarter than copy-on-write? Feels iffy...
+7) This assumes a struct-like setup. What if we want a union of states (including, say, a state equivalent of a linked
+list or Optional)?
+8) Are there better names for any of the special function types?
+9) Can functions mutate multiple states at once, or are they tied to a single state?
+10) Should mutators use the same "return the output of an implicit init function" trick that I'm considering for
+constructors? Should mutators be able to return values to the caller in addition to mutating the state? The latter seems
+expected, but precludes the former. But the init function/global setter approach seems like it might be nice in that it
+avoids adding a new statement type and seems to add more atomicity to the "setting" operation.
+11) Following up more broadly: should there be a guarantee that nothing outside a mutator function sees the state in a
+partially mutated state? What if the mutator is calling another function? Can it pass itself to that function? Can we
+call another mutator function and see our state as it changed from that? The state from before we called it? Should we
+even have access to "this" to pass elsewhere, vs. just the fields? (Anything that messes with the ability to extract/
+inline/compose functions is probably not the right approach...)
