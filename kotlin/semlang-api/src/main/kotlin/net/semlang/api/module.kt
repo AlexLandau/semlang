@@ -80,7 +80,7 @@ data class RawContext(val functions: List<Function>, val structs: List<Unvalidat
 
 // Note: Absence of a module indicates a native function, struct, or interface.
 data class FunctionWithModule(val function: ValidatedFunction, val module: ValidatedModule)
-data class FunctionSignatureWithModule(val function: TypeSignature, val module: ValidatedModule?)
+data class FunctionSignatureWithModule(val function: FunctionSignature, val module: ValidatedModule?)
 data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
 data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
 data class UnionWithModule(val union: Union, val module: ValidatedModule?)

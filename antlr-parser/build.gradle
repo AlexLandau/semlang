@@ -12,6 +12,6 @@ dependencies {
 }
 
 generateGrammarSource {
-  arguments << "-lib" << "src/main/antlr/sem0/antlr"
   arguments << "-lib" << "src/main/antlr/sem1/antlr"
+  arguments << "-lib" << "src/main/antlr/sem2/antlr"
 }

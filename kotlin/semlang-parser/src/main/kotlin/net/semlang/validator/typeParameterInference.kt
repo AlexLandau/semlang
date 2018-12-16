@@ -1,8 +1,6 @@
 package net.semlang.validator
 
 import net.semlang.api.Type
-import net.semlang.api.UnvalidatedType
-import net.semlang.api.UnvalidatedTypeSignature
 
 internal sealed class TypeParameterInferenceSource {
     /*

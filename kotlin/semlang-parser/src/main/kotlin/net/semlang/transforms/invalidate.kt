@@ -75,10 +75,10 @@ fun invalidate(type: Type): UnvalidatedType {
     }
 }
 
-fun invalidate(typeSignature: TypeSignature): UnvalidatedTypeSignature {
-    val argTypes = typeSignature.argumentTypes.map(::invalidate)
-    val outputType = invalidate(typeSignature.outputType)
-    return UnvalidatedTypeSignature(typeSignature.id, argTypes, outputType, typeSignature.typeParameters)
+fun invalidate(functionSignature: FunctionSignature): UnvalidatedFunctionSignature {
+    val argTypes = functionSignature.argumentTypes.map(::invalidate)
+    val outputType = invalidate(functionSignature.outputType)
+    return UnvalidatedFunctionSignature(functionSignature.id, argTypes, outputType, functionSignature.typeParameters)
 }
 
 fun invalidate(member: Member): UnvalidatedMember {

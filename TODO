@@ -20,6 +20,7 @@ Major near-term projects:
 - Probably rename Unicode.String to just String (Ascii.String or AsciiString can still come later)
   - Also consider renaming Maybe.assume to just assume? (Or have it be an alternative name?)
   - Consider removing interfaces from the language (maybe keep in sem2?)
+  - Consider function -> fun
 Not as near-term but on my mind:
 - Some kind of proof system?
 - Code writing in TypeScript? Other languages?

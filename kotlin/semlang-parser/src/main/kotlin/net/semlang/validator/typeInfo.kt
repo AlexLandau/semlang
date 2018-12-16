@@ -394,7 +394,7 @@ private class TypeInfoCollector(
         val upstreamFunctions = HashMap<ResolvedEntityRef, FunctionInfo>()
 
         // (We don't need the idPosition for functions in upstream modules)
-        val functionInfo = fun(ref: ResolvedEntityRef, signature: TypeSignature): FunctionInfo {
+        val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): FunctionInfo {
             return FunctionInfo(ref, signature.getFunctionType(), null)
         }
 
@@ -428,7 +428,7 @@ private class TypeInfoCollector(
             }
             for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)
-                val signature = TypeSignature.create(function.id, function.arguments.map {it.type}, function.returnType, function.typeParameters)
+                val signature = FunctionSignature.create(function.id, function.arguments.map {it.type}, function.returnType, function.typeParameters)
                 upstreamFunctions.put(ref, functionInfo(ref, signature))
             }
         }
