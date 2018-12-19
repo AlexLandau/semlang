@@ -64,3 +64,63 @@ partially mutated state? What if the mutator is calling another function? Can it
 call another mutator function and see our state as it changed from that? The state from before we called it? Should we
 even have access to "this" to pass elsewhere, vs. just the fields? (Anything that messes with the ability to extract/
 inline/compose functions is probably not the right approach...)
+
+// Not necessarily a good implementation (doubly-linked would usually be better)
+// Would also want to retry a version of this where Node is a union type itself that can be a "null" value
+@Export state MutableLinkedList<T> {
+  head: Maybe<MLL.Node<T>>
+
+  mutator addFront(item: T) {
+    let newHead = MLL.Node(item, head)
+    head = Maybe.of(newHead)
+  }
+
+  mutator addBack(item: T) {
+    let newBack = MLL.Node(item)
+    if (head.isSuccess()) {
+      // Pretend there's type gating
+      // Actually, separate construct idea for sem2: head.ifSuccess({ /* block in which "head" is success value... "*/ })
+      // function Maybe.ifSuccess<T,U>(theMaybe: Maybe<T>, @UseFirstArgAsInputName doThis: (T) -> U): Maybe<U>
+      // Can keep them separate by explicitly naming the input: head.ifSuccess((newName) -> { /* ... */ })
+      head.value.addBack(item)
+      // So the naive implementation of this is inefficient, but the obvious fix (keep a reference to the end) requires
+      // an alias, which is frustrating.
+    }
+  }
+
+  // What if we had some construct like...
+  @KeepInstantiatedAndUpdated
+  ??? getLastField(): MLL.Node {
+    head.getLastField()
+  }
+  // Alternatively:
+  alias(head) lastField: Maybe<MLL.Node> // alias(head) means the main reference is either head or referenced by head,
+                                         // so for example, we shouldn't pass both lastField and head to a function that
+                                         // isn't expecting aliasable references
+                                         // So... when/how do we enforce this? Seems like "simultaneous" setters would
+                                         // be a good thing? (Also: Is it intended to be a requirement that it be an
+                                         // alias, or just a new possibility? Probably the latter, but is that clear? In
+                                         // that case, is it really only relaxing restrictions, not adding them? But how
+                                         // about the case where we have e.g. current and last, and we want to make sure
+                                         // they're *not* the same at view time? That might be a better case to think
+                                         // about...
+  // Alternative notation: lastField: Maybe<MLL.Node<T>> aliasing head
+  // ^ Interesting thing about having it as part of the type is that it's caring about something in the local area (a
+  // variable) rather than a global... but we have a similar notion established for whether an ExpressionType could have
+  // an existing alias...
+}
+
+state MutableLinkedList.Node<T> {
+  item: T // final?
+  next: Maybe<MLL.Node<T>> // does this need to be a separate RefMaybe type? (which would often confuse people)
+
+  // Some notional notation for overloading?
+  constructor.$1(item: T, next: MLL.Node) {
+    construct(item, Maybe.success(next))
+  }
+  constructor.$2(item: T) {
+    construct(item, Maybe.failure())
+  }
+}
+
+// Another question is if there should be a layer of "wrapping"/inaccessibility between MLL's users and the MLL.Node type?
