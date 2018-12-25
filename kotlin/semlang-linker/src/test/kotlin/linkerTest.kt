@@ -19,7 +19,6 @@ import org.junit.runners.Parameterized
 import java.io.File
 
 
-// TODO: This is experiencing non-deterministic failures
 @RunWith(Parameterized::class)
 class StandaloneFileLinkingTests(private val file: File) {
     companion object ParametersSource {
@@ -29,7 +28,6 @@ class StandaloneFileLinkingTests(private val file: File) {
             return getAllStandaloneCompilableFiles()
         }
     }
-
 
     @Test
     fun test() {
@@ -61,7 +59,6 @@ class StandardLibraryTests(private val file: File) {
             return getSemlangStandardLibraryCorpusFiles()
         }
     }
-
 
     @Test
     fun test() {

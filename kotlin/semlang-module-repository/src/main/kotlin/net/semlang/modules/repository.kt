@@ -6,6 +6,9 @@ import net.semlang.validator.validateModule
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 interface ModuleRepository {
     fun loadModule(id: ModuleUniqueId): ValidatedModule
@@ -112,42 +115,72 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
 
     // TODO: Deconflict with publishUnvalidated
     fun publish(module: ValidatedModule) {
-        val directory = getDirectoryForId(module.id)
-        directory.mkdirs()
-        if (!directory.isDirectory) {
-            error("Couldn't create the directory $directory")
+        val finalDirectory = getDirectoryForId(module.id)
+        if (finalDirectory.isDirectory) {
+            // The module has already been published
+            return
         }
 
+        val tempDirectory = Files.createTempDirectory("prepublishedSemlangModule").toFile()
+
         // Publish the .sem file
-        val sourceFile = File(directory, "module.sem")
+        val sourceFile = File(tempDirectory, "module.sem")
         BufferedWriter(FileWriter(sourceFile)).use { writer ->
             write(module, writer)
         }
+        sourceFile.setReadOnly()
 
         // Publish the info file
-        val infoFile = File(directory, "module")
+        val infoFile = File(tempDirectory, "module")
         BufferedWriter(FileWriter(infoFile)).use { writer ->
             writeConfigFile(module, writer)
+        }
+        infoFile.setReadOnly()
+
+        // Publish the directory to its real location
+        try {
+            Files.move(tempDirectory.toPath(), finalDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE)
+        } catch (e: java.nio.file.FileAlreadyExistsException) {
+            if (finalDirectory.isDirectory) {
+                // The module has already been published
+                return
+            }
+            throw IOException(e)
         }
     }
 
     private fun publishUnvalidated(module: UnvalidatedModule, uniqueId: ModuleUniqueId) {
-        val directory = getDirectoryForId(uniqueId)
-        directory.mkdirs()
-        if (!directory.isDirectory) {
-            error("Couldn't create the directory $directory")
+        val finalDirectory = getDirectoryForId(uniqueId)
+        if (finalDirectory.isDirectory) {
+            // The module has already been published
+            return
         }
 
+        val tempDirectory = Files.createTempDirectory("prepublishedUnvalidatedSemlangModule").toFile()
+
         // Publish the .sem file
-        val sourceFile = File(directory, "module.sem")
+        val sourceFile = File(tempDirectory, "module.sem")
         BufferedWriter(FileWriter(sourceFile)).use { writer ->
             write(module.contents, writer)
         }
+        sourceFile.setReadOnly()
 
         // Publish the info file
-        val infoFile = File(directory, "module")
+        val infoFile = File(tempDirectory, "module")
         BufferedWriter(FileWriter(infoFile)).use { writer ->
             writeConfigFile(module.info, writer)
+        }
+        infoFile.setReadOnly()
+
+        // Publish the directory to its real location
+        try {
+        Files.move(tempDirectory.toPath(), finalDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE)
+        } catch (e: java.nio.file.FileAlreadyExistsException) {
+            if (finalDirectory.isDirectory) {
+                // The module has already been published
+                return
+            }
+            throw IOException(e)
         }
     }
 }
