@@ -197,6 +197,10 @@ sealed class UnvalidatedType {
         override fun toString(): String {
             return getTypeString()
         }
+
+        fun getNumArguments(): Int {
+            return argTypes.size
+        }
     }
 
     data class NamedType(val ref: EntityRef, val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
@@ -361,7 +365,7 @@ sealed class Type {
     }
 
     sealed class FunctionType: Type() {
-        abstract fun getNumArgTypes(): Int
+        abstract fun getNumArguments(): Int
         abstract fun rebindTypeParameters(boundTypeParameters: kotlin.collections.List<Type?>): FunctionType
         abstract fun rebindArguments(bindingTypes: kotlin.collections.List<Type?>): FunctionType
         /**
@@ -424,7 +428,7 @@ sealed class Type {
                         outputType)
             }
 
-            override fun getNumArgTypes(): Int {
+            override fun getNumArguments(): Int {
                 return argTypes.size
             }
 
@@ -522,7 +526,7 @@ sealed class Type {
                 }
             }
 
-            override fun getNumArgTypes(): Int {
+            override fun getNumArguments(): Int {
                 return argTypes.size
             }
 

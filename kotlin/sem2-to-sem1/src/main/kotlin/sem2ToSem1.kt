@@ -116,7 +116,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         TODO("Handle this case")
                     }
 
-                    val bindings = Collections.nCopies(functionInfo.type.getNumArgTypes(), null)
+                    val bindings = Collections.nCopies(functionInfo.type.getNumArguments(), null)
                     val chosenParameters = Collections.nCopies(functionInfo.type.typeParameters.size, null)
 
                     return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, translate(expression.location), translate(expression.location))

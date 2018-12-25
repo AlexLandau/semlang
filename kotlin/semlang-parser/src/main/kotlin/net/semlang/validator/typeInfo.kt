@@ -3,6 +3,7 @@ package net.semlang.validator
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.transforms.invalidate
+import net.semlang.transforms.invalidateFunctionType
 import java.util.*
 
 class TypesInfo(
@@ -59,7 +60,7 @@ class TypesInfo(
     }
 
 }
-data class FunctionInfo(val resolvedRef: ResolvedEntityRef, val type: Type.FunctionType, val idLocation: Location?)
+data class FunctionInfo(val resolvedRef: ResolvedEntityRef, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
 sealed class TypeInfo {
     abstract val resolvedRef: ResolvedEntityRef
     abstract val idLocation: Location?
@@ -157,13 +158,13 @@ private class TypeInfoCollector(
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(union))
             for (option in union.options) {
                 val optionId = EntityId(union.id.namespacedName + option.name)
-                val functionType = pseudoValidateFunctionType(union.getConstructorSignature(option).getFunctionType())
+                val functionType = union.getConstructorSignature(option).getFunctionType()
                 val resolvedRef = ResolvedEntityRef(moduleId, optionId)
                 localFunctionsMultimap.multimapPut(optionId, FunctionInfo(resolvedRef, functionType, union.idLocation))
             }
 
             val whenId = EntityId(union.id.namespacedName + "when")
-            val functionType = pseudoValidateFunctionType(union.getWhenSignature().getFunctionType())
+            val functionType = union.getWhenSignature().getFunctionType()
             val resolvedRef = ResolvedEntityRef(moduleId, whenId)
             localFunctionsMultimap.multimapPut(whenId, FunctionInfo(resolvedRef, functionType, union.idLocation))
         }
@@ -172,10 +173,10 @@ private class TypeInfoCollector(
     private fun addLocalInterfaces() {
         for (interfac in context.interfaces) {
             localTypesMultimap.multimapPut(interfac.id, getLocalTypeInfo(interfac))
-            val instanceConstructorType = pseudoValidateFunctionType(interfac.getInstanceConstructorSignature().getFunctionType())
+            val instanceConstructorType = interfac.getInstanceConstructorSignature().getFunctionType()
             val instanceResolvedRef = ResolvedEntityRef(moduleId, interfac.id)
             localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(instanceResolvedRef, instanceConstructorType, interfac.idLocation))
-            val adapterFunctionType = pseudoValidateFunctionType(interfac.getAdapterFunctionSignature().getFunctionType())
+            val adapterFunctionType = interfac.getAdapterFunctionSignature().getFunctionType()
             val adapterResolvedRef = ResolvedEntityRef(moduleId, interfac.adapterId)
             localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(adapterResolvedRef, adapterFunctionType, interfac.idLocation))
         }
@@ -186,7 +187,7 @@ private class TypeInfoCollector(
             val id = struct.id
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(struct))
             // Don't pass in the type parameters because they're already part of the function type
-            val constructorType = pseudoValidateFunctionType(struct.getConstructorSignature().getFunctionType())
+            val constructorType = struct.getConstructorSignature().getFunctionType()
             val resolvedRef = ResolvedEntityRef(moduleId, id)
             localFunctionsMultimap.multimapPut(id, FunctionInfo(resolvedRef, constructorType, struct.idLocation))
         }
@@ -295,7 +296,7 @@ private class TypeInfoCollector(
 
     private fun getLocalFunctionInfo(function: Function): FunctionInfo {
         val resolvedRef = ResolvedEntityRef(moduleId, function.id)
-        val type = pseudoValidateFunctionType(function.getType())
+        val type = function.getType()
         return FunctionInfo(resolvedRef, type, function.idLocation)
     }
 
@@ -395,7 +396,7 @@ private class TypeInfoCollector(
 
         // (We don't need the idPosition for functions in upstream modules)
         val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): FunctionInfo {
-            return FunctionInfo(ref, signature.getFunctionType(), null)
+            return FunctionInfo(ref, invalidateFunctionType(signature.getFunctionType()), null)
         }
 
         // TODO: Fix this to use nativeModuleVersion

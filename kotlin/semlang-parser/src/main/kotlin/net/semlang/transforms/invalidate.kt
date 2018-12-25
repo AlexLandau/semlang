@@ -48,6 +48,13 @@ fun invalidate(block: TypedBlock): Block {
     return Block(assignments, returnedExpression)
 }
 
+fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionType {
+    val groundType = type.getDefaultGrounding()
+    val argTypes = groundType.argTypes.map(::invalidate)
+    val outputType = invalidate(groundType.outputType)
+    return UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
+}
+
 fun invalidate(type: Type): UnvalidatedType {
     return when (type) {
         Type.INTEGER -> UnvalidatedType.Integer()
@@ -59,10 +66,7 @@ fun invalidate(type: Type): UnvalidatedType {
             UnvalidatedType.Maybe(invalidate(type.parameter))
         }
         is Type.FunctionType -> {
-            val groundType = type.getDefaultGrounding()
-            val argTypes = groundType.argTypes.map(::invalidate)
-            val outputType = invalidate(groundType.outputType)
-            UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
+            invalidateFunctionType(type)
         }
         is Type.ParameterType -> {
             UnvalidatedType.NamedType(EntityRef.of(type.parameter.name), false)
