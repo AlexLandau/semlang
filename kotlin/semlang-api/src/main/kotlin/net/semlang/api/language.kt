@@ -197,6 +197,10 @@ sealed class UnvalidatedType {
         override fun toString(): String {
             return getTypeString()
         }
+
+        fun getNumArguments(): Int {
+            return argTypes.size
+        }
     }
 
     data class NamedType(val ref: EntityRef, val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {

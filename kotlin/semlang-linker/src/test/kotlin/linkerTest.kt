@@ -29,7 +29,6 @@ class StandaloneFileLinkingTests(private val file: File) {
         }
     }
 
-
     @Test
     fun test() {
         val unlinkedModule = parseAndValidateFile(file, ModuleName("semlang", "testFile"), CURRENT_NATIVE_MODULE_VERSION).assumeSuccess()
@@ -60,7 +59,6 @@ class StandardLibraryTests(private val file: File) {
             return getSemlangStandardLibraryCorpusFiles()
         }
     }
-
 
     @Test
     fun test() {
