@@ -359,8 +359,8 @@ private class Validator(
             return null
         }
 
-        if (expression.bindings.size != functionType.getNumArgTypes()) {
-            errors.add(Issue("The function binding here expects ${functionType.getNumArgTypes()} arguments, but ${expression.bindings.size} were given", expression.location, IssueLevel.ERROR))
+        if (expression.bindings.size != functionType.getNumArguments()) {
+            errors.add(Issue("The function binding here expects ${functionType.getNumArguments()} arguments, but ${expression.bindings.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -426,8 +426,8 @@ private class Validator(
             }
         }
 
-        if (expression.bindings.size != functionInfo.type.getNumArgTypes()) {
-            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArgTypes()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.bindings.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+        if (expression.bindings.size != functionInfo.type.getNumArguments()) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArguments()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.bindings.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
 
@@ -592,8 +592,8 @@ private class Validator(
             return null
         }
 
-        if (expression.arguments.size != functionType.getNumArgTypes()) {
-            errors.add(Issue("The function binding here expects ${functionType.getNumArgTypes()} arguments (with types ${functionType.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
+        if (expression.arguments.size != functionType.getNumArguments()) {
+            errors.add(Issue("The function binding here expects ${functionType.getNumArguments()} arguments (with types ${functionType.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -637,8 +637,8 @@ private class Validator(
         }
         val argumentTypes = arguments.map(TypedExpression::type)
 
-        if (expression.arguments.size != functionInfo.type.getNumArgTypes()) {
-            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArgTypes()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
+        if (expression.arguments.size != functionInfo.type.getNumArguments()) {
+            errors.add(Issue("The function $functionRef expects ${functionInfo.type.getNumArguments()} arguments (with types ${functionInfo.type.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
 

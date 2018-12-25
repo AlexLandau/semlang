@@ -1442,14 +1442,14 @@ private interface FunctionCallStrategy {
 }
 
 private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrategy {
-    if (type.getNumArgTypes() == 0) {
+    if (type.getNumArguments() == 0) {
         return SupplierFunctionTypeStrategy
-    } else if (type.getNumArgTypes() == 1) {
+    } else if (type.getNumArguments() == 1) {
         return FunctionFunctionTypeStrategy
     }
 
-    if (type.getNumArgTypes() < 4) {
-        return RuntimeLibraryFunctionTypeStrategy(type.getNumArgTypes())
+    if (type.getNumArguments() < 4) {
+        return RuntimeLibraryFunctionTypeStrategy(type.getNumArguments())
     }
     /*
      * Quick/easy workaround: Add a few types for 2, 3, etc.
@@ -1461,7 +1461,7 @@ private fun getFunctionTypeStrategy(type: Type.FunctionType): FunctionTypeStrate
 
 object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
     override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
-        if (type.getNumArgTypes() > 0) {
+        if (type.getNumArguments() > 0) {
             error("")
         }
         val className = ClassName.get(java.util.function.Supplier::class.java)
@@ -1472,7 +1472,7 @@ object SupplierFunctionTypeStrategy: FunctionTypeStrategy {
 
 object FunctionFunctionTypeStrategy: FunctionTypeStrategy {
     override fun getTypeName(type: Type.FunctionType, getTypeForParameter: (Type) -> TypeName): TypeName {
-        if (type.getNumArgTypes() != 1) {
+        if (type.getNumArguments() != 1) {
             error("")
         }
         val className = ClassName.get(java.util.function.Function::class.java)
