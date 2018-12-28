@@ -158,11 +158,9 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
-  | dotted_sequence
+  | expression DOT ID
+  | ID
   ;
-    catch[RecognitionException e] { throw e; }
-
-dotted_sequence : ID | ID DOT dotted_sequence ;
     catch[RecognitionException e] { throw e; }
 
 // cd_expressions may be empty

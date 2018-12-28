@@ -379,9 +379,15 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.ListLiteral(contents, chosenParameter, locationOf(expression))
             }
 
-            if (expression.dotted_sequence() != null) {
-                val strings = parseDottedSequence(expression.dotted_sequence())
-                return S2Expression.DottedSequence(strings, locationOf(expression))
+            if (expression.DOT() != null) {
+                val subexpression = parseExpression(expression.expression())
+                val name = expression.ID().text
+
+                return S2Expression.DotAccess(subexpression, name)
+            }
+
+            if (expression.ID() != null) {
+                return S2Expression.RawId(expression.text)
             }
 
             throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
@@ -392,14 +398,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression), e)
             }
         }
-    }
-
-    private fun parseDottedSequence(dotted_sequence: Sem2Parser.Dotted_sequenceContext): List<String> {
-        return parseLinkedList(dotted_sequence,
-                Sem2Parser.Dotted_sequenceContext::ID,
-                Sem2Parser.Dotted_sequenceContext::dotted_sequence,
-                { it: TerminalNode -> it.text}
-        )
     }
 
     private fun parseBindings(cd_expressions_or_underscores: Sem2Parser.Cd_expressions_or_underscoresContext): List<S2Expression?> {
