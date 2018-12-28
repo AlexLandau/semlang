@@ -98,71 +98,60 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 // translation look at the expressions to combine the special cases into simpler expressions
 
                 // First, look at the first string in the sequence, which is the only one that is a candidate to be a
-                // variable (in which case we consider follow expressions and __)
+                // variable (in which case we consider follow expressions and namespaced functions)
                 val strings = expression.strings
                 if (strings.isEmpty()) {
                     error("A DottedSequence should not be empty; bug in the compiler")
                 }
                 val firstString = strings[0]
 
-                // Okay, thing to worry about with this design/approach:
-                // If I want to take this approach AND support both foo.method() and foo.member, I need to know foo's type
-                // This is... also true generally if I want to turn list.get(i) into List.get(list, i)!
-                // Which means we need to track types in this stage
-
-                // TODO: Implement things other than variables
                 if (varTypes.containsKey(firstString)) {
                     val variable = Expression.Variable(firstString, translate(expression.location))
-                    // TODO: I think we can drop the special case here...
-                    if (strings.size > 1) {
-//                        TODO("Using . after variables isn't implemented yet")
-                        // After this, we'll go through a string of expression manipulations...
-                        var curInnerExpression: Expression = variable
-                        var curInnerExpressionType: UnvalidatedType? = varTypes[firstString]
-                        for (string in strings.drop(1)) {
-                            // TODO: If the type is a struct/interface and the name is a field name, we should do a follow
-                            val newExpression: Expression
-                            val newExpressionType: UnvalidatedType?
-                            val innerExpressionTypeInfo = if (curInnerExpressionType is UnvalidatedType.NamedType) {
-                                typeInfo.getTypeInfo(curInnerExpressionType)
-                            } else {
-                                null
-                            }
-                            if (innerExpressionTypeInfo is TypeInfo.Struct && innerExpressionTypeInfo.memberTypes.containsKey(string)) {
-                                TODO("Handle struct member")
-                            } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
-                                TODO("Handle interface method")
-                            } else {
-                                // Otherwise...
-                                val namespace = when (curInnerExpressionType) {
-                                    is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
-                                    is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
-                                    is UnvalidatedType.Integer -> listOf("Integer")
-                                    is UnvalidatedType.Boolean -> listOf("Boolean")
-                                    is UnvalidatedType.List -> listOf("List")
-                                    is UnvalidatedType.Maybe -> listOf("Maybe")
-                                    is UnvalidatedType.FunctionType -> listOf()
-                                    is UnvalidatedType.NamedType -> {
-                                        curInnerExpressionType.ref.id.namespacedName
-                                    }
-                                    null -> listOf()
-                                }
-                                val namespacedName = namespace + string
-                                val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
-                                val functionInfo = typeInfo.getFunctionInfo(functionRef)
-                                val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
-                                val bindings = listOf(curInnerExpression) + Collections.nCopies(numBindings - 1, null)
-                                val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
-                                newExpression = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
-                                newExpressionType = functionInfo?.type
-                            }
 
-                            curInnerExpression = newExpression
-                            curInnerExpressionType = newExpressionType
+                    // The following is basically a no-op if there's only one string in the sequence (so it's just a variable)
+                    var curInnerExpression: Expression = variable
+                    var curInnerExpressionType: UnvalidatedType? = varTypes[firstString]
+                    for (string in strings.drop(1)) {
+                        val newExpression: Expression
+                        val newExpressionType: UnvalidatedType?
+                        val innerExpressionTypeInfo = if (curInnerExpressionType is UnvalidatedType.NamedType) {
+                            typeInfo.getTypeInfo(curInnerExpressionType.ref)
+                        } else {
+                            null
                         }
-                        return TypedExpression(curInnerExpression, curInnerExpressionType)
+                        if (innerExpressionTypeInfo is TypeInfo.Struct && innerExpressionTypeInfo.memberTypes.containsKey(string)) {
+                            TODO("Handle struct member")
+                        } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
+                            TODO("Handle interface method")
+                        } else {
+                            // Otherwise...
+                            val namespace = when (curInnerExpressionType) {
+                                is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
+                                is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
+                                is UnvalidatedType.Integer -> listOf("Integer")
+                                is UnvalidatedType.Boolean -> listOf("Boolean")
+                                is UnvalidatedType.List -> listOf("List")
+                                is UnvalidatedType.Maybe -> listOf("Maybe")
+                                is UnvalidatedType.FunctionType -> listOf()
+                                is UnvalidatedType.NamedType -> {
+                                    curInnerExpressionType.ref.id.namespacedName
+                                }
+                                null -> listOf()
+                            }
+                            val namespacedName = namespace + string
+                            val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
+                            val functionInfo = typeInfo.getFunctionInfo(functionRef)
+                            val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
+                            val bindings = listOf(curInnerExpression) + Collections.nCopies(numBindings - 1, null)
+                            val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
+                            newExpression = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
+                            newExpressionType = functionInfo?.type
+                        }
+
+                        curInnerExpression = newExpression
+                        curInnerExpressionType = newExpressionType
                     }
-                    return TypedExpression(variable, varTypes[firstString])
+                    return TypedExpression(curInnerExpression, curInnerExpressionType)
                 } else {
                     // Assume it's a function name, treat it as an empty function binding
                     val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(expression.strings))
@@ -234,7 +223,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             is S2Expression.Follow -> {
                 val (structureExpression, structureType) = translate(expression.structureExpression, varTypes)
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
-                    val typeInfo = typeInfo.getTypeInfo(structureType)
+                    val typeInfo = typeInfo.getTypeInfo(structureType.ref)
                     if (typeInfo is TypeInfo.Struct) {
                         typeInfo.memberTypes[expression.name]
                     } else if (typeInfo is TypeInfo.Interface) {
@@ -316,20 +305,6 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 name = option.name,
                 type = option.type?.let(::translate),
                 idLocation = translate(option.idLocation))
-    }
-}
-
-// Note: Primitive (non-named) types like Integer and Boolean are treated as opaque types for now
-private fun TypesInfo.getTypeInfo(type: UnvalidatedType): TypeInfo? {
-    return when (type) {
-        is UnvalidatedType.Invalid.ReferenceInteger -> TODO()
-        is UnvalidatedType.Invalid.ReferenceBoolean -> TODO()
-        is UnvalidatedType.Integer -> TODO()
-        is UnvalidatedType.Boolean -> TODO()
-        is UnvalidatedType.List -> TODO()
-        is UnvalidatedType.Maybe -> TODO()
-        is UnvalidatedType.FunctionType -> TODO()
-        is UnvalidatedType.NamedType -> TODO()
     }
 }
 
