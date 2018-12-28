@@ -12,11 +12,12 @@ class TransformInspectionTest {
     val s2F1Id = EntityId.of("f1")
     val s2IntegerPlus = S2Expression.DotAccess(S2Expression.RawId("Integer"), "plus")
     val s2Integer1 = S2Expression.Literal(S2Type.Integer(), "1")
+
     @Test
     fun testNamedFunctionCallFromNamespacedFunctionCall() {
         val sem2Function = S2Function(s2F1Id, listOf(), listOf(), S2Type.Integer(), S2Block(
                 statements = listOf(),
-                returnedExpression = S2Expression.FunctionCall(
+                returnedExpression = S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
                         expression = s2IntegerPlus,
                         arguments = listOf(s2Integer1, s2Integer1),
                         chosenParameters = listOf()
@@ -31,6 +32,27 @@ class TransformInspectionTest {
         assertEquals(net.semlang.api.EntityId.of("Integer", "plus"), returnedExpression.functionRef.id)
     }
 
+    @Test
+    fun testNamedFunctionCallFromLocalFunctionCall() {
+        val sem2Function = S2Function(s2F1Id, listOf(), listOf(), S2Type.Integer(), S2Block(
+                statements = listOf(),
+                returnedExpression = S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
+                        expression = S2Expression.DotAccess( // Integer."1".plus
+                                subexpression = s2Integer1,
+                                name = "plus"
+                        ),
+                        arguments = listOf(s2Integer1),
+                        chosenParameters = listOf()
+                )
+        ), listOf())
+
+        val sem1Function = translateFunction(sem2Function)
+        val returnedExpression = sem1Function.block.returnedExpression
+        if (returnedExpression !is Expression.NamedFunctionCall) {
+            fail("Expected a NamedFunctionCall, but was: $returnedExpression") as Nothing
+        }
+        assertEquals(net.semlang.api.EntityId.of("Integer", "plus"), returnedExpression.functionRef.id)
+    }
 }
 
 private fun translateFunction(sem2Function: S2Function): Function {
