@@ -22,7 +22,10 @@ fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName): RawC
 
 private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
 private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?)
-private data class TypedExpression(val expression: Expression, val type: UnvalidatedType?)
+
+private sealed class TypedExpression
+private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
+private data class NamespacePartExpression(val names: List<String>): TypedExpression()
 
 private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName) {
     lateinit var typeInfo: TypesInfo
@@ -72,7 +75,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             s1Statement.name?.let { varNamesInScope.put(it, statementType) }
             s1Statements.add(s1Statement)
         }
-        val (returnedExpression, blockType) = translate(block.returnedExpression, varNamesInScope)
+        val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, varNamesInScope)
 
         val s1Block = Block(statements = s1Statements,
                 returnedExpression = returnedExpression,
@@ -81,7 +84,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
     }
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
-        val (expression, expressionType) = translate(statement.expression, varTypes)
+        val (expression, expressionType) = translateFullExpression(statement.expression, varTypes)
         val statement = Statement(
                 name = statement.name,
                 type = statement.type?.let(::translate),
@@ -90,98 +93,109 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
         return TypedStatement(statement, expressionType)
     }
 
+    /**
+     * Translates a sem2 expression to sem1 and transforms any resulting partial synthetic expression into a real sem1 expression.
+     */
+    private fun translateFullExpression(expression: S2Expression, varTypes: Map<String, UnvalidatedType?>): RealExpression {
+        val translated = translate(expression, varTypes)
+        return when (translated) {
+            is RealExpression -> translated
+            is NamespacePartExpression -> {
+                // Turn this into a function binding
+                val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(translated.names))
+                val typeInfo = typeInfo.getFunctionInfo(functionRef)
+
+                val bindings: List<Expression?>
+                val chosenParameters: List<UnvalidatedType?>
+                if (typeInfo != null) {
+                    bindings = Collections.nCopies(typeInfo.type.getNumArguments(), null)
+                    chosenParameters = Collections.nCopies(typeInfo.type.typeParameters.size, null)
+                } else {
+                    bindings = listOf()
+                    chosenParameters = listOf()
+                }
+
+                val functionBinding = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
+                RealExpression(functionBinding, typeInfo?.type)
+            }
+        }
+    }
+
     private fun translate(expression: S2Expression, varTypes: Map<String, UnvalidatedType?>): TypedExpression {
         return when (expression) {
-            is S2Expression.DottedSequence -> {
-                // If this precedes a FunctionCall or FunctionBinding (i.e. is a functionExpression), those should perhaps
-                // use separate functions to indicate that this can be something different?
-                // Alternatively, I *think* we can translate special things to be Bindings and then have FunctionCall/Binding
-                // translation look at the expressions to combine the special cases into simpler expressions
+            is S2Expression.RawId -> {
+                val name = expression.name
+                val type = varTypes[name] // Expect this to be null if it's a namespace, not a variable
 
-                // First, look at the first string in the sequence, which is the only one that is a candidate to be a
-                // variable (in which case we consider follow expressions and namespaced functions)
-                val strings = expression.strings
-                if (strings.isEmpty()) {
-                    error("A DottedSequence should not be empty; bug in the compiler")
-                }
-                val firstString = strings[0]
-
-                if (varTypes.containsKey(firstString)) {
-                    val variable = Expression.Variable(firstString, translate(expression.location))
-
-                    // The following is basically a no-op if there's only one string in the sequence (so it's just a variable)
-                    var curInnerExpression: Expression = variable
-                    var curInnerExpressionType: UnvalidatedType? = varTypes[firstString]
-                    for (string in strings.drop(1)) {
-                        val newExpression: Expression
-                        val newExpressionType: UnvalidatedType?
-                        val innerExpressionTypeInfo = if (curInnerExpressionType is UnvalidatedType.NamedType) {
-                            typeInfo.getTypeInfo(curInnerExpressionType.ref)
-                        } else {
-                            null
-                        }
-                        if (innerExpressionTypeInfo is TypeInfo.Struct && innerExpressionTypeInfo.memberTypes.containsKey(string)) {
-                            val memberType = innerExpressionTypeInfo.memberTypes[string]!!
-                            newExpression = Expression.Follow(curInnerExpression, string)
-                            newExpressionType = memberType
-                        } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
-                            TODO("Handle interface method")
-                        } else {
-                            // Otherwise, assume it's a function with the variable's type's namespace
-                            // e.g. if myNum is an Integer, myNum.plus(foo) becomes Integer.plus(myNum, foo)
-                            // so here, myNum.plus becomes Integer.plus|(myNum, _)
-                            val namespace = when (curInnerExpressionType) {
-                                is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
-                                is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
-                                is UnvalidatedType.Integer -> listOf("Integer")
-                                is UnvalidatedType.Boolean -> listOf("Boolean")
-                                is UnvalidatedType.List -> listOf("List")
-                                is UnvalidatedType.Maybe -> listOf("Maybe")
-                                is UnvalidatedType.FunctionType -> listOf()
-                                is UnvalidatedType.NamedType -> {
-                                    curInnerExpressionType.ref.id.namespacedName
-                                }
-                                null -> listOf()
-                            }
-                            val namespacedName = namespace + string
-                            val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
-                            val functionInfo = typeInfo.getFunctionInfo(functionRef)
-                            val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
-                            val bindings = listOf(curInnerExpression) + Collections.nCopies(numBindings - 1, null)
-                            val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
-                            newExpression = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
-                            newExpressionType = functionInfo?.type
-                        }
-
-                        curInnerExpression = newExpression
-                        curInnerExpressionType = newExpressionType
-                    }
-                    return TypedExpression(curInnerExpression, curInnerExpressionType)
+                if (type != null) {
+                    RealExpression(Expression.Variable(name), type)
                 } else {
-                    // Assume it's a function name, treat it as an empty function binding
-                    val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(expression.strings))
-                    val functionInfo = typeInfo.getFunctionInfo(functionRef)
-                    if (functionInfo == null) {
-                        TODO("Function info not found for function $functionRef")
+                    NamespacePartExpression(listOf(name))
+                }
+            }
+            is S2Expression.DotAccess -> {
+                // Lots of cases here... might be a real expression, might be a namespace
+                val subexpression = translate(expression.subexpression, varTypes)
+                val name = expression.name
+
+                when (subexpression) {
+                    is RealExpression -> {
+                        val subexpressionType = subexpression.type
+                        if (subexpressionType is UnvalidatedType.NamedType) {
+                            val typeInfo = typeInfo.getTypeInfo(subexpressionType.ref)
+                            if (typeInfo != null && typeInfo is TypeInfo.Struct) {
+                                val memberType = typeInfo.memberTypes[name]
+                                if (memberType != null) {
+                                    return RealExpression(Expression.Follow(subexpression.expression, name), memberType)
+                                }
+                            } else if (typeInfo != null && typeInfo is TypeInfo.Interface) {
+                                val methodType = typeInfo.methodTypes[name]
+                                if (methodType != null) {
+                                    return RealExpression(Expression.Follow(subexpression.expression, name), methodType)
+                                }
+                            }
+                        }
+
+                        // It's not a member/method, so assume it's a "local" function binding
+                        val namespace = when (subexpressionType) {
+                            is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
+                            is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
+                            is UnvalidatedType.Integer -> listOf("Integer")
+                            is UnvalidatedType.Boolean -> listOf("Boolean")
+                            is UnvalidatedType.List -> listOf("List")
+                            is UnvalidatedType.Maybe -> listOf("Maybe")
+                            is UnvalidatedType.FunctionType -> listOf()
+                            is UnvalidatedType.NamedType -> {
+                                subexpressionType.ref.id.namespacedName
+                            }
+                            null -> listOf()
+                        }
+                        val namespacedName = namespace + name
+                        val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
+                        val functionInfo = typeInfo.getFunctionInfo(functionRef)
+                        val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
+                        val bindings = listOf(subexpression.expression) + Collections.nCopies(numBindings - 1, null)
+                        val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
+                        val functionType = functionInfo?.type
+
+                        return RealExpression(Expression.NamedFunctionBinding(
+                                functionRef = functionRef,
+                                bindings = bindings,
+                                chosenParameters = chosenParameters
+                        ), functionType)
                     }
-
-                    val bindings = Collections.nCopies(functionInfo?.type?.getNumArguments() ?: 0, null)
-                    val chosenParameters = Collections.nCopies(functionInfo?.type?.typeParameters?.size ?: 0, null)
-
-                    return TypedExpression(Expression.NamedFunctionBinding(
-                            functionRef = functionRef,
-                            bindings = bindings,
-                            chosenParameters = chosenParameters,
-                            location = translate(expression.location),
-                            functionRefLocation = translate(expression.location)
-                    ), functionInfo?.type)
+                    is NamespacePartExpression -> {
+                        // Add to the namespace part!
+                        val newNamespace = subexpression.names + name
+                        NamespacePartExpression(newNamespace)
+                    }
                 }
             }
             is S2Expression.IfThen -> {
                 // Shortcut: Just assume the then-block has the correct type
                 val (thenBlock, typeInfo) = translate(expression.thenBlock, varTypes)
-                TypedExpression(Expression.IfThen(
-                        condition = translate(expression.condition, varTypes).expression,
+                RealExpression(Expression.IfThen(
+                        condition = translateFullExpression(expression.condition, varTypes).expression,
                         thenBlock = thenBlock,
                         elseBlock = translate(expression.elseBlock, varTypes).block,
                         location = translate(expression.location)
@@ -189,18 +203,18 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             }
             is S2Expression.FunctionCall -> {
                 // TODO: If the translated expression is a function binding, compress this
-                val (functionExpression, functionType) = translate(expression.expression, varTypes)
+                val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
                 val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
-                TypedExpression(Expression.ExpressionFunctionCall(
+                RealExpression(Expression.ExpressionFunctionCall(
                         functionExpression = functionExpression,
-                        arguments = expression.arguments.map { translate(it, varTypes).expression },
+                        arguments = expression.arguments.map { translateFullExpression(it, varTypes).expression },
                         chosenParameters = expression.chosenParameters.map(::translate),
                         location = translate(expression.location)
                 ), returnType)
             }
             is S2Expression.Literal -> {
                 val type = translate(expression.type)
-                TypedExpression(Expression.Literal(
+                RealExpression(Expression.Literal(
                         type = type,
                         literal = expression.literal,
                         location = translate(expression.location)
@@ -208,25 +222,25 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             }
             is S2Expression.ListLiteral -> {
                 val chosenParameter = translate(expression.chosenParameter)
-                TypedExpression(Expression.ListLiteral(
-                        contents = expression.contents.map { translate(it, varTypes).expression },
+                RealExpression(Expression.ListLiteral(
+                        contents = expression.contents.map { translateFullExpression(it, varTypes).expression },
                         chosenParameter = chosenParameter,
                         location = translate(expression.location)
                 ), UnvalidatedType.List(chosenParameter))
             }
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
-                val (functionExpression, functionType) = translate(expression.expression, varTypes)
+                val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
-                TypedExpression(Expression.ExpressionFunctionBinding(
+                RealExpression(Expression.ExpressionFunctionBinding(
                         functionExpression = functionExpression,
-                        bindings = expression.bindings.map { if (it == null) null else translate(it, varTypes).expression },
+                        bindings = expression.bindings.map { if (it == null) null else translateFullExpression(it, varTypes).expression },
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = translate(expression.location)
                 ), functionType)
             }
             is S2Expression.Follow -> {
-                val (structureExpression, structureType) = translate(expression.structureExpression, varTypes)
+                val (structureExpression, structureType) = translateFullExpression(expression.structureExpression, varTypes)
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
                     val typeInfo = typeInfo.getTypeInfo(structureType.ref)
                     if (typeInfo is TypeInfo.Struct) {
@@ -239,7 +253,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 } else {
                     null
                 }
-                TypedExpression(Expression.Follow(
+                RealExpression(Expression.Follow(
                         structureExpression = structureExpression,
                         name = expression.name,
                         location = translate(expression.location)
@@ -249,7 +263,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 val arguments = expression.arguments.map(::translate)
                 val returnType = translate(expression.returnType)
                 val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
-                TypedExpression(Expression.InlineFunction(
+                RealExpression(Expression.InlineFunction(
                         arguments = arguments,
                         returnType = returnType,
                         block = translate(expression.block, varTypes).block,
