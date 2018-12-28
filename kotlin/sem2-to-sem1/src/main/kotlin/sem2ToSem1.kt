@@ -70,6 +70,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
         for (s2Statement in block.statements) {
             val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
             s1Statement.name?.let { varNamesInScope.put(it, statementType) }
+            s1Statements.add(s1Statement)
         }
         val (returnedExpression, blockType) = translate(block.returnedExpression, varNamesInScope)
 
@@ -120,7 +121,9 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                             null
                         }
                         if (innerExpressionTypeInfo is TypeInfo.Struct && innerExpressionTypeInfo.memberTypes.containsKey(string)) {
-                            TODO("Handle struct member")
+                            val memberType = innerExpressionTypeInfo.memberTypes[string]!!
+                            newExpression = Expression.Follow(curInnerExpression, string)
+                            newExpressionType = memberType
                         } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
                             TODO("Handle interface method")
                         } else {
@@ -159,11 +162,11 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                     val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(expression.strings))
                     val functionInfo = typeInfo.getFunctionInfo(functionRef)
                     if (functionInfo == null) {
-                        TODO("Handle this case")
+                        TODO("Function info not found for function $functionRef")
                     }
 
-                    val bindings = Collections.nCopies(functionInfo.type.getNumArguments(), null)
-                    val chosenParameters = Collections.nCopies(functionInfo.type.typeParameters.size, null)
+                    val bindings = Collections.nCopies(functionInfo?.type?.getNumArguments() ?: 0, null)
+                    val chosenParameters = Collections.nCopies(functionInfo?.type?.typeParameters?.size ?: 0, null)
 
                     return TypedExpression(Expression.NamedFunctionBinding(
                             functionRef = functionRef,
@@ -171,7 +174,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                             chosenParameters = chosenParameters,
                             location = translate(expression.location),
                             functionRefLocation = translate(expression.location)
-                    ), functionInfo.type)
+                    ), functionInfo?.type)
                 }
             }
             is S2Expression.IfThen -> {
@@ -267,13 +270,6 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
         )
     }
 
-    private fun translate(member: S2Member): UnvalidatedMember {
-        return UnvalidatedMember(
-                name = member.name,
-                type = translate(member.type)
-        )
-    }
-
     private fun translate(interfac: S2Interface): UnvalidatedInterface {
         return UnvalidatedInterface(
                 id = translate(interfac.id),
@@ -281,15 +277,6 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 methods = interfac.methods.map(::translate),
                 annotations = interfac.annotations.map(::translate),
                 idLocation = translate(interfac.idLocation))
-    }
-
-    private fun translate(method: S2Method): UnvalidatedMethod {
-        return UnvalidatedMethod(
-                name = method.name,
-                typeParameters = method.typeParameters.map(::translate),
-                arguments = method.arguments.map(::translate),
-                returnType = translate(method.returnType)
-        )
     }
 
     private fun translate(union: S2Union): UnvalidatedUnion {
@@ -300,13 +287,6 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 annotations = union.annotations.map(::translate),
                 idLocation = translate(union.idLocation)
         )
-    }
-
-    private fun translate(option: S2Option): UnvalidatedOption {
-        return UnvalidatedOption(
-                name = option.name,
-                type = option.type?.let(::translate),
-                idLocation = translate(option.idLocation))
     }
 }
 
@@ -423,4 +403,27 @@ internal fun translate(argument: S2Argument): UnvalidatedArgument {
             type = translate(argument.type),
             location = translate(argument.location)
     )
+}
+
+internal fun translate(member: S2Member): UnvalidatedMember {
+    return UnvalidatedMember(
+            name = member.name,
+            type = translate(member.type)
+    )
+}
+
+internal fun translate(method: S2Method): UnvalidatedMethod {
+    return UnvalidatedMethod(
+            name = method.name,
+            typeParameters = method.typeParameters.map(::translate),
+            arguments = method.arguments.map(::translate),
+            returnType = translate(method.returnType)
+    )
+}
+
+internal fun translate(option: S2Option): UnvalidatedOption {
+    return UnvalidatedOption(
+            name = option.name,
+            type = option.type?.let(::translate),
+            idLocation = translate(option.idLocation))
 }

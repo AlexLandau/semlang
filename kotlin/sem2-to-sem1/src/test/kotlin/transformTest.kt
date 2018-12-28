@@ -27,7 +27,11 @@ class Sem2ToSem1Test(private val file: File) {
     fun testTranslation() {
         val context = parseFile(file).assumeSuccess()
         val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"))
-        val validatedModule = validateModule(sem1Context, ModuleName("sem2", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        val validatedModule = try {
+            validateModule(sem1Context, ModuleName("sem2", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
+        } catch (e: RuntimeException) {
+            throw AssertionError("Validation error; translated sem1 context was: ${writeToString(sem1Context)}")
+        }
 
         try {
             try {
