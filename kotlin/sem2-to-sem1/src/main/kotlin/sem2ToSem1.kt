@@ -124,7 +124,9 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
                             TODO("Handle interface method")
                         } else {
-                            // Otherwise...
+                            // Otherwise, assume it's a function with the variable's type's namespace
+                            // e.g. if myNum is an Integer, myNum.plus(foo) becomes Integer.plus(myNum, foo)
+                            // so here, myNum.plus becomes Integer.plus|(myNum, _)
                             val namespace = when (curInnerExpressionType) {
                                 is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
                                 is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
