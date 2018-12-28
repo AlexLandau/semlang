@@ -12,12 +12,17 @@ import net.semlang.sem2.api.Position
 import net.semlang.sem2.api.Range
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
+import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
 import java.util.*
 
 fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName): RawContext {
     return Sem1ToSem2Translator(context, moduleName).translate()
 }
+
+private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
+private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?)
+private data class TypedExpression(val expression: Expression, val type: UnvalidatedType?)
 
 private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName) {
     lateinit var typeInfo: TypesInfo
@@ -38,7 +43,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 typeParameters = function.typeParameters.map(::translate),
                 arguments = function.arguments.map(::translate),
                 returnType = translate(function.returnType),
-                block = translate(function.block, function.arguments.map { it.name }.toSet()),
+                block = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap()).block,
                 annotations = function.annotations.map(::translate),
                 idLocation = translate(function.idLocation),
                 returnTypeLocation = translate(function.returnTypeLocation)
@@ -58,30 +63,33 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
         }
     }
 
-    private fun translate(block: S2Block, externalVarNames: Set<String>): Block {
-        val varNamesInScope = HashSet<String>(externalVarNames)
+    private fun translate(block: S2Block, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
+        val varNamesInScope = HashMap<String, UnvalidatedType?>(externalVarTypes)
         val s1Statements = ArrayList<Statement>()
 
         for (s2Statement in block.statements) {
-            val s1Statement = translate(s2Statement, varNamesInScope)
-            s1Statement.name?.let { varNamesInScope.add(it) }
+            val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
+            s1Statement.name?.let { varNamesInScope.put(it, statementType) }
         }
-        val returnedExpression = translate(block.returnedExpression, varNamesInScope)
+        val (returnedExpression, blockType) = translate(block.returnedExpression, varNamesInScope)
 
-        return Block(statements = s1Statements,
+        val s1Block = Block(statements = s1Statements,
                 returnedExpression = returnedExpression,
                 location = translate(block.location))
+        return TypedBlock(s1Block, blockType)
     }
 
-    private fun translate(statement: S2Statement, varNamesInScope: Set<String>): Statement {
-        return Statement(
+    private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
+        val (expression, expressionType) = translate(statement.expression, varTypes)
+        val statement = Statement(
                 name = statement.name,
                 type = statement.type?.let(::translate),
-                expression = translate(statement.expression, varNamesInScope),
+                expression = expression,
                 nameLocation = translate(statement.nameLocation))
+        return TypedStatement(statement, expressionType)
     }
 
-    private fun translate(expression: S2Expression, varNamesInScope: Set<String>): Expression {
+    private fun translate(expression: S2Expression, varTypes: Map<String, UnvalidatedType?>): TypedExpression {
         return when (expression) {
             is S2Expression.DottedSequence -> {
                 // If this precedes a FunctionCall or FunctionBinding (i.e. is a functionExpression), those should perhaps
@@ -90,24 +98,62 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 // translation look at the expressions to combine the special cases into simpler expressions
 
                 // First, look at the first string in the sequence, which is the only one that is a candidate to be a
-                // variable (in which case we consider follow expressions and __)
+                // variable (in which case we consider follow expressions and namespaced functions)
                 val strings = expression.strings
                 if (strings.isEmpty()) {
                     error("A DottedSequence should not be empty; bug in the compiler")
                 }
                 val firstString = strings[0]
 
-                // Okay, thing to worry about with this design/approach:
-                // If I want to take this approach AND support both foo.method() and foo.member, I need to know foo's type
-                // This is... also true generally if I want to turn list.get(i) into List.get(list, i)!
-                // Which means we need to track types in this stage
+                if (varTypes.containsKey(firstString)) {
+                    val variable = Expression.Variable(firstString, translate(expression.location))
 
-                // TODO: Implement things other than variables
-                if (varNamesInScope.contains(firstString)) {
-                    if (strings.size > 1) {
-                        TODO("Using . after variables isn't implemented yet")
+                    // The following is basically a no-op if there's only one string in the sequence (so it's just a variable)
+                    var curInnerExpression: Expression = variable
+                    var curInnerExpressionType: UnvalidatedType? = varTypes[firstString]
+                    for (string in strings.drop(1)) {
+                        val newExpression: Expression
+                        val newExpressionType: UnvalidatedType?
+                        val innerExpressionTypeInfo = if (curInnerExpressionType is UnvalidatedType.NamedType) {
+                            typeInfo.getTypeInfo(curInnerExpressionType.ref)
+                        } else {
+                            null
+                        }
+                        if (innerExpressionTypeInfo is TypeInfo.Struct && innerExpressionTypeInfo.memberTypes.containsKey(string)) {
+                            TODO("Handle struct member")
+                        } else if (innerExpressionTypeInfo is TypeInfo.Interface && innerExpressionTypeInfo.methodTypes.containsKey(string)) {
+                            TODO("Handle interface method")
+                        } else {
+                            // Otherwise, assume it's a function with the variable's type's namespace
+                            // e.g. if myNum is an Integer, myNum.plus(foo) becomes Integer.plus(myNum, foo)
+                            // so here, myNum.plus becomes Integer.plus|(myNum, _)
+                            val namespace = when (curInnerExpressionType) {
+                                is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
+                                is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
+                                is UnvalidatedType.Integer -> listOf("Integer")
+                                is UnvalidatedType.Boolean -> listOf("Boolean")
+                                is UnvalidatedType.List -> listOf("List")
+                                is UnvalidatedType.Maybe -> listOf("Maybe")
+                                is UnvalidatedType.FunctionType -> listOf()
+                                is UnvalidatedType.NamedType -> {
+                                    curInnerExpressionType.ref.id.namespacedName
+                                }
+                                null -> listOf()
+                            }
+                            val namespacedName = namespace + string
+                            val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
+                            val functionInfo = typeInfo.getFunctionInfo(functionRef)
+                            val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
+                            val bindings = listOf(curInnerExpression) + Collections.nCopies(numBindings - 1, null)
+                            val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
+                            newExpression = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
+                            newExpressionType = functionInfo?.type
+                        }
+
+                        curInnerExpression = newExpression
+                        curInnerExpressionType = newExpressionType
                     }
-                    return Expression.Variable(firstString, translate(expression.location))
+                    return TypedExpression(curInnerExpression, curInnerExpressionType)
                 } else {
                     // Assume it's a function name, treat it as an empty function binding
                     val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(expression.strings))
@@ -119,63 +165,93 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                     val bindings = Collections.nCopies(functionInfo.type.getNumArguments(), null)
                     val chosenParameters = Collections.nCopies(functionInfo.type.typeParameters.size, null)
 
-                    return Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters, translate(expression.location), translate(expression.location))
+                    return TypedExpression(Expression.NamedFunctionBinding(
+                            functionRef = functionRef,
+                            bindings = bindings,
+                            chosenParameters = chosenParameters,
+                            location = translate(expression.location),
+                            functionRefLocation = translate(expression.location)
+                    ), functionInfo.type)
                 }
             }
             is S2Expression.IfThen -> {
-                Expression.IfThen(
-                        condition = translate(expression.condition, varNamesInScope),
-                        thenBlock = translate(expression.thenBlock, varNamesInScope),
-                        elseBlock = translate(expression.elseBlock, varNamesInScope),
+                // Shortcut: Just assume the then-block has the correct type
+                val (thenBlock, typeInfo) = translate(expression.thenBlock, varTypes)
+                TypedExpression(Expression.IfThen(
+                        condition = translate(expression.condition, varTypes).expression,
+                        thenBlock = thenBlock,
+                        elseBlock = translate(expression.elseBlock, varTypes).block,
                         location = translate(expression.location)
-                )
+                ), typeInfo)
             }
             is S2Expression.FunctionCall -> {
                 // TODO: If the translated expression is a function binding, compress this
-                Expression.ExpressionFunctionCall(
-                        functionExpression = translate(expression.expression, varNamesInScope),
-                        arguments = expression.arguments.map { translate(it, varNamesInScope) },
+                val (functionExpression, functionType) = translate(expression.expression, varTypes)
+                val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
+                TypedExpression(Expression.ExpressionFunctionCall(
+                        functionExpression = functionExpression,
+                        arguments = expression.arguments.map { translate(it, varTypes).expression },
                         chosenParameters = expression.chosenParameters.map(::translate),
                         location = translate(expression.location)
-                )
+                ), returnType)
             }
             is S2Expression.Literal -> {
-                Expression.Literal(
-                        type = translate(expression.type),
+                val type = translate(expression.type)
+                TypedExpression(Expression.Literal(
+                        type = type,
                         literal = expression.literal,
                         location = translate(expression.location)
-                )
+                ), type)
             }
             is S2Expression.ListLiteral -> {
-                Expression.ListLiteral(
-                        contents = expression.contents.map { translate(it, varNamesInScope) },
-                        chosenParameter = translate(expression.chosenParameter),
+                val chosenParameter = translate(expression.chosenParameter)
+                TypedExpression(Expression.ListLiteral(
+                        contents = expression.contents.map { translate(it, varTypes).expression },
+                        chosenParameter = chosenParameter,
                         location = translate(expression.location)
-                )
+                ), UnvalidatedType.List(chosenParameter))
             }
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
-                Expression.ExpressionFunctionBinding(
-                        functionExpression = translate(expression.expression, varNamesInScope),
-                        bindings = expression.bindings.map { if (it == null) null else translate(it, varNamesInScope) },
+                val (functionExpression, functionType) = translate(expression.expression, varTypes)
+                // TODO: The output function type needs to be adjusted based on the parameters and bindings
+                TypedExpression(Expression.ExpressionFunctionBinding(
+                        functionExpression = functionExpression,
+                        bindings = expression.bindings.map { if (it == null) null else translate(it, varTypes).expression },
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = translate(expression.location)
-                )
+                ), functionType)
             }
             is S2Expression.Follow -> {
-                Expression.Follow(
-                        structureExpression = translate(expression.structureExpression, varNamesInScope),
+                val (structureExpression, structureType) = translate(expression.structureExpression, varTypes)
+                val elementType = if (structureType is UnvalidatedType.NamedType) {
+                    val typeInfo = typeInfo.getTypeInfo(structureType.ref)
+                    if (typeInfo is TypeInfo.Struct) {
+                        typeInfo.memberTypes[expression.name]
+                    } else if (typeInfo is TypeInfo.Interface) {
+                        typeInfo.methodTypes[expression.name]
+                    } else {
+                        null
+                    }
+                } else {
+                    null
+                }
+                TypedExpression(Expression.Follow(
+                        structureExpression = structureExpression,
                         name = expression.name,
                         location = translate(expression.location)
-                )
+                ), elementType)
             }
             is S2Expression.InlineFunction -> {
-                Expression.InlineFunction(
-                        arguments = expression.arguments.map(::translate),
-                        returnType = translate(expression.returnType),
-                        block = translate(expression.block, varNamesInScope),
+                val arguments = expression.arguments.map(::translate)
+                val returnType = translate(expression.returnType)
+                val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
+                TypedExpression(Expression.InlineFunction(
+                        arguments = arguments,
+                        returnType = returnType,
+                        block = translate(expression.block, varTypes).block,
                         location = translate(expression.location)
-                )
+                ), functionType)
             }
         }
     }
@@ -185,7 +261,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 id = translate(struct.id),
                 typeParameters = struct.typeParameters.map(::translate),
                 members = struct.members.map(::translate),
-                requires = struct.requires?.let { translate(it, struct.members.map { it.name }.toSet()) },
+                requires = struct.requires?.let { translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block },
                 annotations = struct.annotations.map(::translate),
                 idLocation = translate(struct.idLocation)
         )
