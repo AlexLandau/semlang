@@ -204,13 +204,30 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             is S2Expression.FunctionCall -> {
                 // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
+
                 val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
-                RealExpression(Expression.ExpressionFunctionCall(
-                        functionExpression = functionExpression,
-                        arguments = expression.arguments.map { translateFullExpression(it, varTypes).expression },
-                        chosenParameters = expression.chosenParameters.map(::translate),
-                        location = translate(expression.location)
-                ), returnType)
+
+                val arguments = expression.arguments.map { translateFullExpression(it, varTypes).expression }
+
+                // TODO: Also have a case for Expression.ExpressionFunctionBinding
+                // TODO: Also do this in the FunctionBinding section
+                if (functionExpression is Expression.NamedFunctionBinding) {
+                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
+                    val combinedChosenParameters = fillIntoNulls(functionExpression.chosenParameters, expression.chosenParameters.map(::translate))
+                    RealExpression(Expression.NamedFunctionCall(
+                            functionRef = functionExpression.functionRef,
+                            arguments = combinedArguments,
+                            chosenParameters = combinedChosenParameters,
+                            location = translate(expression.location)
+                    ), returnType)
+                } else {
+                    RealExpression(Expression.ExpressionFunctionCall(
+                            functionExpression = functionExpression,
+                            arguments = arguments,
+                            chosenParameters = expression.chosenParameters.map(::translate),
+                            location = translate(expression.location)
+                    ), returnType)
+                }
             }
             is S2Expression.Literal -> {
                 val type = translate(expression.type)
@@ -440,4 +457,21 @@ internal fun translate(option: S2Option): UnvalidatedOption {
             name = option.name,
             type = option.type?.let(::translate),
             idLocation = translate(option.idLocation))
+}
+
+private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
+    val results = ArrayList<T>()
+    val fillingsItr = fillings.iterator()
+    for (binding in bindings) {
+        if (binding != null) {
+            results.add(binding)
+        } else {
+            results.add(fillingsItr.next())
+        }
+    }
+    // We sometimes make fake function bindings with a minimal number of arguments; add any remaining fillings
+    while (fillingsItr.hasNext()) {
+        results.add(fillingsItr.next())
+    }
+    return results
 }

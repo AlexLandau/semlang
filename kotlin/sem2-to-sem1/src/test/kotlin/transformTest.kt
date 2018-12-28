@@ -1,3 +1,5 @@
+package net.semlang.sem2.translate
+
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
 import net.semlang.internal.test.runAnnotationTests
