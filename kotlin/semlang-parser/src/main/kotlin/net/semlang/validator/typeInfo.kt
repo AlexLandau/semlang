@@ -300,57 +300,6 @@ private class TypeInfoCollector(
         return FunctionInfo(resolvedRef, type, function.idLocation)
     }
 
-    private fun pseudoValidateFunctionType(type: UnvalidatedType.FunctionType): Type.FunctionType {
-        return pseudoValidateTypeInternal(type, listOf()) as Type.FunctionType
-    }
-    private fun pseudoValidateTypeInternal(type: UnvalidatedType, internalTypeParameters: List<String>): Type {
-        return when (type) {
-            // Note: These errors will be caught later; just do something reasonable
-            is UnvalidatedType.Invalid.ReferenceInteger -> Type.INTEGER
-            is UnvalidatedType.Invalid.ReferenceBoolean -> Type.BOOLEAN
-            is UnvalidatedType.Integer -> Type.INTEGER
-            is UnvalidatedType.Boolean -> Type.BOOLEAN
-            is UnvalidatedType.List -> {
-                val parameter = pseudoValidateTypeInternal(type.parameter, internalTypeParameters)
-                Type.List(parameter)
-            }
-            is UnvalidatedType.Maybe -> {
-                val parameter = pseudoValidateTypeInternal(type.parameter, internalTypeParameters)
-                Type.Maybe(parameter)
-            }
-            is UnvalidatedType.FunctionType -> {
-                val newInternalTypeParameters = type.typeParameters.map { it.name } + internalTypeParameters
-
-                val argTypes = type.argTypes.map { pseudoValidateTypeInternal(it, newInternalTypeParameters) }
-                val outputType = pseudoValidateTypeInternal(type.outputType, newInternalTypeParameters)
-
-                Type.FunctionType.create(type.typeParameters, argTypes, outputType)
-            }
-            is UnvalidatedType.NamedType -> {
-                val ref = type.ref
-                if (ref.moduleRef == null
-                        && ref.id.namespacedName.size == 1) {
-                    val index = internalTypeParameters.indexOf(ref.id.namespacedName[0])
-                    if (index >= 0) {
-                        return Type.InternalParameterType(index)
-                    }
-                }
-
-                val parameters = type.parameters.map { pseudoValidateTypeInternal(it, internalTypeParameters) }
-
-                val resolved = upstreamResolver.resolve(ref)
-                val resolvedRef = if (resolved != null) {
-                    resolved.entityRef
-                } else {
-                    ResolvedEntityRef(moduleId, ref.id)
-                }
-
-                // TODO: Should this also be capable of returning Type.ParameterType?
-                return Type.NamedType(resolvedRef, ref, type.isReference, parameters)
-            }
-        }
-    }
-
     private fun getUpstreamTypes(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeInfo> {
         val upstreamTypes = HashMap<ResolvedEntityRef, TypeInfo>()
 
