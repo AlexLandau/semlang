@@ -1,7 +1,7 @@
 import { isEqual } from "lodash";
-import { Module } from "../api/language";
-import { interpret, evaluateLiteral } from "./interpret";
-import { SemObject } from "./SemObject";
+import { Module, Type, isListType } from "../api/language";
+import { interpret, evaluateLiteral, InterpreterContext } from "./interpret";
+import { SemObject, listObject } from "./SemObject";
 
 
 // Returns the error messages from any failed tests.
@@ -16,16 +16,16 @@ export function runTests(module: Module): string[] {
                     if (values.length !== 2) {
                         throw new Error(`@Test annotations should have two arguments`);
                     }
-                    const argLiterals = values[0] as string[];
-                    const outputLiteral = values[1] as string;
+                    const argLiterals = values[0] as (string | string[])[];
+                    const outputLiteral = values[1] as string | string[];
 
                     const argObjects = [] as SemObject[];
                     for (let i = 0; i < argLiterals.length; i++) {
                         const type = fn.arguments[i].type;
                         const literal = argLiterals[i];
-                        argObjects.push(evaluateLiteral(module, type, literal));
+                        argObjects.push(evaluateAnnotationLiteral(module, type, literal));
                     }
-                    const expectedOutput = evaluateLiteral(module, fn.returnType, outputLiteral);
+                    const expectedOutput = evaluateAnnotationLiteral(module, fn.returnType, outputLiteral);
                     
                     const actualOutput = interpret(module, functionName, argObjects);
 
@@ -38,4 +38,15 @@ export function runTests(module: Module): string[] {
         }
     }
     return errorMessages;
+}
+
+function evaluateAnnotationLiteral(module: Module, type: Type, annotationArg: string | string[]): SemObject {
+    if (typeof annotationArg === "string") {
+        return evaluateLiteral(module, type, annotationArg);
+    }
+    if (!isListType(type)) {
+        throw new Error(`Expected a @Test annotation argument that was a list (${JSON.stringify(annotationArg)}) to be of a List type, but was: ${JSON.stringify(type)}`);
+    }
+    const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.List, value));
+    return listObject(semObjects);
 }
