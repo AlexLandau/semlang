@@ -1085,6 +1085,20 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return ClassName.get(packageParts.joinToString("."), className).sanitize()
     }
 
+    private fun toTestLiteral(type: Type, annotationArg: AnnotationArgument): TypedExpression {
+        return when (annotationArg) {
+            is AnnotationArgument.Literal -> TypedExpression.Literal(type, AliasType.NotAliased, annotationArg.value)
+            is AnnotationArgument.List -> {
+                if (type is Type.List) {
+                    val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
+                    TypedExpression.ListLiteral(type, AliasType.NotAliased, contents, type.parameter)
+                } else {
+                    TODO()
+                }
+            }
+        }
+    }
+
     val testClassCounts = LinkedHashMap<String, Int>()
     val testClassBuilders = LinkedHashMap<ClassName, TypeSpec.Builder>()
     private fun prepareJUnitTest(function: ValidatedFunction, testContents: TestAnnotationContents) {
@@ -1095,11 +1109,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val newCount: Int = if (curCount == null) 1 else (curCount + 1)
         testClassCounts[testClassName.toString()] = newCount
 
-        val outputExpression = TypedExpression.Literal(function.returnType, AliasType.NotAliased, testContents.outputLiteral)
-        val outputCode = writeLiteralExpression(outputExpression)
+        val outputExpression = toTestLiteral(function.returnType, testContents.output)// TypedExpression.Literal(function.returnType, AliasType.NotAliased, testContents.output)
+        val outputCode = writeExpression(outputExpression)
         val argExpressions = function.arguments.map { arg -> arg.type }
-                .zip(testContents.argLiterals)
-                .map { (type, literal) -> TypedExpression.Literal(type, AliasType.NotAliased, literal) }
+                .zip(testContents.args)
+                .map { (type, annotationArg) -> toTestLiteral(type, annotationArg) }
 
         if (function.typeParameters.isNotEmpty()) {
             TODO()
