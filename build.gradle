@@ -14,59 +14,54 @@ repositories {
     mavenCentral()
 }
 
+/*
+ * Note: We're doing something a little non-standard with our Jacoco configuration to keep our test runs faster when not
+ * specifically looking at coverage (which I expect to be infrequent). Normally the jacoco plugin would be applied to
+ * each subproject, which would automatically add Jacoco instrumentation to the test tasks. Instead, we want separate
+ * test and testWithJacoco tasks, and a single report task across all projects' tests. We do this by applying the jacoco
+ * plugin at the root project level only, and manually applying the root project's Jacoco plugin to the subprojects'
+ * testWithJacoco tasks to add their instrumentation.
+ *
+ */
+apply plugin: 'jacoco'
+jacoco {
+    toolVersion = "0.8.2"
+}
+
 // Configure the Kotlin-based subprojects
 project(":kotlin").subprojects {
     apply plugin: 'kotlin'
     apply plugin: 'java'
     apply plugin: 'eclipse'
     apply plugin: 'idea'
-    apply plugin: 'jacoco'
-    jacoco {
-        toolVersion = "0.8.2"
-    }
 
     repositories {
         mavenCentral()
     }
 
     dependencies {
-        // Kotlin library
         compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
         testCompile 'junit:junit:4.12'
     }
+
+    tasks.register('testWithJacoco', Test.class)
+    rootProject.jacoco.applyTo(testWithJacoco)
+    // Without this line, this will end up in the root project's build directory and conflict with other projects' files
+    testWithJacoco.jacoco.destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
 }
 
-// Make CircleCI's caching of dependencies actually work
-task downloadDependencies {
-    doLast {
-        subprojects {
-//            println("I'm in project ${project}")
-            for (configuration in configurations) {
-                // Certain dependencies can't be touched directly, so we need to whitelist the good ones
-                if (['antlr', 'compile', 'testCompile'].contains(configuration.name)) {
-//                    println("Configuration is ${configuration}")
-//                    println "Dependencies are: ${configuration.files}"
-                    // Force iteration over all the files to ensure the dependencies get downloaded
-                    configuration.files.iterator().collect()
-                }
-            }
-        }
-    }
-}
-
-apply plugin: 'jacoco'
-jacoco {
-    toolVersion = "0.8.2"
-}
-task jacocoRootReport(type: JacocoReport) {
-    def kotlinProjects = project(":kotlin").subprojects
-    dependsOn(kotlinProjects.test)
+// Generates a report of the joint coverage
+// Note that this won't be run by `./gradlew build` or `./gradlew test`.
+tasks.register('jacocoRootReport', JacocoReport.class) {
+    def kotlinProjects = project(':kotlin').subprojects
+    dependsOn(kotlinProjects.testWithJacoco)
 
     additionalSourceDirs = files(kotlinProjects.sourceSets.main.allSource.srcDirs)
     sourceDirectories = files(kotlinProjects.sourceSets.main.allSource.srcDirs)
     classDirectories = files(kotlinProjects.sourceSets.main.output)
-    executionData = files(kotlinProjects.jacocoTestReport.executionData)
+
+    executionData = files(kotlinProjects.testWithJacoco.jacoco.destinationFile)
 
     reports {
         html.enabled = true
