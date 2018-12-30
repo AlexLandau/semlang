@@ -27,6 +27,8 @@ private sealed class TypedExpression
 private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
 private data class NamespacePartExpression(val names: List<String>): TypedExpression()
 
+private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
+
 private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>) {
     lateinit var typeInfo: TypesInfo
 
@@ -277,15 +279,17 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
             }
             is S2Expression.InlineFunction -> {
                 val arguments = expression.arguments.map(::translate)
-                val returnType = translate(expression.returnType)
-                val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
 
                 val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
 
+                val (block, blockType) = translate(expression.block, varTypesInBlock)
+                // If we don't declare a return type, infer from the block's returned type
+                val returnType = expression.returnType?.let { translate(it) } ?: blockType ?: UnknownType
+                val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
                 RealExpression(Expression.InlineFunction(
                         arguments = arguments,
                         returnType = returnType,
-                        block = translate(expression.block, varTypesInBlock).block,
+                        block = block,
                         location = translate(expression.location)
                 ), functionType)
             }

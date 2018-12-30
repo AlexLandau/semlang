@@ -1,0 +1,8 @@
+@Test(["1"], "2")
+function increment(input: Integer): Integer {
+  getIncrementer()(input)
+}
+
+function getIncrementer(): (Integer) -> Integer {
+  (input: Integer) -> { Integer.plus(input, Integer."1") }
+}

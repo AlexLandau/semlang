@@ -159,6 +159,8 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
+  | FUNCTION LPAREN function_arguments RPAREN block
+  | LPAREN function_arguments RPAREN ARROW block
   | expression DOT ID
   | expression PLUS expression // + operator
   | ID

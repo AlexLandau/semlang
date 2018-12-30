@@ -329,7 +329,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
             if (expression.FUNCTION() != null) {
                 val arguments = parseFunctionArguments(expression.function_arguments())
-                val returnType = parseType(expression.type())
+                val returnType = expression.type()?.let { parseType(it) }
                 val block = parseBlock(expression.block(0))
                 return S2Expression.InlineFunction(arguments, returnType, block, locationOf(expression))
             }
@@ -341,9 +341,17 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.ARROW() != null) {
-                val inner = parseExpression(expression.expression(0))
-                val name = expression.ID().text
-                return S2Expression.Follow(inner, name, locationOf(expression))
+                if (expression.LPAREN() != null) {
+                    // Lambda expression
+                    val arguments = parseFunctionArguments(expression.function_arguments())
+                    val block = parseBlock(expression.block(0))
+                    return S2Expression.InlineFunction(arguments, null, block, locationOf(expression))
+                } else {
+                    // Follow expression
+                    val inner = parseExpression(expression.expression(0))
+                    val name = expression.ID().text
+                    return S2Expression.Follow(inner, name, locationOf(expression))
+                }
             }
 
             if (expression.LPAREN() != null) {

@@ -188,9 +188,14 @@ Design choices to reconsider:
   function IDs with no package and variables, and this would have to be sussed out in most transpilations.
 - Use dot for follow and forward slash for ID separator? (Probably looks better with imports, worse without)
   - There might be a better version of this with the scope of namespaces more limited
-- For Maybe methods, better names than "success" and "failure"
-  - Option 1: Present/absent
-  - Option 2: Here/absent
+- For Maybe methods, better names than "success" and "failure"; a few options:
+  - Present/absent
+  - Here/absent
+  - One/none
+  - Item/none
+  - It/no
+  - One/not
+  - Here/none
 - For literals of restricted structs, maybe return a Maybe<T> instead of T and leave the inference of T being valid
   to a proof system
 

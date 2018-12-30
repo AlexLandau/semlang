@@ -1,0 +1,7 @@
+@Test(["1"], "2")
+function increment(input: Integer): Integer {
+  let incrementer = function (i: Integer) {
+    Integer.plus(i, Integer."1")
+  }
+  incrementer(input)
+}
