@@ -351,9 +351,6 @@ export class InterpreterContext {
             throw new Error(`Unexpected Boolean literal ${value}`);
         } else if (type === "Integer") {
             return integerObject(bigInt(value));
-        } else if (isListType(type)) {
-            // Note: This is currently only intended for @Test cases
-            return this.evaluateComplexLiteralString(type, value);
         } else if (isMaybeType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
@@ -409,36 +406,6 @@ export class InterpreterContext {
                 }
             }
             throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
-        }
-    }
-
-    private evaluateComplexLiteralString(type: Type, value: string): SemObject {
-        const node = parseComplexLiteral(value);
-        return this.evaluateComplexLiteralNode(type, node);
-    }
-
-    private evaluateComplexLiteralNode(type: Type, node: ComplexLiteralNode): SemObject {
-        if (type === "Integer" || type === "Boolean") {
-            if (!isLiteralNode(node)) {
-                throw new Error();
-            }
-            return this.evaluateLiteral(type, node);
-        } else if (isListType(type)) {
-            if (!isSquareListNode(node)) {
-                throw new Error();
-            }
-            const contents = node.square.map((innerNode) => this.evaluateComplexLiteralNode(type.List, innerNode));
-            return listObject(contents);
-        } else if (isNamedType(type)) {
-            if (type.name === "Natural") {
-                if (!isLiteralNode(node)) {
-                    throw new Error();
-                }
-                return naturalObject(bigInt(node));
-            }
-            throw new Error("Unsupported complex literal type " + JSON.stringify(type));
-        } else {
-            throw new Error("Unsupported complex literal type " + JSON.stringify(type));
         }
     }
 

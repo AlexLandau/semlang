@@ -1,7 +1,7 @@
 import { isEqual } from "lodash";
-import { Module, Type, isListType } from "../api/language";
+import { Module, Type, isListType, isMaybeType } from "../api/language";
 import { interpret, evaluateLiteral, InterpreterContext } from "./interpret";
-import { SemObject, listObject } from "./SemObject";
+import { SemObject, listObject, failureObject, successObject } from "./SemObject";
 
 
 // Returns the error messages from any failed tests.
@@ -44,9 +44,20 @@ function evaluateAnnotationLiteral(module: Module, type: Type, annotationArg: st
     if (typeof annotationArg === "string") {
         return evaluateLiteral(module, type, annotationArg);
     }
-    if (!isListType(type)) {
-        throw new Error(`Expected a @Test annotation argument that was a list (${JSON.stringify(annotationArg)}) to be of a List type, but was: ${JSON.stringify(type)}`);
+
+    if (isMaybeType(type)) {
+        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.Maybe, value));
+        if (semObjects.length === 0) {
+            return failureObject();
+        } else if (semObjects.length === 1) {
+            return successObject(semObjects[0]);
+        } else {
+            throw new Error(`Expected a @Test annotation argument for a Maybe type (${JSON.stringify(type)}) to have zero or one item, but was: ${JSON.stringify(annotationArg)}`);
+        }
+    } else if (isListType(type)) {
+        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.List, value));
+        return listObject(semObjects);
+    } else {
+        throw new Error(`Expected a @Test annotation argument that was a list (${JSON.stringify(annotationArg)}) to be of a List or Maybe type, but was: ${JSON.stringify(type)}`);
     }
-    const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.List, value));
-    return listObject(semObjects);
 }

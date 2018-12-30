@@ -1092,6 +1092,18 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 if (type is Type.List) {
                     val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
                     TypedExpression.ListLiteral(type, AliasType.NotAliased, contents, type.parameter)
+                } else if (type is Type.Maybe) {
+                    val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
+                    if (contents.isEmpty()) {
+                        val maybeFailureRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "failure"))
+                        val resolvedMaybeFailureRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "failure"))
+                        TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeFailureRef, resolvedMaybeFailureRef, listOf(), listOf(type.parameter), listOf(type.parameter))
+                    } else {
+                        val containedLiteral = contents.single()
+                        val maybeSuccessRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "success"))
+                        val resolvedMaybeSuccessRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "success"))
+                        TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeSuccessRef, resolvedMaybeSuccessRef, listOf(containedLiteral), listOf(type.parameter), listOf(type.parameter))
+                    }
                 } else {
                     TODO()
                 }

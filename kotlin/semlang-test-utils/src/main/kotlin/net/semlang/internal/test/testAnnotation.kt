@@ -231,7 +231,19 @@ fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument
             }
 
         }
-        is Type.Maybe -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+        is Type.Maybe -> {
+            when (annotationArg) {
+                is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+                is AnnotationArgument.List -> {
+                    if (annotationArg.values.isEmpty()) {
+                        SemObject.Maybe.Failure
+                    } else {
+                        val semObject = evaluateAnnotationArgAsLiteral(type.parameter, annotationArg.values.single(), interpreter)
+                        SemObject.Maybe.Success(semObject)
+                    }
+                }
+            }
+        }
         is Type.FunctionType.Ground -> TODO()
         is Type.FunctionType.Parameterized -> TODO()
         is Type.InternalParameterType -> TODO()
