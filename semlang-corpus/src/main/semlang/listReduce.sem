@@ -1,14 +1,14 @@
-@Test(["[]"], "0")
-@Test(["['-2']"], "-2")
-@Test(["['1', '2', '3', '4']"], "10")
+@Test([[]], "0")
+@Test([["-2"]], "-2")
+@Test([["1", "2", "3", "4"]], "10")
 function testListReduce(list: List<Integer>): Integer {
   List.reduce(list, Integer."0", Integer.plus|(_, _))
 }
 
-@Test(["[]"], "0")
-@Test(["['-2']"], "-2")
-@Test(["['-2', '-2']"], "2")
-@Test(["['1', '2', '3', '4']"], "64")
+@Test([[]], "0")
+@Test([["-2"]], "-2")
+@Test([["-2", "-2"]], "2")
+@Test([["1", "2", "3", "4"]], "64")
 function testListReduceOrdering(list: List<Integer>): Integer {
   List.reduce(list, Integer."0", function (a: Integer, b: Integer): Integer {
     Integer.times(Integer.plus(a, Integer."1"), b)

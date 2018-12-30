@@ -1,4 +1,4 @@
-@Test([], "['1', '4', '9']")
+@Test([], ["1", "4", "9"])
 function buildListUsingBuilder(): List<Integer> {
   let builder: &ListBuilder<Integer> = ListBuilder.create<Integer>()
   armsLengthAppend(builder, Integer."1")

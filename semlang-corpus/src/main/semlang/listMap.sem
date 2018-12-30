@@ -1,15 +1,15 @@
-@Test(["[]"], "[]")
-@Test(["['0']"], "['2']")
-@Test(["['42', '44', '42', '-100']"], "['44', '46', '44', '-98']")
+@Test([[]], [])
+@Test([["0"]], ["2"])
+@Test([["42", "44", "42", "-100"]], ["44", "46", "44", "-98"])
 function testListMap(list: List<Integer>): List<Integer> {
   // Add 2 to each element
   List.map<Integer, Integer>(list, Integer.plus|(_, Integer."2"))
 }
 
-@Test(["[]", "true"], "[]")
-@Test(["['0']", "true"], "['0']")
-@Test(["['0']", "false"], "['2']")
-@Test(["['42', '44', '42', '-100']", "true"], "['42', '44', '42', '-100']")
+@Test([[], "true"], [])
+@Test([["0"], "true"], ["0"])
+@Test([["0"], "false"], ["2"])
+@Test([["42", "44", "42", "-100"], "true"], ["42", "44", "42", "-100"])
 function testListMapDoesNotMutate(list: List<Integer>, returnOriginal: Boolean): List<Integer> {
   // Add 2 to each element
   let mappedList = List.map<Integer, Integer>(list, Integer.plus|(_, Integer."2"))

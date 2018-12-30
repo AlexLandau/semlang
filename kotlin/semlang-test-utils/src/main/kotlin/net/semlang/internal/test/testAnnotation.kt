@@ -222,7 +222,7 @@ fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument
         is Type.List -> {
             // TODO: Support the alternative list notation
             when (annotationArg) {
-                is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, annotationArg.value)
+                is AnnotationArgument.Literal -> error("List types should be expressed as an annotation argument list, but was: $annotationArg")
                 is AnnotationArgument.List -> {
                     val itemType = type.parameter
                     val semObjects = annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
