@@ -1,9 +1,0 @@
-
-@Test(["['1', '2', '4', '8']", "0"], "1")
-@Test(["['1', '2', '4', '8']", "1"], "2")
-@Test(["['1', '2', '4', '8']", "2"], "4")
-@Test(["['1', '2', '4', '8']", "3"], "8")
-@Test(["['42']", "0"], "42")
-function listGet(list: List<Integer>, index: Natural): Integer {
-  Maybe.assume<Integer>(List.get<Integer>(list, index))
-}

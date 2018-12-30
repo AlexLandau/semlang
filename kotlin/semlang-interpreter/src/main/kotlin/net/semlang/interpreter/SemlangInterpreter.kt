@@ -475,89 +475,12 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         return when (type) {
             Type.INTEGER -> evaluateIntegerLiteral(literal)
             Type.BOOLEAN -> evaluateBooleanLiteral(literal)
-            is Type.List -> evaluateComplexLiteral(type, literal)
+            is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.Maybe -> evaluateMaybeLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
             is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.InternalParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-        }
-    }
-
-    private fun evaluateComplexLiteral(type: Type, literal: String): SemObject {
-        val parseResult = parseComplexLiteral(literal)
-        return when (parseResult) {
-            is ComplexLiteralParsingResult.Failure -> {
-                throw IllegalArgumentException("Complex literal parsing failed for literal $literal: ${parseResult.errorMessage}")
-            }
-            is ComplexLiteralParsingResult.Success -> {
-                evaluateComplexLiteralNode(type, parseResult.node)
-            }
-        }
-    }
-
-    private fun evaluateComplexLiteralNode(type: Type, node: ComplexLiteralNode): SemObject {
-        return when (type) {
-            Type.INTEGER -> {
-                if (node !is ComplexLiteralNode.Literal) {
-                    error("Integers are expected to be simple literals")
-                }
-                evaluateIntegerLiteral(node.contents)
-            }
-            Type.BOOLEAN -> {
-                if (node !is ComplexLiteralNode.Literal) {
-                    error("Booleans are expected to be simple literals")
-                }
-                evaluateBooleanLiteral(node.contents)
-            }
-            is Type.List -> {
-                if (node !is ComplexLiteralNode.SquareList) {
-                    error("Lists are expected to be in square brackets")
-                }
-                val contents = node.contents.map { evaluateComplexLiteralNode(type.parameter, it) }
-                SemObject.SemList(contents)
-            }
-            is Type.Maybe -> TODO()
-            is Type.FunctionType -> TODO()
-            is Type.ParameterType -> TODO()
-            is Type.InternalParameterType -> TODO()
-            is Type.NamedType -> {
-                // Special cases for special SemObjects...
-                if (isNativeModule(type.ref.module)) {
-                    if (type.ref.id == NativeStruct.NATURAL.id) {
-                        val literal = (node as? ComplexLiteralNode.Literal ?: error("Type error")).contents
-                        return evaluateNaturalLiteral(literal)
-                    }
-                    if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
-                        val literal = (node as? ComplexLiteralNode.Literal ?: error("Type error")).contents
-                        return evaluateStringLiteral(literal)
-                    }
-                }
-
-                val nameResolution = mainModule.resolve(type.ref) ?: error("No resolution found for ${type.ref}")
-                if (nameResolution.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
-                    //Handle structs
-                    val (struct, structModule) = mainModule.getInternalStruct(type.ref)
-                    if (struct.members.size == 1) {
-                        // When there's a single member, we use its literal representation directly
-                        val member = struct.members.single()
-                        val memberValue = evaluateComplexLiteralNode(member.type, node)
-                        val requiresBlock = struct.requires
-                        if (requiresBlock != null) {
-                            val initialAssignments = mapOf(member.name to memberValue)
-                            val validationResult = evaluateBlock(requiresBlock, initialAssignments, structModule) as? SemObject.Boolean ?: error("Type error")
-                            if (!validationResult.value) {
-                                error("Literal value does not satisfy the requires block of type ${struct.id}: \"$node\"")
-                            }
-                        }
-                        return SemObject.Struct(struct, listOf(memberValue))
-                    } else {
-                        TODO()
-                    }
-                } else {
-                    TODO()
-                }
-            }
         }
     }
 

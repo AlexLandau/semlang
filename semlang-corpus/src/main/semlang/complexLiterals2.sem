@@ -1,6 +1,0 @@
-
-@Test(["['1', '2', '4', '8']"], "['2', '4', '8', '16']")
-@Test(["['-1', '0', '1']"], "['-2', '0', '2']")
-function listDouble(list: List<Integer>): List<Integer> {
-  List.map<Integer, Integer>(list, Integer.times|(_, Integer."2"))
-}

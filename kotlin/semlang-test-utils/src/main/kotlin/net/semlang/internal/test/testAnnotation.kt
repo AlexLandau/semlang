@@ -128,23 +128,19 @@ private fun doTest(function: ValidatedFunction, module: ValidatedModule, values:
     runTest(function, contents, module, errorCollector, options)
 }
 
-data class TestAnnotationContents(val argLiterals: List<String>, val outputLiteral: String)
+data class TestAnnotationContents(val args: List<AnnotationArgument>, val output: AnnotationArgument)
 
 fun verifyTestAnnotationContents(inputs: List<AnnotationArgument>, function: ValidatedFunction): TestAnnotationContents {
     if (inputs.size != 2) {
         fail("Expected 2 arguments to a @Test annotation (arguments list and result literal)")
     }
     val firstInput = inputs[0]
-    val secondInput = inputs[1]
     if (firstInput !is AnnotationArgument.List) {
         fail("Expected first input to @Test to be a list of arguments")
     }
-    if (secondInput !is AnnotationArgument.Literal) {
-        fail("Expected second input to @Test to be a literal")
-    }
 
-    val allArguments = firstInput.values.map { argInput: AnnotationArgument -> (argInput as AnnotationArgument.Literal).value }
-    val output = secondInput.value
+    val allArguments = firstInput.values
+    val output = inputs[1]
 
     if (allArguments.size != function.arguments.size) {
         fail("Expected ${function.arguments.size} arguments for ${function.id}, but received ${allArguments.size}: $allArguments")
@@ -155,11 +151,11 @@ fun verifyTestAnnotationContents(inputs: List<AnnotationArgument>, function: Val
 
 private fun runTest(function: ValidatedFunction, contents: TestAnnotationContents, module: ValidatedModule, errorCollector: MutableCollection<String>, options: InterpreterOptions) {
     val interpreter = SemlangForwardInterpreter(module, options)
-    val arguments = instantiateArguments(function.arguments, contents.argLiterals, interpreter)
+    val arguments = instantiateArguments(function.arguments, contents.args, interpreter)
     val actualOutput = interpreter.interpret(function.id, arguments)
-    val desiredOutput = interpreter.evaluateLiteral(function.returnType, contents.outputLiteral)
+    val desiredOutput = evaluateAnnotationArgAsLiteral(function.returnType, contents.output, interpreter)
     if (!interpreter.areEqual(actualOutput, desiredOutput)) {
-        errorCollector.add("For function ${function.id}, expected output with arguments ${contents.argLiterals} to be $desiredOutput, but was $actualOutput")
+        errorCollector.add("For function ${function.id}, expected output with arguments ${contents.args} to be $desiredOutput, but was $actualOutput")
     }
 }
 
@@ -213,9 +209,46 @@ private fun translateMockCalls(expectedCalls: List<MockCall>, interpreter: Semla
     return results
 }
 
-private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals: List<String>, interpreter: SemlangForwardInterpreter): List<SemObject> {
+private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals: List<AnnotationArgument>, interpreter: SemlangForwardInterpreter): List<SemObject> {
     return argumentSpecs.zip(argumentLiterals).map { (spec, literal) ->
-        interpreter.evaluateLiteral(spec.type, literal)
+        evaluateAnnotationArgAsLiteral(spec.type, literal, interpreter)
+    }
+}
+
+fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument, interpreter: SemlangForwardInterpreter): SemObject {
+    return when (type) {
+        Type.INTEGER -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+        Type.BOOLEAN -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+        is Type.List -> {
+            // TODO: Support the alternative list notation
+            when (annotationArg) {
+                is AnnotationArgument.Literal -> error("List types should be expressed as an annotation argument list, but was: $annotationArg")
+                is AnnotationArgument.List -> {
+                    val itemType = type.parameter
+                    val semObjects = annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
+                    SemObject.SemList(semObjects)
+                }
+            }
+
+        }
+        is Type.Maybe -> {
+            when (annotationArg) {
+                is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+                is AnnotationArgument.List -> {
+                    if (annotationArg.values.isEmpty()) {
+                        SemObject.Maybe.Failure
+                    } else {
+                        val semObject = evaluateAnnotationArgAsLiteral(type.parameter, annotationArg.values.single(), interpreter)
+                        SemObject.Maybe.Success(semObject)
+                    }
+                }
+            }
+        }
+        is Type.FunctionType.Ground -> TODO()
+        is Type.FunctionType.Parameterized -> TODO()
+        is Type.InternalParameterType -> TODO()
+        is Type.ParameterType -> TODO()
+        is Type.NamedType -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
     }
 }
 
