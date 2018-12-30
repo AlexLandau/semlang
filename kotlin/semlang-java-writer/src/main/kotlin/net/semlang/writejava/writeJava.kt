@@ -4,10 +4,7 @@ import com.squareup.javapoet.*
 import net.semlang.api.*
 import net.semlang.internal.test.TestAnnotationContents
 import net.semlang.internal.test.verifyTestAnnotationContents
-import net.semlang.interpreter.ComplexLiteralNode
-import net.semlang.interpreter.ComplexLiteralParsingResult
 import net.semlang.interpreter.evaluateStringLiteral
-import net.semlang.interpreter.parseComplexLiteral
 import net.semlang.transforms.*
 import net.semlang.validator.validateModule
 import java.io.File
@@ -892,7 +889,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             Type.BOOLEAN -> {
                 CodeBlock.of("\$L", literal)
             }
-            is Type.List -> writeComplexLiteralExpression(type, literal)
+            is Type.List -> error("Literals not supported for list type $type")
             is Type.Maybe -> {
                 // We need to support this for unit tests, specifically
                 if (literal == "failure") {
@@ -947,6 +944,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
     }
 
+    private fun stripUnescapedBackslashes(literal: String): String {
+        return evaluateStringLiteral(literal).contents
+    }
+
     private fun writeNaturalLiteral(literal: String): CodeBlock {
         val isValidLong = (literal.toLongOrNull() != null)
         if (isValidLong) {
@@ -954,53 +955,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         } else {
             return CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
         }
-    }
-
-
-    private fun writeComplexLiteralExpression(type: Type, literal: String): CodeBlock {
-        val parsingResult = parseComplexLiteral(literal)
-        return when (parsingResult) {
-            is ComplexLiteralParsingResult.Success -> writeComplexLiteralExpression(type, parsingResult.node)
-            is ComplexLiteralParsingResult.Failure -> error("Could not parse complex literal $literal: ${parsingResult.errorMessage}")
-        }
-    }
-    private fun writeComplexLiteralExpression(type: Type, node: ComplexLiteralNode): CodeBlock {
-        return when (type) {
-            Type.INTEGER -> {
-                val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
-                writeLiteralExpression(type, literal.contents)
-            }
-            Type.BOOLEAN -> {
-                val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
-                writeLiteralExpression(type, literal.contents)
-            }
-            is Type.List -> {
-                val squareList = node as? ComplexLiteralNode.SquareList ?: error("Type mismatch")
-                val contentsCode = squareList.contents.map {
-                    writeComplexLiteralExpression(type.parameter, it)
-                }.joinToArgumentsList()
-                CodeBlock.of("\$T.asList(\$L)", Arrays::class.java, contentsCode)
-            }
-            is Type.Maybe -> TODO()
-            is Type.FunctionType -> TODO()
-            is Type.ParameterType -> TODO()
-            is Type.NamedType -> {
-                if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL.id) {
-                    val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
-                    writeNaturalLiteral(literal.contents)
-                } else if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
-                    val literal = node as? ComplexLiteralNode.Literal ?: error("Type mismatch")
-                    writeUnicodeStringLiteral(literal.contents)
-                } else {
-                    TODO()
-                }
-            }
-            is Type.InternalParameterType -> TODO()
-        }
-    }
-
-    private fun stripUnescapedBackslashes(literal: String): String {
-        return evaluateStringLiteral(literal).contents
     }
 
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {

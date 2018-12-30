@@ -4,7 +4,6 @@ import { Function, Module, Block, isStatement, Expression, Type, isNamedType, is
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
-import { parseComplexLiteral, ComplexLiteralNode, isLiteralNode, isSquareListNode } from "./ComplexLiteral";
 
 export function evaluateLiteral(module: Module, type: Type, value: string): SemObject {
     const context = new InterpreterContext(module);
