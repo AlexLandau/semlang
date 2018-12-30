@@ -16,8 +16,8 @@ import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
 import java.util.*
 
-fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName): RawContext {
-    return Sem1ToSem2Translator(context, moduleName).translate()
+fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): RawContext {
+    return Sem1ToSem2Translator(context, moduleName, upstreamModules).translate()
 }
 
 private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
@@ -27,11 +27,11 @@ private sealed class TypedExpression
 private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
 private data class NamespacePartExpression(val names: List<String>): TypedExpression()
 
-private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName) {
+private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>) {
     lateinit var typeInfo: TypesInfo
 
     fun translate(): RawContext {
-        this.typeInfo = collectTypeInfo(context, moduleName)
+        this.typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
 
         val functions = context.functions.map(::translate)
         val structs = context.structs.map(::translate)
@@ -200,14 +200,25 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding
                 // TODO: Also do this in the FunctionBinding section
                 if (functionExpression is Expression.NamedFunctionBinding) {
-                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
-                    val combinedChosenParameters = fillIntoNulls(functionExpression.chosenParameters, expression.chosenParameters.map(::translate))
-                    RealExpression(Expression.NamedFunctionCall(
-                            functionRef = functionExpression.functionRef,
-                            arguments = combinedArguments,
-                            chosenParameters = combinedChosenParameters,
-                            location = translate(expression.location)
-                    ), returnType)
+                    try {
+                        val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
+                        val combinedChosenParameters: List<UnvalidatedType>
+                        if (functionExpression.chosenParameters.all { it == null }) {
+                            // TODO: This is a workaround for the common case where type parameter inference is applied; we should get a better fix that
+                            // also handles the more obscure cases
+                            combinedChosenParameters = expression.chosenParameters.map(::translate)
+                        } else {
+                            combinedChosenParameters = fillIntoNulls(functionExpression.chosenParameters, expression.chosenParameters.map(::translate))
+                        }
+                        RealExpression(Expression.NamedFunctionCall(
+                                functionRef = functionExpression.functionRef,
+                                arguments = combinedArguments,
+                                chosenParameters = combinedChosenParameters,
+                                location = translate(expression.location)
+                        ), returnType)
+                    } catch (e: RuntimeException) {
+                        throw IllegalStateException("Error dealing with functionExpression $functionExpression and arguments ${expression.arguments}", e)
+                    }
                 } else {
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
@@ -268,10 +279,13 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 val arguments = expression.arguments.map(::translate)
                 val returnType = translate(expression.returnType)
                 val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
+
+                val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
+
                 RealExpression(Expression.InlineFunction(
                         arguments = arguments,
                         returnType = returnType,
-                        block = translate(expression.block, varTypes).block,
+                        block = translate(expression.block, varTypesInBlock).block,
                         location = translate(expression.location)
                 ), functionType)
             }
@@ -486,18 +500,22 @@ internal fun translate(option: S2Option): UnvalidatedOption {
 }
 
 private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
-    val results = ArrayList<T>()
-    val fillingsItr = fillings.iterator()
-    for (binding in bindings) {
-        if (binding != null) {
-            results.add(binding)
-        } else {
+    try {
+        val results = ArrayList<T>()
+        val fillingsItr = fillings.iterator()
+        for (binding in bindings) {
+            if (binding != null) {
+                results.add(binding)
+            } else {
+                results.add(fillingsItr.next())
+            }
+        }
+        // We sometimes make fake function bindings with a minimal number of arguments; add any remaining fillings
+        while (fillingsItr.hasNext()) {
             results.add(fillingsItr.next())
         }
+        return results
+    } catch (e: RuntimeException) {
+        throw IllegalArgumentException("fillIntoNulls failed wiith bindings $bindings and fillings $fillings", e)
     }
-    // We sometimes make fake function bindings with a minimal number of arguments; add any remaining fillings
-    while (fillingsItr.hasNext()) {
-        results.add(fillingsItr.next())
-    }
-    return results
 }

@@ -6,15 +6,15 @@ import net.semlang.sem2.api.*
 import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypesInfo
 
-fun collectTypeInfo(context: S2Context, moduleName: ModuleName): TypesInfo {
+fun collectTypeInfo(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesInfo {
     val fakeContext = RawContext(
             context.functions.map(::translateForTypeOnly),
             context.structs.map(::translateForTypeOnly),
             context.interfaces.map(::translateForTypeOnly),
             context.unions.map(::translateForTypeOnly))
 
+    // TODO: Support module versions correctly...
     val moduleId = ModuleUniqueId(moduleName, "")
-    val upstreamModules = listOf<ValidatedModule>() // TODO: Support upstream modules
     val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
     return getTypesInfo(fakeContext, moduleId, CURRENT_NATIVE_MODULE_VERSION, upstreamModules, moduleVersionMappings, {})
 }
