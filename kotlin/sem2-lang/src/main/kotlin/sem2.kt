@@ -290,7 +290,6 @@ sealed class S2AnnotationArgument {
     data class List(val values: kotlin.collections.List<S2AnnotationArgument>): S2AnnotationArgument()
 }
 
-// Post-scoping, pre-type-analysis
 sealed class S2Expression {
     abstract val location: Location?
     data class RawId(val name: String, override val location: Location? = null): S2Expression()
@@ -302,6 +301,7 @@ sealed class S2Expression {
     data class FunctionBinding(val expression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
     data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val location: Location? = null): S2Expression()
+    data class PlusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null): S2Expression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative

@@ -40,6 +40,7 @@ tokens {
   PIPE,
   AT,
   AMPERSAND,
+  PLUS,
   MODULE_ID,
   ID,
   UNDERSCORE
@@ -159,6 +160,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
   | expression DOT ID
+  | expression PLUS expression // + operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

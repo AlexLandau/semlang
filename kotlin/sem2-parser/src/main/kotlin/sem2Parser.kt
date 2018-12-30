@@ -321,7 +321,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
     private fun parseExpression(expression: Sem2Parser.ExpressionContext): S2Expression {
         try {
             if (expression.IF() != null) {
-                val condition = parseExpression(expression.expression())
+                val condition = parseExpression(expression.expression(0))
                 val thenBlock = parseBlock(expression.block(0))
                 val elseBlock = parseBlock(expression.block(1))
                 return S2Expression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
@@ -341,14 +341,14 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.ARROW() != null) {
-                val inner = parseExpression(expression.expression())
+                val inner = parseExpression(expression.expression(0))
                 val name = expression.ID().text
                 return S2Expression.Follow(inner, name, locationOf(expression))
             }
 
             if (expression.LPAREN() != null) {
                 val innerExpression = if (expression.expression() != null) {
-                    parseExpression(expression.expression())
+                    parseExpression(expression.expression(0))
                 } else {
                     null
                 }
@@ -380,10 +380,16 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.DOT() != null) {
-                val subexpression = parseExpression(expression.expression())
+                val subexpression = parseExpression(expression.expression(0))
                 val name = expression.ID().text
 
                 return S2Expression.DotAccess(subexpression, name)
+            }
+
+            if (expression.PLUS() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.PlusOp(left, right)
             }
 
             if (expression.ID() != null) {

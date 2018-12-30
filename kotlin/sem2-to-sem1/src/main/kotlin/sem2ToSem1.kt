@@ -157,19 +157,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         }
 
                         // It's not a member/method, so assume it's a "local" function binding
-                        val namespace = when (subexpressionType) {
-                            is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
-                            is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
-                            is UnvalidatedType.Integer -> listOf("Integer")
-                            is UnvalidatedType.Boolean -> listOf("Boolean")
-                            is UnvalidatedType.List -> listOf("List")
-                            is UnvalidatedType.Maybe -> listOf("Maybe")
-                            is UnvalidatedType.FunctionType -> listOf()
-                            is UnvalidatedType.NamedType -> {
-                                subexpressionType.ref.id.namespacedName
-                            }
-                            null -> listOf()
-                        }
+                        val namespace = getNamespaceForType(subexpressionType)
                         val namespacedName = namespace + name
                         val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(namespacedName))
                         val functionInfo = typeInfo.getFunctionInfo(functionRef)
@@ -287,6 +275,44 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         location = translate(expression.location)
                 ), functionType)
             }
+            is S2Expression.PlusOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                // At some point we might support doing this with separate types (e.g. Natural + Integer), but for
+                // now expect the two to be the same
+                val operandType = left.type
+                val plusNamespace = getNamespaceForType(operandType)
+                val plusRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(plusNamespace + "plus"))
+
+                val functionInfo = typeInfo.getFunctionInfo(plusRef)
+                val outputType = if (functionInfo != null) {
+                    functionInfo.type.outputType
+                } else {
+                    null
+                }
+                RealExpression(Expression.NamedFunctionCall(
+                        functionRef = plusRef,
+                        arguments = listOf(left.expression, right.expression),
+                        chosenParameters = listOf(),
+                        location = translate(expression.location)
+                ), outputType)
+            }
+        }
+    }
+
+    private fun getNamespaceForType(subexpressionType: UnvalidatedType?): List<String> {
+        return when (subexpressionType) {
+            is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
+            is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
+            is UnvalidatedType.Integer -> listOf("Integer")
+            is UnvalidatedType.Boolean -> listOf("Boolean")
+            is UnvalidatedType.List -> listOf("List")
+            is UnvalidatedType.Maybe -> listOf("Maybe")
+            is UnvalidatedType.FunctionType -> listOf()
+            is UnvalidatedType.NamedType -> {
+                subexpressionType.ref.id.namespacedName
+            }
+            null -> listOf()
         }
     }
 
