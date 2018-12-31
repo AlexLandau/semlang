@@ -118,7 +118,7 @@ sealed class UnvalidatedType {
     }
 
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Integer {
             return this
         }
 
@@ -131,7 +131,7 @@ sealed class UnvalidatedType {
         }
     }
     data class Boolean(override val location: Location? = null) : UnvalidatedType() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Boolean {
             return this
         }
 
@@ -145,7 +145,7 @@ sealed class UnvalidatedType {
     }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.List {
             return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
 
@@ -159,7 +159,7 @@ sealed class UnvalidatedType {
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Maybe {
             return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
 
@@ -173,9 +173,9 @@ sealed class UnvalidatedType {
     }
 
     data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
+        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.FunctionType {
             return FunctionType(
-                    typeParameters,
+                    typeParameters.filter { !parameterReplacementMap.containsKey(it.name) },
                     this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
                     this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
                     location)

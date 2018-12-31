@@ -14,11 +14,15 @@ import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
+import net.semlang.validator.getTypeParameterInferenceSources
 import java.util.*
 
-fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): RawContext {
-    return Sem1ToSem2Translator(context, moduleName, upstreamModules).translate()
+fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
+    return Sem1ToSem2Translator(context, moduleName, upstreamModules, options).translate()
 }
+
+// TODO: We should go further in testing and have an option to add explicit types to every variable, based on sem2 inference
+data class Sem2ToSem1Options(val failOnUninferredType: Boolean = false)
 
 private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
 private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?)
@@ -29,7 +33,7 @@ private data class NamespacePartExpression(val names: List<String>): TypedExpres
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
-private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>) {
+private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>, val options: Sem2ToSem1Options) {
     lateinit var typeInfo: TypesInfo
 
     fun translate(): RawContext {
@@ -74,10 +78,16 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
 
         for (s2Statement in block.statements) {
             val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
+            if (options.failOnUninferredType && statementType == null) {
+                error("Could not infer type for statement $s2Statement in block $block")
+            }
             s1Statement.name?.let { varNamesInScope.put(it, statementType) }
             s1Statements.add(s1Statement)
         }
         val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, varNamesInScope)
+        if (options.failOnUninferredType && blockType == null) {
+
+        }
 
         val s1Block = Block(statements = s1Statements,
                 returnedExpression = returnedExpression,
@@ -165,9 +175,29 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         val functionInfo = typeInfo.getFunctionInfo(functionRef)
                         val numBindings = if (functionInfo == null) 1 else functionInfo.type.getNumArguments()
                         val bindings = listOf(subexpression.expression) + Collections.nCopies(numBindings - 1, null)
-                        val chosenParameters = listOf<UnvalidatedType?>() // Probably not correct...
-                        val functionType = functionInfo?.type
 
+                        val chosenParameters = if (functionInfo != null) {
+                            val argumentTypes = ArrayList<UnvalidatedType?>()
+                            argumentTypes.add(subexpressionType)
+                            argumentTypes.addAll(Collections.nCopies(functionInfo.type.getNumArguments() - 1, null))
+                            val inferenceSources = getTypeParameterInferenceSources(functionInfo.type)
+                            val inferredTypeParameters = inferenceSources.map { inferenceSourceList ->
+                                inferenceSourceList.map { it.findType(argumentTypes) }.firstOrNull { it != null }
+                            }
+                            // TODO: Implement explicit type parameters for "local" functions
+                            inferredTypeParameters
+                        } else {
+                            listOf()
+                        }
+
+                        val functionType = if (functionInfo == null) null else {
+                            val chosenParametersAsMap = functionInfo.type.typeParameters.zip(chosenParameters).filter { it.second != null }.map { it.first.name to it.second!! }.toMap()
+                            functionInfo.type.replacingNamedParameterTypes(chosenParametersAsMap)
+                        }
+
+                        if (options.failOnUninferredType && functionType == null) {
+                            error("Could not infer a function type for expression $expression")
+                        }
                         return RealExpression(Expression.NamedFunctionBinding(
                                 functionRef = functionRef,
                                 bindings = bindings,
@@ -195,33 +225,66 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
 
-                val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
-
-                val arguments = expression.arguments.map { translateFullExpression(it, varTypes).expression }
+                val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, varTypes) }.map { it.expression to it.type }.unzip()
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding
                 // TODO: Also do this in the FunctionBinding section
-                if (functionExpression is Expression.NamedFunctionBinding) {
+                if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
+                    // TODO: We need to do type inference here!
+//                    val originalFunctionInfo = typeInfo.getFunctionInfo(functionExpression.functionRef)!!
+                    // TODO: Fix shadowing?
+//                    val functionType = originalFunctionInfo.type
+                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
+
+                    // Note: Ideally we'd want a "combined argument types"; the problem is that we discarded the type information...
+                    // Instead we're going to perform type parameter inference on the post-binding function type
+
+                    val postBindingTypeParameterSources = getTypeParameterInferenceSources(functionType)
+                    val inferredPostBindingTypeParameters = functionType.typeParameters.zip(postBindingTypeParameterSources).map { (parameter, parameterSources) ->
+                        parameterSources.map { it.findType(argumentTypes) }.firstOrNull { it != null }
+                    }
+
                     try {
-                        val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
-                        val combinedChosenParameters: List<UnvalidatedType>
-                        if (functionExpression.chosenParameters.all { it == null }) {
-                            // TODO: This is a workaround for the common case where type parameter inference is applied; we should get a better fix that
-                            // also handles the more obscure cases
-                            combinedChosenParameters = expression.chosenParameters.map(::translate)
+                        val chosenWithInference: List<UnvalidatedType> = if (expression.chosenParameters.size == functionType.typeParameters.size) {
+                            expression.chosenParameters.map(::translate)
                         } else {
-                            combinedChosenParameters = fillIntoNulls(functionExpression.chosenParameters, expression.chosenParameters.map(::translate))
+                            fillIntoNulls(inferredPostBindingTypeParameters, expression.chosenParameters.map(::translate))
                         }
-                        RealExpression(Expression.NamedFunctionCall(
-                                functionRef = functionExpression.functionRef,
-                                arguments = combinedArguments,
-                                chosenParameters = combinedChosenParameters,
-                                location = translate(expression.location)
-                        ), returnType)
+                        val combinedChosenParameters: List<UnvalidatedType> = fillIntoNulls(functionExpression.chosenParameters, chosenWithInference)
+
+                        val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
+                        val returnType = functionType.replacingNamedParameterTypes(chosenParametersAsMap).outputType
+
+
+//                        if (functionExpression.chosenParameters.all { it == null }) {
+//                            // TODO: This is a workaround for the common case where type parameter inference is applied; we should get a better fix that
+//                            // also handles the more obscure cases
+//                            combinedChosenParameters = expression.chosenParameters.map(::translate)
+//                        } else {
+                                    //                        }
+                                    System.out.println("Handling function call for ref ${functionExpression.functionRef}")
+                                    System.out.println("  Function type: $functionType")
+                                    System.out.println("  Args: $combinedArguments")
+                                    System.out.println("  Chosen parameters: $combinedChosenParameters")
+                                    System.out.println("  Return type: $returnType")
+                                    RealExpression(Expression.NamedFunctionCall(
+                                            functionRef = functionExpression.functionRef,
+                                            arguments = combinedArguments,
+                                            chosenParameters = combinedChosenParameters,
+                                            location = translate(expression.location)
+                                    ), returnType)
+//                                }
                     } catch (e: RuntimeException) {
-                        throw IllegalStateException("Error dealing with functionExpression $functionExpression and arguments ${expression.arguments}", e)
+                        throw IllegalStateException("Error dealing with functionExpression $functionExpression" +
+                                " and arguments ${expression.arguments}\n" +
+                                "Function type: $functionType\n" +
+                                "Argument types: $argumentTypes\n" +
+                                "Combined arguments: $combinedArguments\n" +
+                                "Inferred post-binding type parameters: $inferredPostBindingTypeParameters\n" +
+                                "", e)
                     }
                 } else {
+                    val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = arguments,
