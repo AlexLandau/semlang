@@ -18,7 +18,7 @@ import net.semlang.validator.getTypeParameterInferenceSources
 import java.util.*
 
 fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
-    return Sem1ToSem2Translator(context, moduleName, upstreamModules, options).translate()
+    return Sem2ToSem1Translator(context, moduleName, upstreamModules, options).translate()
 }
 
 // TODO: We should go further in testing and have an option to add explicit types to every variable, based on sem2 inference
@@ -33,7 +33,7 @@ private data class NamespacePartExpression(val names: List<String>): TypedExpres
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
-private class Sem1ToSem2Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>, val options: Sem2ToSem1Options) {
+private class Sem2ToSem1Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>, val options: Sem2ToSem1Options) {
     lateinit var typeInfo: TypesInfo
 
     fun translate(): RawContext {
@@ -86,7 +86,7 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
         }
         val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, varNamesInScope)
         if (options.failOnUninferredType && blockType == null) {
-
+            error("Could not infer type for returned expression $returnedExpression in block $block")
         }
 
         val s1Block = Block(statements = s1Statements,
@@ -230,12 +230,8 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding
                 // TODO: Also do this in the FunctionBinding section
                 if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
-                    // TODO: We need to do type inference here!
-//                    val originalFunctionInfo = typeInfo.getFunctionInfo(functionExpression.functionRef)!!
-                    // TODO: Fix shadowing?
-//                    val functionType = originalFunctionInfo.type
-                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
 
+                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
                     // Note: Ideally we'd want a "combined argument types"; the problem is that we discarded the type information...
                     // Instead we're going to perform type parameter inference on the post-binding function type
 
@@ -255,36 +251,25 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                         val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
                         val returnType = functionType.replacingNamedParameterTypes(chosenParametersAsMap).outputType
 
-
-//                        if (functionExpression.chosenParameters.all { it == null }) {
-//                            // TODO: This is a workaround for the common case where type parameter inference is applied; we should get a better fix that
-//                            // also handles the more obscure cases
-//                            combinedChosenParameters = expression.chosenParameters.map(::translate)
-//                        } else {
-                                    //                        }
-                                    System.out.println("Handling function call for ref ${functionExpression.functionRef}")
-                                    System.out.println("  Function type: $functionType")
-                                    System.out.println("  Args: $combinedArguments")
-                                    System.out.println("  Chosen parameters: $combinedChosenParameters")
-                                    System.out.println("  Return type: $returnType")
-                                    RealExpression(Expression.NamedFunctionCall(
-                                            functionRef = functionExpression.functionRef,
-                                            arguments = combinedArguments,
-                                            chosenParameters = combinedChosenParameters,
-                                            location = translate(expression.location)
-                                    ), returnType)
-//                                }
+                        RealExpression(Expression.NamedFunctionCall(
+                                functionRef = functionExpression.functionRef,
+                                arguments = combinedArguments,
+                                chosenParameters = combinedChosenParameters,
+                                location = translate(expression.location)
+                        ), returnType)
                     } catch (e: RuntimeException) {
                         throw IllegalStateException("Error dealing with functionExpression $functionExpression" +
                                 " and arguments ${expression.arguments}\n" +
                                 "Function type: $functionType\n" +
                                 "Argument types: $argumentTypes\n" +
                                 "Combined arguments: $combinedArguments\n" +
-                                "Inferred post-binding type parameters: $inferredPostBindingTypeParameters\n" +
-                                "", e)
+                                "Inferred post-binding type parameters: $inferredPostBindingTypeParameters", e)
                     }
                 } else {
                     val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
+                    if (options.failOnUninferredType && returnType == null) {
+                        error("Could not determine type of expression $expression")
+                    }
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = arguments,
@@ -334,6 +319,9 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                 } else {
                     null
                 }
+                if (options.failOnUninferredType && elementType == null) {
+                    error("Could not determine type for follow expression $expression with structure type $structureType")
+                }
                 RealExpression(Expression.Follow(
                         structureExpression = structureExpression,
                         name = expression.name,
@@ -370,6 +358,9 @@ private class Sem1ToSem2Translator(val context: S2Context, val moduleName: Modul
                     functionInfo.type.outputType
                 } else {
                     null
+                }
+                if (options.failOnUninferredType && outputType == null) {
+                    error("Could not determine type for expression $expression")
                 }
                 RealExpression(Expression.NamedFunctionCall(
                         functionRef = plusRef,

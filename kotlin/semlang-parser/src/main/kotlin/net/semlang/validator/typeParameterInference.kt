@@ -188,25 +188,6 @@ fun getTypeParameterInferenceSources(type: UnvalidatedType.FunctionType): List<L
                 val outputTypeSource = UnvalidatedTypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
                 addPossibleSources(type.outputType, outputTypeSource)
             }
-//            is UnvalidatedType.FunctionType.Ground -> {
-//                type.argTypes.forEachIndexed { argIndex, argType ->
-//                    val argTypeSource = TypeParameterInferenceSource.FunctionTypeArgument(sourceSoFar, argIndex)
-//                    addPossibleSources(argType, argTypeSource, indexOffset)
-//                }
-//                val outputTypeSource = TypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
-//                addPossibleSources(type.outputType, outputTypeSource, indexOffset)
-//            }
-//            is UnvalidatedType.FunctionType.Parameterized -> {
-//                // Reminder: In the example <T>(<U>(U, T) -> Bool) -> T,
-//                // first U is 0, first T is 1, outer T is 0
-//                val newIndexOffset = indexOffset + type.typeParameters.size
-//                type.argTypes.forEachIndexed { argIndex, argType ->
-//                    val argTypeSource = TypeParameterInferenceSource.FunctionTypeArgument(sourceSoFar, argIndex)
-//                    addPossibleSources(argType, argTypeSource, newIndexOffset)
-//                }
-//                val outputTypeSource = TypeParameterInferenceSource.FunctionTypeOutput(sourceSoFar)
-//                addPossibleSources(type.outputType, outputTypeSource, newIndexOffset)
-//            }
             is UnvalidatedType.NamedType -> {
                 if (type.ref.moduleRef == null && type.ref.id.namespacedName.size == 1) {
                     val typeName = type.ref.id.namespacedName[0]
@@ -221,13 +202,6 @@ fun getTypeParameterInferenceSources(type: UnvalidatedType.FunctionType): List<L
                     addPossibleSources(parameter, parameterSource)
                 }
             }
-//            is UnvalidatedType.InternalParameterType -> {
-//                val index = type.index + indexOffset
-//                allPossibleSources[index].add(sourceSoFar)
-//            }
-//            is UnvalidatedType.ParameterType -> {
-//                // Do nothing
-//            }
         }
     }
 
