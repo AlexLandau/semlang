@@ -1,0 +1,60 @@
+// TODO: This is motivational for now, but at some point I'll move the actual implementation to be sem2
+@Test(["0"], "0")
+@Test(["1"], "1")
+@Test(["9"], "9")
+@Test(["10"], "10")
+@Test(["42"], "42")
+@Test(["12345"], "12345")
+function Natural.toString(value: Natural): Unicode.String {
+  let sequence = Sequence(Natural.toString.State(value, []<Unicode.CodePoint>), function(state: Natural.toString.State): Natural.toString.State {
+    let remainder = Maybe.assume(Natural.modulo(state->n, Natural."10"))
+    let divided = Maybe.assume(Natural.dividedBy(state->n, Natural."10"))
+    let codePoint = Maybe.assume(Unicode.CodePoint(remainder + unicodeZero().natural))
+    let newCodePoints = List.appendFront(state->codePoints, codePoint)
+    Natural.toString.State(divided, newCodePoints)
+  })
+  let finishedState = Sequence.first(sequence, function(state: Natural.toString.State): Boolean {
+    Natural.equals(state->n, Natural."0")
+  })
+  if (List.isEmpty(finishedState->codePoints)) {
+    Unicode.String."0"
+  } else {
+    Unicode.String(finishedState->codePoints)
+  }
+}
+
+struct Natural.toString.State {
+  n: Natural
+  codePoints: List<Unicode.CodePoint>
+}
+
+function unicodeZero(): Unicode.CodePoint {
+  Unicode.CodePoint."48"
+}
+
+@Export
+function Natural.modulo(left: Natural, right: Natural): Maybe<Natural> {
+  let moduloResult: Maybe<Integer> = Integer.modulo(left->integer, right->integer)
+  Maybe.flatMap(moduloResult, Natural|(_))
+}
+
+@Export
+function Natural.dividedBy(left: Natural, right: Natural): Maybe<Natural> {
+  let divisionResult: Maybe<Integer> = Integer.dividedBy(left->integer, right->integer)
+  Maybe.flatMap(divisionResult, Natural|(_))
+}
+
+@Export
+function Natural.plus(left: Natural, right: Natural): Natural {
+  Maybe.assume(Natural(left.integer + right.integer))
+}
+
+@Export
+function Natural.equals(left: Natural, right: Natural): Boolean {
+  Integer.equals(left->integer, right->integer)
+}
+
+@Export
+function List.isEmpty<T>(list: List<T>): Boolean {
+  Natural.equals(list.size(), Natural."0")
+}
