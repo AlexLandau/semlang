@@ -9,10 +9,10 @@ function Integer.negative(i: Integer): Integer {
 }
 
 @Export
-function Integer.toString(i: Integer): Unicode.String {
+function Integer.toString(i: Integer): String {
   if (Integer.lessThan(i, Integer."0")) {
     let absoluteValue = Maybe.assume(Natural(Integer.negative(i)))
-    Unicode.String.join([Unicode.String."-", Natural.toString(absoluteValue)]<Unicode.String>, Unicode.String."")
+    String.join([String."-", Natural.toString(absoluteValue)]<String>, String."")
   } else {
     let asNatural = Maybe.assume(Natural(i))
     Natural.toString(asNatural)

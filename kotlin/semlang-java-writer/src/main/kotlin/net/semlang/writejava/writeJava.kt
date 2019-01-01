@@ -667,14 +667,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 }
                 // Just reuse the BigInteger as-is
                 return writeExpression(expression.structureExpression)
-            } else if (type.ref.id == NativeStruct.UNICODE_STRING.id) {
+            } else if (type.ref.id == NativeStruct.STRING.id) {
                 if (expression.name != "codePoints") {
                     error("...")
                 }
                 // Special handling
-                val unicodeStringsJava = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
-                return CodeBlock.of("\$T.toCodePoints(\$L)", unicodeStringsJava, writeExpression(expression.structureExpression))
-            } else if (type.ref.id == NativeStruct.UNICODE_CODE_POINT.id) {
+                val StringsJava = ClassName.bestGuess("net.semlang.java.Strings")
+                return CodeBlock.of("\$T.toCodePoints(\$L)", StringsJava, writeExpression(expression.structureExpression))
+            } else if (type.ref.id == NativeStruct.CODE_POINT.id) {
                 if (expression.name != "natural") {
                     error("...")
                 }
@@ -909,8 +909,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     if (resolvedType.entityRef.id == NativeStruct.NATURAL.id) {
                         return writeNaturalLiteral(literal)
                     }
-                    if (resolvedType.entityRef.id == NativeStruct.UNICODE_STRING.id) {
-                        return writeUnicodeStringLiteral(literal)
+                    if (resolvedType.entityRef.id == NativeStruct.STRING.id) {
+                        return writeStringLiteral(literal)
                     }
                 }
 
@@ -940,7 +940,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    private fun writeUnicodeStringLiteral(literal: String): CodeBlock {
+    private fun writeStringLiteral(literal: String): CodeBlock {
         return CodeBlock.of("\$S", stripUnescapedBackslashes(literal))
     }
 
@@ -997,8 +997,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
             listOf("Natural") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
-            listOf("Unicode", "String") -> ClassName.get(String::class.java)
-            listOf("Unicode", "CodePoint") -> ClassName.get(Integer::class.java)
+            listOf("String") -> ClassName.get(String::class.java)
+            listOf("CodePoint") -> ClassName.get(Integer::class.java)
             listOf("Bit") -> ClassName.bestGuess("net.semlang.java.Bit")
             listOf("BitsBigEndian") -> ClassName.bestGuess("net.semlang.java.BitsBigEndian")
             listOf("TextOut") -> ClassName.get(PrintStream::class.java)
@@ -1172,9 +1172,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         map.put(EntityId.of("Data", "equals"), DataEqualsFunctionCallStrategy)
 
-        val javaUnicodeStrings = ClassName.bestGuess("net.semlang.java.UnicodeStrings")
-        map.put(EntityId.of("Unicode", "String"), StaticFunctionCallStrategy(javaUnicodeStrings, "create"))
-        map.put(EntityId.of("Unicode", "String", "length"), StaticFunctionCallStrategy(javaUnicodeStrings, "length"))
+        val javaStrings = ClassName.bestGuess("net.semlang.java.Strings")
+        map.put(EntityId.of("String"), StaticFunctionCallStrategy(javaStrings, "create"))
+        map.put(EntityId.of("String", "length"), StaticFunctionCallStrategy(javaStrings, "length"))
 
         val javaTextOut = ClassName.bestGuess("net.semlang.java.TextOut")
         map.put(EntityId.of("TextOut", "print"), StaticFunctionCallStrategy(javaTextOut, "print"))
@@ -1189,8 +1189,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
         map.put(EntityId.of("Natural"), StaticFunctionCallStrategy(javaNaturals, "fromInteger"))
 
-        // Unicode.CodePoint constructor
-        map.put(EntityId.of("Unicode", "CodePoint"), StaticFunctionCallStrategy(javaUnicodeStrings, "asCodePoint"))
+        // CodePoint constructor
+        map.put(EntityId.of("CodePoint"), StaticFunctionCallStrategy(javaStrings, "asCodePoint"))
 
         // Bit constructor
         map.put(EntityId.of("Bit"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.Bit"), "create"))

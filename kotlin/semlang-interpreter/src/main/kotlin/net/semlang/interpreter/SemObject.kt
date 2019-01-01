@@ -42,8 +42,8 @@ sealed class SemObject {
             return contents.toString()
         }
     }
-    // Special case for the Unicode.String type
-    data class UnicodeString(val contents: String): SemObject()
+    // Special case for the String type
+    data class SemString(val contents: String): SemObject()
     // Note: The module here is the module that defines the bound function. It can be used to evaluate the function.
     // Absence of a containing module indicates the native module.
     data class FunctionBinding(val target: FunctionBindingTarget, val containingModule: ValidatedModule?, val bindings: List<SemObject?>): SemObject()

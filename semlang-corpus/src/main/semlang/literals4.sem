@@ -1,57 +1,57 @@
 
 @Test([], "1")
-function stringLiteral1(): Unicode.String {
-    Unicode.String."1"
+function stringLiteral1(): String {
+    String."1"
 }
 
 @Test([], "Hello, world!")
-function stringLiteral2(): Unicode.String {
-    Unicode.String."Hello, world!"
+function stringLiteral2(): String {
+    String."Hello, world!"
 }
 
 @Test([], "")
-function stringLiteral3(): Unicode.String {
-    Unicode.String.""
+function stringLiteral3(): String {
+    String.""
 }
 
 @Test([], "🙂")
-function stringLiteral4(): Unicode.String {
-    Unicode.String."🙂"
+function stringLiteral4(): String {
+    String."🙂"
 }
 
 @Test([], " ")
-function stringLiteral5(): Unicode.String {
-    Unicode.String." "
+function stringLiteral5(): String {
+    String." "
 }
 
 @Test([], "\"")
-function stringLiteral6(): Unicode.String {
-    Unicode.String."\""
+function stringLiteral6(): String {
+    String."\""
 }
 
 @Test([], "\'")
-function stringLiteral7(): Unicode.String {
-    Unicode.String."'"
+function stringLiteral7(): String {
+    String."'"
 }
 
 @Test([], "\\")
-function stringLiteral8(): Unicode.String {
-    Unicode.String."\\"
+function stringLiteral8(): String {
+    String."\\"
 }
 
 @Test([], "\n")
-function stringLiteral9(): Unicode.String {
-    Unicode.String."\n"
+function stringLiteral9(): String {
+    String."\n"
 }
 
 @Test([], "\r")
-function stringLiteral10(): Unicode.String {
-    Unicode.String."\r"
+function stringLiteral10(): String {
+    String."\r"
 }
 
 @Test([], "\t")
-function stringLiteral11(): Unicode.String {
-    Unicode.String."\t"
+function stringLiteral11(): String {
+    String."\t"
 }
 
 @Test(["1"], "1")
@@ -65,6 +65,6 @@ function stringLiteral11(): Unicode.String {
 @Test(["\n"], "1")
 @Test(["\r"], "1")
 @Test(["\t"], "1")
-function stringLiteralLength(string: Unicode.String): Natural {
-    List.size<Unicode.CodePoint>(string->codePoints)
+function stringLiteralLength(string: String): Natural {
+    List.size<CodePoint>(string->codePoints)
 }

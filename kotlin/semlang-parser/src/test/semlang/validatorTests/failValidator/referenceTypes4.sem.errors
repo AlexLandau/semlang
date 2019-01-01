@@ -5,6 +5,6 @@ function doSomething(out: &TextOut): Void {
 }
 
 function doubleSayHi(out1: &TextOut, out2: &TextOut): Void {
-  TextOut.print(out1, Unicode.String."Hi!\n")
-  TextOut.print(out2, Unicode.String."Hi!\n")
+  TextOut.print(out1, String."Hi!\n")
+  TextOut.print(out2, String."Hi!\n")
 }

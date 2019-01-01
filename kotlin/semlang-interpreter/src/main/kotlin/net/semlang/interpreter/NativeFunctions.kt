@@ -423,8 +423,8 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
             if (right !is SemObject.SemList) typeError()
             dataListsEqual(left.contents, right.contents)
         }
-        is SemObject.UnicodeString -> {
-            if (right !is SemObject.UnicodeString) typeError()
+        is SemObject.SemString -> {
+            if (right !is SemObject.SemString) typeError()
             left.contents == right.contents
         }
         is SemObject.FunctionBinding -> typeError()
@@ -459,7 +459,7 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
     // TextOut.print
     list.add(NativeFunction(EntityId.of("TextOut", "print"), { args: List<SemObject>, _: InterpreterCallback ->
         val out = args[0] as? SemObject.TextOut ?: typeError()
-        val text = args[1] as? SemObject.UnicodeString ?: typeError()
+        val text = args[1] as? SemObject.SemString ?: typeError()
 
         out.out.print(text.contents)
         out
@@ -500,7 +500,7 @@ private fun addStringFunctions(list: MutableList<NativeFunction>) {
     // TODO: Future standard library optimization
     // Unicode.String.length
 //    list.add(NativeFunction(unicodeStringDot("length"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val theString = args[0] as? SemObject.UnicodeString ?: typeError()
+//        val theString = args[0] as? SemObject.SemString ?: typeError()
 //        // TODO: At some point, we can have better internal string representations that aren't O(n) here
 //        val codePointCount = theString.contents.codePointCount(0, theString.contents.length)
 //        SemObject.Natural(BigInteger.valueOf(codePointCount.toLong()))

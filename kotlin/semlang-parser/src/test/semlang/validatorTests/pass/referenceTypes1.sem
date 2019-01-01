@@ -1,4 +1,4 @@
 
 function sayHello(out1: &TextOut): Void {
-  TextOut.print(out1, Unicode.String."Hello, world!\n")
+  TextOut.print(out1, String."Hello, world!\n")
 }

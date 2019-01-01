@@ -9,10 +9,10 @@
 @Test(["\n"], "success(10)")
 @Test(["\r"], "success(13)")
 @Test(["\t"], "success(9)")
-function getFirstCharacter(str: Unicode.String): Maybe<Natural> {
-    Maybe.map<Unicode.CodePoint, Natural>(List.get<Unicode.CodePoint>(str->codePoints, Natural."0"), getValue|(_))
+function getFirstCharacter(str: String): Maybe<Natural> {
+    Maybe.map<CodePoint, Natural>(List.get<CodePoint>(str->codePoints, Natural."0"), getValue|(_))
 }
 
-function getValue(cp: Unicode.CodePoint): Natural {
+function getValue(cp: CodePoint): Natural {
     cp->natural
 }

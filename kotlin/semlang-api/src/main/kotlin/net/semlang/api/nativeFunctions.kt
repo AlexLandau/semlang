@@ -234,7 +234,7 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // TextOut.print
     definitions.add(FunctionSignature.create(EntityId.of("TextOut", "print"), typeParameters = listOf(),
-            argumentTypes = listOf(NativeOpaqueType.TEXT_OUT.getType(), NativeStruct.UNICODE_STRING.getType()),
+            argumentTypes = listOf(NativeOpaqueType.TEXT_OUT.getType(), NativeStruct.STRING.getType()),
             outputType = NativeStruct.VOID.getType()))
 
     val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(listOf(typeT))
@@ -296,8 +296,8 @@ object NativeStruct {
             null,
             listOf()
     )
-    val UNICODE_CODE_POINT = Struct(
-            EntityId.of("Unicode", "CodePoint"),
+    val CODE_POINT = Struct(
+            EntityId.of("CodePoint"),
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
@@ -321,12 +321,12 @@ object NativeStruct {
             )),
             listOf()
     )
-    val UNICODE_STRING = Struct(
-            EntityId.of("Unicode", "String"),
+    val STRING = Struct(
+            EntityId.of("String"),
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("codePoints", Type.List(UNICODE_CODE_POINT.getType()))
+                    Member("codePoints", Type.List(CODE_POINT.getType()))
             ),
             null,
             listOf()
@@ -346,8 +346,8 @@ fun getNativeStructs(): Map<EntityId, Struct> {
 
     structs.add(NativeStruct.NATURAL)
     structs.add(NativeStruct.SEQUENCE)
-    structs.add(NativeStruct.UNICODE_CODE_POINT)
-    structs.add(NativeStruct.UNICODE_STRING)
+    structs.add(NativeStruct.CODE_POINT)
+    structs.add(NativeStruct.STRING)
     structs.add(NativeStruct.VOID)
 
     return toMap(structs)

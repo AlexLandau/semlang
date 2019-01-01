@@ -32,7 +32,7 @@ sealed class LiteralValidator {
         }
     }
 
-    object UNICODE_STRING : LiteralValidator() {
+    object STRING : LiteralValidator() {
         override fun validate(literal: String): Boolean {
             return true
         }
@@ -45,8 +45,8 @@ fun getTypeValidatorFor(type: Type): LiteralValidator? {
         Type.BOOLEAN -> LiteralValidator.BOOLEAN
         is Type.List -> null
         is Type.NamedType -> {
-            if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
-                return LiteralValidator.UNICODE_STRING
+            if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.STRING.id) {
+                return LiteralValidator.STRING
             }
             null
         }

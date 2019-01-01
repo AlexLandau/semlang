@@ -1,10 +1,10 @@
 @Test([], "hello")
-function stringConstructor1(): Unicode.String {
-  Unicode.String([
-    Unicode.CodePoint."104",
-    Unicode.CodePoint."101",
-    Unicode.CodePoint."108",
-    Unicode.CodePoint."108",
-    Unicode.CodePoint."111"
-  ]<Unicode.CodePoint>)
+function stringConstructor1(): String {
+  String([
+    CodePoint."104",
+    CodePoint."101",
+    CodePoint."108",
+    CodePoint."108",
+    CodePoint."111"
+  ]<CodePoint>)
 }

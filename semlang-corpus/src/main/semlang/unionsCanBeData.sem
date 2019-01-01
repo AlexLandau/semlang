@@ -1,7 +1,7 @@
 // Union with a type parameter
 union MyUnion {
-  StringOne: Unicode.String
-  StringTwo: Unicode.String
+  StringOne: String
+  StringTwo: String
   ThingOne
   ThingTwo
 }
@@ -16,10 +16,10 @@ union MyUnion {
 @Test(["5", "6"], "true")
 function testUnionDataEquals(index1: Natural, index2: Natural): Boolean {
   let theValues = [
-    MyUnion.StringOne(Unicode.String."hello"),
-    MyUnion.StringTwo(Unicode.String."hello"),
-    MyUnion.StringOne(Unicode.String."hello"),
-    MyUnion.StringTwo(Unicode.String."goodbye"),
+    MyUnion.StringOne(String."hello"),
+    MyUnion.StringTwo(String."hello"),
+    MyUnion.StringOne(String."hello"),
+    MyUnion.StringTwo(String."goodbye"),
     MyUnion.ThingOne(),
     MyUnion.ThingTwo(),
     MyUnion.ThingTwo(),

@@ -6,7 +6,7 @@ function duplicateAnAlias(out1: &TextOut, out2: &TextOut, useTwo: Boolean): Void
   } else {
     out1
   }
-  TextOut.print(out1, Unicode.String."Larry")
-  TextOut.print(out2, Unicode.String."Curly")
-  TextOut.print(out3, Unicode.String."Moe")
+  TextOut.print(out1, String."Larry")
+  TextOut.print(out2, String."Curly")
+  TextOut.print(out3, String."Moe")
 }

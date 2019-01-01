@@ -13,6 +13,6 @@
 @Test(["-18446744073709551616"], "-18446744073709551616")
 @Test(["20000000000000000000"], "20000000000000000000")
 @Test(["-20000000000000000000"], "-20000000000000000000")
-function Integer.toStringTest(n: Integer): Unicode.String {
+function Integer.toStringTest(n: Integer): String {
   Integer.toString(n)
 }

@@ -263,14 +263,14 @@ export class InterpreterContext {
                 return integerObject(structureObject.value);
             } else if (structureObject.type === "String") {
                 if (expression.name !== "codePoints") {
-                    throw new Error(`Only component of a Unicode.String is codePoints`);
+                    throw new Error(`Only component of a String is codePoints`);
                 }
                 const stringLiteral = structureObject.value;
 
                 const codePoints = UtfString.stringToCodePoints(stringLiteral);
                 const codePointObjects = codePoints.map((codePoint: number) => {
                     const charCodeNatural = naturalObject(bigInt(codePoint));
-                    const charCodeObject = structObject(NativeStructs["Unicode.CodePoint"], [charCodeNatural]);
+                    const charCodeObject = structObject(NativeStructs["CodePoint"], [charCodeNatural]);
                     return charCodeObject;
                 });
                 return listObject(codePointObjects);
@@ -374,7 +374,7 @@ export class InterpreterContext {
                 }
 
                 // Handle strings
-                if (name === "Unicode.String") {
+                if (name === "String") {
                     return stringObject(value);
                 }
 
@@ -527,7 +527,7 @@ function isNativeLiteralType(type: Type) {
         return true;
     }
     if (isNamedType(type)) {
-        if (type.name === "Unicode.String" || type.name === "Natural") {
+        if (type.name === "String" || type.name === "Natural") {
             return true;
         }
     }

@@ -1,19 +1,19 @@
 
 @Test([], "success()")
-function testUtf8NoBytes(): Maybe<Unicode.String> {
+function testUtf8NoBytes(): Maybe<String> {
   Utf8.decodeStrict1([]<Byte>)
 }
 
 @Test(["65"], "success(A)")
 @Test(["70"], "success(F)")
 @Test(["97"], "success(a)")
-function testUtf8OneByte(byte: Byte): Maybe<Unicode.String> {
+function testUtf8OneByte(byte: Byte): Maybe<String> {
   Utf8.decodeStrict1([byte]<Byte>)
 }
 
 @Test(["79", "75"], "success(OK)")
 @Test(["63", "33"], "success(?!)")
 @Test(["194", "162"], "success(¢)")
-function testUtf8TwoBytes(byte1: Byte, byte2: Byte): Maybe<Unicode.String> {
+function testUtf8TwoBytes(byte1: Byte, byte2: Byte): Maybe<String> {
   Utf8.decodeStrict1([byte1, byte2]<Byte>)
 }

@@ -170,17 +170,17 @@ function Natural.arithmeticProgression(initialValue: Natural, increment: Natural
 
 struct Natural.toString.State {
   n: Natural
-  codePoints: List<Unicode.CodePoint>
+  codePoints: List<CodePoint>
 }
 
 @Export
-function Natural.toString(value: Natural): Unicode.String {
+function Natural.toString(value: Natural): String {
   // TODO: This feels like something we'd rather implement in sem2
   // TODO: Being able to use ListBuilder here would be nice; use case for expanding references
-  let sequence = Sequence(Natural.toString.State(value, []<Unicode.CodePoint>), function(state: Natural.toString.State): Natural.toString.State {
+  let sequence = Sequence(Natural.toString.State(value, []<CodePoint>), function(state: Natural.toString.State): Natural.toString.State {
     let remainder = Maybe.assume(Natural.modulo(state->n, Natural."10"))
     let divided = Maybe.assume(Natural.dividedBy(state->n, Natural."10"))
-    let codePoint = Maybe.assume(Unicode.CodePoint(Natural.plus(remainder, unicodeZero()->natural)))
+    let codePoint = Maybe.assume(CodePoint(Natural.plus(remainder, unicodeZero()->natural)))
     let newCodePoints = List.appendFront(state->codePoints, codePoint)
     Natural.toString.State(divided, newCodePoints)
   })
@@ -188,12 +188,12 @@ function Natural.toString(value: Natural): Unicode.String {
     Natural.equals(state->n, Natural."0")
   })
   if (List.isEmpty(finishedState->codePoints)) {
-    Unicode.String."0"
+    String."0"
   } else {
-    Unicode.String(finishedState->codePoints)
+    String(finishedState->codePoints)
   }
 }
 
-function unicodeZero(): Unicode.CodePoint {
-  Unicode.CodePoint."48"
+function unicodeZero(): CodePoint {
+  CodePoint."48"
 }

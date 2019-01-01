@@ -262,19 +262,19 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             }
         }
 
-        if (struct.id == NativeStruct.UNICODE_STRING.id) {
-            val semList = arguments[0] as? SemObject.SemList ?: error("Type error when constructing a Unicode.String")
+        if (struct.id == NativeStruct.STRING.id) {
+            val semList = arguments[0] as? SemObject.SemList ?: error("Type error when constructing a String")
             val codePoints: List<Int> = semList.contents.map { semObject ->
-                val codePointStruct = semObject as? SemObject.Struct ?: error("Type error when constructing a Unicode.String")
-                if (codePointStruct.struct.id != NativeStruct.UNICODE_CODE_POINT.id) {
-                    error("Invalid struct when constructing a Unicode.String")
+                val codePointStruct = semObject as? SemObject.Struct ?: error("Type error when constructing a String")
+                if (codePointStruct.struct.id != NativeStruct.CODE_POINT.id) {
+                    error("Invalid struct when constructing a String")
                 }
-                val semNatural = codePointStruct.objects[0] as? SemObject.Natural ?: error("Type error when constructing a Unicode.String")
+                val semNatural = codePointStruct.objects[0] as? SemObject.Natural ?: error("Type error when constructing a String")
                 semNatural.value.intValueExact()
             }
             val asString = String(codePoints.toIntArray(), 0, codePoints.size)
 
-            return SemObject.UnicodeString(asString)
+            return SemObject.SemString(asString)
         }
 
         val requiresBlock = struct.requires
@@ -377,13 +377,13 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                         error("The only valid member in a Natural is 'integer'")
                     }
                     return SemObject.Integer(innerResult.value)
-                } else if (innerResult is SemObject.UnicodeString) {
+                } else if (innerResult is SemObject.SemString) {
                     if (name != "codePoints") {
-                        error("The only valid member in a Unicode.String is 'codePoints'")
+                        error("The only valid member in a String is 'codePoints'")
                     }
                     // TODO: Cache this, or otherwise make it more efficient
                     val codePointsList = innerResult.contents.codePoints().mapToObj { value ->
-                        SemObject.Struct(NativeStruct.UNICODE_CODE_POINT, listOf(
+                        SemObject.Struct(NativeStruct.CODE_POINT, listOf(
                                 SemObject.Natural(BigInteger.valueOf(value.toLong()))))
                     }
                             .collect(Collectors.toList())
@@ -488,7 +488,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL.id) {
             return evaluateNaturalLiteral(literal)
         }
-        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.UNICODE_STRING.id) {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.STRING.id) {
             // TODO: Check for errors related to string encodings
             return evaluateStringLiteral(literal)
         }
@@ -551,8 +551,8 @@ private fun <E> List<E?>.replaceFirstNullWith(replacement: E): List<E?> {
     return newList
 }
 
-fun evaluateStringLiteral(literal: String): SemObject.UnicodeString {
-    return SemObject.UnicodeString(literal)
+fun evaluateStringLiteral(literal: String): SemObject.SemString {
+    return SemObject.SemString(literal)
 }
 
 private fun evaluateIntegerLiteral(literal: String): SemObject {

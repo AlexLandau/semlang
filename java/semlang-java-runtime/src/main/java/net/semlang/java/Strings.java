@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class UnicodeStrings {
+public class Strings {
     /**
      * WARNING: This is an O(n) operation, unlike String.length().
      * <p>

@@ -45,8 +45,8 @@ export const NativeStructs: { [structName: string]: Struct } = {
         id: "BitsBigEndian",
         members: [{name: "bits", type: {List: {name: "Bit"}}}],
     },
-    "Unicode.CodePoint": {
-        id: "Unicode.CodePoint",
+    "CodePoint": {
+        id: "CodePoint",
         members: [{ name: "natural", type: {name: "Natural"} }],
         requires: [
             {
@@ -285,7 +285,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Maybe.success": (context: InterpreterContext, object: SemObject): SemObject.Maybe.Success => {
         return successObject(object);
     },
-    "Unicode.String": (context: InterpreterContext, codePointObjects: SemObject.List): SemObject.String => {
+    "String": (context: InterpreterContext, codePointObjects: SemObject.List): SemObject.String => {
         const codePoints = codePointObjects.contents.map(codePointStruct => {
             const codePointNatural = (codePointStruct as SemObject.Struct).members[0] as SemObject.Natural
             return codePointNatural.value.toJSNumber()
@@ -293,7 +293,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         const string = UtfString.codePointsToString(codePoints)
         return stringObject(string);
     },
-    "Unicode.String.length": (context: InterpreterContext, string: SemObject.String): SemObject.Natural => {
+    "String.length": (context: InterpreterContext, string: SemObject.String): SemObject.Natural => {
         const length = UtfString.length(string.value);
         return naturalObject(bigInt(length));
     },

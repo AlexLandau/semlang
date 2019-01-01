@@ -3,10 +3,10 @@
 @Test(["1114111"], "success(1114111)")
 @Test(["1114112"], "failure")
 function createCodePoint(value: Natural): Maybe<Natural> {
-  let codePointMaybe = Unicode.CodePoint(value)
-  Maybe.map<Unicode.CodePoint, Natural>(codePointMaybe, getCodePointValue|(_))
+  let codePointMaybe = CodePoint(value)
+  Maybe.map<CodePoint, Natural>(codePointMaybe, getCodePointValue|(_))
 }
 
-function getCodePointValue(codePoint: Unicode.CodePoint): Natural {
+function getCodePointValue(codePoint: CodePoint): Natural {
   codePoint->natural
 }

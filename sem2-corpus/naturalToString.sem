@@ -5,11 +5,11 @@
 @Test(["10"], "10")
 @Test(["42"], "42")
 @Test(["12345"], "12345")
-function Natural.toString(value: Natural): Unicode.String {
-  let sequence = Sequence(Natural.toString.State(value, []<Unicode.CodePoint>), (state: Natural.toString.State) -> {
+function Natural.toString(value: Natural): String {
+  let sequence = Sequence(Natural.toString.State(value, []<CodePoint>), (state: Natural.toString.State) -> {
     let remainder = state.n.modulo(Natural."10").assume()
     let divided = Natural.dividedBy(state.n, Natural."10").assume()
-    let codePoint = Unicode.CodePoint(remainder + unicodeZero().natural).assume()
+    let codePoint = CodePoint(remainder + unicodeZero().natural).assume()
     let newCodePoints = state.codePoints.appendFront(codePoint)
     Natural.toString.State(divided, newCodePoints)
   })
@@ -17,19 +17,19 @@ function Natural.toString(value: Natural): Unicode.String {
     state.n == Natural."0"
   })
   if (finishedState.codePoints.isEmpty()) {
-    Unicode.String."0"
+    String."0"
   } else {
-    Unicode.String(finishedState.codePoints)
+    String(finishedState.codePoints)
   }
 }
 
 struct Natural.toString.State {
   n: Natural
-  codePoints: List<Unicode.CodePoint>
+  codePoints: List<CodePoint>
 }
 
-function unicodeZero(): Unicode.CodePoint {
-  Unicode.CodePoint."48"
+function unicodeZero(): CodePoint {
+  CodePoint."48"
 }
 
 @Export
