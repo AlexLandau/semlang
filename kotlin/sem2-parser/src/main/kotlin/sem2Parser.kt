@@ -400,6 +400,12 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.PlusOp(left, right)
             }
 
+            if (expression.EQUALS() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.EqualsOp(left, right)
+            }
+
             if (expression.ID() != null) {
                 return S2Expression.RawId(expression.text)
             }

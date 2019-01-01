@@ -302,6 +302,7 @@ sealed class S2Expression {
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
     data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type?, val block: S2Block, override val location: Location? = null): S2Expression()
     data class PlusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null): S2Expression()
+    data class EqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null): S2Expression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative

@@ -162,7 +162,9 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | FUNCTION LPAREN function_arguments RPAREN block
   | LPAREN function_arguments RPAREN ARROW block
   | expression DOT ID
+  // TODO: Figure out how precedence works here
   | expression PLUS expression // + operator
+  | expression EQUALS expression // == operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

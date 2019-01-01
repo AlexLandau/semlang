@@ -419,6 +419,33 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                         location = translate(expression.location)
                 ), outputType)
             }
+            is S2Expression.EqualsOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                // At some point we might support doing this with separate types (e.g. Natural == Integer), but for
+                // now expect the two to be the same
+                // TODO: Combine what I can with other operator implementations
+                val operandType = left.type
+                val equalsNamespace = getNamespaceForType(operandType)
+                val equalsRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(equalsNamespace + "equals"))
+
+                // TODO: Support Data.equals
+                val functionInfo = typeInfo.getFunctionInfo(equalsRef)
+                val outputType = if (functionInfo != null) {
+                    functionInfo.type.outputType
+                } else {
+                    null
+                }
+                if (options.failOnUninferredType && outputType == null) {
+                    error("Could not determine type for expression $expression")
+                }
+                RealExpression(Expression.NamedFunctionCall(
+                        functionRef = equalsRef,
+                        arguments = listOf(left.expression, right.expression),
+                        chosenParameters = listOf(),
+                        location = translate(expression.location)
+                ), outputType)
+            }
         }
     }
 

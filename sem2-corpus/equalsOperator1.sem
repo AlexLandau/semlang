@@ -1,0 +1,6 @@
+// == operator for Integer.equals
+@Test(["0", "0"], "true")
+@Test(["2", "4"], "false")
+function checkEquality(left: Natural, right: Natural): Boolean {
+  left.integer == right.integer
+}
