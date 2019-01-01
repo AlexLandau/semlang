@@ -7,19 +7,19 @@
 @Test(["12345"], "12345")
 function Natural.toString(value: Natural): Unicode.String {
   let sequence = Sequence(Natural.toString.State(value, []<Unicode.CodePoint>), function(state: Natural.toString.State): Natural.toString.State {
-    let remainder = Maybe.assume(Natural.modulo(state->n, Natural."10"))
-    let divided = Maybe.assume(Natural.dividedBy(state->n, Natural."10"))
-    let codePoint = Maybe.assume(Unicode.CodePoint(remainder + unicodeZero().natural))
-    let newCodePoints = List.appendFront(state->codePoints, codePoint)
+    let remainder = state.n.modulo(Natural."10").assume()
+    let divided = Natural.dividedBy(state.n, Natural."10").assume()
+    let codePoint = Unicode.CodePoint(remainder + unicodeZero().natural).assume()
+    let newCodePoints = state.codePoints.appendFront(codePoint)
     Natural.toString.State(divided, newCodePoints)
   })
-  let finishedState = Sequence.first(sequence, function(state: Natural.toString.State): Boolean {
+  let finishedState = sequence.first((state: Natural.toString.State) -> {
     Natural.equals(state->n, Natural."0")
   })
-  if (List.isEmpty(finishedState->codePoints)) {
+  if (finishedState.codePoints.isEmpty()) {
     Unicode.String."0"
   } else {
-    Unicode.String(finishedState->codePoints)
+    Unicode.String(finishedState.codePoints)
   }
 }
 
@@ -46,7 +46,7 @@ function Natural.dividedBy(left: Natural, right: Natural): Maybe<Natural> {
 
 @Export
 function Natural.plus(left: Natural, right: Natural): Natural {
-  Maybe.assume(Natural(left.integer + right.integer))
+  Natural(left.integer + right.integer).assume()
 }
 
 @Export
