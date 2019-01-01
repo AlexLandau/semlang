@@ -30,7 +30,8 @@ class Sem2ToSem1Test(private val file: File) {
     @Test
     fun testTranslation() {
         val context = parseFile(file).assumeSuccess()
-        val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"), listOf(), Sem2ToSem1Options(failOnUninferredType = true))
+        val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"), listOf(),
+                Sem2ToSem1Options(failOnUninferredType = true, outputExplicitTypes = true))
         val validatedModule = try {
             validateModule(sem1Context, ModuleName("sem2", "testFile"), CURRENT_NATIVE_MODULE_VERSION, listOf()).assumeSuccess()
         } catch (e: RuntimeException) {
@@ -69,7 +70,8 @@ class Sem1AsSem2Test(private val file: File, private val dependencies: List<Vali
     @Test
     fun testTranslation() {
         val context = parseFile(file).assumeSuccess()
-        val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"), dependencies, Sem2ToSem1Options(failOnUninferredType = true))
+        val sem1Context = translateSem2ContextToSem1(context, ModuleName("sem2", "testFile"), dependencies,
+                Sem2ToSem1Options(failOnUninferredType = true, outputExplicitTypes = true))
         val validatedModule = try {
             validateModule(sem1Context, ModuleName("sem2", "testFile"), CURRENT_NATIVE_MODULE_VERSION, dependencies).assumeSuccess()
         } catch (e: RuntimeException) {

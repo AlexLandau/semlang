@@ -21,8 +21,22 @@ fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstr
     return Sem2ToSem1Translator(context, moduleName, upstreamModules, options).translate()
 }
 
-// TODO: We should go further in testing and have an option to add explicit types to every variable, based on sem2 inference
-data class Sem2ToSem1Options(val failOnUninferredType: Boolean = false)
+data class Sem2ToSem1Options(
+        /**
+         * If true, the translator will fail with an exception if it's unable to infer the type of an expression.
+         *
+         * Recommended for testing cases where the translator is expected to succeed; not recommended for e.g. use inside
+         * an IDE.
+         */
+        val failOnUninferredType: Boolean = false,
+        /**
+         * If true, the translator will add an explicit type to each variable declaration with its inferred type. This
+         * can help catch cases where the translator infers types incorrectly.
+         *
+         * Recommended for testing cases where the translator is expected to succeed; not recommended in production.
+         */
+        val outputExplicitTypes: Boolean = false
+)
 
 private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
 private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?)
@@ -89,20 +103,25 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             error("Could not infer type for returned expression $returnedExpression in block $block")
         }
 
-        val s1Block = Block(statements = s1Statements,
+        return TypedBlock(Block(
+                statements = s1Statements,
                 returnedExpression = returnedExpression,
-                location = translate(block.location))
-        return TypedBlock(s1Block, blockType)
+                location = translate(block.location)
+        ), blockType)
     }
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
         val (expression, expressionType) = translateFullExpression(statement.expression, varTypes)
-        val statement = Statement(
+        return TypedStatement(Statement(
                 name = statement.name,
-                type = statement.type?.let(::translate),
+                type = if (options.outputExplicitTypes) {
+                    expressionType
+                } else {
+                    statement.type?.let<S2Type, UnvalidatedType>(::translate)
+                },
                 expression = expression,
-                nameLocation = translate(statement.nameLocation))
-        return TypedStatement(statement, expressionType)
+                nameLocation = translate(statement.nameLocation)
+        ), expressionType)
     }
 
     /**
@@ -297,22 +316,53 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
+
+                val (bindings, bindingTypes) = expression.bindings.map { if (it == null) null else translateFullExpression(it, varTypes) }.map { it?.expression to it?.type }.unzip()
+
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
+
+                val postBindingType = if (functionType is UnvalidatedType.FunctionType) {
+                    val numParameters = functionType.typeParameters.size
+                    val explicitlyChosenParameters = expression.chosenParameters.map { if (it != null) translate(it) else null }
+
+                    val postInferenceParameters = if (explicitlyChosenParameters.size == numParameters) {
+                        explicitlyChosenParameters
+                    } else {
+                        val typeParameterInferenceSources = getTypeParameterInferenceSources(functionType)
+                        val inferredParameters = typeParameterInferenceSources.mapIndexed { index, inferenceSources ->
+                            inferenceSources.map { it.findType(bindingTypes) }.firstOrNull { it != null }
+                        }
+                        val chosenIterator = explicitlyChosenParameters.iterator()
+                        inferredParameters.map { if (it != null) it else chosenIterator.next() }
+                    }
+
+                    val parameterReplacementMap = functionType.typeParameters.zip(postInferenceParameters).mapNotNull { (parameter, chosenParam) -> if (chosenParam == null) null else parameter.name to chosenParam }.toMap()
+                    val parametersChosenType = functionType.replacingNamedParameterTypes(parameterReplacementMap)
+
+                    // Now remove the arguments that were bound
+                    val newArguments = parametersChosenType.argTypes.zip(bindings).filter { it.second == null }.map { it.first }
+                    parametersChosenType.copy(argTypes = newArguments)
+                } else {
+                    functionType
+                }
+
                 RealExpression(Expression.ExpressionFunctionBinding(
                         functionExpression = functionExpression,
-                        bindings = expression.bindings.map { if (it == null) null else translateFullExpression(it, varTypes).expression },
+                        bindings = bindings,
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = translate(expression.location)
-                ), functionType)
+                ), postBindingType)
             }
             is S2Expression.Follow -> {
                 val (structureExpression, structureType) = translateFullExpression(expression.structureExpression, varTypes)
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
                     val typeInfo = typeInfo.getTypeInfo(structureType.ref)
                     if (typeInfo is TypeInfo.Struct) {
-                        typeInfo.memberTypes[expression.name]
+                        val parameterReplacementMap = typeInfo.typeParameters.map { it.name }.zip(structureType.parameters).toMap()
+                        typeInfo.memberTypes[expression.name]?.replacingNamedParameterTypes(parameterReplacementMap)
                     } else if (typeInfo is TypeInfo.Interface) {
-                        typeInfo.methodTypes[expression.name]
+                        val parameterReplacementMap = typeInfo.typeParameters.map { it.name }.zip(structureType.parameters).toMap()
+                        typeInfo.methodTypes[expression.name]?.replacingNamedParameterTypes(parameterReplacementMap)
                     } else {
                         null
                     }

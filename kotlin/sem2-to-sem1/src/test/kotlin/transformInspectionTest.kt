@@ -58,6 +58,6 @@ class TransformInspectionTest {
 private fun translateFunction(sem2Function: S2Function): Function {
     val context = S2Context(listOf(sem2Function), listOf(), listOf(), listOf())
     val translated = translateSem2ContextToSem1(context, ModuleName("semlang-test", "test-module"), listOf(),
-            Sem2ToSem1Options(failOnUninferredType = true))
+            Sem2ToSem1Options(failOnUninferredType = true, outputExplicitTypes = true))
     return translated.functions.single()
 }
