@@ -405,6 +405,13 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 // TODO: Support Data.equals
                 getOperatorExpression(left, right, "equals", expression)
             }
+            is S2Expression.NotEqualsOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                // TODO: Support Data.equals
+                val equalityExpression = getOperatorExpression(left, right, "equals", expression)
+                getBooleanNegationOf(equalityExpression)
+            }
             is S2Expression.LessThanOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
@@ -416,6 +423,15 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 getOperatorExpression(left, right, "greaterThan", expression)
             }
         }
+    }
+
+    private val BooleanNotRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Boolean", "not"))
+    private fun getBooleanNegationOf(expression: RealExpression): RealExpression {
+        return RealExpression(Expression.NamedFunctionCall(
+                functionRef = BooleanNotRef,
+                arguments = listOf(expression.expression),
+                chosenParameters = listOf()
+        ), UnvalidatedType.Boolean())
     }
 
     private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression): RealExpression {

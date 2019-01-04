@@ -406,6 +406,12 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.EqualsOp(left, right)
             }
 
+            if (expression.NOT_EQUALS() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.NotEqualsOp(left, right)
+            }
+
             if (expression.LESS_THAN() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))

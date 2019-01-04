@@ -34,6 +34,7 @@ COMMA              : ',' ;
 COLON              : ':' ;
 ASSIGN             : '=' ;
 EQUALS             : '==' ;
+NOT_EQUALS         : '!=' ;
 LPAREN             : '(' ;
 RPAREN             : ')' ;
 LBRACKET           : '[' ;
