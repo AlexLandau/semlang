@@ -165,6 +165,8 @@ expression : IF LPAREN expression RPAREN block ELSE block
   // TODO: Figure out how precedence works here
   | expression PLUS expression // + operator
   | expression EQUALS expression // == operator
+  | expression LESS_THAN expression // < operator
+  | expression GREATER_THAN expression // > operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

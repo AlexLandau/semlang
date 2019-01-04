@@ -397,56 +397,49 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             is S2Expression.PlusOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                // At some point we might support doing this with separate types (e.g. Natural + Integer), but for
-                // now expect the two to be the same
-                val operandType = left.type
-                val plusNamespace = getNamespaceForType(operandType)
-                val plusRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(plusNamespace + "plus"))
-
-                val functionInfo = typeInfo.getFunctionInfo(plusRef)
-                val outputType = if (functionInfo != null) {
-                    functionInfo.type.outputType
-                } else {
-                    null
-                }
-                if (options.failOnUninferredType && outputType == null) {
-                    error("Could not determine type for expression $expression")
-                }
-                RealExpression(Expression.NamedFunctionCall(
-                        functionRef = plusRef,
-                        arguments = listOf(left.expression, right.expression),
-                        chosenParameters = listOf(),
-                        location = translate(expression.location)
-                ), outputType)
+                getOperatorExpression(left, right, "plus", expression)
             }
             is S2Expression.EqualsOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                // At some point we might support doing this with separate types (e.g. Natural == Integer), but for
-                // now expect the two to be the same
-                // TODO: Combine what I can with other operator implementations
-                val operandType = left.type
-                val equalsNamespace = getNamespaceForType(operandType)
-                val equalsRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(equalsNamespace + "equals"))
-
                 // TODO: Support Data.equals
-                val functionInfo = typeInfo.getFunctionInfo(equalsRef)
-                val outputType = if (functionInfo != null) {
-                    functionInfo.type.outputType
-                } else {
-                    null
-                }
-                if (options.failOnUninferredType && outputType == null) {
-                    error("Could not determine type for expression $expression")
-                }
-                RealExpression(Expression.NamedFunctionCall(
-                        functionRef = equalsRef,
-                        arguments = listOf(left.expression, right.expression),
-                        chosenParameters = listOf(),
-                        location = translate(expression.location)
-                ), outputType)
+                getOperatorExpression(left, right, "equals", expression)
+            }
+            is S2Expression.LessThanOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "lessThan", expression)
+            }
+            is S2Expression.GreaterThanOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "greaterThan", expression)
             }
         }
+    }
+
+    private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression): RealExpression {
+        // At some point we might support doing this with separate types (e.g. Natural + Integer), but for
+        // now expect the two to be the same
+        val operandType = left.type
+        val functionNamespace = getNamespaceForType(operandType)
+        val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(functionNamespace + operatorName))
+
+        val functionInfo = typeInfo.getFunctionInfo(functionRef)
+        val outputType = if (functionInfo != null) {
+            functionInfo.type.outputType
+        } else {
+            null
+        }
+        if (options.failOnUninferredType && outputType == null) {
+            error("Could not determine type for expression $expression")
+        }
+        return RealExpression(Expression.NamedFunctionCall(
+                functionRef = functionRef,
+                arguments = listOf(left.expression, right.expression),
+                chosenParameters = listOf(),
+                location = translate(expression.location)
+        ), outputType)
     }
 
     private fun getNamespaceForType(subexpressionType: UnvalidatedType?): List<String> {
