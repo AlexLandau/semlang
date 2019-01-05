@@ -1,0 +1,5 @@
+@Test(["1", "2", "3"], "5")
+@Test(["3", "2", "1"], "7")
+function testPrecedence(a: Integer, b: Integer, c: Integer): Integer {
+  a * b + c
+}

@@ -42,6 +42,7 @@ tokens {
   AT,
   AMPERSAND,
   PLUS,
+  TIMES,
   MODULE_ID,
   ID,
   UNDERSCORE
@@ -163,12 +164,13 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | FUNCTION LPAREN function_arguments RPAREN block
   | LPAREN function_arguments RPAREN ARROW block
   | expression DOT ID
-  // TODO: Figure out how precedence works here
+  // NOTE: Higher expressions have higher precedence
+  | expression TIMES expression // * operator
   | expression PLUS expression // + operator
-  | expression EQUALS expression // == operator
-  | expression NOT_EQUALS expression // != operator
   | expression LESS_THAN expression // < operator
   | expression GREATER_THAN expression // > operator
+  | expression EQUALS expression // == operator
+  | expression NOT_EQUALS expression // != operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

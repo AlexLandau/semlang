@@ -399,6 +399,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 val right = translateFullExpression(expression.right, varTypes)
                 getOperatorExpression(left, right, "plus", expression)
             }
+            is S2Expression.TimesOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "times", expression)
+            }
             is S2Expression.EqualsOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)

@@ -50,6 +50,7 @@ PIPE               : '|' ;
 AT                 : '@' ;
 AMPERSAND          : '&' ;
 PLUS               : '+' ;
+TIMES              : '*' ;
 
 // Identifiers
 MODULE_ID          : ([a-zA-Z]|[_]+[a-zA-Z0-9])[A-Za-z0-9_]*('-'[A-Za-z0-9]+)+ ;

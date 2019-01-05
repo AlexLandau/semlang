@@ -1,0 +1,5 @@
+@Test(["1", "2", "3"], "true")
+@Test(["3", "2", "1"], "false")
+function testPrecedence(a: Integer, b: Integer, c: Integer): Boolean {
+  a + b == c
+}
