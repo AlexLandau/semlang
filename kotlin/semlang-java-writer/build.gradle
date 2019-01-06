@@ -9,6 +9,7 @@ dependencies {
   compile 'com.squareup:javapoet:1.9.0'
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
-tasks.test.inputs.files(fileTree("../../semlang-library/src/main/semlang"))
-tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))
+tasks.test.inputs.dir("../../semlang-corpus/src/main/semlang")
+tasks.test.inputs.dir("../../semlang-library/src/main/semlang")
+tasks.test.inputs.dir("../../semlang-library-corpus/src/main/semlang")
+tasks.test.inputs.dir("../../semlang-parser/src/test/semlang/validatorTests/pass")
