@@ -241,10 +241,29 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 ), typeInfo)
             }
             is S2Expression.FunctionCall -> {
-                // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
-
                 val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, varTypes) }.map { it.expression to it.type }.unzip()
+
+                // Steps to do here:
+                // Phase 1: Infer any missing type parameters
+                // Phase 2: Apply autoboxing and autounboxing to any arguments of incorrect but related types
+
+                // TODO: Here's probably where we should apply autoboxing/autounboxing logic to the arguments, and replace/adjust the argument/argumentTypes
+                // variables accordingly.
+                // TODO: Except that we should also consider the impact of type parameters and type parameter inference... should this happen before or after?
+                // One area where they probably wouldn't differ is e.g. the second argument of foo<T>(elem: T, index: Integer)
+                // Presumably the bigger question is if we have e.g. Data.equals(anInt, aNatural) -- if type parameter inference happens first, we
+                // infer either of Data.equals<Integer> or Data.equals<Natural> (probably the former, but I'm not sure if it's deterministic yet)
+                // and switch the arguments to match, but if not, we leave both arguments unmodified.
+                // The current issue with how this will work is that the way the function is currently arranged would require it to be written
+                // twice... How about we handle the type parameter inference case with an expression function binding? I think that would
+                // lead to a rearrangement that would make more sense here, with an unconditional revising of the parameters and arguments
+                // that could precede adjusting the arguments, before we revisit the division of whether it's a named binding or not.
+//                val arguments: List<Expression>
+//                val argumentTypes: List<UnvalidatedType?>
+//                if (functionType is UnvalidatedType.FunctionType) {
+//
+//                }
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding
                 // TODO: Also do this in the FunctionBinding section
