@@ -124,3 +124,62 @@ state MutableLinkedList.Node<T> {
 }
 
 // Another question is if there should be a layer of "wrapping"/inaccessibility between MLL's users and the MLL.Node type?
+
+// Okay, let's write this again:
+
+state union MutableLinkedList.NodeRef<T> {
+  Null
+  Node: MLL.Node<T>
+}
+
+// Arguably a little annoying that this can't be defined inline in the union; seems like a sem2 fix
+state MutableLinkedList.Node<T> {
+  item: T
+  next: MLL.NodeRef<T>
+
+  // Automatic constructor?
+
+  // Not automatic
+  mutator setNext(newNext: MLL.NodeRef<T>) {
+    set next = newNext
+  }
+}
+
+@Export state MutableLinkedList<T> {
+  head: MLL.NodeRef<T>
+  tail: MLL.NodeRef<T> aliasing head
+
+  constructor() {
+    let emptyRef = MLL.NodeRef.Null() // This is a referenced state, not a value
+    init(emptyRef, emptyRef) // Double reference allowed due to "aliasing" condition on tail
+  }
+
+  mutator addToFront(item: T) {
+    let newNode = MutableLinkedList.Node(item, head) // uh, newNode aliases head here; do we suppress head and say it's
+                                                     // okay if head is set again by the end of the method?
+    set head = MLL.NodeRef.Node(newNode)
+  }
+
+  mutator addToBack(item: T) {
+    let newEndNode = MLL.NodeRef.Node(MLL.Node(item, MLL.NodeRef.Null())) // Man, that's verbose; the MLLs don't help
+    tail.setNext(newEndNode)
+    set tail = newEndNode // which suppresses newEndNode, which is fine
+  }
+}
+
+// Consider some possible broken-out functions
+view MutableLinkedList.get<T>(index: Natural): Maybe<T> {
+  // Members are automatically in-scope in this notion, and the first argument is implied by the namespace
+  head.get(index)
+}
+view MutableLinkedList.Node.get<T>(index: Natural): Maybe<T> {
+  if (Natural.equals(index, Natural."0")) {
+    success(item)
+  } else {
+    // This would love some enhanced notation
+    next.when(
+      ifNull: () -> { failure() }
+      ifNode: (node) -> { node.get(Natural.minus(index, Natural."1")!) }
+    )
+  }
+}

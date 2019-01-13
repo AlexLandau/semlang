@@ -159,10 +159,6 @@ private fun addIntegerFunctions(list: MutableList<NativeFunction>) {
 //    }))
 }
 
-private fun asNatural(value: Int): SemObject.Natural {
-    return SemObject.Natural(BigInteger.valueOf(value.toLong()))
-}
-
 private fun addListFunctions(list: MutableList<NativeFunction>) {
     val listDot = fun(name: String) = EntityId.of("List", name)
 
@@ -492,19 +488,6 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
 
         SemObject.SemList(builder.listSoFar)
     }))
-}
-
-private fun addStringFunctions(list: MutableList<NativeFunction>) {
-    val unicodeStringDot = fun(name: String) = EntityId.of("Unicode", "String", name)
-
-    // TODO: Future standard library optimization
-    // Unicode.String.length
-//    list.add(NativeFunction(unicodeStringDot("length"), { args: List<SemObject>, _: InterpreterCallback ->
-//        val theString = args[0] as? SemObject.SemString ?: typeError()
-//        // TODO: At some point, we can have better internal string representations that aren't O(n) here
-//        val codePointCount = theString.contents.codePointCount(0, theString.contents.length)
-//        SemObject.Natural(BigInteger.valueOf(codePointCount.toLong()))
-//    }))
 }
 
 private fun typeError(): Nothing {
