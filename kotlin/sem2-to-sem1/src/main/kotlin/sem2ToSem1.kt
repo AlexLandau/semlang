@@ -103,11 +103,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             error("Could not infer type for returned expression $returnedExpression in block $block")
         }
 
+        if (options.outputExplicitTypes && returnedExpression !is Expression.Variable) {
+            // Have the returned expression also make its expected type explicit by putting it into a variable before
+            // we return it
+            val varName = getUnusedVarName(varNamesInScope.keys)
+            val finalAssignment = Statement(varName, blockType, returnedExpression)
+            s1Statements.add(finalAssignment)
+            return TypedBlock(Block(
+                    statements = s1Statements,
+                    returnedExpression = Expression.Variable(varName),
+                    location = translate(block.location)
+            ), blockType)
+        }
         return TypedBlock(Block(
                 statements = s1Statements,
                 returnedExpression = returnedExpression,
                 location = translate(block.location)
         ), blockType)
+    }
+
+    private fun getUnusedVarName(keys: Set<String>): String {
+        if (!keys.contains("result")) {
+            return "result"
+        }
+        var i = 0
+        while (true) {
+            val candidateName = "result$i"
+            if (!keys.contains(candidateName)) {
+                return candidateName
+            }
+            i++
+        }
     }
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
@@ -289,6 +315,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                     if (options.failOnUninferredType && returnType == null) {
                         error("Could not determine type of expression $expression")
                     }
+                    // TODO: Handle type parameter inference here
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = arguments,
