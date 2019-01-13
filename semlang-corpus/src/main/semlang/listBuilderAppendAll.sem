@@ -1,0 +1,7 @@
+@Test([], ["1", "4", "9"])
+function buildListUsingBuilder(): List<Integer> {
+  let builder: &ListBuilder<Integer> = ListBuilder.create<Integer>()
+  ListBuilder.appendAll(builder, [Integer."1"]<Integer>)
+  ListBuilder.appendAll(builder, [Integer."4", Integer."9"]<Integer>)
+  ListBuilder.build(builder)
+}

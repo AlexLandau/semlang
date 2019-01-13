@@ -1,0 +1,8 @@
+@Test([[], []], "true")
+@Test([["22"], ["22"]], "true")
+@Test([[], ["22"]], "false")
+@Test([["22"], []], "false")
+@Test([["1"], ["3"]], "false")
+function testDataEquals(left: Maybe<Integer>, right: Maybe<Integer>): Boolean {
+  Data.equals<Maybe<Integer>>(left, right)
+}
