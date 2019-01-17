@@ -1,0 +1,8 @@
+function myFunction(): ((Integer) -> Integer, Integer) -> Integer {
+  let doTwice: <T>((T) -> T, T) -> T = callTwice<_>|(_, _)
+  doTwice<Integer>|(_, _)
+}
+
+function callTwice<T>(fn: (T) -> T, input: T): T {
+  fn(fn(input))
+}

@@ -103,11 +103,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             error("Could not infer type for returned expression $returnedExpression in block $block")
         }
 
+        if (options.outputExplicitTypes && returnedExpression !is Expression.Variable) {
+            // Have the returned expression also make its expected type explicit by putting it into a variable before
+            // we return it
+            val varName = getUnusedVarName(varNamesInScope.keys)
+            val finalAssignment = Statement(varName, blockType, returnedExpression)
+            s1Statements.add(finalAssignment)
+            return TypedBlock(Block(
+                    statements = s1Statements,
+                    returnedExpression = Expression.Variable(varName),
+                    location = translate(block.location)
+            ), blockType)
+        }
         return TypedBlock(Block(
                 statements = s1Statements,
                 returnedExpression = returnedExpression,
                 location = translate(block.location)
         ), blockType)
+    }
+
+    private fun getUnusedVarName(keys: Set<String>): String {
+        if (!keys.contains("result")) {
+            return "result"
+        }
+        var i = 0
+        while (true) {
+            val candidateName = "result$i"
+            if (!keys.contains(candidateName)) {
+                return candidateName
+            }
+            i++
+        }
     }
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
@@ -241,58 +267,55 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 ), typeInfo)
             }
             is S2Expression.FunctionCall -> {
-                // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
 
                 val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, varTypes) }.map { it.expression to it.type }.unzip()
 
-                // TODO: Also have a case for Expression.ExpressionFunctionBinding
-                // TODO: Also do this in the FunctionBinding section
-                if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
-
-                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
-                    // Note: Ideally we'd want a "combined argument types"; the problem is that we discarded the type information...
-                    // Instead we're going to perform type parameter inference on the post-binding function type
-
+                val combinedChosenParameters: List<UnvalidatedType>
+                val returnType: UnvalidatedType?
+                if (functionType is UnvalidatedType.FunctionType) {
                     val postBindingTypeParameterSources = getTypeParameterInferenceSources(functionType)
                     val inferredPostBindingTypeParameters = functionType.typeParameters.zip(postBindingTypeParameterSources).map { (parameter, parameterSources) ->
                         parameterSources.map { it.findType(argumentTypes) }.firstOrNull { it != null }
                     }
-
-                    try {
-                        val chosenWithInference: List<UnvalidatedType> = if (expression.chosenParameters.size == functionType.typeParameters.size) {
-                            expression.chosenParameters.map(::translate)
-                        } else {
-                            fillIntoNulls(inferredPostBindingTypeParameters, expression.chosenParameters.map(::translate))
-                        }
-                        val combinedChosenParameters: List<UnvalidatedType> = fillIntoNulls(functionExpression.chosenParameters, chosenWithInference)
-
-                        val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
-                        val returnType = functionType.replacingNamedParameterTypes(chosenParametersAsMap).outputType
-
-                        RealExpression(Expression.NamedFunctionCall(
-                                functionRef = functionExpression.functionRef,
-                                arguments = combinedArguments,
-                                chosenParameters = combinedChosenParameters,
-                                location = translate(expression.location)
-                        ), returnType)
-                    } catch (e: RuntimeException) {
-                        throw IllegalStateException("Error dealing with functionExpression $functionExpression" +
-                                " and arguments ${expression.arguments}\n" +
-                                "Function type: $functionType\n" +
-                                "Argument types: $argumentTypes\n" +
-                                "Combined arguments: $combinedArguments\n" +
-                                "Inferred post-binding type parameters: $inferredPostBindingTypeParameters", e)
+                    val chosenWithInference: List<UnvalidatedType> = if (expression.chosenParameters.size == functionType.typeParameters.size) {
+                        expression.chosenParameters.map(::translate)
+                    } else {
+                        fillIntoNulls(inferredPostBindingTypeParameters, expression.chosenParameters.map(::translate))
                     }
+                    val previouslyChosenParameters = if (functionExpression is Expression.NamedFunctionBinding) {
+                        functionExpression.chosenParameters
+                    } else { listOf() }
+                    combinedChosenParameters = fillIntoNulls(previouslyChosenParameters, chosenWithInference)
+
+                    val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
+                    returnType = functionType.replacingNamedParameterTypes(chosenParametersAsMap).outputType
                 } else {
-                    val returnType = (functionType as? UnvalidatedType.FunctionType)?.outputType
-                    if (options.failOnUninferredType && returnType == null) {
-                        error("Could not determine type of expression $expression")
-                    }
+                    combinedChosenParameters = listOf()
+                    returnType = null
+                }
+
+                if (options.failOnUninferredType && returnType == null) {
+                    error("Could not determine type of expression $expression")
+                }
+
+                // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
+                // TODO: Also do this in the FunctionBinding section
+                if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
+                    // Instead of having a named function binding that we immediately call, just have a NamedFunctionCall
+                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
+
+                    RealExpression(Expression.NamedFunctionCall(
+                            functionRef = functionExpression.functionRef,
+                            arguments = combinedArguments,
+                            chosenParameters = combinedChosenParameters,
+                            location = translate(expression.location)
+                    ), returnType)
+                } else {
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = arguments,
-                            chosenParameters = expression.chosenParameters.map(::translate),
+                            chosenParameters = combinedChosenParameters,
                             location = translate(expression.location)
                     ), returnType)
                 }

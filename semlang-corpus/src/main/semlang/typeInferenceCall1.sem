@@ -1,0 +1,10 @@
+@Test([], "5")
+function myFunction(): Integer {
+  let doTwice: <T>((T) -> T, T) -> T = callTwice<_>|(_, _)
+  // Infer T = Integer
+  doTwice(Integer.plus|(_, Integer."1"), Integer."3")
+}
+
+function callTwice<T>(fn: (T) -> T, input: T): T {
+  fn(fn(input))
+}

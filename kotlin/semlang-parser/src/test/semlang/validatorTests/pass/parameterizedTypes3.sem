@@ -1,0 +1,14 @@
+function myFunction(): ((Integer) -> Integer, Integer) -> Integer {
+  // Named binding resulting in a parameterized function type
+  let doTwice1: <T>((T) -> T, T) -> T = callTwice<_>|(_, _)
+  // Expression binding resulting in a parameterized function type
+  let doTwice2: <T>((T) -> T, T) -> T = doTwice1<_>|(_, _)
+  // Expression binding resulting in a non-parameterized function type
+  let doTwice3: ((Integer) -> Integer, Integer) -> Integer = doTwice2<Integer>|(_, _)
+  // Return the resulting binding
+  doTwice3
+}
+
+function callTwice<T>(fn: (T) -> T, input: T): T {
+  fn(fn(input))
+}
