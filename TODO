@@ -72,6 +72,7 @@ Stuff that feels blocked or hasn't been implemented:
 - Compiler test: Check for incorrect parameters on follow calls/instance calls
   - Also: args vs. fullyBoundArguments inline function issue seen in TS prior to this commit
 - Continue to shrink the set of native functions where possible
+- Split antlr-parser into separate projects and jars for sem1 and sem2
 - Versioned publication of code corpuses
 - Validation-time "requires" checking for extended literals
 - Add ability for modules to re-export their imports (probably just specified in the config file for now)
