@@ -1,5 +1,6 @@
-include 'antlr-parser'
-include ':java:semlang-java-runtime'
+include 'antlr:antlr-sem1'
+include 'antlr:antlr-sem2'
+include 'java:semlang-java-runtime'
 include 'kotlin:hello-world-test'
 include 'kotlin:sem2-lang'
 include 'kotlin:sem2-parser'

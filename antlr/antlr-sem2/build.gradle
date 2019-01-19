@@ -1,0 +1,3 @@
+generateGrammarSource {
+    arguments << "-lib" << "src/main/antlr/sem2/antlr"
+}

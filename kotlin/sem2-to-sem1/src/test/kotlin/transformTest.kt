@@ -81,7 +81,7 @@ class Sem1AsSem2Test(private val file: File, private val dependencies: List<Vali
         try {
             try {
                 val testsRun = runAnnotationTests(validatedModule)
-                if (testsRun == 0 && !file.path.contains("/semlang-parser/")) {
+                if (testsRun == 0 && !file.path.contains("semlang-parser")) {
                     fail("Found no @Test annotations in corpus file $file")
                 }
             } catch (e: AssertionError) {

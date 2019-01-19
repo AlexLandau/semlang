@@ -1,5 +1,5 @@
 dependencies {
-  compile project(':antlr-parser')
+  compile project(':antlr:antlr-sem1')
   compile project(':kotlin:semlang-api')
   compile "org.antlr:antlr4:4.5"
 

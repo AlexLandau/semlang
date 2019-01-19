@@ -614,7 +614,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is TypedExpression.ExpressionFunctionCall -> {
                 val functionCallStrategy = getExpressionFunctionCallStrategy(expression.functionExpression)
-                functionCallStrategy.apply(listOf(), expression.arguments)
+                functionCallStrategy.apply(expression.chosenParameters, expression.arguments)
             }
             is TypedExpression.Literal -> {
                 writeLiteralExpression(expression)
@@ -714,7 +714,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
-        val functionCall = functionCallStrategy.apply(listOf(), arguments)
+        val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
         return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
     }
 
@@ -863,6 +863,24 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return object: FunctionCallStrategy {
             override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
                 val functionName = if (arguments.size == 0) "get" else "apply"
+                val expType = expression.type
+                if (expType is Type.FunctionType.Parameterized) {
+                    // If the type is e.g. <T>((T) -> T, T) -> T, we won't be able to call it unless we cast to the actual
+                    // type first (e.g. we can't pass in a Function<Object, Object>). Java only really lets you override
+                    // the type parameters if you first do an intermediate cast where the parameters are wildcards, e.g.
+                    // in the above case, Function2<?, ?, ?>. We have to tell Java "just trust us" instead of telling it
+                    // the actual types because it's not as expressive when it comes to the types that you can give to
+                    // actual variables.
+                    val castType = getType(expType.rebindTypeParameters(chosenTypes), false)
+                    val intermediateCastType = if (castType is ParameterizedTypeName) {
+                        val numTypeArguments = castType.typeArguments.size
+                        val wildcards: List<TypeName> = Collections.nCopies(numTypeArguments, WildcardTypeName.subtypeOf(TypeName.OBJECT))
+                        ParameterizedTypeName.get(castType.rawType, *(wildcards.toTypedArray()))
+                    } else {
+                        castType
+                    }
+                    return CodeBlock.of("((\$T) (\$T) \$L).\$L(\$L)", castType, intermediateCastType, writeExpression(expression), functionName, getArgumentsBlock(arguments))
+                }
                 return CodeBlock.of("\$L.\$L(\$L)", writeExpression(expression), functionName, getArgumentsBlock(arguments))
             }
         }
@@ -966,7 +984,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
-            is Type.InternalParameterType -> WildcardTypeName.subtypeOf(TypeName.OBJECT)
+            is Type.InternalParameterType -> TypeName.OBJECT
         }
     }
 
