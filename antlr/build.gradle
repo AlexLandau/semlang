@@ -1,0 +1,19 @@
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'eclipse'
+    apply plugin: 'antlr'
+    apply plugin: 'idea'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        antlr "org.antlr:antlr4:4.5"
+    }
+
+    generateGrammarSource {
+        arguments << "-lib" << "src/main/antlr/sem1/antlr"
+        arguments << "-lib" << "src/main/antlr/sem2/antlr"
+    }
+}
