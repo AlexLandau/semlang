@@ -281,17 +281,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 // Presumably the bigger question is if we have e.g. Data.equals(anInt, aNatural) -- if type parameter inference happens first, we
                 // infer either of Data.equals<Integer> or Data.equals<Natural> (probably the former, but I'm not sure if it's deterministic yet)
                 // and switch the arguments to match, but if not, we leave both arguments unmodified.
-                // The current issue with how this will work is that the way the function is currently arranged would require it to be written
-                // twice... How about we handle the type parameter inference case with an expression function binding? I think that would
-                // lead to a rearrangement that would make more sense here, with an unconditional revising of the parameters and arguments
-                // that could precede adjusting the arguments, before we revisit the division of whether it's a named binding or not.
-//                val arguments: List<Expression>
-//                val argumentTypes: List<UnvalidatedType?>
-//                if (functionType is UnvalidatedType.FunctionType) {
-//
-//                }
+
+                // Okay, per that example, let the type parameter inference work first, then autobox later.
+
 
                 val combinedChosenParameters: List<UnvalidatedType>
+                val parameterizedFunctionType: UnvalidatedType.FunctionType?
                 val returnType: UnvalidatedType?
                 if (functionType is UnvalidatedType.FunctionType) {
                     val postBindingTypeParameterSources = getTypeParameterInferenceSources(functionType)
@@ -309,21 +304,58 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                     combinedChosenParameters = fillIntoNulls(previouslyChosenParameters, chosenWithInference)
 
                     val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
-                    returnType = functionType.replacingNamedParameterTypes(chosenParametersAsMap).outputType
+                    parameterizedFunctionType = functionType.replacingNamedParameterTypes(chosenParametersAsMap)
+                    returnType = parameterizedFunctionType.outputType
                 } else {
                     combinedChosenParameters = listOf()
+                    parameterizedFunctionType = null
                     returnType = null
                 }
 
-                if (options.failOnUninferredType && returnType == null) {
+                if (options.failOnUninferredType && parameterizedFunctionType == null) {
                     error("Could not determine type of expression $expression")
+                }
+
+                // Apply autoboxing and autounboxing
+                val postBoxingArguments = if (parameterizedFunctionType == null) arguments else {
+                    val intendedTypes = parameterizedFunctionType.argTypes
+                    if (intendedTypes.size != arguments.size) arguments else {
+                        arguments.zip(argumentTypes).zip(intendedTypes).map argumentSelector@{ (argumentAndType, intendedType) ->
+                            val (argument, argumentType) = argumentAndType
+
+                            if (argumentType != null && !intendedType.equalsIgnoringLocation(argumentType)) {
+                                // TODO: Try reconciling the types and adjusting the argument accordingly
+                                System.out.println("Intended type $intendedType does not match argument type $argumentType")
+
+                                // Try to collect some information about these...
+                                val argumentTypeInfo = (argumentType as? UnvalidatedType.NamedType)?.ref?.let { typeInfo.getTypeInfo(it) }
+                                val intendedTypeInfo = (intendedType as? UnvalidatedType.NamedType)?.ref?.let { typeInfo.getTypeInfo(it) }
+
+                                // Is one a struct that contains the other?
+                                // TODO: Support chains
+                                // TODO: Support structs that use type parameters
+                                if (argumentTypeInfo is TypeInfo.Struct) {
+                                    if (argumentTypeInfo.memberTypes.size == 1) {
+                                        val memberType = argumentTypeInfo.memberTypes.values.single()
+                                        if (memberType.equalsIgnoringLocation(intendedType)) {
+                                            // e.g. argument is Natural, intended type is Integer; replace n with n.integer
+                                            val elementName = argumentTypeInfo.memberTypes.keys.single()
+                                            return@argumentSelector Expression.Follow(argument, elementName, argument.location)
+                                        }
+                                    }
+                                }
+                            }
+
+                            argument
+                        }
+                    }
                 }
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
                 // TODO: Also do this in the FunctionBinding section
                 if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
                     // Instead of having a named function binding that we immediately call, just have a NamedFunctionCall
-                    val combinedArguments = fillIntoNulls(functionExpression.bindings, arguments)
+                    val combinedArguments = fillIntoNulls(functionExpression.bindings, postBoxingArguments)
 
                     RealExpression(Expression.NamedFunctionCall(
                             functionRef = functionExpression.functionRef,
@@ -334,7 +366,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 } else {
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
-                            arguments = arguments,
+                            arguments = postBoxingArguments,
                             chosenParameters = combinedChosenParameters,
                             location = translate(expression.location)
                     ), returnType)

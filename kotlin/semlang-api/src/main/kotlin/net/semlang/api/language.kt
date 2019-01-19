@@ -81,6 +81,7 @@ sealed class UnvalidatedType {
     abstract val location: Location?
     abstract protected fun getTypeString(): String
     abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
+    abstract fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean
     override fun toString(): String {
         return getTypeString()
     }
@@ -91,6 +92,10 @@ sealed class UnvalidatedType {
         data class ReferenceInteger(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
+            }
+
+            override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+                return other is ReferenceInteger
             }
 
             override fun getTypeString(): String {
@@ -105,6 +110,10 @@ sealed class UnvalidatedType {
         data class ReferenceBoolean(override val location: Location? = null) : UnvalidatedType() {
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
+            }
+
+            override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+                return other is ReferenceBoolean
             }
 
             override fun getTypeString(): String {
@@ -122,6 +131,10 @@ sealed class UnvalidatedType {
             return this
         }
 
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is Integer
+        }
+
         override fun getTypeString(): String {
             return "Integer"
         }
@@ -133,6 +146,10 @@ sealed class UnvalidatedType {
     data class Boolean(override val location: Location? = null) : UnvalidatedType() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Boolean {
             return this
+        }
+
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is Boolean
         }
 
         override fun getTypeString(): String {
@@ -149,6 +166,10 @@ sealed class UnvalidatedType {
             return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
 
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is List && parameter.equalsIgnoringLocation(other.parameter)
+        }
+
         override fun getTypeString(): String {
             return "List<$parameter>"
         }
@@ -161,6 +182,10 @@ sealed class UnvalidatedType {
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Maybe {
             return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
+        }
+
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is Maybe && parameter.equalsIgnoringLocation(other.parameter)
         }
 
         override fun getTypeString(): String {
@@ -179,6 +204,14 @@ sealed class UnvalidatedType {
                     this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
                     this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
                     location)
+        }
+
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is FunctionType &&
+                    typeParameters == other.typeParameters &&
+                    argTypes.size == other.argTypes.size &&
+                    argTypes.zip(other.argTypes).all { it.first.equalsIgnoringLocation(it.second) } &&
+                    outputType.equalsIgnoringLocation(other.outputType)
         }
 
         override fun getTypeString(): String {
@@ -222,6 +255,14 @@ sealed class UnvalidatedType {
             fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
                 return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
             }
+        }
+
+        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
+            return other is NamedType &&
+                    ref == other.ref &&
+                    isReference == other.isReference &&
+                    parameters.size == other.parameters.size &&
+                    parameters.zip(other.parameters).all { it.first.equalsIgnoringLocation(it.second) }
         }
 
         override fun getTypeString(): String {
