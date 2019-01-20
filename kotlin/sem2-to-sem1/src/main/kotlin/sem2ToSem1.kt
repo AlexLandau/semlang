@@ -331,7 +331,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                                 val intendedTypeChain = getAutoboxingTypeChain(intendedType)
 
                                 // Is one a struct that contains the other?
-                                // TODO: Support structs that use type parameters
                                 val intendedTypeIndexInArgs = argumentTypeChain.getIndexOfTypeIgnoringLocation(intendedType)
                                 if (intendedTypeIndexInArgs != null) {
                                     // e.g. argument is Natural, intended type is Integer; replace n with n.integer
@@ -535,7 +534,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 break
             }
             memberNames.add(memberEntry.key)
-            curType = memberEntry.value
+            val parameterReplacementMap = curTypeInfo.typeParameters.map { it.name }.zip((curType as UnvalidatedType.NamedType).parameters).toMap()
+            curType = memberEntry.value.replacingNamedParameterTypes(parameterReplacementMap)
         }
         return AutoboxTypeChain(typeChain, memberNames)
     }
