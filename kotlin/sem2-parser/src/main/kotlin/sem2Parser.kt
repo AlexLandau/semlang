@@ -397,37 +397,37 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             if (expression.PLUS() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.PlusOp(left, right)
+                return S2Expression.PlusOp(left, right, locationOf(expression), locationOf(expression.PLUS().symbol))
             }
 
             if (expression.TIMES() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.TimesOp(left, right)
+                return S2Expression.TimesOp(left, right, locationOf(expression), locationOf(expression.TIMES().symbol))
             }
 
             if (expression.EQUALS() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.EqualsOp(left, right)
+                return S2Expression.EqualsOp(left, right, locationOf(expression), locationOf(expression.EQUALS().symbol))
             }
 
             if (expression.NOT_EQUALS() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.NotEqualsOp(left, right)
+                return S2Expression.NotEqualsOp(left, right, locationOf(expression), locationOf(expression.NOT_EQUALS().symbol))
             }
 
             if (expression.LESS_THAN() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.LessThanOp(left, right)
+                return S2Expression.LessThanOp(left, right, locationOf(expression), locationOf(expression.LESS_THAN().symbol))
             }
 
             if (expression.GREATER_THAN() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.GreaterThanOp(left, right)
+                return S2Expression.GreaterThanOp(left, right, locationOf(expression), locationOf(expression.GREATER_THAN().symbol))
             }
 
             if (expression.ID() != null) {

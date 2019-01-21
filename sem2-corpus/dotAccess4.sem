@@ -1,0 +1,7 @@
+// Test dot notation to bind Integer.plus
+@Test(["4", "5"], "9")
+@Test(["-3", "2"], "-1")
+function addTwo(left: Integer, right: Integer): Integer {
+  let foo = left.plus
+  foo(right)
+}

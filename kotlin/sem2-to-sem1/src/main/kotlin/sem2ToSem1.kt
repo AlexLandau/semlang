@@ -237,7 +237,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
 
                         val functionType = if (functionInfo == null) null else {
                             val chosenParametersAsMap = functionInfo.type.typeParameters.zip(chosenParameters).filter { it.second != null }.map { it.first.name to it.second!! }.toMap()
-                            functionInfo.type.replacingNamedParameterTypes(chosenParametersAsMap)
+                            val withParameters = functionInfo.type.replacingNamedParameterTypes(chosenParametersAsMap)
+                            withParameters.copy(argTypes = withParameters.argTypes.drop(1))
                         }
 
                         if (options.failOnUninferredType && functionType == null) {
@@ -437,35 +438,35 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
             is S2Expression.PlusOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                getOperatorExpression(left, right, "plus", expression)
+                getOperatorExpression(left, right, "plus", expression, expression.operatorLocation)
             }
             is S2Expression.TimesOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                getOperatorExpression(left, right, "times", expression)
+                getOperatorExpression(left, right, "times", expression, expression.operatorLocation)
             }
             is S2Expression.EqualsOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
                 // TODO: Support Data.equals
-                getOperatorExpression(left, right, "equals", expression)
+                getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
             }
             is S2Expression.NotEqualsOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
                 // TODO: Support Data.equals
-                val equalityExpression = getOperatorExpression(left, right, "equals", expression)
+                val equalityExpression = getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
                 getBooleanNegationOf(equalityExpression)
             }
             is S2Expression.LessThanOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                getOperatorExpression(left, right, "lessThan", expression)
+                getOperatorExpression(left, right, "lessThan", expression, expression.operatorLocation)
             }
             is S2Expression.GreaterThanOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
-                getOperatorExpression(left, right, "greaterThan", expression)
+                getOperatorExpression(left, right, "greaterThan", expression, expression.operatorLocation)
             }
         }
     }
@@ -557,7 +558,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
         ), UnvalidatedType.Boolean())
     }
 
-    private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression): RealExpression {
+    private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression, operatorLocation: Location?): RealExpression {
         // At some point we might support doing this with separate types (e.g. Natural + Integer), but for
         // now expect the two to be the same
         val operandType = left.type
@@ -577,7 +578,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 functionRef = functionRef,
                 arguments = listOf(left.expression, right.expression),
                 chosenParameters = listOf(),
-                location = translate(expression.location)
+                location = translate(expression.location),
+                functionRefLocation = translate(operatorLocation)
         ), outputType)
     }
 
