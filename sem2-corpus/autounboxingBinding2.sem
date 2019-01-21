@@ -1,0 +1,11 @@
+struct NestedNatural {
+  natural: Natural
+}
+
+@Test(["2", "3"], "5")
+@Test(["-10", "5"], "-5")
+function addNestedNaturalToInteger(i: Integer, n: NestedNatural): Integer {
+  // n should be replaced by n.natural.integer in the generated sem1
+  let foo = Integer.plus|(i, n)
+  foo()
+}

@@ -317,37 +317,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 }
 
                 // Apply autoboxing and autounboxing
-                val postBoxingArguments = if (parameterizedFunctionType == null) arguments else {
-                    val intendedTypes = parameterizedFunctionType.argTypes
-                    if (intendedTypes.size != arguments.size) arguments else {
-                        arguments.zip(argumentTypes).zip(intendedTypes).map argumentSelector@{ (argumentAndType, intendedType) ->
-                            val (argument, argumentType) = argumentAndType
-
-                            if (argumentType != null && !intendedType.equalsIgnoringLocation(argumentType)) {
-                                // TODO: Try reconciling the types and adjusting the argument accordingly
-
-                                // Try to collect some information about these...
-                                val argumentTypeChain = getAutoboxingTypeChain(argumentType)
-                                val intendedTypeChain = getAutoboxingTypeChain(intendedType)
-
-                                // Is one a struct that contains the other?
-                                val intendedTypeIndexInArgs = argumentTypeChain.getIndexOfTypeIgnoringLocation(intendedType)
-                                if (intendedTypeIndexInArgs != null) {
-                                    // e.g. argument is Natural, intended type is Integer; replace n with n.integer
-                                    // (in that example, index is 1, and we want 1 entry from the member names, i.e. 0..0)
-                                    var curExpression = argument
-                                    for (memberNameIndex in 0..(intendedTypeIndexInArgs - 1)) {
-                                        val memberName = argumentTypeChain.memberNames[memberNameIndex]
-                                        curExpression = Expression.Follow(curExpression, memberName, curExpression.location)
-                                    }
-                                    return@argumentSelector curExpression
-                                }
-                            }
-
-                            argument
-                        }
-                    }
-                }
+                val postBoxingArguments = applyAutoboxingToArguments(parameterizedFunctionType, arguments, argumentTypes)
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
                 // TODO: Also do this in the FunctionBinding section
@@ -392,9 +362,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
 
                 val (bindings, bindingTypes) = expression.bindings.map { if (it == null) null else translateFullExpression(it, varTypes) }.map { it?.expression to it?.type }.unzip()
 
+
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
 
-                val postBindingType = if (functionType is UnvalidatedType.FunctionType) {
+                val postBindingType: UnvalidatedType.FunctionType?
+                val parameterizedFunctionType: UnvalidatedType.FunctionType?
+                if (functionType is UnvalidatedType.FunctionType) {
                     val numParameters = functionType.typeParameters.size
                     val explicitlyChosenParameters = expression.chosenParameters.map { if (it != null) translate(it) else null }
 
@@ -411,17 +384,22 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
 
                     val parameterReplacementMap = functionType.typeParameters.zip(postInferenceParameters).mapNotNull { (parameter, chosenParam) -> if (chosenParam == null) null else parameter.name to chosenParam }.toMap()
                     val parametersChosenType = functionType.replacingNamedParameterTypes(parameterReplacementMap)
+                    parameterizedFunctionType = parametersChosenType
 
                     // Now remove the arguments that were bound
                     val newArguments = parametersChosenType.argTypes.zip(bindings).filter { it.second == null }.map { it.first }
-                    parametersChosenType.copy(argTypes = newArguments)
+                    postBindingType = parametersChosenType.copy(argTypes = newArguments)
                 } else {
-                    functionType
+                    parameterizedFunctionType = null
+                    postBindingType = null
                 }
+
+                // Apply autoboxing and autounboxing
+                val postBoxingBindings = applyAutoboxingToBindings(parameterizedFunctionType, bindings, bindingTypes)
 
                 RealExpression(Expression.ExpressionFunctionBinding(
                         functionExpression = functionExpression,
-                        bindings = bindings,
+                        bindings = postBoxingBindings,
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = translate(expression.location)
                 ), postBindingType)
@@ -499,6 +477,47 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
                 getOperatorExpression(left, right, "greaterThan", expression)
+            }
+        }
+    }
+
+    private fun applyAutoboxingToArguments(functionType: UnvalidatedType.FunctionType?, arguments: List<Expression>, argumentTypes: List<UnvalidatedType?>): List<Expression> {
+        val results = applyAutoboxingToBindings(functionType, arguments, argumentTypes)
+        return results.map { if (it != null) it else error("Null output for an argument when autoboxing a function call: functionType $functionType, arguments $arguments, types $argumentTypes") }
+    }
+    private fun applyAutoboxingToBindings(functionType: UnvalidatedType.FunctionType?, bindings: List<Expression?>, bindingTypes: List<UnvalidatedType?>): List<Expression?> {
+        return if (functionType == null) bindings else {
+            val intendedTypes = functionType.argTypes
+            if (intendedTypes.size != bindings.size) bindings else {
+                bindings.zip(bindingTypes).zip(intendedTypes).map argumentSelector@{ (bindingAndType, intendedType) ->
+                    val (binding, bindingType) = bindingAndType
+                    if (binding == null) {
+                        return@argumentSelector null
+                    }
+
+                    if (bindingType != null && !intendedType.equalsIgnoringLocation(bindingType)) {
+                        // Try reconciling the types and adjusting the argument accordingly
+
+                        // Try to collect some information about these...
+                        val argumentTypeChain = getAutoboxingTypeChain(bindingType)
+                        val intendedTypeChain = getAutoboxingTypeChain(intendedType)
+
+                        // Is one a struct that contains the other?
+                        val intendedTypeIndexInArgs = argumentTypeChain.getIndexOfTypeIgnoringLocation(intendedType)
+                        if (intendedTypeIndexInArgs != null) {
+                            // e.g. argument is Natural, intended type is Integer; replace n with n.integer
+                            // (in that example, index is 1, and we want 1 entry from the member names, i.e. 0..0)
+                            var curExpression: Expression = binding
+                            for (memberNameIndex in 0..(intendedTypeIndexInArgs - 1)) {
+                                val memberName = argumentTypeChain.memberNames[memberNameIndex]
+                                curExpression = Expression.Follow(curExpression, memberName, curExpression.location)
+                            }
+                            return@argumentSelector curExpression
+                        }
+                    }
+
+                    binding
+                }
             }
         }
     }
