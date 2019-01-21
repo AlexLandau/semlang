@@ -274,17 +274,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 // Phase 1: Infer any missing type parameters
                 // Phase 2: Apply autoboxing and autounboxing to any arguments of incorrect but related types
 
-                // TODO: Here's probably where we should apply autoboxing/autounboxing logic to the arguments, and replace/adjust the argument/argumentTypes
-                // variables accordingly.
-                // TODO: Except that we should also consider the impact of type parameters and type parameter inference... should this happen before or after?
-                // One area where they probably wouldn't differ is e.g. the second argument of foo<T>(elem: T, index: Integer)
-                // Presumably the bigger question is if we have e.g. Data.equals(anInt, aNatural) -- if type parameter inference happens first, we
-                // infer either of Data.equals<Integer> or Data.equals<Natural> (probably the former, but I'm not sure if it's deterministic yet)
-                // and switch the arguments to match, but if not, we leave both arguments unmodified.
-
-                // Okay, per that example, let the type parameter inference work first, then autobox later.
-
-
                 val combinedChosenParameters: List<UnvalidatedType>
                 val parameterizedFunctionType: UnvalidatedType.FunctionType?
                 val returnType: UnvalidatedType?
