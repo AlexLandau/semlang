@@ -1,0 +1,11 @@
+struct NestedThing<T> {
+  thing: T
+}
+
+@Test(["2", "3"], "5")
+@Test(["-10", "5"], "-5")
+function addNestedThingToInteger(i: Integer, input: Natural): Integer {
+  let n = NestedThing<Natural>(input)
+  // n should be replaced by n.thing.integer in the generated sem1
+  Integer.plus(i, n)
+}
