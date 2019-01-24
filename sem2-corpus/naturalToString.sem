@@ -34,12 +34,12 @@ function unicodeZero(): CodePoint {
 
 function Natural.modulo(left: Natural, right: Natural): Maybe<Natural> {
   let moduloResult: Maybe<Integer> = left.integer.modulo(right)
-  Maybe.flatMap(moduloResult, Natural|(_))
+  moduloResult.flatMap(Natural|(_))
 }
 
 function Natural.dividedBy(left: Natural, right: Natural): Maybe<Natural> {
   let divisionResult: Maybe<Integer> = left.integer.dividedBy(right)
-  Maybe.flatMap(divisionResult, Natural|(_))
+  divisionResult.flatMap(Natural|(_))
 }
 
 function Natural.plus(left: Natural, right: Natural): Natural {

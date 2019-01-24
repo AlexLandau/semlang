@@ -293,7 +293,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                     } else { listOf() }
                     combinedChosenParameters = fillIntoNulls(previouslyChosenParameters, chosenWithInference)
 
-                    val chosenParametersAsMap = functionType.typeParameters.zip(combinedChosenParameters).map { it.first.name to it.second }.toMap()
+                    val chosenParametersAsMap = functionType.typeParameters.zip(chosenWithInference).map { it.first.name to it.second }.toMap()
                     parameterizedFunctionType = functionType.replacingNamedParameterTypes(chosenParametersAsMap)
                     returnType = parameterizedFunctionType.outputType
                 } else {

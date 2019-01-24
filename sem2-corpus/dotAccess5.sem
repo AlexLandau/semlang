@@ -1,0 +1,7 @@
+// Test dot notation to access Maybe.flatMap
+@Test([["4"]], ["4"])
+@Test([["-4"]], [])
+@Test([[]], [])
+function testFlatMap(n: Maybe<Integer>): Maybe<Natural> {
+  n.flatMap(Natural|(_))
+}
