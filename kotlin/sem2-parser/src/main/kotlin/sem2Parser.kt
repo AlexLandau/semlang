@@ -335,9 +335,16 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.LITERAL() != null) {
-                val type = parseTypeGivenParameters(expression.type_ref(), listOf(), locationOf(expression.type_ref()))
-                val literal = parseLiteral(expression.LITERAL())
-                return S2Expression.Literal(type, literal, locationOf(expression))
+                if (expression.DOT() != null) {
+                    // sem1-style literal with explicit type
+                    val type = parseTypeGivenParameters(expression.type_ref(), listOf(), locationOf(expression.type_ref()))
+                    val literal = parseLiteral(expression.LITERAL())
+                    return S2Expression.Literal(type, literal, locationOf(expression))
+                } else {
+                    // short String literal
+                    val literal = parseLiteral(expression.LITERAL())
+                    return S2Expression.Literal(S2Type.NamedType(EntityRef.of("String"), false), literal, locationOf(expression))
+                }
             }
 
             if (expression.ARROW() != null) {

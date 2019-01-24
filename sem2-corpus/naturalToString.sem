@@ -17,7 +17,7 @@ function Natural.toString(value: Natural): String {
     state.n == Natural."0"
   })
   if (finishedState.codePoints.isEmpty()) {
-    String."0"
+    "0"
   } else {
     String(finishedState.codePoints)
   }
@@ -34,12 +34,12 @@ function unicodeZero(): CodePoint {
 
 function Natural.modulo(left: Natural, right: Natural): Maybe<Natural> {
   let moduloResult: Maybe<Integer> = left.integer.modulo(right)
-  moduloResult.flatMap(Natural|(_))
+  moduloResult.flatMap(Natural)
 }
 
 function Natural.dividedBy(left: Natural, right: Natural): Maybe<Natural> {
   let divisionResult: Maybe<Integer> = left.integer.dividedBy(right)
-  divisionResult.flatMap(Natural|(_))
+  divisionResult.flatMap(Natural)
 }
 
 function Natural.plus(left: Natural, right: Natural): Natural {
