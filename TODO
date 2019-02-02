@@ -17,7 +17,7 @@ Major near-term projects:
 - Finish converting the validator to use fine-grained errors
   - and/or port the validator itself to Semlang?
   - Also run through the existing failValidator tests to find undesired behaviors/errors
-- Probably rename Unicode.String to just String (Ascii.String or AsciiString can still come later)
+- Some possible design refactors:
   - Also consider renaming Maybe.assume to just assume? (Or have it be an alternative name?)
   - Consider removing interfaces from the language (maybe keep in sem2?)
   - Consider function -> fun
@@ -62,6 +62,8 @@ Stuff that feels blocked or hasn't been implemented:
 
 - There should be a way to easily reference "get a given element of a struct type" as a function binding
   - It also feels like there should be a slightly easier way to do a fully-unbound function reference
+- Be able to tie a "local function" to a particular version of a type, so a later module can offer e.g. "foo.toV2()" in
+  sem2 for an earlier API's type
 - Clean up, organize code and sample Semlang code
   - Make things private when they can be
   - Turn NativeFunctions into library code written in semlang where possible
@@ -108,14 +110,13 @@ Stuff that feels blocked or hasn't been implemented:
   - We should have some way to specify the exposed API, and check the inputs of these methods for e.g. Natural >= 0
   - Probably put all our code from one module into the same package
 - Annotations and multiple function definitions
-- Monads (e.g. start with support for console-out)
 - Gradle manipulation of Semlang (i.e. beginnings of a build system)
 - Real IDE-like editor environment (language server protocol)
 - Interactive debugger of functions: drill down into results of subcalls
   - Mark results of specific functions as correct or incorrect for recording tests
   - Set up "normal" interpreter to record the results of specific functions; bridge into this after-the-fact analysis
     - (Record any non-determinism from monads while inside such a call)
-- Offer alternative syntax with even easier parsing (e.g. commas prepended to lists, dots prepended to IDs)
+- sem64/sem32 binary format
   - Ideally this would also be designed to offer single-pass validation like WebAssembly
 - Start to create dialects with simpler syntax, type inference, etc.
   - Also type inference for parameters when calling functions, for types that can be inferred (can these be separated somehow?)
