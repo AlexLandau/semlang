@@ -33,6 +33,7 @@ DOT                : '.' ;
 COMMA              : ',' ;
 COLON              : ':' ;
 ASSIGN             : '=' ;
+DOT_ASSIGN         : '.=' ;
 EQUALS             : '==' ;
 NOT_EQUALS         : '!=' ;
 LPAREN             : '(' ;

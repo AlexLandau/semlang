@@ -468,6 +468,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 val right = translateFullExpression(expression.right, varTypes)
                 getOperatorExpression(left, right, "greaterThan", expression, expression.operatorLocation)
             }
+            is S2Expression.DotAssignOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "set", expression, expression.operatorLocation)
+            }
         }
     }
 

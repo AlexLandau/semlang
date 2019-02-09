@@ -307,6 +307,7 @@ sealed class S2Expression {
     data class NotEqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
     data class LessThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
     data class GreaterThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
+    data class DotAssignOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
 }
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative

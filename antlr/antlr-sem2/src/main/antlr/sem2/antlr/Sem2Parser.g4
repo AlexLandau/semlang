@@ -25,6 +25,7 @@ tokens {
   COMMA,
   COLON,
   ASSIGN,
+  DOT_ASSIGN,
   EQUALS,
   NOT_EQUALS,
   LPAREN,
@@ -172,6 +173,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression GREATER_THAN expression // > operator
   | expression EQUALS expression // == operator
   | expression NOT_EQUALS expression // != operator
+  | expression DOT_ASSIGN expression // .= operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }
