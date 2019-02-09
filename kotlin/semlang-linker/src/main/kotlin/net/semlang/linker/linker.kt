@@ -516,7 +516,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 enqueueBlock(expression.elseBlock, containingModule)
             }
             is TypedExpression.NamedFunctionCall -> {
-                enqueueFunctionRef(expression.resolvedFunctionRef, containingModule)
+                enqueueFunctionRef(expression.resolvedFunctionRef, ResolutionType.Function, containingModule)
                 for (type in expression.chosenParameters) {
                     enqueueType(type, containingModule)
                 }
@@ -542,7 +542,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 }
             }
             is TypedExpression.NamedFunctionBinding -> {
-                enqueueFunctionRef(expression.resolvedFunctionRef, containingModule)
+                enqueueFunctionRef(expression.resolvedFunctionRef, ResolutionType.Function, containingModule)
                 for (type in expression.chosenParameters) {
                     if (type != null) {
                         enqueueType(type, containingModule)
@@ -579,9 +579,9 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
         }
     }
 
-    private fun enqueueFunctionRef(functionRef: ResolvedEntityRef, containingModule: ValidatedModule) {
+    private fun enqueueFunctionRef(functionRef: ResolvedEntityRef, resolutionType: ResolutionType, containingModule: ValidatedModule) {
         // TODO: This is another place where it would help to either store the EntityResolution or have another map in the resolver
-        val resolved = containingModule.resolve(functionRef)!!
+        val resolved = containingModule.resolve(functionRef, resolutionType)!!
         val ignored: Any = when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
                 // Do nothing
@@ -645,7 +645,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
                 enqueueType(groundType.outputType, containingModule)
             }
             is Type.NamedType -> {
-                enqueueFunctionRef(type.ref, containingModule)
+                enqueueFunctionRef(type.ref, ResolutionType.Type, containingModule)
             }
             is Type.ParameterType -> { /* Do nothing */ }
             is Type.InternalParameterType -> { /* Do nothing */ }

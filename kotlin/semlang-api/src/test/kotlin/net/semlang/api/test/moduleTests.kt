@@ -16,7 +16,7 @@ class ContextTests {
                     return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, entities, mapOf(), mapOf(), mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
-                    val resolved = module.resolve(EntityRef(null, id))
+                    val resolved = module.resolve(EntityRef(null, id), ResolutionType.Function)
                     System.out.println("Resolved of $id was $resolved")
                     if (resolved == null) {
                         null
@@ -35,7 +35,7 @@ class ContextTests {
                     return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), entities, mapOf(), mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
-                    val resolved = module.resolve(EntityRef(null, id))
+                    val resolved = module.resolve(EntityRef(null, id), ResolutionType.Type)
                     if (resolved == null) {
                         null
                     } else {
@@ -53,7 +53,7 @@ class ContextTests {
                     return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), entities, mapOf(), upstreamModules, mapOf())
                 },
                 { module, id ->
-                    val resolved = module.resolve(EntityRef(null, id))
+                    val resolved = module.resolve(EntityRef(null, id), ResolutionType.Type)
                     if (resolved == null) {
                         null
                     } else {
@@ -71,7 +71,7 @@ class ContextTests {
                     return ValidatedModule.create(moduleId, CURRENT_NATIVE_MODULE_VERSION, mapOf(), mapOf(), mapOf(), entities, upstreamModules, mapOf())
                 },
                 { module, id ->
-                    val resolved = module.resolve(EntityRef(null, id))
+                    val resolved = module.resolve(EntityRef(null, id), ResolutionType.Type)
                     if (resolved == null) {
                         null
                     } else {

@@ -1,0 +1,13 @@
+@Test([], "6")
+function testVar(): Integer {
+  let v: &Var<Integer> = Var<Integer>(Integer."0")
+  let a: Integer = Var.get(v)
+  setToThree(v)
+  let b: Integer = Var.get(v)
+  Integer.plus(a, Integer.plus(b, Var.get(v)))
+}
+
+function setToThree(var: &Var<Integer>): Void {
+  Var.set(var, Integer."3")
+  Void()
+}

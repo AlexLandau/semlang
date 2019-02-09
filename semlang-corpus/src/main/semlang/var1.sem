@@ -1,0 +1,8 @@
+@Test([], "6")
+function testVar(): Integer {
+  let v: &Var<Integer> = Var<Integer>(Integer."0")
+  let a: Integer = Var.get(v)
+  Var.set(v, Integer."3")
+  let b: Integer = Var.get(v)
+  Integer.plus(a, Integer.plus(b, Var.get(v)))
+}

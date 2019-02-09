@@ -61,7 +61,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
             // TODO: Have one of these for native stuff, as well
             // TODO: We already have the reference here but not the FunctionLikeType. Should we store that in language objects as well?
-            val entityResolution = referringModule.resolve(functionRef) ?: error("The function $functionRef isn't recognized")
+            val entityResolution = referringModule.resolve(functionRef, ResolutionType.Function) ?: error("The function $functionRef isn't recognized")
 
             when (entityResolution.type) {
                 FunctionLikeType.NATIVE_FUNCTION -> {
@@ -493,7 +493,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             return evaluateStringLiteral(literal)
         }
 
-        val resolved = this.mainModule.resolve(type.ref) ?: error("Unhandled literal \"$literal\" of type $type")
+        val resolved = this.mainModule.resolve(type.ref, ResolutionType.Type) ?: error("Unhandled literal \"$literal\" of type $type")
         if (resolved.type == FunctionLikeType.STRUCT_CONSTRUCTOR) {
             if (options.useLibraryOptimizations) {
                 val optimizedImpl = otherOptimizedStructLiteralParsers[resolved.entityRef]
