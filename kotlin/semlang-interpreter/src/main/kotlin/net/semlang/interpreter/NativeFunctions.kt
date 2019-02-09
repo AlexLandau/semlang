@@ -463,7 +463,7 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
     }))
 
     // ListBuilder.create
-    list.add(NativeFunction(EntityId.of("ListBuilder", "create"), { _: List<SemObject>, _: InterpreterCallback ->
+    list.add(NativeFunction(EntityId.of("ListBuilder"), { _: List<SemObject>, _: InterpreterCallback ->
         SemObject.ListBuilder(ArrayList())
     }))
 

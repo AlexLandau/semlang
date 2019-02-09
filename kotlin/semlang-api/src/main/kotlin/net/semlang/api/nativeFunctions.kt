@@ -240,8 +240,7 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
     val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(listOf(typeT))
 
     // ListBuilder constructor
-    // TODO: For consistency with other APIs, this should just be "ListBuilder" and not "ListBuilder.create"
-    definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "create"), typeParameters = listOf(t),
+    definitions.add(FunctionSignature.create(EntityId.of("ListBuilder"), typeParameters = listOf(t),
             argumentTypes = listOf(),
             outputType = listBuilderT))
 

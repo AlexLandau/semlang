@@ -203,7 +203,7 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "ListBuilder.build": (context: InterpreterContext, builder: SemObject.ListBuilder): SemObject.List => {
         return listObject(builder.contents);
     },
-    "ListBuilder.create": (context: InterpreterContext): SemObject.ListBuilder => {
+    "ListBuilder": (context: InterpreterContext): SemObject.ListBuilder => {
         return listBuilderObject([]);
     },
     "Natural": (context: InterpreterContext, integer: SemObject.Integer): SemObject.Maybe => {

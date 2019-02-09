@@ -3,7 +3,7 @@
 @Test([], "true")
 function testVoid(): Boolean {
   let v = Var<Boolean>(Boolean."false")
-  let l = ListBuilder.create<Integer>()
+  let l = ListBuilder<Integer>()
   let void1 = Var.set(v, Boolean."true")
   let void2 = ListBuilder.append(l, Integer."42")
   Data.equals(void1, void2)
