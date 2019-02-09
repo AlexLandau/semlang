@@ -190,15 +190,15 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         }
         return successObject(listObject(list.contents.slice(startInt, endInt)));
     },
-    "ListBuilder.append": (context: InterpreterContext, builder: SemObject.ListBuilder, item: SemObject): SemObject.ListBuilder => {
+    "ListBuilder.append": (context: InterpreterContext, builder: SemObject.ListBuilder, item: SemObject): SemObject.Struct => {
         builder.contents.push(item);
-        return builder;
+        return voidObject();
     },
-    "ListBuilder.appendAll": (context: InterpreterContext, builder: SemObject.ListBuilder, items: SemObject.List): SemObject.ListBuilder => {
+    "ListBuilder.appendAll": (context: InterpreterContext, builder: SemObject.ListBuilder, items: SemObject.List): SemObject.Struct => {
         for (const item of items.contents) {
             builder.contents.push(item);
         }
-        return builder;
+        return voidObject();
     },
     "ListBuilder.build": (context: InterpreterContext, builder: SemObject.ListBuilder): SemObject.List => {
         return listObject(builder.contents);

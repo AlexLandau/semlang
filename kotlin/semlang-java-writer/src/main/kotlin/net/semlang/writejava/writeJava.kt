@@ -1251,6 +1251,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val type = chosenTypes[0]
             if (type == Type.BOOLEAN) {
                 return CodeBlock.of("(\$L == \$L)", left, right)
+            } else if (type is Type.NamedType && isNativeModule(type.ref.module) && type.ref.id == EntityId.of("Void")) {
+                return CodeBlock.of("(\$L == \$L)", left, right)
             } else {
                 return CodeBlock.of("\$L.equals(\$L)", left, right)
             }

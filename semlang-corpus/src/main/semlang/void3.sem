@@ -1,0 +1,13 @@
+// This is not super-desirable behavior, but it's a natural consequence of how semlang is
+// currently constructed, so we should test that implementations are consistent about it.
+@Test([], "true")
+function testVoid(): Boolean {
+  let v = Var<Boolean>(Boolean."false")
+  let void1 = setVar(v, Boolean."true")
+  let void2 = setVar(v, Boolean."false")
+  Data.equals(void1, void2)
+}
+
+function setVar(v: &Var<Boolean>, value: Boolean): Void {
+  Var.set(v, value)
+}
