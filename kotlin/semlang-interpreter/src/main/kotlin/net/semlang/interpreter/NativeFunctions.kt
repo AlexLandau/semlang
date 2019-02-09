@@ -426,6 +426,7 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
         is SemObject.FunctionBinding -> typeError()
         is SemObject.TextOut -> typeError()
         is SemObject.ListBuilder -> typeError()
+        is SemObject.Var -> typeError()
         is SemObject.Int64 -> {
             if (right !is SemObject.Int64) typeError()
             left.value == right.value
@@ -458,7 +459,7 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         val text = args[1] as? SemObject.SemString ?: typeError()
 
         out.out.print(text.contents)
-        out
+        SemObject.Void
     }))
 
     // ListBuilder.create
@@ -471,7 +472,7 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         val builder = args[0] as? SemObject.ListBuilder ?: typeError()
         val itemToAdd = args[1]
         builder.listSoFar.add(itemToAdd)
-        builder
+        SemObject.Void
     }))
 
     // ListBuilder.appendAll
@@ -479,7 +480,7 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         val builder = args[0] as? SemObject.ListBuilder ?: typeError()
         val itemsToAdd = args[1] as? SemObject.SemList ?: typeError()
         builder.listSoFar.addAll(itemsToAdd.contents)
-        builder
+        SemObject.Void
     }))
 
     // ListBuilder.build
@@ -487,6 +488,29 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         val builder = args[0] as? SemObject.ListBuilder ?: typeError()
 
         SemObject.SemList(builder.listSoFar)
+    }))
+
+    // Var constructor
+    list.add(NativeFunction(EntityId.of("Var"), { args: List<SemObject>, _: InterpreterCallback ->
+        SemObject.Var(args[0])
+    }))
+
+    // Var.get
+    list.add(NativeFunction(EntityId.of("Var", "get"), { args: List<SemObject>, _: InterpreterCallback ->
+        val theVar = args[0] as? SemObject.Var ?: typeError()
+        synchronized(theVar) {
+            theVar.value
+        }
+    }))
+
+    // Var.set
+    list.add(NativeFunction(EntityId.of("Var", "set"), { args: List<SemObject>, _: InterpreterCallback ->
+        val theVar = args[0] as? SemObject.Var ?: typeError()
+        val newVal = args[1]
+        synchronized(theVar) {
+            theVar.value = newVal
+        }
+        SemObject.Void
     }))
 }
 

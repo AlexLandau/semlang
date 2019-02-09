@@ -259,6 +259,22 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT),
             outputType = Type.List(typeT)))
+
+    // Var constructor
+    val varT = NativeOpaqueType.VAR.getType(listOf(typeT))
+    definitions.add(FunctionSignature.create(EntityId.of("Var"), typeParameters = listOf(t),
+            argumentTypes = listOf(typeT),
+            outputType = varT))
+
+    // Var.get
+    definitions.add(FunctionSignature.create(EntityId.of("Var", "get"), typeParameters = listOf(t),
+            argumentTypes = listOf(varT),
+            outputType = typeT))
+
+    // Var.set
+    definitions.add(FunctionSignature.create(EntityId.of("Var", "set"), typeParameters = listOf(t),
+            argumentTypes = listOf(varT, typeT),
+            outputType = NativeStruct.VOID.getType()))
 }
 
 object NativeStruct {
@@ -376,6 +392,9 @@ object NativeOpaqueType {
 
     private val listBuilderId = EntityId.of("ListBuilder")
     val LIST_BUILDER = OpaqueType(listBuilderId, CURRENT_NATIVE_MODULE_ID, listOf(t), true)
+
+    private val varId = EntityId.of("Var")
+    val VAR = OpaqueType(varId, CURRENT_NATIVE_MODULE_ID, listOf(t), true)
 }
 
 /**
@@ -391,6 +410,7 @@ fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
 
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
+    types.add(NativeOpaqueType.VAR)
 
     return types.associateBy { it.id }
 }

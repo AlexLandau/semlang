@@ -721,7 +721,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
         val functionRef = expression.functionRef
 
-        val resolved = module.resolve(functionRef) ?: error("Could not resolve $functionRef")
+        val resolved = module.resolve(functionRef, ResolutionType.Function) ?: error("Could not resolve $functionRef")
         // TODO: Put this in the module itself?
         val signature = when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
@@ -848,7 +848,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val structureExpression = expression.structureExpression
             val structureExpressionType = structureExpression.type
             if (structureExpressionType is Type.NamedType) {
-                val resolvedStructureType = module.resolve(structureExpressionType.ref)
+                val resolvedStructureType = module.resolve(structureExpressionType.ref, ResolutionType.Type)
                 // TODO: I don't think this handles native interfaces?
                 if (resolvedStructureType != null && resolvedStructureType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
                     return object : FunctionCallStrategy {
@@ -922,7 +922,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
-                val resolvedType = this.module.resolve(type.ref) ?: error("Unresolved type ${type.ref}")
+                val resolvedType = this.module.resolve(type.ref, ResolutionType.Type) ?: error("Unresolved type ${type.ref}")
                 if (isNativeModule(resolvedType.entityRef.module))  {
                     if (resolvedType.entityRef.id == NativeStruct.NATURAL.id) {
                         return writeNaturalLiteral(literal)
@@ -999,7 +999,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
         val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
         if (interfaceRef != null) {
-            val resolvedInterfaceRef = module.resolve(interfaceRef) ?: error("error")
+            val resolvedInterfaceRef = module.resolve(interfaceRef, ResolutionType.Type) ?: error("error")
             val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
             val dataTypeParameter = getType(semlangType.parameters[0], true)
             val otherParameters = semlangType.parameters.drop(1).map { getType(it, true) }
@@ -1022,6 +1022,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("TextOut") -> ClassName.get(PrintStream::class.java)
             listOf("ListBuilder") -> ClassName.get(java.util.List::class.java)
             listOf("Void") -> ClassName.bestGuess("net.semlang.java.Void")
+            listOf("Var") -> ClassName.bestGuess("net.semlang.java.Var")
             else -> null
         }
 
@@ -1202,6 +1203,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("ListBuilder", "append"), StaticFunctionCallStrategy(javaListBuilder, "append"))
         map.put(EntityId.of("ListBuilder", "appendAll"), StaticFunctionCallStrategy(javaListBuilder, "appendAll"))
         map.put(EntityId.of("ListBuilder", "build"), PassedThroughVarFunctionCallStrategy)
+
+        val javaVar = ClassName.bestGuess("net.semlang.java.Var")
+        map.put(EntityId.of("Var"), StaticFunctionCallStrategy(javaVar, "create"))
+        map.put(EntityId.of("Var", "get"), MethodFunctionCallStrategy("get"))
+        map.put(EntityId.of("Var", "set"), MethodFunctionCallStrategy("set"))
 
         // Natural constructor
         val javaNaturals = ClassName.bestGuess("net.semlang.java.Naturals")
@@ -1531,7 +1537,7 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 // TODO: For now we assume these are all data other than Sequence
                 return getNativeStructs().containsKey(type.ref.id) && type.ref.id != NativeStruct.SEQUENCE.id
             }
-            val entityResolution = containingModule.resolve(type.ref) ?: error("failed entityResolution for ${type.ref}")
+            val entityResolution = containingModule.resolve(type.ref, ResolutionType.Type) ?: error("failed entityResolution for ${type.ref}")
             when (entityResolution.type) {
                 FunctionLikeType.NATIVE_FUNCTION -> error("Native functions shouldn't be types")
                 FunctionLikeType.FUNCTION -> error("Functions shouldn't be types")

@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
-import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject } from "./SemObject";
+import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject, varObject, voidObject } from "./SemObject";
 import { Struct, Type, Interface, isMaybeType } from "../api/language";
 import { InterpreterContext } from "./interpret";
 import { assertNever } from "./util";
@@ -70,6 +70,10 @@ export const NativeStructs: { [structName: string]: Struct } = {
             { name: "successor", type: { from: [typeT], to: typeT } },
         ],
     },
+    "Void": {
+        id: "Void",
+        members: []
+    }
 };
 
 export const NativeInterfaces: { [interfaceName: string]: Interface } = {
@@ -297,6 +301,16 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         const length = UtfString.length(string.value);
         return naturalObject(bigInt(length));
     },
+    "Var": (context: InterpreterContext, initialValue: SemObject): SemObject.Var => {
+        return varObject(initialValue);
+    },
+    "Var.get": (context: InterpreterContext, v: SemObject.Var): SemObject => {
+        return v.value;
+    },
+    "Var.set": (context: InterpreterContext, v: SemObject.Var, newValue: SemObject): SemObject => {
+        v.value = newValue;
+        return voidObject();
+    },
 }
 
 function dataEquals(left: SemObject, right: SemObject): boolean {
@@ -340,6 +354,8 @@ function dataEquals(left: SemObject, right: SemObject): boolean {
     } else if (left.type === "instance") {
         throw new Error();
     } else if (left.type === "ListBuilder") {
+        throw new Error();
+    } else if (left.type === "Var") {
         throw new Error();
     } else {
         throw assertNever(left);

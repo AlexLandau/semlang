@@ -182,7 +182,7 @@ export class InterpreterContext {
     
                 const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
                 if (evaluatedExpression == undefined) {
-                    throw new Error(`Evaluated expression was undefined; expression was: ${expression}`);
+                    throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
                 }
                 if (varName !== undefined) {
                     alreadyBoundVars[varName] = evaluatedExpression;

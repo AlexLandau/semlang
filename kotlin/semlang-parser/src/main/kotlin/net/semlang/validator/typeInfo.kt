@@ -23,7 +23,7 @@ class TypesInfo(
                 return localResult
             }
         }
-        val resolved = upstreamResolver.resolve(ref)
+        val resolved = upstreamResolver.resolve(ref, ResolutionType.Type)
         if (resolved != null) {
             return upstreamTypes[resolved.entityRef]
         }
@@ -52,7 +52,7 @@ class TypesInfo(
                 return localResult
             }
         }
-        val resolved = upstreamResolver.resolve(ref)
+        val resolved = upstreamResolver.resolve(ref, ResolutionType.Function)
         if (resolved != null) {
             return upstreamFunctions[resolved.entityRef]
         }

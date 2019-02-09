@@ -7,6 +7,10 @@ import java.math.BigInteger
 // These are Semlang objects that are stored and handled by the interpreter.
 // These should know their type.
 sealed class SemObject {
+    companion object {
+        val Void = Struct(NativeStruct.VOID, listOf())
+    }
+
     data class Integer(val value: BigInteger) : SemObject()
     data class Natural(val value: BigInteger) : SemObject() {
         init {
@@ -51,12 +55,14 @@ sealed class SemObject {
     // Types for native reference types
     data class TextOut(val out: PrintStream): SemObject()
     data class ListBuilder(val listSoFar: ArrayList<SemObject>): SemObject()
+    data class Var(var value: SemObject): SemObject()
 
     // Special cases for standard library optimizations
     data class Int64(val value: Long): SemObject()
 
     // Used by mock tests to represent mocked references
     data class Mock(val name: String) : SemObject()
+
 }
 
 sealed class FunctionBindingTarget {

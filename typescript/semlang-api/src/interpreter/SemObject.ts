@@ -1,6 +1,7 @@
 import { BigInteger } from "big-integer";
 import * as bigInt from "big-integer";
 import { Struct as StructDef, Interface, Block, Argument } from "../api/language";
+import { NativeStructs } from "./nativeFunctions";
 
 export type SemObject = SemObject.Integer
  | SemObject.Natural
@@ -12,7 +13,9 @@ export type SemObject = SemObject.Integer
  | SemObject.Instance
  | SemObject.Union
  | SemObject.FunctionBinding
- | SemObject.ListBuilder;
+ | SemObject.ListBuilder
+ | SemObject.Var
+ ;
 export namespace SemObject {
     export interface Integer {
         type: "Integer";
@@ -83,6 +86,10 @@ export namespace SemObject {
     export interface ListBuilder {
         type: "ListBuilder";
         contents: SemObject[];
+    }
+    export interface Var {
+        type: "Var";
+        value: SemObject;
     }
 }
 
@@ -175,6 +182,18 @@ export function namedBindingObject(functionId: string, bindings: Array<SemObject
         functionId,
         bindings
     }
+}
+
+export function varObject(initialValue: SemObject): SemObject.Var {
+    return {
+        type: "Var",
+        value: initialValue
+    }
+}
+
+const VOID_OBJECT = structObject(NativeStructs["Void"], []);
+export function voidObject(): SemObject.Struct {
+    return VOID_OBJECT;
 }
 
 export function inlineBindingObject(argumentNames: string[], bindings: Array<SemObject | undefined>, block: Block): SemObject.InlineFunctionBinding {

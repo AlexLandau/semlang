@@ -85,7 +85,12 @@ data class StructWithModule(val struct: Struct, val module: ValidatedModule?)
 data class InterfaceWithModule(val interfac: Interface, val module: ValidatedModule?)
 data class UnionWithModule(val union: Union, val module: ValidatedModule?)
 
-class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResolution>>, private val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
+enum class ResolutionType {
+    Type,
+    Function,
+}
+
+class EntityResolver(private val typeResolutions: Map<EntityId, Set<EntityResolution>>, private val functionResolutions: Map<EntityId, Set<EntityResolution>>, private val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
     companion object {
         fun create(ownModuleId: ModuleUniqueId,
                    nativeModuleVersion: String, // TODO: This is unused
@@ -96,86 +101,98 @@ class EntityResolver(private val idResolutions: Map<EntityId, Set<EntityResoluti
                    upstreamModules: Collection<ValidatedModule>,
                    moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>): EntityResolver {
 
-            val idResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
-            val add = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isReference: Boolean) {
-                idResolutions.getOrPut(id, { HashSet(2) })
+            val typeResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
+            val functionResolutions = HashMap<EntityId, MutableSet<EntityResolution>>()
+            val addType = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isReference: Boolean) {
+                typeResolutions.getOrPut(id, { HashSet(2) })
                         .add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isReference))
+            }
+            val addFunction = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isReference: Boolean) {
+                functionResolutions.getOrPut(id, { HashSet(2) })
+                        .add(EntityResolution(ResolvedEntityRef(moduleId, id), type, isReference))
+            }
+            val addTypeAndFunction = fun(id: EntityId, moduleId: ModuleUniqueId, type: FunctionLikeType, isReference: Boolean) {
+                addType(id, moduleId, type, isReference)
+                addFunction(id, moduleId, type, isReference)
             }
 
             // TODO: Add different things based on the native version in use
             getNativeFunctionOnlyDefinitions().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.NATIVE_FUNCTION, false)
+                addFunction(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.NATIVE_FUNCTION, false)
             }
             getNativeStructs().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
+                addTypeAndFunction(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
             }
             getNativeInterfaces().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
-                add(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
+                addTypeAndFunction(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                addFunction(getAdapterIdForInterfaceId(id), CURRENT_NATIVE_MODULE_ID, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
             getNativeUnions().forEach { (id, nativeUnion) ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_TYPE, false)
+                addType(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_TYPE, false)
                 for (option in nativeUnion.options) {
                     val optionConstructorId = EntityId(id.namespacedName + option.name)
-                    add(optionConstructorId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                    addFunction(optionConstructorId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
                 }
                 val whenId = EntityId(id.namespacedName + "when")
-                add(whenId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_WHEN_FUNCTION, false)
+                addFunction(whenId, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.UNION_WHEN_FUNCTION, false)
             }
             getNativeOpaqueTypes().keys.forEach { id ->
-                add(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE, true)
+                addType(id, CURRENT_NATIVE_MODULE_ID, FunctionLikeType.OPAQUE_TYPE, true)
             }
 
             for (id in ownFunctions) {
-                add(id, ownModuleId, FunctionLikeType.FUNCTION, false)
+                addFunction(id, ownModuleId, FunctionLikeType.FUNCTION, false)
             }
 
             for (id in ownStructs) {
-                add(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
+                addTypeAndFunction(id, ownModuleId, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
             }
 
             for (id in ownInterfaces) {
-                add(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
-                add(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
+                addTypeAndFunction(id, ownModuleId, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                addFunction(getAdapterIdForInterfaceId(id), ownModuleId, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
             }
 
             for ((id, optionNames) in ownUnions) {
-                add(id, ownModuleId, FunctionLikeType.UNION_TYPE, false)
+                addType(id, ownModuleId, FunctionLikeType.UNION_TYPE, false)
                 for (optionName in optionNames) {
                     val optionConstructorId = EntityId(id.namespacedName + optionName)
-                    add(optionConstructorId, ownModuleId, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                    addFunction(optionConstructorId, ownModuleId, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
                 }
                 val whenId = EntityId(id.namespacedName + "when")
-                add(whenId, ownModuleId, FunctionLikeType.UNION_WHEN_FUNCTION, false)
+                addFunction(whenId, ownModuleId, FunctionLikeType.UNION_WHEN_FUNCTION, false)
             }
 
             for (module in upstreamModules) {
                 module.getAllExportedFunctions().keys.forEach { id ->
-                    add(id, module.id, FunctionLikeType.FUNCTION, false)
+                    addFunction(id, module.id, FunctionLikeType.FUNCTION, false)
                 }
                 module.getAllExportedStructs().forEach { id, struct ->
-                    add(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
+                    addTypeAndFunction(id, module.id, FunctionLikeType.STRUCT_CONSTRUCTOR, false)
                 }
                 module.getAllExportedInterfaces().keys.forEach { id ->
-                    add(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
-                    add(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
+                    addTypeAndFunction(id, module.id, FunctionLikeType.INSTANCE_CONSTRUCTOR, false)
+                    addFunction(getAdapterIdForInterfaceId(id), module.id, FunctionLikeType.ADAPTER_CONSTRUCTOR, false)
                 }
                 module.getAllExportedUnions().forEach { id, union ->
-                    add(id, module.id, FunctionLikeType.UNION_TYPE, false)
+                    addType(id, module.id, FunctionLikeType.UNION_TYPE, false)
                     for (option in union.options) {
                         val optionConstructorId = EntityId(id.namespacedName + option.name)
-                        add(optionConstructorId, module.id, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
+                        addFunction(optionConstructorId, module.id, FunctionLikeType.UNION_OPTION_CONSTRUCTOR, false)
                     }
                     val whenId = EntityId(id.namespacedName + "when")
-                    add(whenId, module.id, FunctionLikeType.UNION_WHEN_FUNCTION, false)
+                    addFunction(whenId, module.id, FunctionLikeType.UNION_WHEN_FUNCTION, false)
                 }
             }
-            return EntityResolver(idResolutions, moduleVersionMappings)
+            return EntityResolver(typeResolutions, functionResolutions, moduleVersionMappings)
         }
     }
 
-    fun resolve(ref: EntityRef): EntityResolution? {
-        val allResolutions = idResolutions[ref.id]
+    fun resolve(ref: EntityRef, resolutionType: ResolutionType): EntityResolution? {
+        val allResolutions = when (resolutionType) {
+            ResolutionType.Type -> typeResolutions[ref.id]
+            ResolutionType.Function -> functionResolutions[ref.id]
+        }
         if (allResolutions == null) {
             return null
         }
@@ -452,12 +469,12 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
         return getInternalInterface(interfaceRef)
     }
 
-    fun resolve(ref: EntityRef): EntityResolution? {
-        return resolver.resolve(ref)
+    fun resolve(ref: EntityRef, resolutionType: ResolutionType): EntityResolution? {
+        return resolver.resolve(ref, resolutionType)
     }
 
-    fun resolve(ref: ResolvedEntityRef): EntityResolution? {
-        return resolver.resolve(EntityRef(ref.module.asRef(), ref.id))
+    fun resolve(ref: ResolvedEntityRef, resolutionType: ResolutionType): EntityResolution? {
+        return resolver.resolve(EntityRef(ref.module.asRef(), ref.id), resolutionType)
     }
 
 }
