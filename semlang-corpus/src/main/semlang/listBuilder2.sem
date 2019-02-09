@@ -1,6 +1,6 @@
 @Test([], ["1", "4", "9"])
 function buildListUsingBuilder(): List<Integer> {
-  let builder: &ListBuilder<Integer> = ListBuilder.create<Integer>()
+  let builder: &ListBuilder<Integer> = ListBuilder<Integer>()
   armsLengthAppend(builder, Integer."1")
   armsLengthAppend(builder, Integer."4")
   armsLengthAppend(builder, Integer."9")
