@@ -1,0 +1,206 @@
+So the next case I'm running into that makes me want to continue to implement/expand references and how
+they work is the addition of for-each and while loops, particularly for sem2 (where they will have
+syntactic sugar to make them look very familiar).
+
+So a sample for-loop would look something like this in sem1:
+
+  let sum = Var(Integer."0")
+  List.forEach(inputList, function (input: Integer): Void {
+    let added = Integer.plus(Var.get(sum), input)
+    Var.set(sum, added)
+  })
+
+The only issue here is that we are implicitly binding a variable with a reference type, which is
+currently not allowed. So the question is, how do we allow this?
+
+One first thing to note is that by binding a reference, the function becomes "reference-y". By that,
+I mean that if we had some random function like this:
+
+function foo(fn: (Integer) -> Boolean): Boolean {
+  let unused = fn(Integer."42")
+  Boolean."true"
+}
+
+... we'd expect to be able to omit calling fn. By contrast, if fn has a side effect, we wouldn't be
+able to skip calling it. This latter property of requiring any function calls involving it to be
+completed before we return is the property of reference types we want to extend to this function
+binding. It isn't a part of the arg types or return type (there's nothing special about Void), so
+we'd need a different type designator, something like '&(Integer) -> Boolean'. (It should be possible
+to provide a (Integer) -> Boolean value to a &(Integer) -> Boolean argument, but not vice versa.)
+
+That's one aspect. Another is alias suppression. Therein lies a question: Should we implement the
+"&&" arguments before trying to handle this for function bindings? It's a similar concept: References
+are some of the inputs, and the output is something that aliases those references. And then we need
+to figure out the logic of how long aliases should be suppressed, whether we should permit the
+continued use of them throughout the function, how to track and deal with multiple layers of
+suppression, and so on.
+
+So, here's an alternative perspective on all of this: Let's say that the goal of all this is to help
+define a partial ordering over all our expressions such that any reference (external to the program
+or function; this caveat means we can still optimize out a ListBuilder if we never use its output, for
+example) only gets fed into functions in a fully ordered way.
+
+Hey, let's revisit the stack example, except that in this case we're going to say that the argument
+is a stack of exactly three things. Now consider the following two functions:
+
+function moveStackA(src: &Stack<Integer>, dest: &Stack<Integer>) {
+  let a = src.pop()
+  dest.push(a)
+  let b = src.pop()
+  dest.push(b)
+  let c = src.pop()
+  dest.push(c)
+}
+
+function moveStackB(src: &Stack<Integer>, dest: &Stack<Integer>) {
+  let a = src.pop()
+  let b = src.pop()
+  let c = src.pop()
+  dest.push(a)
+  dest.push(b)
+  dest.push(c)
+}
+
+Like in previous examples using the function, these two functions behave the same if src and dest are
+different stacks, but differ if they are the same stack. Let's look at that from the perspective of
+a partial ordering of the function's statements (ignoring any ordering within expressions for now).
+
+* Some orderings happen due to involving the same reference:
+  - "let a = src.pop()" before "let b = src.pop()" before "let c = src.pop()" before END
+  - "dest.push(a)" before "dest.push(b)" before "dest.push(c)" before END
+* And some involve a value's definition coming before its use:
+  - "let a = src.pop()" before "dest.push(a)"
+  - ... and similarly for b and c
+
+If src and dest could be the same reference, we'd then have to add additional orderings between,
+for example, the "dest.push(a)" and "let b = src.pop()" statements, which would cause the two
+functions to have different (and incompatible) partial orderings.
+
+Let's look at the equivalent orderings for a notional recursive implementation of a while loop,
+which is going to need to allow its arguments to share aliases:
+
+function runWhileLoop(condition: &() -> Boolean, action: &() -> Void aliasing condition): Void {
+  if (condition()) {
+    action()
+    runWhileLoop(condition, action)
+  } else {
+    Void()
+  }
+}
+
+* Some orderings happen due to involving the same reference:
+  - "condition()" before "runWhileLoop(condition, action)" before END
+  - "action()" before "runWhileLoop(condition, action)" before END
+* Furthermore, since condition and action are connected/can be used to alias the same state:
+  - "condition()" before "action()" before "runWhileLoop(condition, action)" before END
+* Some orderings happen because of the if/then/else block:
+  - "condition()" before "action()"
+  - "condition()" before "runWhileLoop(...)"
+  - "condition()" before "Void()"
+* And there's probably something for e.g. "Void()" before the if-then-else output before RETURN
+
+Note: RETURN and END are distinct; END is used for reference calls, which must always happen; RETURN
+is for the return value of the function, which can sometimes be unneeded in the larger scheme of things
+even if side effects of the function happen.
+
+I guess it's worth considering at this point one subtlety of the above: Suppose that condition and action
+were _not_ aliasing/referencing one another. We've established that both the return value and the side
+effects from action() are ordered after the value from condition(), as otherwise the return value of
+action() is useless and the side effects of action() shouldn't happen. But should the side effects of
+action() also be ordered after the side effects of condition()? In this unconnected case, the answer
+isn't yet obvious to me.
+
+Let's think about some cases:
+
+Suppose I want to save a file to disk, and then tell the user that the file has been saved once the
+save succeeds.
+1) If I wait to see if the save succeeds before informing the user... then this is probably moot,
+   because the internals of writeFile() are going to order the side effects before we get the return
+   value indicating whether it succeeded or not, and as already indicated, that RETURN will precede
+   the println action.
+2) If I (sloppily) don't bother to check if the save succeeded, and just put the statements after
+   one another...
+     fs.save(filename, contents)
+     out.println("File saved!")
+   ... then we're no longer in the if/then/else situation and no longer talking about the situation
+   in question. But it might be worth pointing out that the choice here is between setting up the
+   initial application context to have interreferencing references (what does that look like?) if
+   that's desirable, or manually requiring calls to something like synchronize(fs, out) in between
+   the calls.
+
+Given the latter situation... it might be fair for now to say that an if-condition's side effects
+do not (necessarily) precede side effects of expressions in the corresponding if-blocks. If that
+decision needs to be reversed at some point, it may hurt the efficiency but not the correctness of
+any existing code.
+
+Some sort of formalization of all this would be nice. Also, we don't yet have the "glue multiple
+references into one reference" feature that would be a sensible analogue for the referential
+function bindings.
+
+But yeah, I think the "suppression" thing is going to be more like a graph:
+
+fn (foo: &Foo) {
+  // bar becomes referential due to the implicit binding of foo
+  let bar: &() -> Void = () -> { doBar(foo) }
+  // At this point, we have an undirected graph of possible connections between relations, in which
+  // foo and bar are linked due to the preceding statement (foo is linked to the inline function
+  // expression due to rules for that expression type, and bar is linked to that expression('s connections)
+  // by the assignment to bar
+
+  // Not allowed unless baz's first and second arguments are referentially linked, or whatever we
+  // end up calling it, due to foo and bar being in the same connected component of the aforementioned
+  // graph
+  baz(foo, bar)
+  // But this is fine; it will just establish a strict ordering on all these calls
+  // Note that this differs from the suppression approach of the unaliasable references idea, in
+  // which foo wouldn't be callable while bar is in scope
+  blah1(foo)
+  blah2(bar)
+  blah3(foo)
+  blah4(bar)
+}
+
+Okay, trying to explore more the implications of connecting expressions within a statement:
+
+function sillyIfThenElse1(condition: Boolean, thenDo: &() -> Integer, elseDo: &() -> Integer): Integer {
+  if (condition) {
+    thenDo()
+  } else {
+    elseDo()
+  }
+}
+// foo and bar are unrelated references
+let result = sillyIfThenElse1(condition, () -> { doFooStuff(foo) }, () -> { doBarStuff(bar) })
+
+So in this case I wouldn't really expect result to be linked to foo or bar, because we're returning
+a non-reference value from sillyIfThenElse1.
+
+function sillyIfThenElse2(condition: Boolean, thenPick: &() -> Integer, elsePick: &() -> Integer): &() -> Integer {
+  if (condition) {
+    thenPick
+  } else {
+    elsePick
+  }
+}
+let result = sillyIfThenElse2(condition, () -> { doFooStuff(foo) }, () -> { doBarStuff(bar) })
+
+First thing to note here is that we currently have a restriction to stop things looking like the
+function from compiling, because right now functions can't return references that are related to
+things that were passed in. The presumption right now is that there will need to be some syntax
+in the declaration-y part of the function that indicates that it's okay/intended for an argument
+to be referentially linked to the result (which can mean being the result exactly); so far, in
+my head, that's been "&&":
+
+function sillyIfThenElse2(condition: Boolean, thenPick: &&() -> Integer, elsePick: &&() -> Integer): &() -> Integer {
+  // ...
+}
+
+The other thing is that this *does* establish a link between foo and result, and between bar and
+result. I mentioned earlier that the links were undirected; this would seem to make a case against
+that, as nothing in here so far causes foo and bar to be linked to one another; e.g., it would be
+safe to call sillyIfThenElse2 again with a different condition, but as described so far this
+wouldn't work because of the connected component thing. One possibility is to use a digraph here.
+I'd want some reassurance, though, that other reference-based mechanisms we need to add later
+won't allow some sort of upstream-then-fork-back-down "pollution" that could allow two references
+to affect each other even if there isn't a direct path from one to the other. That's another case
+that feels like it calls for some sort of formal-ish proof covering every possible case.
