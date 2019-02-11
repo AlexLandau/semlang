@@ -239,6 +239,16 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
         result
     }))
 
+    // List.forEach
+    list.add(NativeFunction(listDot("forEach"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val list = args[0] as? SemObject.SemList ?: typeError()
+        val action = args[1] as? SemObject.FunctionBinding ?: typeError()
+        list.contents.forEach { item ->
+            apply(action, listOf(item))
+        }
+        SemObject.Void
+    }))
+
     // List.size
     list.add(NativeFunction(listDot("size"), { args: List<SemObject>, _: InterpreterCallback ->
         val list = args[0] as? SemObject.SemList ?: typeError()

@@ -93,4 +93,11 @@ public class Lists {
         }
         return curValue;
     }
+
+    public static <T> Void forEach(List<T> list, Function<T, Void> action) {
+        for (T element : list) {
+            action.apply(element);
+        }
+        return null;
+    }
 }
