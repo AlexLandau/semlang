@@ -13,11 +13,12 @@
     "utfstring": "2.0.0"
   },
   "devDependencies": {
-    "@types/jest": "22.0.1",
+    "@types/jest": "^24.0.9",
     "@types/lodash.isequal": "4.5.3",
-    "jest": "22.0.5",
+    "@types/node": "^11.10.4",
+    "jest": "^24.1.0",
     "jest-junit": "3.4.1",
-    "typescript": "~2.5.3"
+    "typescript": "~3.3.1"
   },
   "jest-junit": {
     "output": "./build/test-results/jest/semlang-api.xml"
