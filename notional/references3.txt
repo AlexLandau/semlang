@@ -204,3 +204,56 @@ I'd want some reassurance, though, that other reference-based mechanisms we need
 won't allow some sort of upstream-then-fork-back-down "pollution" that could allow two references
 to affect each other even if there isn't a direct path from one to the other. That's another case
 that feels like it calls for some sort of formal-ish proof covering every possible case.
+
+Different idea regarding the syntax:
+function sillyIfThenElse2(condition: Boolean, thenPick: &() -> Integer, elsePick: &() -> Integer): &() -> Integer aliasing (thenPick, elsePick) {
+  // ...
+}
+
+I think this is somewhat clearer in terms of how it's related to the other elements of the type system.
+Presumably this goes in the "expression type" concept that's already being used for references. Also:
+"Foo aliasing (x)" vs. "Foo aliasing ()": the latter is arguably a subtype of the former (but not the
+type of subtype I'm looking to avoid).
+
+Does this supercede the existing set of restrictions for reference types?
+
+Another random thought about supporting "manual" concurrency control: Can interfaces support futures?
+Say we have a load-a-file operation (ignore error cases):
+
+// Semantics are that this can return before the file is actually loaded
+loadFile(io: &IO, file: File): &Future<FileContents> // or "startLoadingFile"?
+
+Normal loading of three files would look like:
+{
+  let future1 = loadFile(io, file1)
+  let future2 = loadFile(io, file2)
+  let future3 = loadFile(io, file3)
+  [future1.get(), future2.get(), future3.get()]
+}
+
+Forcing the loads to happen in order (for whatever reason) could look like this:
+{
+  let future1 = loadFile(io, file1)
+  let contents1 = future1.get()
+  synchronize(future1, io)
+  let future2 = loadFile(io, file2)
+  // etc.
+}
+
+OK, that's the ideal, now let's be critical. One could argue that the result of loadFile ought to alias io, for starters,
+which would cause all the futures to be interrelated (under the undirected graph scheme) and cause their get()s to be
+ordered. There are a couple of ways around this; one is to have a blanket objection to treating I/O operations with the
+same file tree as being related in a referential way. The premise there is that non-determinism would be introduced
+anyway due to the possibility of interference from outside the system. I suspect that this criticism is actually correct,
+but I worry that it will lead to programmer confusion in the read/write case. And that's sort of the second "way around
+this"; ideally reads and writes would be ordered with respect to one another, as would writes and other writes, but
+reads would be independent. And in fact, maybe we can do this:
+
+startLoadingFile(io: &IO, file: File): &Future<FileContents> // asynchronous!
+writeFile(io: &IO, file: File): Void // synchronous!
+
+The semantics of startLoadingFile, as intimated before, are that it may return before the file has been (fully) loaded.
+But there's some sleight-of-hand going on here as to whether the returned future and io are related; the io still
+"watches" whether the read has completed and refuses to write before doing so, (to any file or just those being read?),
+while the future only "cares about" the contents of the file and not "when" it's done loading, except of course that the
+runtime cares about that when running get().
