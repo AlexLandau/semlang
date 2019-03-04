@@ -21,24 +21,35 @@
         "test": "npm run compile && node ./node_modules/vscode/bin/test"
     },
     "contributes": {
-        "languages": [{
-            "id": "semlang",
-            "aliases": ["Semlang", "semlang"],
-            "extensions": [".sem",".sem1",".sem0"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "semlang",
-            "scopeName": "source.semlang",
-            "path": "./syntaxes/semlang.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "semlang",
+                "aliases": [
+                    "Semlang",
+                    "semlang"
+                ],
+                "extensions": [
+                    ".sem",
+                    ".sem1",
+                    ".sem0"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "semlang",
+                "scopeName": "source.semlang",
+                "path": "./syntaxes/semlang.tmLanguage.json"
+            }
+        ]
     },
     "dependencies": {
         "vscode": "^1.1.5",
         "vscode-languageclient": "^3.4.2"
     },
     "devDependencies": {
-        "typescript": "~2.5.3",
-        "@types/node": "^7.0.43"
+        "@types/node": "^7.0.43",
+        "typescript": "~2.5.3"
     }
 }
