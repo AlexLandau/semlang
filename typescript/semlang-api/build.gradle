@@ -4,13 +4,13 @@ plugins {
 
 node {
     // Version of node to use.
-    version = '8.9.3'
+    version = '8.15.1'
 
     // Version of npm to use.
     npmVersion = '5.4.2'
 
     // Version of Yarn to use.
-    yarnVersion = '1.3.2'
+    yarnVersion = '1.13.0'
 
     // Base URL for fetching node distributions (change if you have a mirror).
     distBaseUrl = 'https://nodejs.org/dist'
