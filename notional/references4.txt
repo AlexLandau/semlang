@@ -1,0 +1,180 @@
+Trying to summarize a few ideas/incarnations so far, as they've gotten more "user-friendly", in the
+hopes of finding a way to continue the trend:
+
+1) Threaded types:
+
+These are types in which any variable of the type can only be referenced once.
+
+function logOutAndErr(io: ~IO, message: String): ~IO {
+  // The get notation was never implemented, but was part of the plan
+  get out as out1, err as err1 from io
+  let out2 = TextOut.println(out1, message)
+  let err2 = TextOut.println(out2, message)
+  IO(out2, err2)
+}
+
+These are pretty messy, and if the language can handle the aspect of ordering things as if they
+worked this way, it would be advantageous.
+
+2) Unaliasable reference types MVP:
+
+We allow reference types to be referenced multiple times, but avoided non-deterministic behavior by
+disallowing more than one alias to exist for a given reference.
+
+function logOutAndErr(out: &TextOut, err: &TextOut, message: String): Void {
+  TextOut.println(out, message)
+  TextOut.println(err, message)
+  Void()
+}
+
+This version was restricted in that we can't return a value of a reference type (or even assign it to
+a variable) unless it was just created in a way that didn't have another alias (and that was only
+implemented so the ListBuilder constructor could work). We also didn't allow function bindings (including
+lambda expressions) to bind variables with reference types.
+
+At the time of writing, this is the currently implemented approach.
+
+3) Reference types with explicit possible aliasing:
+
+We allow reference types to be aliased multiple times, but require "expression types" to include
+information about what other variables in scope have references that can modify the same state
+(that may still not be the technically precise definition I'm looking for). An important motivating
+example where the aliases are NOT listed:
+
+// sem2 for some syntactic sugar
+function moveAll<T>(source: Stack<T>, dest: Stack<T>): Void {
+  while (source.size() != 0) {
+    dest.push(source.pop())
+  }
+}
+
+The important thing about that example is that source and dest are implicitly not allowed to refer
+to the same underlying stack. This is important because it means that this is semantically identical
+to other implementations that may be more efficient (such as moving several elements at a time) that
+would be semantically different if source and dest were the same. I believe this is important both
+for proving properties about the function and enabling automatic optimizations!
+
+In any case, the "obvious" solution here looks something like this, if we want to ensure that the
+outputs to out and err are synchronized with one another at the semantic level:
+
+function logOutAndErr(out: &TextOut, err: &TextOut aliasing out, message: String): Void {
+  out.println(message)
+  err.println(message)
+}
+
+The same "aliasing varName" approach could be used in return types when a return type is an alias of
+an input.
+
+The assumed implementation here is that we just treat this as an undirected graph, where any elements
+of the same connected component of the graph are treated as potentially the same and 1) are limited
+to one per statement; and 2) have the associated statements partially-ordered semantically.
+
+4) ???
+
+The (first) worry about (3) is how to deal with cases where we want to be able to say that two fields
+on an object are not the same thing, so we can use e.g. the stack transfer function listed earlier.
+The undirected graph approach listed before -- where two things are linked if they can be used to
+refer to the same state -- would mean that each of the individual fields would be linked to the
+object, and thus transitively linked to one another. (There is one case here for objects of a
+declared type with known named fields, and another case for dynamic map-like structures where we
+might want to include a restriction that no two values are linked; the latter case would be much
+harder.)
+
+Another random annoyance with (3) is that there are multiple ways to describe an expression as aliasing
+others that are equivalent. This isn't necessarily important, but it adds some complication to
+checking that declared and inferred types are equivalent, for example.
+
+We could imagine something like:
+
+state struct Foo {
+  a: String
+  b: Int
+  c: &Bar
+  d: &Bar aliasing c // or "mayref" or "overlaps" or whatever you want to call it
+  e: &Bar
+}
+
+{
+  // myFoo: &Foo
+  doTransfer(myFoo.c, myFoo.e) // doesn't need second argument to alias the first
+  doMoreCarefulTransfer(myFoo.c, myFoo.d) // second argument must alias the first
+}
+
+So how do we make this actually look like this? Most obvious thing looks something like:
+
+let c = myFoo.c // Has expression type &Bar aliasing myFoo.c
+let d = myFoo.d // Has expression type &Bar aliasing myFoo.d AND myFoo.c; but is the latter explicit or implied?
+
+function getFooC(foo: &Foo): &Bar aliasing foo.c {
+  foo.c
+}
+
+let c2 = getFooC(myFoo) // Has expression type &Bar aliasing myFoo.c
+// And this seemingly should be legal:
+let foo2 = Foo(myFoo.a, myFoo.b, myFoo.c, myFoo.d, myFoo.e)
+// ... but what is its expression type?? Superficially, ""&Foo aliasing myFoo" would seem to be
+// appropriate, but once you start swapping out some of the arguments that becomes very imprecise...
+// instead, you have to track subaliases: foo2.e aliases myFoo.d, for example -- what does that mean?
+// I think the broad issue here is that it's very difficult to go from an assortment of possible
+// references to an object holding those references and keep track of all the aliasing in a way that
+// also allows you to call stuff in a usable way. Instead you may need to use very broad strokes when
+// moving in that direction and indicate that you just shouldn't use both foo2 and the aliases that
+// went into it at the same time.
+
+... so the conclusion might be, allow fine-grained-ish handling for small pieces of a large object,
+but assume you discard all the fine-grained handling when you move from individual smaller objects
+to a larger object?
+
+Another conclusion may be to adopt a more functional approach to the overall structure of the program
+and try to isolate these stateful bits into individual functions to the extent possible. There's still
+utility functions you'd want to write and share in that case, for assisting with those individual
+implementations.
+
+Another thought I've had: The conflict here is between two kinds of interpretations of the "what vs. how"
+approach. On the one hand, when I have a definition of the transferStack() function, if I don't add a
+restriction that the two arguments should not be the same stack, then I am implicitly adding more
+details on the exact functioning of the function (in the case of sameness) that I didn't intend to define.
+
+On the other hand, it feels extra-laborious to have programmers manage a set of types to ensure that
+
+So one question here is whether the distinction between these things can simply be managed
+behind-the-scenes. Part of this might possibly involve taking a cue from how type parameters work,
+particularly in C++: Can we have the transferStack() function written once, but then have multiple
+implementations inferred from that for the same-stack and different-stack cases? This is easier to
+think about in the interpreted/runtime case, but harder for transpiled functions, though, which
+would need to separate these things at transpile-time, where it's hard to know how many versions
+you might need.
+
+It does seem excessively restrictive to let a programmer specify "these parts of the state must not
+be the same thing". (Restrictive in the sense that someone's going to get worked into an impossible
+corner due to other people's definitions.) And yet this feels at least a little promising as a way
+to manage concurrency across different references.
+
+Incidentally, here's something of a proposal to define when references a and b are connected: They
+are connected if there exist possible values for them and (unbound) functions f: (A) -> Void and
+g: (B) -> Boolean such that { f(a) ; g(b) } returns true and { g(b) } returns false, or vice versa.
+(I suppose we could remove the "or vice versa" as part of making it a directed relationship.)
+
+One way forward right now (albeit a disappointing one) is to basically just treat all references
+in a given scope as being potentially connected to one another, and therefore having a defined
+operate-in-order relationship. This would allow further enhancements to disentangle things in
+the future, though I suppose it may require breaking changes to source code if I pursued something
+like the overlap tracking proposal (with overlapping arguments disallowed by default).
+
+OK, so I think this is what I'm going to do in the immediate future (i.e. to get foreach and while
+loops working in sem2):
+
+1) Remove most restrictions on references. Retain one restriction in sem1, which is that only one
+   "referential action" is permitted in a single statement. This would usually be a function call
+   involving a reference. Stuff happening inside blocks/lambda expressions doesn't count as part
+   of the outer statement.
+2) Say that semantically, all statements operate in order (as if naively single-threaded). Future
+   optimizations are possible where we can determine/prove that it's safe to do so (in particular,
+   code not involving references still works the same way in terms of being a directed graph).
+
+Again, this is basically like operating under approach 3, but with the assumption that all references
+are potentially related. This doesn't feel like a perfect-language solution to this, but it will make
+adoption easier and there's possible room for improvement in the future, possibly in the form of lemmas
+proving that certain references are unrelated. This feels somewhat similar to the approach of
+"non-determinism can be added, but only through references to sources of non-determinism from outside
+the program".
