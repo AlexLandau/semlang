@@ -282,6 +282,13 @@ private class Validator(
                 }
             }
 
+            val referentialActionsCount = countReferentialActions(validatedExpression)
+            if (referentialActionsCount > 1) {
+                // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
+                // TODO: Another convenience we can add is allowing multiple referential "actions" if they are all read-only, e.g. reading a bunch of variables
+                errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
+            }
+
             validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
             if (varName != null) {
                 if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
@@ -291,7 +298,49 @@ private class Validator(
             }
         }
         val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, HashSet<String>(), containingFunctionId) ?: return null
+        val referentialActionsCount = countReferentialActions(returnedExpression)
+        if (referentialActionsCount > 1) {
+            // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
+            errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", block.returnedExpression.location, IssueLevel.ERROR))
+        }
+
         return TypedBlock(returnedExpression.type, validatedStatements, returnedExpression)
+    }
+
+    private fun countReferentialActions(expression: TypedExpression): Int {
+        return when (expression) {
+            is TypedExpression.Variable -> 0
+            is TypedExpression.IfThen -> countReferentialActions(expression.condition)
+            is TypedExpression.NamedFunctionCall -> {
+                var count = 0
+                if (expression.type.isReference() || expression.arguments.any { it.type.isReference() }) {
+                    count++
+                }
+                for (argument in expression.arguments) {
+                    count += countReferentialActions(argument)
+                }
+                count
+            }
+            is TypedExpression.ExpressionFunctionCall -> {
+                var count = 0
+                count += countReferentialActions(expression.functionExpression)
+                if (expression.type.isReference() || expression.arguments.any { it.type.isReference() }) {
+                    count++
+                }
+                for (argument in expression.arguments) {
+                    count += countReferentialActions(argument)
+                }
+                count
+            }
+            is TypedExpression.Literal -> 0
+            is TypedExpression.ListLiteral -> {
+                expression.contents.map(this::countReferentialActions).sum()
+            }
+            is TypedExpression.NamedFunctionBinding -> 0
+            is TypedExpression.ExpressionFunctionBinding -> countReferentialActions(expression.functionExpression)
+            is TypedExpression.Follow -> 0
+            is TypedExpression.InlineFunction -> 0
+        }
     }
 
     //TODO: Construct this more sensibly from more centralized lists

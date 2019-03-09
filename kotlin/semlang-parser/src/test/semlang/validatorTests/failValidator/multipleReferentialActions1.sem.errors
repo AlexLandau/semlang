@@ -1,0 +1,6 @@
+function testVar(): Integer {
+  let a = Var(Integer."0")
+  let b = Var(Integer."1")
+  Integer.plus(Var.get(a), Var.get(b))
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen
+}
