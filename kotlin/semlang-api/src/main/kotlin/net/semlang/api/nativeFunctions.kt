@@ -71,6 +71,12 @@ private fun addBooleanFunctions(definitions: ArrayList<FunctionSignature>) {
     // Boolean.or
     definitions.add(FunctionSignature.create(EntityId.of("Boolean", "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
 
+    // I'm not sure which namespace I want this to end up in...
+    // Boolean.while
+    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "while"),
+            argumentTypes = listOf(Type.FunctionType.create(true, listOf(), listOf(), Type.BOOLEAN), Type.FunctionType.create(true, listOf(), listOf(), NativeStruct.VOID.getType())),
+            outputType = NativeStruct.VOID.getType()))
+
 }
 
 private fun addIntegerFunctions(definitions: ArrayList<FunctionSignature>) {
