@@ -87,6 +87,7 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     }
     // Pre-processing steps
     // TODO: Combine variable renaming steps
+    // TODO: Rename e.g. functions with name conflicts with Java keywords
     val tempModule1 = extractInlineFunctions(unprocessedModule)
     val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
     val tempModule3 = hoistMatchingExpressions(tempModule2, { it is Expression.IfThen })
@@ -412,9 +413,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (option in union.options) {
             val functionType = if (option.type != null) {
-                getFunctionType(Type.FunctionType.create(listOf(), listOf(option.type!!), whenType))
+                getFunctionType(Type.FunctionType.create(false, listOf(), listOf(option.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType.create(listOf(), listOf(), whenType))
+                getFunctionType(Type.FunctionType.create(false, listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + option.name)
         }
@@ -473,17 +474,17 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         whenBuilder.returns(whenTypeVariable)
         for (curOption in union.options) {
             val functionType = if (curOption.type != null) {
-                getFunctionType(Type.FunctionType.create(listOf(), listOf(curOption.type!!), whenType))
+                getFunctionType(Type.FunctionType.create(false, listOf(), listOf(curOption.type!!), whenType))
             } else {
-                getFunctionType(Type.FunctionType.create(listOf(), listOf(), whenType))
+                getFunctionType(Type.FunctionType.create(false, listOf(), listOf(), whenType))
             }
             whenBuilder.addParameter(functionType, "when" + curOption.name)
         }
         // Figure out the return statement here
         val ourOptionFunctionType = if (option.type != null) {
-            Type.FunctionType.create(listOf(), listOf(option.type!!), whenType)
+            Type.FunctionType.create(false, listOf(), listOf(option.type!!), whenType)
         } else {
-            Type.FunctionType.create(listOf(), listOf(), whenType)
+            Type.FunctionType.create(false, listOf(), listOf(), whenType)
         }
         val callStrategy = getExpressionFunctionCallStrategy(TypedExpression.Variable(ourOptionFunctionType, AliasType.PossiblyAliased, "when" + option.name))
         if (option.type != null) {
@@ -1314,7 +1315,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
 
             val functionAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(Type.FunctionType.create(listOf(), listOf(dataType), instanceType), false))
+                    .addSuperinterface(getType(Type.FunctionType.create(false, listOf(), listOf(dataType), instanceType), false))
 
             val applyMethodSpec = MethodSpec.methodBuilder("apply")
                     .addParameter(getType(dataType, true), "data")

@@ -182,9 +182,10 @@ sealed class S2Type {
         }
     }
 
-    data class FunctionType(val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<S2Type>, val outputType: S2Type, override val location: Location? = null): S2Type() {
+    data class FunctionType(val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<S2Type>, val outputType: S2Type, override val location: Location? = null): S2Type() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
             return FunctionType(
+                    isReference,
                     typeParameters,
                     this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
                     this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
@@ -192,12 +193,14 @@ sealed class S2Type {
         }
 
         override fun getTypeString(): String {
+            val referenceString = if (isReference) "&" else ""
             val typeParametersString = if (typeParameters.isEmpty()) {
                 ""
             } else {
                 "<" + typeParameters.joinToString(", ") + ">"
             }
-            return typeParametersString +
+            return referenceString +
+                    typeParametersString +
                     "(" +
                     argTypes.joinToString(", ") +
                     ") -> " +
@@ -264,7 +267,7 @@ data class TypeParameter(val name: String, val typeClass: TypeClass?) {
 
 data class S2FunctionSignature(override val id: EntityId, val argumentTypes: List<S2Type>, val outputType: S2Type, val typeParameters: List<TypeParameter> = listOf()): HasId {
     fun getFunctionType(): S2Type.FunctionType {
-        return S2Type.FunctionType(typeParameters, argumentTypes, outputType)
+        return S2Type.FunctionType(false, typeParameters, argumentTypes, outputType)
     }
 }
 
@@ -318,6 +321,7 @@ data class S2Block(val statements: List<S2Statement>, val returnedExpression: S2
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): S2Type.FunctionType {
         return S2Type.FunctionType(
+                false,
                 typeParameters,
                 arguments.map(S2Argument::type),
                 returnType
@@ -372,7 +376,7 @@ data class S2Interface(override val id: EntityId, val typeParameters: List<TypeP
             argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
         }
 
-        val outputType = S2Type.FunctionType(listOf(), listOf(dataType), instanceType)
+        val outputType = S2Type.FunctionType(false, listOf(), listOf(dataType), instanceType)
 
         return S2FunctionSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
     }
@@ -384,7 +388,7 @@ data class S2Method(val name: String, val typeParameters: List<TypeParameter>, v
             TODO()
         }
     }
-    val functionType = S2Type.FunctionType(typeParameters, arguments.map { arg -> arg.type }, returnType, null)
+    val functionType = S2Type.FunctionType(false, typeParameters, arguments.map { arg -> arg.type }, returnType, null)
 }
 
 data class S2Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<S2Option>, override val annotations: List<S2Annotation>, val idLocation: Location? = null): TopLevelEntity {
@@ -418,7 +422,7 @@ data class S2Union(override val id: EntityId, val typeParameters: List<TypeParam
             } else {
                 listOf(option.type)
             }
-            S2Type.FunctionType(listOf(), optionArgTypes, outputParameterType)
+            S2Type.FunctionType(false, listOf(), optionArgTypes, outputParameterType)
         }
 
         return S2FunctionSignature(whenId, argumentTypes, outputParameterType, whenTypeParameters)
@@ -448,7 +452,7 @@ private fun getInterfaceMethodReferenceType(intrinsicStructType: S2Type.NamedTyp
         argTypes.add(argument.type)
     }
 
-    return S2Type.FunctionType(listOf(), argTypes, method.returnType, null)
+    return S2Type.FunctionType(false, listOf(), argTypes, method.returnType, null)
 }
 
 fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {

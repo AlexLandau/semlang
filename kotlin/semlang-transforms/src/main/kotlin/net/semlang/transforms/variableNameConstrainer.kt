@@ -6,14 +6,14 @@ import net.semlang.api.Function
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
  */
-fun constrainVariableNames(context: RawContext, renamingStrategy: VariableRenamingStrategy): RawContext {
+fun constrainVariableNames(context: RawContext, renamingStrategy: RenamingStrategy): RawContext {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
     val functions = renameWithinFunctions(context.functions, validatingStrategy)
     val interfaces = renameInterfaceArguments(context.interfaces, validatingStrategy)
     return RawContext(functions, context.structs, interfaces, context.unions)
 }
 
-private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableRenamingStrategy {
+private fun getValidatingStrategy(delegate: RenamingStrategy): RenamingStrategy {
     return fun (varName: String, allVarNamesPresent: Set<String>): String {
         if (varName.isBlank()) {
             error("Variable names should not be blank; incoming variable name was $varName")
@@ -30,31 +30,31 @@ private fun getValidatingStrategy(delegate: VariableRenamingStrategy): VariableR
     }
 }
 
-private fun renameInterfaceArguments(interfaces: List<UnvalidatedInterface>, rename: VariableRenamingStrategy): List<UnvalidatedInterface> {
+private fun renameInterfaceArguments(interfaces: List<UnvalidatedInterface>, rename: RenamingStrategy): List<UnvalidatedInterface> {
     return interfaces.map { interfac -> renameInterfaceArguments(interfac, rename) }
 }
 
-private fun renameInterfaceArguments(interfac: UnvalidatedInterface, rename: VariableRenamingStrategy): UnvalidatedInterface {
+private fun renameInterfaceArguments(interfac: UnvalidatedInterface, rename: RenamingStrategy): UnvalidatedInterface {
     val methods = interfac.methods.map { method -> renameMethodArguments(method, rename) }
     // TODO: Start using this pattern elsewhere, probably
     return interfac.copy(methods = methods)
 }
 
-private fun renameMethodArguments(method: UnvalidatedMethod, rename: VariableRenamingStrategy): UnvalidatedMethod {
+private fun renameMethodArguments(method: UnvalidatedMethod, rename: RenamingStrategy): UnvalidatedMethod {
     val argumentNames = method.arguments.map { argument -> argument.name }.toSet()
     val arguments = method.arguments.map { argument -> renameArgument(argument, argumentNames, rename) }
     return method.copy(arguments = arguments)
 }
 
-private fun renameArgument(argument: UnvalidatedArgument, otherVariables: Set<String>, rename: VariableRenamingStrategy): UnvalidatedArgument {
+private fun renameArgument(argument: UnvalidatedArgument, otherVariables: Set<String>, rename: RenamingStrategy): UnvalidatedArgument {
     return argument.copy(name = rename(argument.name, otherVariables))
 }
 
-private fun renameWithinFunctions(functions: List<Function>, rename: VariableRenamingStrategy): List<Function> {
+private fun renameWithinFunctions(functions: List<Function>, rename: RenamingStrategy): List<Function> {
     return functions.map { function -> renameWithinFunction(function, rename) }
 }
 
-private fun renameWithinFunction(function: Function, rename: VariableRenamingStrategy): Function {
+private fun renameWithinFunction(function: Function, rename: RenamingStrategy): Function {
     val originalVarsInFunction = getAllDeclaredVarNames(function)
     val allVarsInFunction = HashSet<String>(originalVarsInFunction)
     val renamingMap = HashMap<String, String>()
@@ -136,23 +136,4 @@ private fun renameWithinExpression(expression: Expression, renamingMap: Map<Stri
 
 private fun renameArgument(argument: UnvalidatedArgument, renamingMap: Map<String, String>): UnvalidatedArgument {
     return UnvalidatedArgument(renamingMap[argument.name] ?: error("Bug in renaming; name is ${argument.name}, map is $renamingMap"), argument.type)
-}
-
-typealias VariableRenamingStrategy = (varName: String, allVarNamesPresent: Set<String>) -> String
-
-object RenamingStrategies {
-    fun getKeywordAvoidingStrategy(keywords: Set<String>): (varName: String, allVarNamesPresent: Set<String>) -> String {
-        return fun(varName: String, allVarNamesPresent: Set<String>): String {
-            if (!keywords.contains(varName)) {
-                return varName
-            }
-            var suffix = 1
-            var newName = varName + suffix
-            while (allVarNamesPresent.contains(newName)) {
-                suffix += 1
-                newName = varName + suffix
-            }
-            return newName
-        }
-    }
 }

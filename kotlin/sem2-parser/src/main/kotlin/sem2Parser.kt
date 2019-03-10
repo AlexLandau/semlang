@@ -561,6 +561,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
     private fun parseType(type: Sem2Parser.TypeContext): S2Type {
         if (type.ARROW() != null) {
             //Function type
+            val isReference = type.AMPERSAND() != null
             val typeParameters = if (type.cd_type_parameters() != null) {
                 parseTypeParameters(type.cd_type_parameters())
             } else {
@@ -568,7 +569,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
             val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
             val outputType = parseType(type.type())
-            return S2Type.FunctionType(typeParameters, argumentTypes, outputType, locationOf(type))
+            return S2Type.FunctionType(isReference, typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
         if (type.LESS_THAN() != null) {

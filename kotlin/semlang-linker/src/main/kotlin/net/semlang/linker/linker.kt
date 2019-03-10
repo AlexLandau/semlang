@@ -169,7 +169,7 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
                 val groundType = type.getDefaultGrounding()
                 val argTypes = groundType.argTypes.map(this::apply)
                 val outputType = apply(groundType.outputType)
-                UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
+                UnvalidatedType.FunctionType(type.isReference(), type.typeParameters, argTypes, outputType)
             }
             is Type.NamedType -> {
                 val newRef = translateRef(type.ref)

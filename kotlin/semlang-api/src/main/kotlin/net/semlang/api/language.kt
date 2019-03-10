@@ -80,6 +80,7 @@ data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
 sealed class UnvalidatedType {
     abstract val location: Location?
     abstract protected fun getTypeString(): String
+    abstract fun isReference(): kotlin.Boolean
     abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
     abstract fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean
     override fun toString(): String {
@@ -90,6 +91,10 @@ sealed class UnvalidatedType {
     // can be left to the validator
     object Invalid {
         data class ReferenceInteger(override val location: Location? = null) : UnvalidatedType() {
+            override fun isReference(): kotlin.Boolean {
+                return true
+            }
+
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
@@ -108,6 +113,10 @@ sealed class UnvalidatedType {
         }
 
         data class ReferenceBoolean(override val location: Location? = null) : UnvalidatedType() {
+            override fun isReference(): kotlin.Boolean {
+                return true
+            }
+
             override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
                 return this
             }
@@ -127,6 +136,10 @@ sealed class UnvalidatedType {
     }
 
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return false
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Integer {
             return this
         }
@@ -144,6 +157,10 @@ sealed class UnvalidatedType {
         }
     }
     data class Boolean(override val location: Location? = null) : UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return false
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Boolean {
             return this
         }
@@ -162,6 +179,10 @@ sealed class UnvalidatedType {
     }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return false
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.List {
             return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
@@ -180,6 +201,10 @@ sealed class UnvalidatedType {
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return false
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Maybe {
             return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
         }
@@ -197,7 +222,11 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class FunctionType(val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+    data class FunctionType(private val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return isReference
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.FunctionType {
             return FunctionType(
                     isReference,
@@ -240,7 +269,11 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, private val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+        override fun isReference(): kotlin.Boolean {
+            return isReference
+        }
+
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
             if (ref.moduleRef == null && ref.id.namespacedName.size == 1) {
                 val replacement = parameterReplacementMap[ref.id.namespacedName[0]]

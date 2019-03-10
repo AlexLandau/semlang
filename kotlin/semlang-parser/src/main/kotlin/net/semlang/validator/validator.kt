@@ -198,7 +198,7 @@ private class Validator(
 
                 val argTypes = type.argTypes.map { argType -> validateType(argType, typeParametersInScope, newInternalParameters) ?: return null }
                 val outputType = validateType(type.outputType, typeParametersInScope, newInternalParameters) ?: return null
-                Type.FunctionType.create(type.isReference, type.typeParameters, argTypes, outputType)
+                Type.FunctionType.create(type.isReference(), type.typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 if (type.parameters.isEmpty()
@@ -223,16 +223,16 @@ private class Validator(
                 }
                 val shouldBeReference = typeInfo.isReference
 
-                if (shouldBeReference && !type.isReference) {
+                if (shouldBeReference && !type.isReference()) {
                     errors.add(Issue("Type $type is a reference type and should be marked as such with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
-                if (type.isReference && !shouldBeReference) {
+                if (type.isReference() && !shouldBeReference) {
                     errors.add(Issue("Type $type is not a reference type and should not be marked with '&'", type.location, IssueLevel.ERROR))
                     return null
                 }
                 val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope, internalParameters) ?: return null }
-                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isReference, parameters)
+                Type.NamedType(typeInfo.resolvedRef, type.ref, type.isReference(), parameters)
             }
             is UnvalidatedType.Invalid.ReferenceInteger -> {
                 errors.add(Issue("Integer is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
