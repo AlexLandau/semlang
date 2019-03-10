@@ -1,0 +1,7 @@
+function bindHelloWorld(): (&TextOut) -> Void {
+  printHelloWorld|(_)
+}
+
+function printHelloWorld(out: &TextOut): Void {
+  TextOut.print(out, String."Hello, world!")
+}

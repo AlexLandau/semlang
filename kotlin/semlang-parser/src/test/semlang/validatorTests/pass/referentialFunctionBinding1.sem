@@ -1,0 +1,8 @@
+function bindAndPrintHelloWorld(out: &TextOut): Void {
+  let myHelloWorld: &() -> Void = printHelloWorld|(out)
+  myHelloWorld()
+}
+
+function printHelloWorld(out: &TextOut): Void {
+  TextOut.print(out, String."Hello, world!")
+}

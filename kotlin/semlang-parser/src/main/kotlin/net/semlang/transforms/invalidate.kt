@@ -52,7 +52,7 @@ fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionTyp
     val groundType = type.getDefaultGrounding()
     val argTypes = groundType.argTypes.map(::invalidate)
     val outputType = invalidate(groundType.outputType)
-    return UnvalidatedType.FunctionType(type.typeParameters, argTypes, outputType)
+    return UnvalidatedType.FunctionType(type.isReference(), type.typeParameters, argTypes, outputType)
 }
 
 fun invalidate(type: Type): UnvalidatedType {

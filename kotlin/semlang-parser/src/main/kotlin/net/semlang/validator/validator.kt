@@ -159,9 +159,9 @@ private class Validator(
         val arguments = validateArguments(function.arguments, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         val returnType = validateType(function.returnType, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
 
-        if (returnType.isReference()) {
-            errors.add(Issue("Reference types cannot be returned from functions", function.returnTypeLocation, IssueLevel.ERROR))
-        }
+//        if (returnType.isReference()) {
+//            errors.add(Issue("Reference types cannot be returned from functions", function.returnTypeLocation, IssueLevel.ERROR))
+//        }
 
         //TODO: Validate that type parameters don't share a name with something important
         val variableTypes = getArgumentVariableTypes(arguments)
@@ -198,7 +198,7 @@ private class Validator(
 
                 val argTypes = type.argTypes.map { argType -> validateType(argType, typeParametersInScope, newInternalParameters) ?: return null }
                 val outputType = validateType(type.outputType, typeParametersInScope, newInternalParameters) ?: return null
-                Type.FunctionType.create(type.typeParameters, argTypes, outputType)
+                Type.FunctionType.create(type.isReference, type.typeParameters, argTypes, outputType)
             }
             is UnvalidatedType.NamedType -> {
                 if (type.parameters.isEmpty()
@@ -383,9 +383,11 @@ private class Validator(
         val varsToBind = ArrayList<String>(variableTypes.keys)
         varsToBind.retainAll(getVarsReferencedIn(validatedBlock))
         val varsToBindWithTypes = varsToBind.map { name -> Argument(name, variableTypes[name]!!)}
+        var isReference = false
         for (varToBindWithType in varsToBindWithTypes) {
             if (varToBindWithType.type.isReference()) {
-                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a reference type", expression.location, IssueLevel.ERROR))
+//                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a reference type", expression.location, IssueLevel.ERROR))
+                isReference = true
             }
         }
 
@@ -394,7 +396,7 @@ private class Validator(
             errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
         }
 
-        val functionType = Type.FunctionType.create(listOf(), validatedArguments.map(Argument::type), returnType)
+        val functionType = Type.FunctionType.create(isReference, listOf(), validatedArguments.map(Argument::type), returnType)
 
         return TypedExpression.InlineFunction(functionType, AliasType.NotAliased, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
@@ -429,6 +431,7 @@ private class Validator(
         val typeWithNewParameters = functionType.rebindTypeParameters(inferredTypeParameters)
         val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
 
+        var isBindingAReference = false
         for (entry in bindableArgumentTypes.zip(bindings)) {
             val expectedType = entry.first
             val binding = entry.second
@@ -441,12 +444,17 @@ private class Validator(
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
-                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+//                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                    isBindingAReference = true
                 }
             }
         }
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
+        // This is a defensive check of an expected property while I'm getting this implemented...
+        if (isBindingAReference && !postBindingType.isReference()) {
+            error("Something went wrong")
+        }
 
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression.aliasType, functionExpression, bindings, inferredTypeParameters, providedChoices)
     }
@@ -481,12 +489,13 @@ private class Validator(
 
         val providedChoices = expression.chosenParameters.map { if (it == null) null else validateType(it, typeParametersInScope) }
 
-        val validatedFunctionType = validateType(functionInfo.type, typeParametersInScope) as Type.FunctionType
+        val validatedFunctionType = validateType(functionInfo.type, typeParametersInScope) as? Type.FunctionType ?: return null
         val inferredTypeParameters = inferChosenTypeParameters(validatedFunctionType, providedChoices, bindingTypes, functionRef.toString(), expression.location) ?: return null
 
         val typeWithNewParameters = validatedFunctionType.rebindTypeParameters(inferredTypeParameters)
         val bindableArgumentTypes = typeWithNewParameters.getBindableArgumentTypes()
 
+        var isBindingAReference = false
         for (entry in bindableArgumentTypes.zip(bindings)) {
             val expectedType = entry.first
             val binding = entry.second
@@ -499,12 +508,17 @@ private class Validator(
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
-                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+//                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
+                    isBindingAReference = true
                 }
             }
         }
 
         val postBindingType = typeWithNewParameters.rebindArguments(bindingTypes)
+        // This is a defensive check of an expected property while I'm getting this implemented...
+        if (isBindingAReference && !postBindingType.isReference()) {
+            error("Something went wrong")
+        }
 
         return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
@@ -715,7 +729,7 @@ private class Validator(
             val unused: Any = when (typeClass) {
                 TypeClass.Data -> {
                     if (!typesInfo.isDataType(chosenType)) {
-                        errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but $chosenType is not a data type", location, IssueLevel.ERROR))
+                        errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but ${chosenType.getTypeString()} is not a data type", location, IssueLevel.ERROR))
                     } else {}
                 }
             }
