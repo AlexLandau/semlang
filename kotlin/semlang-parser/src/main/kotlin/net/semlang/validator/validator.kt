@@ -159,10 +159,6 @@ private class Validator(
         val arguments = validateArguments(function.arguments, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         val returnType = validateType(function.returnType, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
 
-//        if (returnType.isReference()) {
-//            errors.add(Issue("Reference types cannot be returned from functions", function.returnTypeLocation, IssueLevel.ERROR))
-//        }
-
         //TODO: Validate that type parameters don't share a name with something important
         val variableTypes = getArgumentVariableTypes(arguments)
         val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), function.id) ?: return null
@@ -386,7 +382,6 @@ private class Validator(
         var isReference = false
         for (varToBindWithType in varsToBindWithTypes) {
             if (varToBindWithType.type.isReference()) {
-//                errors.add(Issue("The inline function implicitly binds ${varToBindWithType.name}, which has a reference type", expression.location, IssueLevel.ERROR))
                 isReference = true
             }
         }
@@ -444,7 +439,6 @@ private class Validator(
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
-//                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                     isBindingAReference = true
                 }
             }
@@ -508,7 +502,6 @@ private class Validator(
                     errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
-//                    errors.add(Issue("Reference objects can't be bound in function bindings", expression.location, IssueLevel.ERROR))
                     isBindingAReference = true
                 }
             }
