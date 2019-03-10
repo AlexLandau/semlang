@@ -155,6 +155,12 @@ export const NativeFunctions: { [functionName: string]: Function } = {
         const flattened = ([] as SemObject[]).concat(...mappedToIndividualLists);
         return listObject(flattened);
     },
+    "List.forEach":  (context: InterpreterContext, list: SemObject.List, fn: SemObject.FunctionBinding): SemObject => {
+        for (const item of list.contents) {
+            context.evaluateBoundFunction(fn, [item]);
+        }
+        return voidObject();
+    },
     "List.get": (context: InterpreterContext, list: SemObject.List, index: SemObject.Natural): SemObject.Maybe => {
         const i = index.value;
         if (i.lt(list.contents.length)) {

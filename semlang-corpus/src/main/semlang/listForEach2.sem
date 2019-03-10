@@ -1,0 +1,12 @@
+@Test([["1", "2", "3"]], "22")
+@Test([["2", "3", "1"]], "30")
+@Test([["3", "2", "1"]], "34")
+function forEachOperatesInOrder(inputList: List<Integer>): Integer {
+  let sum = Var(Integer."0")
+  List.forEach(inputList, function (input: Integer): Void {
+    let added = Integer.plus(Var.get(sum), input)
+    let doubled = Integer.times(Integer."2", added)
+    Var.set(sum, doubled)
+  })
+  Var.get(sum)
+}

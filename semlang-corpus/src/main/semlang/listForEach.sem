@@ -1,0 +1,10 @@
+@Test([["1", "2", "3"]], "6")
+@Test([["1", "4", "2", "3"]], "10")
+function sumUsingForEach(inputList: List<Integer>): Integer {
+  let sum = Var(Integer."0")
+  List.forEach(inputList, function (input: Integer): Void {
+    let added = Integer.plus(Var.get(sum), input)
+    Var.set(sum, added)
+  })
+  Var.get(sum)
+}

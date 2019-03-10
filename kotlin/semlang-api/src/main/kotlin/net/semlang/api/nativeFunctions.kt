@@ -143,6 +143,11 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
             argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(false, listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
 
+    // List.forEach
+    definitions.add(FunctionSignature.create(EntityId.of("List", "forEach"), typeParameters = listOf(t),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(true, listOf(), listOf(typeT), NativeStruct.VOID.getType())),
+            outputType = NativeStruct.VOID.getType()))
+
     // List.size
     definitions.add(FunctionSignature.create(EntityId.of("List", "size"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.List(typeT)),
