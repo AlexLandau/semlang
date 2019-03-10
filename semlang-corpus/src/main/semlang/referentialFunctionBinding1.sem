@@ -1,0 +1,15 @@
+@Test([], "8")
+function doSomeStuff(): Integer {
+  let a = Var(Integer."1")
+  let doubleA = doubleX|(a)
+  doubleA()
+  doubleA()
+  doubleA()
+  Var.get(a)
+}
+
+// TODO: Fix Java code writing so this can be named just "double" again
+function doubleX(x: &Var<Integer>): Void {
+  let newValue = Integer.times(Integer."2", Var.get(x))
+  Var.set(x, newValue)
+}

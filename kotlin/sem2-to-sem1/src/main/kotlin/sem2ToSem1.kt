@@ -378,7 +378,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
 
                     // Now remove the arguments that were bound
                     val newArguments = parametersChosenType.argTypes.zip(bindings).filter { it.second == null }.map { it.first }
-                    postBindingType = parametersChosenType.copy(argTypes = newArguments)
+                    val newIsReference = functionType.isReference() || bindingTypes.any { it != null && it.isReference() }
+                    postBindingType = parametersChosenType.copy(argTypes = newArguments, isReference = newIsReference)
                 } else {
                     parameterizedFunctionType = null
                     postBindingType = null
@@ -425,9 +426,16 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
 
                 val (block, blockType) = translate(expression.block, varTypesInBlock)
+
+                val varNamesInBlock = collectVarNames(expression.block)
+                val isReference = varNamesInBlock.any {
+                    val varType = varTypesInBlock[it]
+                    varType != null && varType.isReference()
+                }
+
                 // If we don't declare a return type, infer from the block's returned type
                 val returnType = expression.returnType?.let { translate(it) } ?: blockType ?: UnknownType
-                val functionType = UnvalidatedType.FunctionType(listOf(), arguments.map {it.type}, returnType)
+                val functionType = UnvalidatedType.FunctionType(isReference, listOf(), arguments.map {it.type}, returnType)
                 RealExpression(Expression.InlineFunction(
                         arguments = arguments,
                         returnType = returnType,
@@ -719,6 +727,7 @@ internal fun translate(type: S2Type): UnvalidatedType {
                 parameter = translate(type.parameter),
                 location = translate(type.location))
         is S2Type.FunctionType -> UnvalidatedType.FunctionType(
+                isReference = type.isReference,
                 typeParameters = type.typeParameters.map(::translate),
                 argTypes = type.argTypes.map(::translate),
                 outputType = translate(type.outputType),
@@ -791,5 +800,89 @@ private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
         return results
     } catch (e: RuntimeException) {
         throw IllegalArgumentException("fillIntoNulls failed wiith bindings $bindings and fillings $fillings", e)
+    }
+}
+
+/**
+ * Returns a set that includes all the variables referenced in the block -- but also things that are not actually
+ * variables, so be careful how you use this.
+ */
+private fun collectVarNames(block: S2Block): Set<String> {
+    val varNames = HashSet<String>()
+    addVarNames(block, varNames)
+    return varNames
+}
+private fun addVarNames(block: S2Block, varNames: MutableSet<String>) {
+    for (statement in block.statements) {
+        addVarNames(statement.expression, varNames)
+    }
+    addVarNames(block.returnedExpression, varNames)
+}
+private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) {
+    val unused: Any = when (expression) {
+        is S2Expression.RawId -> {
+            // Assume this is a variable name, caller beware!
+            varNames.add(expression.name)
+        }
+        is S2Expression.DotAccess -> { /* do nothing */ }
+        is S2Expression.IfThen -> {
+            addVarNames(expression.condition, varNames)
+            addVarNames(expression.thenBlock, varNames)
+            addVarNames(expression.elseBlock, varNames)
+        }
+        is S2Expression.FunctionCall -> {
+            addVarNames(expression.expression, varNames)
+            for (argument in expression.arguments) {
+                addVarNames(argument, varNames)
+            }
+        }
+        is S2Expression.Literal -> { /* do nothing */ }
+        is S2Expression.ListLiteral -> {
+            for (item in expression.contents) {
+                addVarNames(item, varNames)
+            }
+        }
+        is S2Expression.FunctionBinding -> {
+            addVarNames(expression.expression, varNames)
+            for (binding in expression.bindings) {
+                if (binding != null) {
+                    addVarNames(binding, varNames)
+                }
+            }
+        }
+        is S2Expression.Follow -> {
+            addVarNames(expression.structureExpression, varNames)
+        }
+        is S2Expression.InlineFunction -> {
+            addVarNames(expression.block, varNames)
+        }
+        is S2Expression.PlusOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.TimesOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.EqualsOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.NotEqualsOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.LessThanOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.GreaterThanOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.DotAssignOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
     }
 }

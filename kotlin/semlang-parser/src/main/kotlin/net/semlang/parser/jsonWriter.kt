@@ -2,10 +2,7 @@ package net.semlang.parser
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.databind.node.TextNode
+import com.fasterxml.jackson.databind.node.*
 import net.semlang.api.*
 import net.semlang.api.Annotation
 import net.semlang.api.Function
@@ -160,6 +157,9 @@ private fun toTypeNode(type: Type): JsonNode {
         }
         is Type.FunctionType -> {
             val node = ObjectNode(factory)
+            if (type.isReference()) {
+                node.set("ref", BooleanNode.getTrue())
+            }
             if (type.typeParameters.isNotEmpty()) {
                 addTypeParameters(node.putArray("typeParameters"), type.typeParameters)
             }
@@ -223,10 +223,11 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         }
         return UnvalidatedType.NamedType(id, isReference, parameters)
     } else if (node.has("from")) {
+        val isReference = node["ref"]?.booleanValue() ?: false
         val typeParameters = node["typeParameters"]?.let(::parseTypeParameters) ?: listOf()
         val argTypes = node["from"].map(::parseType)
         val outputType = parseType(node["to"])
-        return UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
+        return UnvalidatedType.FunctionType(isReference, typeParameters, argTypes, outputType)
     } else if (node.has("Maybe")) {
         return UnvalidatedType.Maybe(parseType(node["Maybe"]))
     } else if (node.has("List")) {

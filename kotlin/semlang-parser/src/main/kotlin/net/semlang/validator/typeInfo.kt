@@ -437,7 +437,7 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
         is UnvalidatedType.FunctionType -> false
         is UnvalidatedType.NamedType -> {
             // TODO: We might want some caching here
-            if (type.isReference) {
+            if (type.isReference()) {
                 false
             } else {
                 val typeInfo = getTypeInfo(type.ref)!!

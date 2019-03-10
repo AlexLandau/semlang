@@ -139,7 +139,9 @@ return_statement: expression ;
 type : type_ref
   | type_ref LESS_THAN cd_types GREATER_THAN
   | LPAREN cd_types RPAREN ARROW type
-  | LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type ;
+  | AMPERSAND LPAREN cd_types RPAREN ARROW type
+  | LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type
+  | AMPERSAND LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type ;
     catch[RecognitionException e] { throw e; }
 cd_types : | type | type COMMA | type COMMA cd_types ;
     catch[RecognitionException e] { throw e; }

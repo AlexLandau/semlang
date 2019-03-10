@@ -125,22 +125,22 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // List.map
     definitions.add(FunctionSignature.create(EntityId.of("List", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), typeU)),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
             outputType = Type.List(typeU)))
 
     // List.flatMap
     definitions.add(FunctionSignature.create(EntityId.of("List", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.List(typeU))),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.List(typeU))),
             outputType = Type.List(typeU)))
 
     // List.filter
     definitions.add(FunctionSignature.create(EntityId.of("List", "filter"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.BOOLEAN)),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.BOOLEAN)),
             outputType = Type.List(typeT)))
 
     // List.reduce
     definitions.add(FunctionSignature.create(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(listOf(), listOf(typeU, typeT), typeU)),
+            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(false, listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
 
     // List.size
@@ -183,12 +183,12 @@ private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // Maybe.map
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(listOf(), listOf(typeT), typeU)),
+            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
             outputType = Type.Maybe(typeU)))
 
     // Maybe.flatMap
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(listOf(), listOf(typeT), Type.Maybe(typeU))),
+            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.Maybe(typeU))),
             outputType = Type.Maybe(typeU)))
 
     // Maybe.orElse
@@ -211,7 +211,7 @@ private fun addSequenceFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // Sequence.first
     definitions.add(FunctionSignature.create(EntityId.of("Sequence", "first"), typeParameters = listOf(t),
-            argumentTypes = listOf(sequenceT, Type.FunctionType.create(listOf(), listOf(typeT), Type.BOOLEAN)),
+            argumentTypes = listOf(sequenceT, Type.FunctionType.create(false, listOf(), listOf(typeT), Type.BOOLEAN)),
             outputType = typeT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
@@ -306,7 +306,7 @@ object NativeStruct {
             listOf(t),
             listOf(
                     Member("base", typeT),
-                    Member("successor", Type.FunctionType.create(listOf(), listOf(typeT), typeT))
+                    Member("successor", Type.FunctionType.create(false, listOf(), listOf(typeT), typeT))
             ),
             null,
             listOf()

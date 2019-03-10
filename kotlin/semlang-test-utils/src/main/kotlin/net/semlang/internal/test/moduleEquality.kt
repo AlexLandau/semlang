@@ -46,11 +46,11 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             val typeParameters = type.typeParameters
             val argTypes = type.argTypes.map(::stripLocations)
             val outputType = stripLocations(type.outputType)
-            UnvalidatedType.FunctionType(typeParameters, argTypes, outputType)
+            UnvalidatedType.FunctionType(type.isReference(), typeParameters, argTypes, outputType)
         }
         is UnvalidatedType.NamedType -> {
             val parameters = type.parameters.map(::stripLocations)
-            UnvalidatedType.NamedType(type.ref, type.isReference, parameters)
+            UnvalidatedType.NamedType(type.ref, type.isReference(), parameters)
         }
         is UnvalidatedType.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger()
         is UnvalidatedType.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean()
