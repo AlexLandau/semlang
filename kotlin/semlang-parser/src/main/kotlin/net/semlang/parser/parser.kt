@@ -775,6 +775,9 @@ private class ErrorListener(val documentId: String): ANTLRErrorListener {
     }
 
     override fun reportAmbiguity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, exact: Boolean, ambigAlts: BitSet?, configs: ATNConfigSet?) {
+        if (exact) {
+            throw RuntimeException("Exact ambiguity found")
+        }
         // Do nothing
     }
 
