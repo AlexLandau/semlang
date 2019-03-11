@@ -57,16 +57,6 @@ private fun addBooleanFunctions(list: MutableList<NativeFunction>) {
         SemObject.Boolean(left.value || right.value)
     }))
 
-    // Boolean.while
-    list.add(NativeFunction(booleanDot("while"), { args: List<SemObject>, apply: InterpreterCallback ->
-        val condition = args[0] as? SemObject.FunctionBinding ?: typeError()
-        val action = args[1] as? SemObject.FunctionBinding ?: typeError()
-        while ((apply(condition, listOf()) as? SemObject.Boolean ?: typeError()).value) {
-            apply(action, listOf())
-        }
-        SemObject.Void
-    }))
-
     // TODO: Use as optimizations for the standard library
 //    // Boolean.any
 //    list.add(NativeFunction(booleanDot("any"), { args: List<SemObject>, _: InterpreterCallback ->
@@ -532,6 +522,17 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         }
         SemObject.Void
     }))
+
+    // Function.whileTrueDo
+    list.add(NativeFunction(EntityId.of("Function", "whileTrueDo"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val condition = args[0] as? SemObject.FunctionBinding ?: typeError()
+        val action = args[1] as? SemObject.FunctionBinding ?: typeError()
+        while ((apply(condition, listOf()) as? SemObject.Boolean ?: typeError()).value) {
+            apply(action, listOf())
+        }
+        SemObject.Void
+    }))
+
 }
 
 private fun typeError(): Nothing {

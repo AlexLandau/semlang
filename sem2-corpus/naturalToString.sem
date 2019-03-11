@@ -9,7 +9,7 @@ function Natural.toString(value: Natural): String {
   // TODO: Syntactic sugar for while loops
   let curValue = Var(value)
   let codePointsBackwardsBuilder = ListBuilder<CodePoint>()
-  Boolean.while(() -> { curValue.get() > Natural."0" }, () -> {
+  Function.whileTrueDo(() -> { curValue.get() > Natural."0" }, () -> {
     let remainder = curValue.get().modulo(Natural."10").assume()
     let divided = Natural.dividedBy(curValue.get(), Natural."10").assume()
     let codePoint = CodePoint(remainder + unicodeZero().natural).assume()
@@ -74,7 +74,7 @@ function List.isEmpty<T>(list: List<T>): Boolean {
 function List.reverse<T>(list: List<T>): List<T> {
   let newList = ListBuilder<T>()
   let index = Var<Integer>(Integer.minus(list.size(), Integer."1"))
-  Boolean.while (() -> { index.get() > Integer."-1" }, () -> {
+  Function.whileTrueDo(() -> { index.get() > Integer."-1" }, () -> {
     let curItem = list.get(Natural(index.get()).assume()).assume()
     newList.append(curItem)
     let nextIndex = Integer.minus(index.get(), Integer."1")

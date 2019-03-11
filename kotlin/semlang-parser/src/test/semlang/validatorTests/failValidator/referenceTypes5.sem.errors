@@ -1,7 +1,7 @@
 // Reference types cannot be called multiple times in one statement
 function doSomething(out: &TextOut): Void {
   ignoreTwoVoids(TextOut.print(out, String."chicken"), TextOut.print(out, String."egg"))
-                                                                     ~~~ Variable out is a reference and cannot be used more than once in a statement
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen
 }
 
 function ignoreTwoVoids(v1: Void, v2: Void): Void {

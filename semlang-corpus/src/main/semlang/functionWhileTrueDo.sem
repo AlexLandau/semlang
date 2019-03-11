@@ -1,0 +1,12 @@
+@Test(["100"], "128")
+function testWhileTrueDo(minimumValue: Integer): Integer {
+  let n = Var(Integer."1")
+  Function.whileTrueDo(
+    function(): Boolean { Integer.lessThan(Var.get(n), Integer."100") },
+    function(): Void {
+      let newN = Integer.times(Var.get(n), Integer."2")
+      Var.set(n, newN)
+    }
+  )
+  Var.get(n)
+}
