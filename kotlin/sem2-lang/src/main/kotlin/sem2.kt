@@ -313,9 +313,11 @@ sealed class S2Expression {
     data class DotAssignOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
 }
 
-// Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
-// effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-data class S2Statement(val name: String?, val type: S2Type?, val expression: S2Expression, val nameLocation: Location? = null)
+sealed class S2Statement {
+    data class Normal(val name: String?, val type: S2Type?, val expression: S2Expression, val nameLocation: Location? = null): S2Statement()
+    data class WhileLoop(val conditionExpression: S2Expression, val actionBlock: S2Block, val location: Location? = null): S2Statement()
+}
+
 data class S2Argument(val name: String, val type: S2Type, val location: Location? = null)
 data class S2Block(val statements: List<S2Statement>, val returnedExpression: S2Expression, val location: Location? = null)
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {

@@ -12,6 +12,7 @@ import net.semlang.sem2.api.Position
 import net.semlang.sem2.api.Range
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
+import net.semlang.transforms.invalidate
 import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypeParameterInferenceSources
@@ -137,17 +138,55 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
     }
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
-        val (expression, expressionType) = translateFullExpression(statement.expression, varTypes)
-        return TypedStatement(Statement(
-                name = statement.name,
-                type = if (options.outputExplicitTypes) {
-                    expressionType
-                } else {
-                    statement.type?.let<S2Type, UnvalidatedType>(::translate)
-                },
-                expression = expression,
-                nameLocation = translate(statement.nameLocation)
-        ), expressionType)
+        return when (statement) {
+            is S2Statement.Normal -> {
+                val (expression, expressionType) = translateFullExpression(statement.expression, varTypes)
+                TypedStatement(Statement(
+                        name = statement.name,
+                        type = if (options.outputExplicitTypes) {
+                            expressionType
+                        } else {
+                            statement.type?.let<S2Type, UnvalidatedType>(::translate)
+                        },
+                        expression = expression,
+                        nameLocation = translate(statement.nameLocation)
+                ), expressionType)
+            }
+            is S2Statement.WhileLoop -> {
+                val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, varTypes)
+                val (actionBlock, actionBlockType) = translate(statement.actionBlock, varTypes)
+
+                TypedStatement(Statement(
+                        name = null,
+                        type = null,
+                        expression = Expression.NamedFunctionCall(
+                                functionRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Function", "whileTrueDo")),
+                                arguments = listOf(
+                                        Expression.InlineFunction(
+                                                arguments = listOf(),
+                                                returnType = UnvalidatedType.Boolean(),
+                                                block = Block(
+                                                        statements = listOf(),
+                                                        returnedExpression = conditionExpression,
+                                                        location = conditionExpression.location
+                                                ),
+                                                location = conditionExpression.location
+                                        ),
+                                        Expression.InlineFunction(
+                                                arguments = listOf(),
+                                                returnType = invalidate(NativeStruct.VOID.getType()),
+                                                block = actionBlock,
+                                                location = actionBlock.location
+                                        )
+                                ),
+                                chosenParameters = listOf(),
+                                location = translate(statement.location),
+                                functionRefLocation = null
+                        ),
+                        nameLocation = null
+                ), invalidate(NativeStruct.VOID.getType()))
+            }
+        }
     }
 
     /**
@@ -814,7 +853,15 @@ private fun collectVarNames(block: S2Block): Set<String> {
 }
 private fun addVarNames(block: S2Block, varNames: MutableSet<String>) {
     for (statement in block.statements) {
-        addVarNames(statement.expression, varNames)
+        val unused: Any = when (statement) {
+            is S2Statement.Normal -> {
+                addVarNames(statement.expression, varNames)
+            }
+            is S2Statement.WhileLoop -> {
+                addVarNames(statement.conditionExpression, varNames)
+                addVarNames(statement.actionBlock, varNames)
+            }
+        }
     }
     addVarNames(block.returnedExpression, varNames)
 }
