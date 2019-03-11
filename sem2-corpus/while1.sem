@@ -1,0 +1,10 @@
+@Test(["100"], "128")
+function testWhileLoop(minimumValue: Integer): Integer {
+  // Some opportunities for syntactic improvement here... (integer literals, `n.= n[] * 2` or `n *= 2`)
+  let n = Var(Integer."1")
+  while (n.get() < Integer."100") {
+    let newN = n.get() * Integer."2"
+    n.= newN
+  }
+  n.get()
+}

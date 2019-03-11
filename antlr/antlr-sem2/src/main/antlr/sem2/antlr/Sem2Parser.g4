@@ -20,6 +20,7 @@ tokens {
   IF,
   ELSE,
   REQUIRES,
+  WHILE,
   LITERAL,
   DOT,
   COMMA,
@@ -129,7 +130,9 @@ type_class : ID ;
 
 statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
-statement : assignment | expression ;
+statement : assignment
+  | expression
+  | WHILE LPAREN expression RPAREN block;
     catch[RecognitionException e] { throw e; }
 
 assignments : | assignment assignments ;

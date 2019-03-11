@@ -92,6 +92,18 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "Data.equals": (context: InterpreterContext, left: SemObject, right: SemObject): SemObject.Boolean => {
         return booleanObject(dataEquals(left, right));
     },
+    "Function.whileTrueDo": (context: InterpreterContext, condition: SemObject.FunctionBinding, action: SemObject.FunctionBinding): SemObject.Struct => {
+        while (true) {
+            const conditionResult = context.evaluateBoundFunction(condition, []);
+            if (conditionResult.type !== "Boolean") {
+                throw new Error(`Result of Function.whileTrueDo condition not a Boolean`);
+            }
+            if (!conditionResult.value) {
+                return voidObject();
+            }
+            context.evaluateBoundFunction(action, []);
+        }
+    },
     "Integer.equals": (context: InterpreterContext, left: SemObject.Integer, right: SemObject.Integer): SemObject.Boolean => {
         return booleanObject(left.value.equals(right.value));
     },

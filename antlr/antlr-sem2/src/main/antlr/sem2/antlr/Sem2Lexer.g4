@@ -24,6 +24,7 @@ LET                : 'let';
 IF                 : 'if';
 ELSE               : 'else';
 REQUIRES           : 'requires';
+WHILE              : 'while';
 
 // Literals
 LITERAL            : '"' ( ~["\\\n\r] | '\\' ~[\n\r] )* '"' ;

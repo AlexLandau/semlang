@@ -522,6 +522,17 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         }
         SemObject.Void
     }))
+
+    // Function.whileTrueDo
+    list.add(NativeFunction(EntityId.of("Function", "whileTrueDo"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val condition = args[0] as? SemObject.FunctionBinding ?: typeError()
+        val action = args[1] as? SemObject.FunctionBinding ?: typeError()
+        while ((apply(condition, listOf()) as? SemObject.Boolean ?: typeError()).value) {
+            apply(action, listOf())
+        }
+        SemObject.Void
+    }))
+
 }
 
 private fun typeError(): Nothing {

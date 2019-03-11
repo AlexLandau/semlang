@@ -232,7 +232,7 @@ private fun addDataFunctions(definitions: ArrayList<FunctionSignature>) {
             outputType = Type.BOOLEAN))
 }
 
-// TODO: These should probably go elsewhere; at least TextOut should be in a separate module
+// TODO: Some of these should probably go elsewhere; at least TextOut should be in a separate module
 private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.InternalParameterType(0)
@@ -279,6 +279,13 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
     definitions.add(FunctionSignature.create(EntityId.of("Var", "set"), typeParameters = listOf(t),
             argumentTypes = listOf(varT, typeT),
             outputType = NativeStruct.VOID.getType()))
+
+    // TODO: Maybe give these their own function in this file
+    // Function.whileTrueDo
+    definitions.add(FunctionSignature.create(EntityId.of("Function", "whileTrueDo"),
+            argumentTypes = listOf(Type.FunctionType.create(true, listOf(), listOf(), Type.BOOLEAN), Type.FunctionType.create(true, listOf(), listOf(), NativeStruct.VOID.getType())),
+            outputType = NativeStruct.VOID.getType()))
+
 }
 
 object NativeStruct {

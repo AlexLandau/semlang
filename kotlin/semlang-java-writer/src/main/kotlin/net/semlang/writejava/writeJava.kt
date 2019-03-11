@@ -5,7 +5,9 @@ import net.semlang.api.*
 import net.semlang.internal.test.TestAnnotationContents
 import net.semlang.internal.test.verifyTestAnnotationContents
 import net.semlang.interpreter.evaluateStringLiteral
+import net.semlang.parser.writeToString
 import net.semlang.transforms.*
+import net.semlang.validator.ValidationResult
 import net.semlang.validator.validateModule
 import java.io.File
 import java.io.PrintStream
@@ -91,10 +93,18 @@ fun writeJavaSourceIntoFolders(unprocessedModule: ValidatedModule, javaPackage: 
     val tempModule1 = extractInlineFunctions(unprocessedModule)
     val tempModule2 = constrainVariableNames(tempModule1, RenamingStrategies.getKeywordAvoidingStrategy(JAVA_KEYWORDS))
     val tempModule3 = hoistMatchingExpressions(tempModule2, { it is Expression.IfThen })
-    val tempModule4 = preventDuplicateVariableNames(tempModule3)
-    val module = validateModule(tempModule4, unprocessedModule.name, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList()).assumeSuccess()
+    val postProcessedContext = preventDuplicateVariableNames(tempModule3)
+    val module = validateModule(postProcessedContext, unprocessedModule.name, unprocessedModule.nativeModuleVersion, unprocessedModule.upstreamModules.values.toList())
 
-    return JavaCodeWriter(module, javaPackage, newSrcDir, newTestSrcDir).write()
+    return when (module) {
+        is ValidationResult.Success -> {
+            JavaCodeWriter(module.module, javaPackage, newSrcDir, newTestSrcDir).write()
+        }
+        is ValidationResult.Failure -> {
+            val errorsInfo = module.getErrorInfoInCliFormat()
+            throw RuntimeException("Failed to validate module after pre-processing. Failures are:\n${errorsInfo}\nPost-processed module contents:\n${writeToString(postProcessedContext)}")
+        }
+    }
 }
 
 private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<String>, val newSrcDir: File, val newTestSrcDir: File) {
@@ -1145,6 +1155,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         map.put(EntityId.of("Boolean", "and"), StaticFunctionCallStrategy(javaBooleans, "and"))
         map.put(EntityId.of("Boolean", "or"), StaticFunctionCallStrategy(javaBooleans, "or"))
         map.put(EntityId.of("Boolean", "not"), StaticFunctionCallStrategy(javaBooleans, "not"))
+
+        val javaFunctions = ClassName.bestGuess("net.semlang.java.Functions")
+        map.put(EntityId.of("Function", "whileTrueDo"), StaticFunctionCallStrategy(javaFunctions, "whileTrueDo"))
 
         val javaLists = ClassName.bestGuess("net.semlang.java.Lists")
         map.put(EntityId.of("List", "empty"), StaticFunctionCallStrategy(javaLists, "empty"))
