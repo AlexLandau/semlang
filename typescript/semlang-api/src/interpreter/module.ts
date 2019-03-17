@@ -1,4 +1,4 @@
-import { Context, Function, Module, Struct, Interface, Union } from "../api/language";
+import { Context, Function, Module, Struct, Union } from "../api/language";
 
 // TODO: Have something that actually does validation
 export function toModule(context: Context): Module {
@@ -9,12 +9,6 @@ export function toModule(context: Context): Module {
     const structsMap: {[id: string]: Struct} = {};
     for (const struct of context.structs) {
         structsMap[struct.id] = struct;
-    }
-    const interfacesMap: {[id: string]: Interface} = {};
-    const interfacesByAdapterIdMap: {[adapterId: string]: Interface} = {};
-    for (const interfac of context.interfaces){
-        interfacesMap[interfac.id] = interfac;
-        interfacesByAdapterIdMap[interfac.id + ".Adapter"] = interfac;
     }
     const unionsMap: {[id: string]: Union} = {};
     const unionsByWhenIdMap: {[whenId: string]: Union} = {};
@@ -30,8 +24,6 @@ export function toModule(context: Context): Module {
     return {
         functions: functionsMap,
         structs: structsMap,
-        interfaces: interfacesMap,
-        interfacesByAdapterId: interfacesByAdapterIdMap,
         unions: unionsMap,
         unionsByWhenId: unionsByWhenIdMap,
         unionsByOptionId: unionsByOptionIdMap,

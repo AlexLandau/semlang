@@ -98,14 +98,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     val struct: StructWithModule = referringModule.getInternalStruct(entityResolution.entityRef)
                     return evaluateStructConstructor(struct.struct, arguments, struct.module)
                 }
-                FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
-                    val interfac = referringModule.getInternalInterface(entityResolution.entityRef)
-                    return evaluateInterfaceConstructor(interfac.interfac, arguments, interfac.module)
-                }
-                FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-                    val interfac = referringModule.getInternalInterfaceByAdapterId(entityResolution.entityRef)
-                    return evaluateAdapterConstructor(interfac.interfac, arguments, interfac.module)
-                }
                 FunctionLikeType.UNION_TYPE -> {
                     error("Tried to use a union type as a function: $entityResolution")
                 }
@@ -183,17 +175,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
             return evaluateStructConstructor(struct, arguments, null)
         }
 
-        // Handle instance constructors
-        val interfac = getNativeInterfaces()[ref.id]
-        if (interfac != null) {
-            return evaluateInterfaceConstructor(interfac, arguments, null)
-        }
-
-        // Handle adapter constructors
-        val adapter = getNativeInterfaces()[getInterfaceIdForAdapterId(ref.id)]
-        if (adapter != null) {
-            return evaluateAdapterConstructor(adapter, arguments, null)
-        }
         error("Unrecognized entity $ref")
     }
 
@@ -232,17 +213,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 }
 
                 return evaluateBlock(target.functionDef.block, variableAssignments, functionBinding.containingModule)
-            }
-            is FunctionBindingTarget.InterfaceAdapter -> {
-                val dataObject = args.single()
-
-                val reboundBindings = functionBinding.bindings.map { adapterArgumentOrNull ->
-                    val adapterArgument = adapterArgumentOrNull as? SemObject.FunctionBinding ?: error("Arguments to interface adapters should be function bindings")
-                    val bindingsWithDataObject = adapterArgument.bindings.replaceFirstNullWith(dataObject)
-                    adapterArgument.copy(bindings = bindingsWithDataObject)
-                }
-
-                return SemObject.Instance(target.interfac, reboundBindings)
             }
         }
     }
@@ -290,20 +260,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 return SemObject.Maybe.Failure
             }
         }
-    }
-
-    private fun evaluateAdapterConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
-        if (arguments.size != interfaceDef.methods.size) {
-            throw IllegalArgumentException("Wrong number of arguments for adapter constructor " + interfaceDef.adapterId)
-        }
-
-        val target = FunctionBindingTarget.InterfaceAdapter(interfaceDef)
-        return SemObject.FunctionBinding(target, interfaceModule, arguments)
-    }
-
-    private fun evaluateInterfaceConstructor(interfaceDef: Interface, arguments: List<SemObject>, interfaceModule: ValidatedModule?): SemObject {
-        val bindings = arguments.map { it as? SemObject.FunctionBinding ?: error("Every argument to an interface constructor must be a function binding") }
-        return SemObject.Instance(interfaceDef, bindings)
     }
 
     private fun evaluateUnionOptionConstructor(union: Union, functionId: EntityId, arguments: List<SemObject>, module: ValidatedModule?): SemObject {
@@ -369,9 +325,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 if (innerResult is SemObject.Struct) {
                     val index = innerResult.struct.getIndexForName(name)
                     return innerResult.objects[index]
-                } else if (innerResult is SemObject.Instance) {
-                    val index = innerResult.interfaceDef.getIndexForName(name)
-                    return innerResult.methods[index]
                 } else if (innerResult is SemObject.Natural) {
                     if (name != "integer") {
                         error("The only valid member in a Natural is 'integer'")
@@ -394,7 +347,7 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     }
                     return SemObject.Integer(BigInteger.valueOf(innerResult.value))
                 } else {
-                    throw IllegalStateException("Trying to use -> on a non-struct, non-interface object $innerResult")
+                    throw IllegalStateException("Trying to use -> on a non-struct object $innerResult")
                 }
             }
             is TypedExpression.ExpressionFunctionCall -> {

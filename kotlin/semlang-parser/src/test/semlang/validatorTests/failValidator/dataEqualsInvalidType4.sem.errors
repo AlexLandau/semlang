@@ -1,9 +1,0 @@
-interface Foo {
-  bar(input: Integer): Boolean
-}
-
-// Interface instances are not data types
-function areInstancesEqual(foo1: Foo, foo2: Foo): Boolean {
-  Data.equals<Foo>(foo1, foo2)
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but semlang:validatorTestFile:87f19a3f332cf4a1c2e16bbf78e64bfb64fedd52a399142fd9d22bcfac281f90:Foo is not a data type
-}

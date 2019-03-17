@@ -105,7 +105,6 @@ private fun <ThingContext, ThingsContext, Thing> parseLinkedList(linkedListRoot:
 private class ContextListener(val documentId: String) : Sem2ParserBaseListener() {
     val structs: MutableList<S2Struct> = ArrayList()
     val functions: MutableList<S2Function> = ArrayList()
-    val interfaces: MutableList<S2Interface> = ArrayList()
     val unions: MutableList<S2Union> = ArrayList()
 
     override fun exitFunction(ctx: Sem2Parser.FunctionContext) {
@@ -117,12 +116,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
     override fun exitStruct(ctx: Sem2Parser.StructContext) {
         if (ctx.exception == null) {
             structs.add(parseStruct(ctx))
-        }
-    }
-
-    override fun exitInterfac(ctx: Sem2Parser.InterfacContext) {
-        if (ctx.exception == null) {
-            interfaces.add(parseInterface(ctx))
         }
     }
 
@@ -188,20 +181,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         val annotations = parseAnnotations(ctx.annotations())
 
         return S2Struct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
-    }
-
-    private fun parseInterface(interfac: Sem2Parser.InterfacContext): S2Interface {
-        val id = parseEntityId(interfac.entity_id())
-        val typeParameters = if (interfac.GREATER_THAN() != null) {
-            parseTypeParameters(interfac.cd_type_parameters())
-        } else {
-            listOf()
-        }
-        val methods = parseMethods(interfac.methods())
-
-        val annotations = parseAnnotations(interfac.annotations())
-
-        return S2Interface(id, typeParameters, methods, annotations, locationOf(interfac.entity_id()))
     }
 
     private fun parseUnion(union: Sem2Parser.UnionContext): S2Union {
@@ -646,26 +625,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         return S2Type.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
     }
 
-    private fun parseMethods(methods: Sem2Parser.MethodsContext): List<S2Method> {
-        return parseLinkedList(methods,
-                Sem2Parser.MethodsContext::method,
-                Sem2Parser.MethodsContext::methods,
-                this::parseMethod)
-    }
-
-    private fun parseMethod(method: Sem2Parser.MethodContext): S2Method {
-        val name = method.ID().text
-        val typeParameters = if (method.GREATER_THAN() != null) {
-            parseTypeParameters(method.cd_type_parameters())
-        } else {
-            listOf()
-        }
-        val arguments = parseFunctionArguments(method.function_arguments())
-        val returnType = parseType(method.type())
-
-        return S2Method(name, typeParameters, arguments, returnType)
-    }
-
     private fun parseOptions(options: Sem2Parser.DisjunctsContext): List<S2Option> {
         return parseLinkedList(options,
                 Sem2Parser.DisjunctsContext::disjunct,
@@ -703,7 +662,6 @@ sealed class ParsingResult {
 fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
     val allFunctions = ArrayList<S2Function>()
     val allStructs = ArrayList<S2Struct>()
-    val allInterfaces = ArrayList<S2Interface>()
     val allUnions = ArrayList<S2Union>()
     val allErrors = ArrayList<Issue>()
     for (parsingResult in results) {
@@ -711,18 +669,16 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
             val rawContext = parsingResult.context
             allFunctions.addAll(rawContext.functions)
             allStructs.addAll(rawContext.structs)
-            allInterfaces.addAll(rawContext.interfaces)
             allUnions.addAll(rawContext.unions)
         } else if (parsingResult is ParsingResult.Failure) {
             allErrors.addAll(parsingResult.errors)
             val context = parsingResult.partialContext
             allFunctions.addAll(context.functions)
             allStructs.addAll(context.structs)
-            allInterfaces.addAll(context.interfaces)
             allUnions.addAll(context.unions)
         }
     }
-    val combinedContext = S2Context(allFunctions, allStructs, allInterfaces, allUnions)
+    val combinedContext = S2Context(allFunctions, allStructs, allUnions)
     if (allErrors.isEmpty()) {
         return ParsingResult.Success(combinedContext)
     } else {
@@ -798,11 +754,11 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        val partialContext = S2Context(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+        val partialContext = S2Context(extractor.functions, extractor.structs, extractor.unions)
         return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty() + if (e.cause?.message != null) {": " + e.cause.message.orEmpty()} else "", e.location, IssueLevel.ERROR)), partialContext)
     }
 
-    val context = S2Context(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+    val context = S2Context(extractor.functions, extractor.structs, extractor.unions)
     if (!errorListener.errorsFound.isEmpty()) {
         return ParsingResult.Failure(errorListener.errorsFound, context)
     }

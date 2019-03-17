@@ -38,11 +38,10 @@ private class Linker(val rootModule: ValidatedModule) {
 
         val transformedFunctions = relevantEntities.functions.map { (ref, function) -> nameAssignment.applyToFunction(ref, function) }
         val transformedStructs = relevantEntities.structs.values.map(nameAssignment::applyToStruct)
-        val transformedInterfaces = relevantEntities.interfaces.values.map(nameAssignment::applyToInterface)
         val transformedUnions = relevantEntities.unions.values.map(nameAssignment::applyToUnion)
 
         val moduleInfo = ModuleInfo(rootModule.name, listOf())
-        val context = RawContext(transformedFunctions, transformedStructs, transformedInterfaces, transformedUnions)
+        val context = RawContext(transformedFunctions, transformedStructs, transformedUnions)
         return UnvalidatedModule(moduleInfo, context)
     }
 }
@@ -51,7 +50,6 @@ private data class RelevantEntities(
         val allModules: Map<ModuleUniqueId, ValidatedModule>,
         val functions: Map<ResolvedEntityRef, ValidatedFunction>,
         val structs: Map<ResolvedEntityRef, Struct>,
-        val interfaces: Map<ResolvedEntityRef, Interface>,
         val unions: Map<ResolvedEntityRef, Union>
 )
 
@@ -198,20 +196,6 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
         return UnvalidatedMember(member.name, type)
     }
 
-    fun applyToInterface(interfac: Interface): UnvalidatedInterface {
-        val newId = newNames[interfac.resolvedRef]!!
-        val methods = interfac.methods.map(this::apply)
-        val annotations = handleAnnotations(interfac.annotations, interfac.moduleId)
-
-        return UnvalidatedInterface(newId, interfac.typeParameters, methods, annotations)
-    }
-
-    private fun apply(method: Method): UnvalidatedMethod {
-        val arguments = method.arguments.map(this::apply)
-        val returnType = apply(method.returnType)
-        return UnvalidatedMethod(method.name, method.typeParameters, arguments, returnType)
-    }
-
     fun applyToUnion(union: Union): UnvalidatedUnion {
         val newId = newNames[union.resolvedRef]!!
         val options = union.options.map(this::apply)
@@ -233,23 +217,13 @@ private class NameAssigner(val rootModuleId: ModuleUniqueId, val relevantEntitie
     fun assignNames(): NameAssignment {
         // We want to keep everything in the root module the same.
         // For now, we do this by just doing two passes.
-        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys + relevantEntities.unions.keys) {
+        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.unions.keys) {
             if (ref.module == rootModuleId) {
                 if (allNewNames.contains(ref.id)) {
                     error("EntityId collision in the root module: $ref")
                 }
                 newNameMap.put(ref, ref.id)
                 allNewNames.add(ref.id)
-            }
-        }
-        for ((ref, interfac) in relevantEntities.interfaces) {
-            if (ref.module == rootModuleId) {
-                val adapterId = interfac.adapterId
-                if (allNewNames.contains(adapterId)) {
-                    error("EntityId collision in the root module: $adapterId")
-                }
-                newNameMap.put(ref.copy(id = adapterId), adapterId)
-                allNewNames.add(adapterId)
             }
         }
         for ((ref, union) in relevantEntities.unions) {
@@ -273,7 +247,7 @@ private class NameAssigner(val rootModuleId: ModuleUniqueId, val relevantEntitie
 
         val modulePrefixes = assignModulePrefixes()
 
-        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.interfaces.keys + relevantEntities.unions.keys) {
+        for (ref in relevantEntities.functions.keys + relevantEntities.structs.keys + relevantEntities.unions.keys) {
             if (ref.module == rootModuleId) {
                 // Already handled
                 continue
@@ -285,20 +259,7 @@ private class NameAssigner(val rootModuleId: ModuleUniqueId, val relevantEntitie
             }
             newNameMap.put(ref, finalName)
             allNewNames.add(finalName)
-            // TODO: Rewrite this to be more efficient? Or can we get rid of adapter functions?
-            val interfaceMaybe = relevantEntities.interfaces[ref]
-            if (interfaceMaybe != null) {
-                val oldAdapterId = interfaceMaybe.adapterId
-                val adapterRef = ref.copy(id = oldAdapterId)
-                val finalAdapterName = EntityId(finalName.namespacedName + "Adapter")
-                if (allNewNames.contains(finalAdapterName)) {
-                    error("Chose $finalName as the new name for interface $ref, but we're already using the adapter name $finalAdapterName")
-                }
-
-                newNameMap.put(adapterRef, finalAdapterName)
-                allNewNames.add(finalAdapterName)
-            }
-            // TODO: Ditto here
+            // TODO: Rewrite this to be more efficient?
             val unionMaybe = relevantEntities.unions[ref]
             if (unionMaybe != null) {
                 val oldWhenId = unionMaybe.whenId
@@ -380,19 +341,17 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
     val allModules = HashMap<ModuleUniqueId, ValidatedModule>()
     val functions = HashMap<ResolvedEntityRef, ValidatedFunction>()
     val structs = HashMap<ResolvedEntityRef, Struct>()
-    val interfaces = HashMap<ResolvedEntityRef, Interface>()
     val unions = HashMap<ResolvedEntityRef, Union>()
 
     val functionsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
     val structsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
-    val interfacesQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
     val unionsQueue: Queue<ResolvedEntityRef> = ArrayDeque<ResolvedEntityRef>()
 
     fun compute(): RelevantEntities {
         initializeQueue()
         resolveQueues()
 
-        return RelevantEntities(allModules, functions, structs, interfaces, unions)
+        return RelevantEntities(allModules, functions, structs, unions)
     }
 
     private fun resolveQueues() {
@@ -403,9 +362,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             } else if (structsQueue.isNotEmpty()) {
                 val structRef = structsQueue.remove()
                 resolveStruct(structRef)
-            } else if (interfacesQueue.isNotEmpty()) {
-                val interfaceRef = interfacesQueue.remove()
-                resolveInterface(interfaceRef)
             } else if (unionsQueue.isNotEmpty()) {
                 val unionRef = unionsQueue.remove()
                 resolveUnion(unionRef)
@@ -434,25 +390,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
         }
 
         unions.put(unionRef, union)
-    }
-
-    private fun resolveInterface(interfaceRef: ResolvedEntityRef) {
-        if (interfaces.containsKey(interfaceRef)) {
-            // The interface has already been added; skip it
-            return
-        }
-        if (isNativeModule(interfaceRef.module)) {
-            return
-        }
-
-        val containingModule = allModules[interfaceRef.module]!!
-        val interfac = containingModule.getInternalInterface(interfaceRef).interfac
-
-        for (method in interfac.methods) {
-            enqueueType(method.functionType, containingModule)
-        }
-
-        interfaces.put(interfaceRef, interfac)
     }
 
     private fun resolveStruct(structRef: ResolvedEntityRef) {
@@ -592,15 +529,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             FunctionLikeType.STRUCT_CONSTRUCTOR -> {
                 structsQueue.add(resolved.entityRef)
             }
-            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
-                interfacesQueue.add(resolved.entityRef)
-            }
-            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-                val adapterId = resolved.entityRef.id
-                val interfaceId = EntityId(adapterId.namespacedName.dropLast(1))
-                val interfaceRef = resolved.entityRef.copy(id = interfaceId)
-                interfacesQueue.add(interfaceRef)
-            }
             FunctionLikeType.OPAQUE_TYPE -> {
                 // Currently these are all native types
             }
@@ -659,9 +587,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
         }
         for (id in rootModule.ownStructs.keys) {
             structsQueue.add(ResolvedEntityRef(rootModule.id, id))
-        }
-        for (id in rootModule.ownInterfaces.keys) {
-            interfacesQueue.add(ResolvedEntityRef(rootModule.id, id))
         }
         for (id in rootModule.ownUnions.keys) {
             unionsQueue.add(ResolvedEntityRef(rootModule.id, id))

@@ -1,9 +1,0 @@
-interface MyInterface {
-  foo(): Integer
-  bar(): Boolean
-}
-
-function myStuff.myFunction(input: MyInterface): Integer {
-  input->somethingElse()
-  ~~~~~~~~~~~~~~~~~~~~ Interface type semlang:validatorTestFile:73fb16eb312392f5e3338dd67601429ac869b6ec7946c47b0934ff6287:MyInterface does not have a method named 'somethingElse'
-}

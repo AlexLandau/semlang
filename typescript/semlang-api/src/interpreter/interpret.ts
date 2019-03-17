@@ -1,7 +1,7 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, getAdapterStruct, Struct, getStructType, Argument, isListType } from "../api/language";
-import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, instanceObject, isFunctionBinding, namedBindingObject, inlineBindingObject, interfaceAdapterBindingObject, unionObject } from "./SemObject";
+import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, Struct, getStructType, Argument, isListType } from "../api/language";
+import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, isFunctionBinding, namedBindingObject, inlineBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
 
@@ -78,32 +78,6 @@ export class InterpreterContext {
             }
         }
 
-        const theInterface = this.module.interfaces[functionName];
-        if (theInterface !== undefined) {
-            // Direct interface instance constructor
-            const methods: SemObject.FunctionBinding[] = args.map(object => {
-                if (!isFunctionBinding(object)) {
-                    throw new Error(`All arguments to interfaces should be function bindings, but was: ${object}`);
-                }
-                return object;
-            });
-
-            return instanceObject(theInterface, methods);
-        }
-
-        const theAdaptedInterface = this.module.interfacesByAdapterId[functionName];
-        if (theAdaptedInterface !== undefined) {
-            // Function result of an interface adapter method
-            const datalessBindings: SemObject.FunctionBinding[] = args.map(object => {
-                if (!isFunctionBinding(object)) {
-                    throw new Error(`All arguments to interfaces should be function bindings, but was: ${object}`);
-                }
-                return object;
-            });
-
-            return interfaceAdapterBindingObject(theAdaptedInterface, datalessBindings);
-        }
-
         const theUnionOption = this.module.unionsByOptionId[functionName];
         if (theUnionOption !== undefined) {
             const optionIndex = theUnionOption[1];
@@ -134,8 +108,6 @@ export class InterpreterContext {
             return this.evaluateNamedBinding(functionBinding, args);
         } else if (functionBinding.type === "inlineBinding") {
             return this.evaluateInlineBinding(functionBinding, args);
-        } else if (functionBinding.type === "interfaceAdapterBinding") {
-            return this.evaluateInterfaceAdapterBinding(functionBinding, args);
         } else {
             throw assertNever(functionBinding);
         }
@@ -156,22 +128,6 @@ export class InterpreterContext {
         }
         const boundVars = getBoundVarsForArgs(functionBinding.argumentNames, fullyBoundArguments);
         return this.evaluateBlock(functionBinding.block, boundVars);
-    }
-
-    private evaluateInterfaceAdapterBinding(functionBinding: SemObject.InterfaceAdapterFunctionBinding, args: SemObject[]): SemObject {
-        if (args.length !== 1) {
-            throw new Error(`Bindings from interface adapter calls are supposed to have only one argument, but got ${JSON.stringify(args)}`);
-        }
-        const dataObject = args[0];
-        const reboundMethods = functionBinding.bindings.map(semiBoundMethod => {
-            if (semiBoundMethod === undefined || !isFunctionBinding(semiBoundMethod)) {
-                throw new Error(`Arguments of interface adapters are supposed to be bindings, but was: ${JSON.stringify(semiBoundMethod)}`);
-            }
-            const fullyBoundMethod = replaceFirstUnboundBindingWith(semiBoundMethod, dataObject);
-            return fullyBoundMethod;
-        });
-
-        return instanceObject(functionBinding.interface, reboundMethods);
     }
 
     private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
@@ -247,14 +203,6 @@ export class InterpreterContext {
                     throw new Error(`Struct of type ${structDef.id} doesn't have member named ${followName}`);
                 }
                 return members[index];
-            } else if (structureObject.type === "instance") {
-                const interfaceDef = structureObject.interface;
-                const methods = structureObject.methods;
-                const index = findIndex(interfaceDef.methods, (method) => method.name === followName);
-                if (index === -1) {
-                    throw new Error(`Interface of type ${interfaceDef.id} doesn't have method named ${followName}`);
-                }
-                return methods[index];
             } else if (structureObject.type === "Natural") {
                 if (expression.name !== "integer") {
                     throw new Error(`Only component of a Natural is integer`);

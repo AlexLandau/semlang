@@ -356,43 +356,6 @@ interface TopLevelEntity: HasId {
 }
 data class S2Member(val name: String, val type: S2Type)
 
-data class S2Interface(override val id: EntityId, val typeParameters: List<TypeParameter>, val methods: List<S2Method>, override val annotations: List<S2Annotation>, val idLocation: Location? = null) : TopLevelEntity {
-    val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
-    val dataType = S2Type.NamedType.forParameter(dataTypeParameter, null)
-
-    val instanceType = S2Type.NamedType(this.id.asRef(), false, typeParameters.map { name -> S2Type.NamedType.forParameter(name, null) }, idLocation)
-
-    fun getInstanceConstructorSignature(): S2FunctionSignature {
-        val typeParameters = this.typeParameters
-        val argumentTypes = this.methods.map(S2Method::functionType)
-
-        return S2FunctionSignature(this.id, argumentTypes, instanceType, typeParameters)
-    }
-    fun getAdapterFunctionSignature(): S2FunctionSignature {
-        val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
-
-        val dataStructType = S2Type.NamedType.forParameter(adapterTypeParameters[0], null)
-        val argumentTypes = ArrayList<S2Type>()
-        this.methods.forEach { method ->
-            argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-        }
-
-        val outputType = S2Type.FunctionType(false, listOf(), listOf(dataType), instanceType)
-
-        return S2FunctionSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
-    }
-}
-data class S2Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type) {
-    init {
-        if (typeParameters.isNotEmpty()) {
-            // This case hasn't really been handled correctly/tested yet
-            TODO()
-        }
-    }
-    val functionType = S2Type.FunctionType(false, typeParameters, arguments.map { arg -> arg.type }, returnType, null)
-}
-
 data class S2Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<S2Option>, override val annotations: List<S2Annotation>, val idLocation: Location? = null): TopLevelEntity {
     private fun getType(): S2Type {
         val functionParameters = typeParameters.map { S2Type.NamedType.forParameter(it) }
@@ -447,31 +410,4 @@ private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParamete
     }
 }
 
-private fun getInterfaceMethodReferenceType(intrinsicStructType: S2Type.NamedType, method: S2Method): S2Type {
-    val argTypes = ArrayList<S2Type>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return S2Type.FunctionType(false, listOf(), argTypes, method.returnType, null)
-}
-
-fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
-    if (adapterId.namespacedName.size > 1 && adapterId.namespacedName.last() == "Adapter") {
-        return EntityId(adapterId.namespacedName.dropLast(1))
-    }
-    return null
-}
-fun getAdapterIdForInterfaceId(interfaceId: EntityId): EntityId {
-    return EntityId(interfaceId.namespacedName + "Adapter")
-}
-fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
-    val interfaceId = getInterfaceIdForAdapterId(adapterRef.id)
-    if (interfaceId == null) {
-        return null
-    }
-    return EntityRef(adapterRef.moduleRef, interfaceId)
-}
-
-data class S2Context(val functions: List<S2Function>, val structs: List<S2Struct>, val interfaces: List<S2Interface>, val unions: List<S2Union>)
+data class S2Context(val functions: List<S2Function>, val structs: List<S2Struct>, val unions: List<S2Union>)

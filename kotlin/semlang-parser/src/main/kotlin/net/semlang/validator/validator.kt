@@ -131,11 +131,10 @@ private class Validator(
     fun validate(context: RawContext): ValidationResult {
         val ownFunctions = validateFunctions(context.functions)
         val ownStructs = validateStructs(context.structs)
-        val ownInterfaces = validateInterfaces(context.interfaces)
         val ownUnions = validateUnions(context.unions)
 
         if (errors.isEmpty()) {
-            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownInterfaces, ownUnions, upstreamModules, moduleVersionMappings)
+            val createdModule = ValidatedModule.create(moduleId, nativeModuleVersion, ownFunctions, ownStructs, ownUnions, upstreamModules, moduleVersionMappings)
             return ValidationResult.Success(createdModule, warnings)
         } else {
             return ValidationResult.Failure(errors, warnings)
@@ -602,29 +601,6 @@ private class Validator(
                 return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
 
             }
-            is TypeInfo.Interface -> {
-                val interfac = structureTypeInfo
-                val interfaceType = structureNamedType
-                val methodType = interfac.methodTypes[expression.name]
-                if (methodType == null) {
-                    errors.add(Issue("Interface type $structureNamedType does not have a method named '${expression.name}'", expression.location, IssueLevel.ERROR))
-                    return null
-                }
-
-                val typeParameters = interfac.typeParameters
-                val chosenTypes = interfaceType.parameters
-                for (chosenParameter in chosenTypes) {
-                    if (chosenParameter.isReference()) {
-                        errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
-                    }
-                }
-
-
-                val parameterizedType = replaceAndValidateExternalTypeParameters(methodType, typeParameters, chosenTypes)
-                val type = validateType(parameterizedType, typeParametersInScope) ?: return null
-
-                return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
-            }
             is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
             }
@@ -917,33 +893,6 @@ private class Validator(
         return struct.members.map { member ->
             val type = validateType(member.type, typeParametersInScope) ?: return null
             Member(member.name, type)
-        }
-    }
-
-    private fun validateInterfaces(interfaces: List<UnvalidatedInterface>): Map<EntityId, Interface> {
-        val validatedInterfaces = LinkedHashMap<EntityId, Interface>()
-        for (interfac in interfaces) {
-            val validatedInterface = validateInterface(interfac)
-            if (validatedInterface != null) {
-                validatedInterfaces.put(interfac.id, validatedInterface)
-            }
-        }
-        return validatedInterfaces
-    }
-
-    private fun validateInterface(interfac: UnvalidatedInterface): Interface? {
-        // TODO: Do some actual validation of interfaces
-        val methods = validateMethods(interfac.methods, interfac.typeParameters.associateBy(TypeParameter::name)) ?: return null
-        return Interface(interfac.id, moduleId, interfac.typeParameters, methods, interfac.annotations)
-    }
-
-    private fun validateMethods(methods: List<UnvalidatedMethod>, interfaceTypeParameters: Map<String, TypeParameter>): List<Method>? {
-        // TODO: Do some actual validation of methods
-        return methods.map { method ->
-            val typeParametersVisibleToMethod = interfaceTypeParameters + method.typeParameters.associateBy(TypeParameter::name)
-            val arguments = validateArguments(method.arguments, typeParametersVisibleToMethod) ?: return null
-            val returnType = validateType(method.returnType, typeParametersVisibleToMethod) ?: return null
-            Method(method.name, method.typeParameters, arguments, returnType)
         }
     }
 

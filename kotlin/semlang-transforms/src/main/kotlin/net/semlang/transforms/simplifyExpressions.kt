@@ -18,9 +18,8 @@ private class ExpressionHoister(val originalContext: RawContext, val shouldHoist
     fun apply(): RawContext {
         val functions = originalContext.functions.map(this::simplifyFunctionExpressions)
         val structs = originalContext.structs.map(this::applyToRequiresBlock)
-        val interfaces = originalContext.interfaces
         val unions = originalContext.unions
-        return RawContext(functions, structs, interfaces, unions)
+        return RawContext(functions, structs, unions)
     }
 
     private fun applyToRequiresBlock(oldStruct: UnvalidatedStruct): UnvalidatedStruct {

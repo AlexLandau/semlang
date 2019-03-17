@@ -7,9 +7,9 @@ struct AccumulatingSequenceElement<T> {
 }
 
 @Export
-interface SequenceLike<T> {
-    get(index: Natural): T
-    first(predicate: (T) -> Boolean): T
+struct SequenceLike<T> {
+    get: (Natural) -> T
+    first: ((T) -> Boolean) -> T
 }
 
 function Sequence.asSequenceLike<T>(sequence: Sequence<T>): SequenceLike<T> {
@@ -69,11 +69,13 @@ function SequenceLike.map<T, U>(sequence: SequenceLike<T>, fn: (T) -> U): Sequen
     MappedSequence.getMappedSequenceAdapter<T, U>()(mappedSequence)
 }
 
-// TODO: Singleton candidate
+// TODO: Refactor to eliminate this (vestige of interfaces existing)
 function MappedSequence.getMappedSequenceAdapter<T, U>(): (MappedSequence<T, U>) -> SequenceLike<U> {
     let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
     let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
-    SequenceLike.Adapter(getBinding, firstBinding)
+    function (mappedSequence: MappedSequence<T, U>): SequenceLike<U> {
+        SequenceLike(getBinding|(mappedSequence, _), firstBinding|(mappedSequence, _))
+    }
 }
 
 function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {

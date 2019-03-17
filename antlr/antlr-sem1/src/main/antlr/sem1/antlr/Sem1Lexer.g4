@@ -17,7 +17,6 @@ PACKAGE            : 'package';
 IMPORT             : 'import';
 FUNCTION           : 'function';
 STRUCT             : 'struct';
-INTERFACE          : 'interface';
 UNION              : 'union';
 RETURN             : 'return';
 LET                : 'let';

@@ -7,9 +7,8 @@ import net.semlang.api.Function
 fun invalidate(module: ValidatedModule): RawContext {
     val functions = module.ownFunctions.values.map(::invalidate)
     val structs = module.ownStructs.values.map(::invalidate)
-    val interfaces = module.ownInterfaces.values.map(::invalidate)
     val unions = module.ownUnions.values.map(::invalidate)
-    return RawContext(functions, structs, interfaces, unions)
+    return RawContext(functions, structs, unions)
 }
 
 fun invalidate(union: Union): UnvalidatedUnion {
@@ -20,16 +19,6 @@ fun invalidate(union: Union): UnvalidatedUnion {
 private fun invalidateOption(option: Option): UnvalidatedOption {
     val type = option.type?.let { invalidate(it) }
     return UnvalidatedOption(option.name, type)
-}
-
-fun invalidate(interfac: Interface): UnvalidatedInterface {
-    val methods = interfac.methods.map(::invalidateMethod)
-    return UnvalidatedInterface(interfac.id, interfac.typeParameters, methods, interfac.annotations)
-}
-
-private fun invalidateMethod(method: Method): UnvalidatedMethod {
-    val arguments = method.arguments.map(::invalidate)
-    return UnvalidatedMethod(method.name, method.typeParameters, arguments, invalidate(method.returnType))
 }
 
 fun invalidate(argument: Argument): UnvalidatedArgument {

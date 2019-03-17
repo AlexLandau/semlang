@@ -20,7 +20,6 @@ Major near-term projects:
   - Also run through the existing failValidator tests to find undesired behaviors/errors
 - Some possible design refactors:
   - Also consider renaming Maybe.assume to just assume? (Or have it be an alternative name?)
-  - Consider removing interfaces from the language (maybe keep in sem2?)
   - Consider function -> fun
 Not as near-term but on my mind:
 - Some kind of proof system?
@@ -28,7 +27,6 @@ Not as near-term but on my mind:
 
 Cases to get working with "nice" dev tooling:
 - Empty struct
-- Empty interface
 - Empty function definition
 - Empty inline function declaration
 - Function with no ending expression, only "let"s (also: inline function)
@@ -87,7 +85,6 @@ Stuff that feels blocked or hasn't been implemented:
   - Validate struct member names
   - Validate function argument names
   - Make code style more consistent
-- Support function bindings of instance constructors and adapter constructors
 - List#firstIndex
 - Additional primitive-ish types in the standard library (N-bit integers, floating-point numbers, rationals?)
 - Other native-y types: Set, UniqueList, Map, Symbol, Snow?
@@ -127,7 +124,6 @@ Stuff that feels blocked or hasn't been implemented:
   - Use only simple (non-nested) expressions
   - Remove redundant variables and reiterated definitions
   - Ground all uses of generics within a program, so a parser can just treat it as an extension of the identifier
-  - Turn interface definitions into their constituents
   - Function differentials
   - Compute approximate worst-case computational time of a function, given specific inputs (value is N -> worst-case actual time is O(N))
   - Given a T -> T function, turn it into a T -> Boolean that returns whether the input would be turned into itself

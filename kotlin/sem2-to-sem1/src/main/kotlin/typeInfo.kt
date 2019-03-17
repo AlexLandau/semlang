@@ -10,7 +10,6 @@ fun collectTypeInfo(context: S2Context, moduleName: ModuleName, upstreamModules:
     val fakeContext = RawContext(
             context.functions.map(::translateForTypeOnly),
             context.structs.map(::translateForTypeOnly),
-            context.interfaces.map(::translateForTypeOnly),
             context.unions.map(::translateForTypeOnly))
 
     // TODO: Support module versions correctly...
@@ -38,14 +37,6 @@ private fun translateForTypeOnly(s2Struct: S2Struct): UnvalidatedStruct {
     val requires = if (s2Struct.requires != null) fakeBlock else null
 
     return UnvalidatedStruct(id, typeParameters, members, requires, listOf())
-}
-
-private fun translateForTypeOnly(s2Interface: S2Interface): UnvalidatedInterface {
-    val id = translate(s2Interface.id)
-    val typeParameters = s2Interface.typeParameters.map(::translate)
-    val methods = s2Interface.methods.map(::translate)
-
-    return UnvalidatedInterface(id, typeParameters, methods, listOf())
 }
 
 private fun translateForTypeOnly(s2Union: S2Union): UnvalidatedUnion {

@@ -1,8 +1,8 @@
 import * as bigInt from "big-integer";
 import { BigInteger } from "big-integer";
 import * as UtfString from "utfstring";
-import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, instanceObject, structObject, isFunctionBinding, namedBindingObject, stringObject, listBuilderObject, varObject, voidObject } from "./SemObject";
-import { Struct, Type, Interface, isMaybeType } from "../api/language";
+import { SemObject, integerObject, booleanObject, naturalObject, listObject, failureObject, successObject, structObject, isFunctionBinding, stringObject, listBuilderObject, varObject, voidObject } from "./SemObject";
+import { Struct, Type } from "../api/language";
 import { InterpreterContext } from "./interpret";
 import { assertNever } from "./util";
 
@@ -74,9 +74,6 @@ export const NativeStructs: { [structName: string]: Struct } = {
         id: "Void",
         members: []
     }
-};
-
-export const NativeInterfaces: { [interfaceName: string]: Interface } = {
 };
 
 export const NativeFunctions: { [functionName: string]: Function } = {
@@ -368,8 +365,6 @@ function dataEquals(left: SemObject, right: SemObject): boolean {
         }
         return dataEquals(left.object, right.object);
     } else if (isFunctionBinding(left)) {
-        throw new Error();
-    } else if (left.type === "instance") {
         throw new Error();
     } else if (left.type === "ListBuilder") {
         throw new Error();

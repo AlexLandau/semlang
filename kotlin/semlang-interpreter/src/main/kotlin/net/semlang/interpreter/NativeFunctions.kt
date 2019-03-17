@@ -409,7 +409,6 @@ private fun dataEquals(left: SemObject, right: SemObject): Boolean {
             if (left.struct != right.struct) typeError()
             dataListsEqual(left.objects, right.objects)
         }
-        is SemObject.Instance -> typeError()
         is SemObject.Union -> {
             if (right !is SemObject.Union) typeError()
             if (left.union != right.union) typeError()

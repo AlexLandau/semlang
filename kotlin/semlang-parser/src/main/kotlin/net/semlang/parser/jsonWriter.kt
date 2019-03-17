@@ -32,7 +32,6 @@ fun toJson(module: ValidatedModule): JsonNode {
 
     addArray(node, "functions", module.ownFunctions.values, ::addFunction)
     addArray(node, "structs", module.ownStructs.values, ::addStruct)
-    addArray(node, "interfaces", module.ownInterfaces.values, ::addInterface)
     addArray(node, "unions", module.ownUnions.values, ::addUnion)
     return node
 }
@@ -279,53 +278,6 @@ private fun parseAnnotationArg(node: JsonNode): AnnotationArgument {
         return AnnotationArgument.List(parseAnnotationArgs(node))
     }
     error("Unrecognized annotation arg type: ${node}")
-}
-
-private fun addInterface(node: ObjectNode, interfac: Interface) {
-    node.put("id", interfac.id.toString())
-    if (interfac.annotations.isNotEmpty()) {
-        addArray(node, "annotations", interfac.annotations, ::addAnnotation)
-    }
-    if (interfac.typeParameters.isNotEmpty()) {
-        addTypeParameters(node.putArray("typeParameters"), interfac.typeParameters)
-    }
-    addArray(node, "methods", interfac.methods, ::addMethod)
-}
-
-private fun parseInterface(node: JsonNode): UnvalidatedInterface {
-    if (!node.isObject()) error("Expected an interface to be an object")
-
-    val id = parseEntityId(node["id"] ?: error("Interfaces must have an 'id' field"))
-    val typeParameters = parseTypeParameters(node["typeParameters"])
-    val methods = parseMethods(node["methods"] ?: error("Interfaces must have a 'methods' array"))
-    val annotations = parseAnnotations(node["annotations"])
-
-    return UnvalidatedInterface(id, typeParameters, methods, annotations)
-}
-
-private fun parseMethods(node: JsonNode): List<UnvalidatedMethod> {
-    if (!node.isArray()) error("Methods should be in an array")
-    return node.map { methodNode -> parseMethod(methodNode) }
-}
-
-private fun addMethod(node: ObjectNode, method: Method) {
-    node.put("name", method.name)
-    if (method.typeParameters.isNotEmpty()) {
-        addTypeParameters(node.putArray("typeParameters"), method.typeParameters)
-    }
-    addArray(node, "arguments", method.arguments, ::addFunctionArgument)
-    node.set("returnType", toTypeNode(method.returnType))
-}
-
-private fun parseMethod(node: JsonNode): UnvalidatedMethod {
-    if (!node.isObject()) error("Expected a method to be an object")
-
-    val name = node["name"]?.textValue() ?: error("Methods must have a 'name' field")
-    val typeParameters = parseTypeParameters(node["typeParameters"])
-    val arguments = parseArguments(node["arguments"] ?: error("Methods must have an 'arguments' array"))
-    val returnType = parseType(node["returnType"] ?: error("Methods must have a 'returnType' string"))
-
-    return UnvalidatedMethod(name, typeParameters, arguments, returnType)
 }
 
 private fun parseArguments(node: JsonNode): List<UnvalidatedArgument> {
@@ -677,10 +629,9 @@ fun fromJson(node: JsonNode): RawContext {
 
     val functions = parseFunctions(node.get("functions"))
     val structs = parseStructs(node.get("structs"))
-    val interfaces = parseInterfaces(node.get("interfaces"))
     val unions = parseUnions(node.get("unions"))
 
-    return RawContext(functions, structs, interfaces, unions)
+    return RawContext(functions, structs, unions)
 }
 
 private fun parseFunctions(node: JsonNode): List<Function> {
@@ -691,11 +642,6 @@ private fun parseFunctions(node: JsonNode): List<Function> {
 private fun parseStructs(node: JsonNode): List<UnvalidatedStruct> {
     if (!node.isArray()) error("Expected structs to be in an array")
     return node.map { structNode -> parseStruct(structNode) }
-}
-
-private fun parseInterfaces(node: JsonNode): List<UnvalidatedInterface> {
-    if (!node.isArray()) error("Expected interfaces to be in an array")
-    return node.map { interfaceNode -> parseInterface(interfaceNode) }
 }
 
 private fun parseUnions(node: JsonNode): List<UnvalidatedUnion> {

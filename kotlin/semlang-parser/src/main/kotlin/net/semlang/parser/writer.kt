@@ -40,9 +40,6 @@ fun write(context: RawContext, writer: Writer, deterministicMode: Boolean = fals
     for (union in maybeSort(context.unions)) {
         writeUnion(union, writer, deterministicMode)
     }
-    for (interfac in maybeSort(context.interfaces)) {
-        writeInterface(interfac, writer, deterministicMode)
-    }
     for (function in maybeSort(context.functions)) {
         writeFunction(function, writer, deterministicMode)
     }
@@ -98,30 +95,6 @@ private fun writeUnion(union: UnvalidatedUnion, writer: Writer, deterministicMod
                     .append(": ")
                     .append(type.toString() + newline)
         }
-    }
-    writer.append("}$newline$newline")
-}
-
-private fun writeInterface(interfac: UnvalidatedInterface, writer: Writer, deterministicMode: Boolean) {
-    val newline = if (deterministicMode) "\n" else System.lineSeparator()
-    writeAnnotations(interfac.annotations, writer, deterministicMode)
-    writer.append("interface ")
-            .append(interfac.id.toString())
-    if (interfac.typeParameters.isNotEmpty()) {
-        writer.append("<")
-                .append(interfac.typeParameters.joinToString(", "))
-                .append(">")
-    }
-    writer.append(" {$newline")
-    for (method in interfac.methods) {
-        writer.append(SINGLE_INDENTATION)
-                .append(method.name)
-                .append("(")
-                .append(method.arguments.joinToString { argument ->
-                    argument.name + ": " + argument.type.toString()
-                })
-                .append("): ")
-                .append(method.returnType.toString() + newline)
     }
     writer.append("}$newline$newline")
 }

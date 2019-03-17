@@ -17,10 +17,6 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         val set = HashSet<EntityId>()
         set.addAll(inputModule.getAllInternalFunctions().keys)
         set.addAll(inputModule.getAllInternalStructs().keys)
-        set.addAll(inputModule.getAllInternalInterfaces().keys)
-        for (interfac in inputModule.getAllInternalInterfaces()) {
-            set.add(interfac.value.adapterId)
-        }
         set
     }()
     var nextLambdaNumber = 0
@@ -32,7 +28,6 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
         return RawContext(
                 transformedFunctions + processedExtractedFunctions,
                 transformedStructs,
-                inputModule.ownInterfaces.values.toList().map(::invalidate),
                 inputModule.ownUnions.values.toList().map(::invalidate)
         )
     }

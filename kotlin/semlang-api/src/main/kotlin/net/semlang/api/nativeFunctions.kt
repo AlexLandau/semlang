@@ -14,7 +14,7 @@ fun isNativeModule(id: ModuleUniqueId): Boolean {
 }
 
 /**
- * Note: This includes signatures for struct, instance, and adapter constructors.
+ * Note: This includes signatures for struct and union constructors.
  */
 // TODO: Maybe rename?
 fun getAllNativeFunctionLikeDefinitions(): Map<EntityId, FunctionSignature> {
@@ -26,9 +26,8 @@ fun getAllNativeFunctionLikeDefinitions(): Map<EntityId, FunctionSignature> {
         definitions.add(struct.getConstructorSignature())
     }
 
-    getNativeInterfaces().values.forEach { interfac ->
-        definitions.add(interfac.getInstanceConstructorSignature())
-        definitions.add(interfac.getAdapterFunctionSignature())
+    getNativeUnions().values.forEach { union ->
+        TODO()
     }
 
     return toMap(definitions)
@@ -380,15 +379,6 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     return toMap(structs)
 }
 
-object NativeInterface {
-}
-
-fun getNativeInterfaces(): Map<EntityId, Interface> {
-    val interfaces = ArrayList<Interface>()
-
-    return toMap(interfaces)
-}
-
 fun getNativeUnions(): Map<EntityId, Union> {
     val unions = ArrayList<Union>()
 
@@ -409,7 +399,7 @@ object NativeOpaqueType {
 }
 
 /**
- * An "opaque" type is a named type that doesn't represent a struct or interface and isn't
+ * An "opaque" type is a named type that doesn't represent a struct or union and isn't
  * a native type like Integer or Boolean. This includes native reference types.
  *
  * TODO: We should have a way for the module system to include ways to specify additional opaque types and

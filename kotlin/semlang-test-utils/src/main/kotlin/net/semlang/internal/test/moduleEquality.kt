@@ -9,7 +9,6 @@ fun assertModulesEqual(expected: ValidatedModule, actual: ValidatedModule) {
 
     Assert.assertEquals(expected.ownFunctions, actual.ownFunctions)
     Assert.assertEquals(expected.ownStructs, actual.ownStructs)
-    Assert.assertEquals(expected.ownInterfaces, actual.ownInterfaces)
     Assert.assertEquals(expected.ownUnions, actual.ownUnions)
     // TODO: Maybe check more?
 }
@@ -19,7 +18,6 @@ fun assertRawContextsEqual(expected: RawContext, actual: RawContext) {
 
     Assert.assertEquals(expected.functions.map(::stripLocations), actual.functions.map(::stripLocations))
     Assert.assertEquals(expected.structs.map(::stripLocations), actual.structs.map(::stripLocations))
-    Assert.assertEquals(expected.interfaces.map(::stripLocations), actual.interfaces.map(::stripLocations))
     Assert.assertEquals(expected.unions.map(::stripLocations), actual.unions.map(::stripLocations))
 }
 
@@ -133,17 +131,6 @@ private fun stripLocations(struct: UnvalidatedStruct): UnvalidatedStruct {
     val requires = struct.requires?.let(::stripLocations)
     val members = struct.members.map(::stripLocations)
     return UnvalidatedStruct(struct.id, struct.typeParameters, members, requires, struct.annotations)
-}
-
-private fun stripLocations(interfac: UnvalidatedInterface): UnvalidatedInterface {
-    val methods = interfac.methods.map(::stripLocations)
-    return UnvalidatedInterface(interfac.id, interfac.typeParameters, methods, interfac.annotations)
-}
-
-private fun stripLocations(method: UnvalidatedMethod): UnvalidatedMethod {
-    val arguments = method.arguments.map(::stripLocations)
-    val returnType = stripLocations(method.returnType)
-    return UnvalidatedMethod(method.name, method.typeParameters, arguments, returnType)
 }
 
 private fun stripLocations(member: UnvalidatedMember): UnvalidatedMember {

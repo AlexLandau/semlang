@@ -1,4 +1,0 @@
-@JavaFunctionalInterface
-interface myStuff.Operator<T> {
-    apply(left: T, right: T): T
-}

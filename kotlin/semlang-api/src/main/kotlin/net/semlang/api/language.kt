@@ -1059,88 +1059,6 @@ interface TopLevelEntity: HasId {
 data class UnvalidatedMember(val name: String, val type: UnvalidatedType)
 data class Member(val name: String, val type: Type)
 
-data class UnvalidatedInterface(override val id: EntityId, val typeParameters: List<TypeParameter>, val methods: List<UnvalidatedMethod>, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
-    val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
-    val dataType = UnvalidatedType.NamedType.forParameter(dataTypeParameter, null)
-
-    val instanceType = UnvalidatedType.NamedType(this.id.asRef(), false, typeParameters.map { name -> UnvalidatedType.NamedType.forParameter(name, null) }, idLocation)
-
-    fun getInstanceConstructorSignature(): UnvalidatedFunctionSignature {
-        val typeParameters = this.typeParameters
-        val argumentTypes = this.methods.map(UnvalidatedMethod::functionType)
-
-        return UnvalidatedFunctionSignature(this.id, argumentTypes, instanceType, typeParameters)
-    }
-    fun getAdapterFunctionSignature(): UnvalidatedFunctionSignature {
-        val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
-
-        val dataStructType = UnvalidatedType.NamedType.forParameter(adapterTypeParameters[0], null)
-        val argumentTypes = ArrayList<UnvalidatedType>()
-        this.methods.forEach { method ->
-            argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-        }
-
-        val outputType = UnvalidatedType.FunctionType(false, listOf(), listOf(dataType), instanceType)
-
-        return UnvalidatedFunctionSignature(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
-    }
-}
-data class Interface(override val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val methods: List<Method>, override val annotations: List<Annotation>) : TopLevelEntity {
-    val resolvedRef = ResolvedEntityRef(moduleId, id)
-    fun getIndexForName(name: String): Int {
-        return methods.indexOfFirst { method -> method.name == name }
-    }
-
-
-    val adapterId: EntityId = getAdapterIdForInterfaceId(id)
-    val dataTypeParameter = TypeParameter(getUnusedTypeParameterName(typeParameters), null)
-    val dataType = Type.ParameterType(dataTypeParameter)
-    val instanceType = Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
-    val adapterType = Type.FunctionType.create(false, listOf(), listOf(dataType), instanceType)
-    private fun getType(): Type.NamedType {
-        return instanceType
-    }
-
-    fun getInstanceConstructorSignature(): FunctionSignature {
-        val typeParameters = this.typeParameters
-        val argumentTypes = this.methods.map(Method::functionType)
-
-        return FunctionSignature.create(this.id, argumentTypes, instanceType, typeParameters)
-    }
-    fun getAdapterFunctionSignature(): FunctionSignature {
-        val adapterTypeParameters = listOf(dataTypeParameter) + typeParameters
-
-        val dataStructType = Type.InternalParameterType(0)
-        val argumentTypes = ArrayList<Type>()
-        this.methods.forEach { method ->
-            argumentTypes.add(getInterfaceMethodReferenceType(dataStructType, method))
-        }
-
-        val outputType = adapterType
-
-        return FunctionSignature.create(this.adapterId, argumentTypes, outputType, adapterTypeParameters)
-    }
-}
-data class UnvalidatedMethod(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType) {
-    init {
-        if (typeParameters.isNotEmpty()) {
-            // This case hasn't really been handled correctly/tested yet
-            TODO()
-        }
-    }
-    val functionType = UnvalidatedType.FunctionType(false, typeParameters, arguments.map { arg -> arg.type }, returnType, null)
-}
-data class Method(val name: String, val typeParameters: List<TypeParameter>, val arguments: List<Argument>, val returnType: Type) {
-    init {
-        if (typeParameters.isNotEmpty()) {
-            // This case hasn't really been handled correctly/tested yet
-            TODO()
-        }
-    }
-    val functionType = Type.FunctionType.create(false, typeParameters, arguments.map { arg -> arg.type }, returnType)
-}
-
 data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
     private fun getType(): UnvalidatedType {
         val functionParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
@@ -1225,42 +1143,6 @@ private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParamete
         }
         index++
     }
-}
-
-private fun getInterfaceMethodReferenceType(intrinsicStructType: UnvalidatedType.NamedType, method: UnvalidatedMethod): UnvalidatedType {
-    val argTypes = ArrayList<UnvalidatedType>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return UnvalidatedType.FunctionType(false, listOf(), argTypes, method.returnType, null)
-}
-private fun getInterfaceMethodReferenceType(intrinsicStructType: Type, method: Method): Type {
-    val argTypes = ArrayList<Type>()
-    argTypes.add(intrinsicStructType)
-    method.arguments.forEach { argument ->
-        argTypes.add(argument.type)
-    }
-
-    return Type.FunctionType.create(false, listOf(), argTypes, method.returnType)
-}
-
-fun getInterfaceIdForAdapterId(adapterId: EntityId): EntityId? {
-    if (adapterId.namespacedName.size > 1 && adapterId.namespacedName.last() == "Adapter") {
-        return EntityId(adapterId.namespacedName.dropLast(1))
-    }
-    return null
-}
-fun getAdapterIdForInterfaceId(interfaceId: EntityId): EntityId {
-    return EntityId(interfaceId.namespacedName + "Adapter")
-}
-fun getInterfaceRefForAdapterRef(adapterRef: EntityRef): EntityRef? {
-    val interfaceId = getInterfaceIdForAdapterId(adapterRef.id)
-    if (interfaceId == null) {
-        return null
-    }
-    return EntityRef(adapterRef.moduleRef, interfaceId)
 }
 
 data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isReference: Boolean) {

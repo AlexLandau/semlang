@@ -134,7 +134,6 @@ private fun <ThingContext, ThingsContext, Thing, AddedArg> parseLinkedList(linke
 private class ContextListener(val documentId: String) : Sem1ParserBaseListener() {
     val structs: MutableList<UnvalidatedStruct> = ArrayList()
     val functions: MutableList<Function> = ArrayList()
-    val interfaces: MutableList<UnvalidatedInterface> = ArrayList()
     val unions: MutableList<UnvalidatedUnion> = ArrayList()
 
     override fun exitFunction(ctx: Sem1Parser.FunctionContext) {
@@ -146,12 +145,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
     override fun exitStruct(ctx: Sem1Parser.StructContext) {
         if (ctx.exception == null) {
             structs.add(parseStruct(ctx))
-        }
-    }
-
-    override fun exitInterfac(ctx: Sem1Parser.InterfacContext) {
-        if (ctx.exception == null) {
-            interfaces.add(parseInterface(ctx))
         }
     }
 
@@ -218,20 +211,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val annotations = parseAnnotations(ctx.annotations())
 
         return UnvalidatedStruct(id, typeParameters, members, requires, annotations, locationOf(ctx.entity_id()))
-    }
-
-    private fun parseInterface(interfac: Sem1Parser.InterfacContext): UnvalidatedInterface {
-        val id = parseEntityId(interfac.entity_id())
-        val typeParameters = if (interfac.GREATER_THAN() != null) {
-            parseTypeParameters(interfac.cd_type_parameters())
-        } else {
-            listOf()
-        }
-        val methods = parseMethods(interfac.methods())
-
-        val annotations = parseAnnotations(interfac.annotations())
-
-        return UnvalidatedInterface(id, typeParameters, methods, annotations, locationOf(interfac.entity_id()))
     }
 
     private fun parseUnion(union: Sem1Parser.UnionContext): UnvalidatedUnion {
@@ -653,26 +632,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         return UnvalidatedType.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
     }
 
-    private fun parseMethods(methods: Sem1Parser.MethodsContext): List<UnvalidatedMethod> {
-        return parseLinkedList(methods,
-                Sem1Parser.MethodsContext::method,
-                Sem1Parser.MethodsContext::methods,
-                this::parseMethod)
-    }
-
-    private fun parseMethod(method: Sem1Parser.MethodContext): UnvalidatedMethod {
-        val name = method.ID().text
-        val typeParameters = if (method.GREATER_THAN() != null) {
-            parseTypeParameters(method.cd_type_parameters())
-        } else {
-            listOf()
-        }
-        val arguments = parseFunctionArguments(method.function_arguments())
-        val returnType = parseType(method.type())
-
-        return UnvalidatedMethod(name, typeParameters, arguments, returnType)
-    }
-
     private fun parseOptions(options: Sem1Parser.DisjunctsContext): List<UnvalidatedOption> {
         return parseLinkedList(options,
                 Sem1Parser.DisjunctsContext::disjunct,
@@ -710,7 +669,6 @@ sealed class ParsingResult {
 fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
     val allFunctions = ArrayList<Function>()
     val allStructs = ArrayList<UnvalidatedStruct>()
-    val allInterfaces = ArrayList<UnvalidatedInterface>()
     val allUnions = ArrayList<UnvalidatedUnion>()
     val allErrors = ArrayList<Issue>()
     for (parsingResult in results) {
@@ -718,18 +676,16 @@ fun combineParsingResults(results: Collection<ParsingResult>): ParsingResult {
             val rawContext = parsingResult.context
             allFunctions.addAll(rawContext.functions)
             allStructs.addAll(rawContext.structs)
-            allInterfaces.addAll(rawContext.interfaces)
             allUnions.addAll(rawContext.unions)
         } else if (parsingResult is ParsingResult.Failure) {
             allErrors.addAll(parsingResult.errors)
             val context = parsingResult.partialContext
             allFunctions.addAll(context.functions)
             allStructs.addAll(context.structs)
-            allInterfaces.addAll(context.interfaces)
             allUnions.addAll(context.unions)
         }
     }
-    val combinedContext = RawContext(allFunctions, allStructs, allInterfaces, allUnions)
+    val combinedContext = RawContext(allFunctions, allStructs, allUnions)
     if (allErrors.isEmpty()) {
         return ParsingResult.Success(combinedContext)
     } else {
@@ -805,11 +761,11 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
     try {
         ParseTreeWalker.DEFAULT.walk(extractor, tree)
     } catch(e: LocationAwareParsingException) {
-        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+        val partialContext = RawContext(extractor.functions, extractor.structs, extractor.unions)
         return ParsingResult.Failure(errorListener.errorsFound + listOf(Issue(e.message.orEmpty() + if (e.cause?.message != null) {": " + e.cause.message.orEmpty()} else "", e.location, IssueLevel.ERROR)), partialContext)
     }
 
-    val context = RawContext(extractor.functions, extractor.structs, extractor.interfaces, extractor.unions)
+    val context = RawContext(extractor.functions, extractor.structs, extractor.unions)
     if (!errorListener.errorsFound.isEmpty()) {
         return ParsingResult.Failure(errorListener.errorsFound, context)
     }

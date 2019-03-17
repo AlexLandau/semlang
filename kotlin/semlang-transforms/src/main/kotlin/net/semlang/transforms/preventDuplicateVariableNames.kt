@@ -14,7 +14,7 @@ import java.util.regex.Pattern
 fun preventDuplicateVariableNames(context: RawContext): RawContext {
     val functions = context.functions.map(::renameVariablesUniquely)
     val structs = context.structs.map(::renameVariablesUniquely)
-    return RawContext(functions, structs, context.interfaces, context.unions)
+    return RawContext(functions, structs, context.unions)
 }
 
 private fun renameVariablesUniquely(function: Function): Function {

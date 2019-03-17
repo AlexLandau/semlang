@@ -5,7 +5,6 @@ export interface Context {
     version: string; // Language/format version
     functions: Function[];
     structs: Struct[];
-    interfaces: Interface[];
     unions: Union[];
 }
 
@@ -13,8 +12,6 @@ export interface Context {
 export interface Module {
     functions: { [id: string]: Function }
     structs: { [id: string]: Struct }
-    interfaces: { [id: string]: Interface }
-    interfacesByAdapterId: { [adapterId: string]: Interface }
     unions: { [id: string]: Union }
     unionsByWhenId: { [whenId: string]: Union }
     unionsByOptionId: { [optionId: string]: [Union, number] }
@@ -46,20 +43,6 @@ export interface Struct {
 export interface Member {
     name: string;
     type: Type;
-}
-
-export interface Interface {
-    id: string;
-    annotations?: Annotation[];
-    typeParameters?: string[];
-    methods: Method[];
-}
-
-export interface Method {
-    name: string;
-    typeParameters?: string[];
-    arguments: Argument[];
-    returnType: Type;
 }
 
 export interface Union {
@@ -198,35 +181,6 @@ export function isNamedType(type: Type): type is Type.NamedType {
     return typeof type === "object" && "name" in type;
 }
 
-export function getAdapterStruct(interfac: Interface): Struct {
-    const dataTypeName = getDataTypeName(interfac.typeParameters);
-    const members = interfac.methods.map((method) => 
-        ({
-            name: method.name,
-            type: addDataTypeArg(getFunctionType(method), dataTypeName),
-        })
-    );
-    return {
-        id: interfac.id + ".Adapter",
-        members,
-        typeParameters: [dataTypeName].concat(interfac.typeParameters || []),
-    };
-}
-
-function addDataTypeArg(type: Type.FunctionType, dataTypeName: string): Type.FunctionType {
-    return {
-        from: [{name: dataTypeName} as Type].concat(type.from),
-        to: type.to,
-    };
-}
-
-function getFunctionType(method: Method): Type.FunctionType {
-    return {
-        from: method.arguments.map((argument) => argument.type),
-        to: method.returnType,
-    };
-}
-
 function getNamedType(id: string, params: Type[] | undefined): Type.NamedType {
     return {
         name: id,
@@ -239,22 +193,5 @@ export function getStructType(struct: Struct): Type.NamedType {
         name: struct.id,
         params: struct.typeParameters === undefined ? undefined :
                 struct.typeParameters.map((paramName) => getNamedType(paramName, undefined)),
-    }
-}
-
-function getDataTypeName(existingTypeParameters: string[] | undefined): string {
-    if (existingTypeParameters === undefined) {
-        return "A";
-    }
-    if (existingTypeParameters.indexOf("A") < 0) {
-        return "A";
-    }
-    let index = 2
-    while (true) {
-        const name = "A" + index
-        if (existingTypeParameters.indexOf(name) < 0) {
-            return name
-        }
-        index++
     }
 }

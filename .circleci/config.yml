@@ -6,6 +6,9 @@ jobs:
       - image: circleci/openjdk:8
     steps:
       - checkout
+      # Break things up into a few steps to try to reduce the frequency of OOMs
+      - run: ./gradlew :kotlin:semlang-project-euler:build --max-workers=1
+      - run: ./gradlew :kotlin:semlang-java-writer:build --max-workers=1
       - run: ./gradlew build --max-workers=1
       - run:
           command: |

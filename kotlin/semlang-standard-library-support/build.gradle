@@ -17,5 +17,5 @@ task publishModuleLocally(type: JavaExec) {
 }
 
 tasks.test.dependsOn(publishModuleLocally)
-tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))
-tasks.test.inputs.dir publishedModuleLocation
+tasks.test.inputs.dir("../../semlang-library-corpus/src/main/semlang")
+tasks.test.inputs.dir(publishedModuleLocation)

@@ -38,7 +38,7 @@ class StandaloneFileLinkingTests(private val file: File) {
         // Check that the names of exported things are not changed
         Assert.assertEquals(unlinkedModule.exportedFunctions, validatedModule.exportedFunctions)
         Assert.assertEquals(unlinkedModule.exportedStructs, validatedModule.exportedStructs)
-        Assert.assertEquals(unlinkedModule.exportedInterfaces, validatedModule.exportedInterfaces)
+        Assert.assertEquals(unlinkedModule.exportedUnions, validatedModule.exportedUnions)
 
         val testsCount = runAnnotationTests(validatedModule)
         // TODO: Improve how this check works
@@ -73,7 +73,7 @@ class StandardLibraryTests(private val file: File) {
         // Check that the names of exported things are not changed
         Assert.assertEquals(unlinkedModule.exportedFunctions, validatedModule.exportedFunctions)
         Assert.assertEquals(unlinkedModule.exportedStructs, validatedModule.exportedStructs)
-        Assert.assertEquals(unlinkedModule.exportedInterfaces, validatedModule.exportedInterfaces)
+        Assert.assertEquals(unlinkedModule.exportedUnions, validatedModule.exportedUnions)
 
         val testsCount = runAnnotationTests(validatedModule)
         if (testsCount == 0) {

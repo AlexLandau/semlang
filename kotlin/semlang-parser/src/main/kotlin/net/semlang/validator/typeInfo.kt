@@ -66,7 +66,6 @@ sealed class TypeInfo {
     abstract val idLocation: Location?
     abstract val isReference: Boolean
     data class Struct(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
-    data class Interface(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val methodTypes: Map<String, UnvalidatedType.FunctionType>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
     data class Union(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
     data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
 }
@@ -90,7 +89,6 @@ private class TypeInfoCollector(
             nativeModuleVersion,
             listOf(),
             listOf(),
-            listOf(),
             mapOf(),
             upstreamModules,
             moduleVersionMappings
@@ -109,8 +107,6 @@ private class TypeInfoCollector(
 
 
         addLocalStructs()
-
-        addLocalInterfaces()
 
         addLocalFunctions()
 
@@ -170,18 +166,6 @@ private class TypeInfoCollector(
         }
     }
 
-    private fun addLocalInterfaces() {
-        for (interfac in context.interfaces) {
-            localTypesMultimap.multimapPut(interfac.id, getLocalTypeInfo(interfac))
-            val instanceConstructorType = interfac.getInstanceConstructorSignature().getFunctionType()
-            val instanceResolvedRef = ResolvedEntityRef(moduleId, interfac.id)
-            localFunctionsMultimap.multimapPut(interfac.id, FunctionInfo(instanceResolvedRef, instanceConstructorType, interfac.idLocation))
-            val adapterFunctionType = interfac.getAdapterFunctionSignature().getFunctionType()
-            val adapterResolvedRef = ResolvedEntityRef(moduleId, interfac.adapterId)
-            localFunctionsMultimap.multimapPut(interfac.adapterId, FunctionInfo(adapterResolvedRef, adapterFunctionType, interfac.idLocation))
-        }
-    }
-
     private fun addLocalStructs() {
         for (struct in context.structs) {
             val id = struct.id
@@ -218,37 +202,6 @@ private class TypeInfoCollector(
                 error("Duplicate member name ${member.name}")
             } else {
                 typeMap.put(member.name, invalidate(member.type))
-            }
-        }
-        return typeMap
-    }
-
-    private fun getLocalTypeInfo(interfac: UnvalidatedInterface): TypeInfo.Interface {
-        val resolvedRef = ResolvedEntityRef(moduleId, interfac.id)
-        return TypeInfo.Interface(resolvedRef, interfac.typeParameters, getUnvalidatedMethodTypeMap(interfac.methods), false, interfac.idLocation)
-    }
-    private fun getTypeInfo(interfac: Interface, idLocation: Location?): TypeInfo.Interface {
-        return TypeInfo.Interface(interfac.resolvedRef, interfac.typeParameters, getMethodTypeMap(interfac.methods), false, idLocation)
-    }
-    private fun getUnvalidatedMethodTypeMap(methods: List<UnvalidatedMethod>): Map<String, UnvalidatedType.FunctionType> {
-        val typeMap = HashMap<String, UnvalidatedType.FunctionType>()
-        for (method in methods) {
-            if (typeMap.containsKey(method.name)) {
-                // TODO: Test this case
-                error("Duplicate method name ${method.name}")
-            } else {
-                typeMap.put(method.name, method.functionType)
-            }
-        }
-        return typeMap
-    }
-    private fun getMethodTypeMap(methods: List<Method>): Map<String, UnvalidatedType.FunctionType> {
-        val typeMap = HashMap<String, UnvalidatedType.FunctionType>()
-        for (method in methods) {
-            if (typeMap.containsKey(method.name)) {
-                error("Duplicate method name ${method.name}")
-            } else {
-                typeMap.put(method.name, invalidate(method.functionType) as UnvalidatedType.FunctionType)
             }
         }
         return typeMap
@@ -309,10 +262,6 @@ private class TypeInfoCollector(
             val ref = ResolvedEntityRef(nativeModuleId, struct.id)
             upstreamTypes.put(ref, getTypeInfo(struct, null))
         }
-        for (interfac in getNativeInterfaces().values) {
-            val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
-            upstreamTypes.put(ref, getTypeInfo(interfac, null))
-        }
         for (union in getNativeUnions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, union.id)
             upstreamTypes.put(ref, getTypeInfo(union, null))
@@ -327,10 +276,6 @@ private class TypeInfoCollector(
             for (struct in module.getAllExportedStructs().values) {
                 val ref = ResolvedEntityRef(module.id, struct.id)
                 upstreamTypes.put(ref, getTypeInfo(struct, null))
-            }
-            for (interfac in module.getAllExportedInterfaces().values) {
-                val ref = ResolvedEntityRef(module.id, interfac.id)
-                upstreamTypes.put(ref, getTypeInfo(interfac, null))
             }
         }
         return upstreamTypes
@@ -354,12 +299,6 @@ private class TypeInfoCollector(
             val ref = ResolvedEntityRef(nativeModuleId, struct.id)
             upstreamFunctions.put(ref, functionInfo(ref, struct.getConstructorSignature()))
         }
-        for (interfac in getNativeInterfaces().values) {
-            val ref = ResolvedEntityRef(nativeModuleId, interfac.id)
-            upstreamFunctions.put(ref, functionInfo(ref, interfac.getInstanceConstructorSignature()))
-            val adapterRef = ResolvedEntityRef(nativeModuleId, interfac.adapterId)
-            upstreamFunctions.put(adapterRef, functionInfo(adapterRef, interfac.getAdapterFunctionSignature()))
-        }
         for (function in getNativeFunctionOnlyDefinitions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, function.id)
             upstreamFunctions.put(ref, functionInfo(ref, function))
@@ -369,12 +308,6 @@ private class TypeInfoCollector(
             for (struct in module.getAllExportedStructs().values) {
                 val ref = ResolvedEntityRef(module.id, struct.id)
                 upstreamFunctions.put(ref, functionInfo(ref, struct.getConstructorSignature()))
-            }
-            for (interfac in module.getAllExportedInterfaces().values) {
-                val ref = ResolvedEntityRef(module.id, interfac.id)
-                upstreamFunctions.put(ref, functionInfo(ref, interfac.getInstanceConstructorSignature()))
-                val adapterRef = ResolvedEntityRef(module.id, interfac.adapterId)
-                upstreamFunctions.put(adapterRef, functionInfo(adapterRef, interfac.getAdapterFunctionSignature()))
             }
             for (function in module.getAllExportedFunctions().values) {
                 val ref = ResolvedEntityRef(module.id, function.id)
@@ -415,7 +348,6 @@ fun TypesInfo.isDataType(type: Type): Boolean {
                         // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
                         typeInfo.memberTypes.values.all { isDataType(it) }
                     }
-                    is TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
                     is TypeInfo.Union -> {
                         // TODO: Need to handle recursive references here, too
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
@@ -447,7 +379,6 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                         // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
                         typeInfo.memberTypes.values.all { isDataType(it) }
                     }
-                    is TypeInfo.Interface -> typeInfo.methodTypes.isEmpty()
                     is TypeInfo.Union -> {
                         // TODO: Need to handle recursive references here, too
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }

@@ -13,7 +13,6 @@ tokens {
   IMPORT,
   FUNCTION,
   STRUCT,
-  INTERFACE,
   UNION,
   RETURN,
   LET,
@@ -65,16 +64,12 @@ module_id : ID | MODULE_ID ;
 top_level_entities :
   | function top_level_entities
   | struct top_level_entities
-  | interfac top_level_entities
   | union top_level_entities ;
 
 function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
          | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
 struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
   | annotations STRUCT entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
-// TODO: Is there a better solution for this than mangling the name?
-interfac : annotations INTERFACE entity_id LBRACE methods RBRACE
-  | annotations INTERFACE entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE methods RBRACE ;
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
@@ -90,12 +85,6 @@ members : | member members ;
 member : ID COLON type ;
     catch[RecognitionException e] { throw e; }
 maybe_requires : | REQUIRES block ;
-    catch[RecognitionException e] { throw e; }
-
-methods : | method methods ;
-    catch[RecognitionException e] { throw e; }
-method : ID LPAREN function_arguments RPAREN COLON type
-  | ID LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type ;
     catch[RecognitionException e] { throw e; }
 
 disjuncts: | disjunct disjuncts ;

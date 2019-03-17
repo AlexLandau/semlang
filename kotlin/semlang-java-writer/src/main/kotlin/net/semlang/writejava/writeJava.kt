@@ -127,19 +127,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         // Enable calls to struct constructors
         addStructConstructorFunctionCallStrategies(module.getAllInternalStructs().values)
 
-        for (interfac in module.ownInterfaces.values) {
-            val className = getOwnTypeClassName(interfac.id)
-            val interfaceBuilder = writeInterface(interfac, className)
-
-            if (classMap.containsKey(className)) {
-                error("Duplicate class name $className for interface ${interfac.id}")
-            }
-            classMap[className] = interfaceBuilder
-        }
-        // Enable calls to instance and adapter constructors
-        addInstanceConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
-        addAdapterConstructorFunctionCallStrategies(module.getAllInternalInterfaces().values)
-
         for (union in module.ownUnions.values) {
             val className = getOwnTypeClassName(union.id)
             val unionBuilder = writeUnion(union, className)
@@ -199,26 +186,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
                 namedFunctionCallStrategies.put(optionId, OptionConstructorCallStrategy(unionClassName, option))
             }
-        }
-    }
-
-    private fun addInstanceConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-        for (interfac in interfaces) {
-            if (namedFunctionCallStrategies.containsKey(interfac.id)) {
-                error("Already have a call strategy for ${interfac.id}")
-            }
-
-            namedFunctionCallStrategies.put(interfac.id, InstanceFunctionCallStrategy(interfac))
-        }
-    }
-
-    private fun addAdapterConstructorFunctionCallStrategies(interfaces: Collection<Interface>) {
-        for (interfac in interfaces) {
-            if (namedFunctionCallStrategies.containsKey(interfac.adapterId)) {
-                error("Already have a call strategy for ${interfac.adapterId}")
-            }
-
-            namedFunctionCallStrategies.put(interfac.adapterId, AdapterFunctionCallStrategy(interfac))
         }
     }
 
@@ -361,38 +328,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
             // TODO: Also write hashCode()
         }
-
-        return builder
-    }
-
-    private fun writeInterface(interfac: Interface, className: ClassName): TypeSpec.Builder {
-        // General strategy:
-        // Interface types become Java interfaces
-        val builder = TypeSpec.interfaceBuilder(className).addModifiers(Modifier.PUBLIC)
-
-        builder.addTypeVariables(interfac.typeParameters.map { parameter -> TypeVariableName.get(parameter.name) })
-
-        for (method in interfac.methods) {
-            builder.addMethod(writeInterfaceMethod(method).build())
-        }
-
-        return builder
-    }
-
-    private fun writeInterfaceMethod(method: Method, makeAbstract: Boolean = true): MethodSpec.Builder {
-        val builder = MethodSpec.methodBuilder(method.name).addModifiers(Modifier.PUBLIC)
-        if (makeAbstract) {
-            builder.addModifiers(Modifier.ABSTRACT)
-        }
-
-        if (method.typeParameters.isNotEmpty()) {
-            TODO()
-        }
-
-        for (argument in method.arguments) {
-            builder.addParameter(getType(argument.type, false), argument.name)
-        }
-        builder.returns(getType(method.returnType, false))
 
         return builder
     }
@@ -744,12 +679,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             FunctionLikeType.STRUCT_CONSTRUCTOR -> {
                 module.getInternalStruct(resolved.entityRef).struct.getConstructorSignature()
             }
-            FunctionLikeType.INSTANCE_CONSTRUCTOR -> {
-                TODO()
-            }
-            FunctionLikeType.ADAPTER_CONSTRUCTOR -> {
-                TODO()
-            }
             FunctionLikeType.OPAQUE_TYPE -> {
                 error("$resolved should be a function, not an opaque type")
             }
@@ -853,23 +782,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getExpressionFunctionCallStrategy(expression: TypedExpression): FunctionCallStrategy {
-
-        // Is it an interface follow?
-        if (expression is TypedExpression.Follow) {
-            val structureExpression = expression.structureExpression
-            val structureExpressionType = structureExpression.type
-            if (structureExpressionType is Type.NamedType) {
-                val resolvedStructureType = module.resolve(structureExpressionType.ref, ResolutionType.Type)
-                // TODO: I don't think this handles native interfaces?
-                if (resolvedStructureType != null && resolvedStructureType.type == FunctionLikeType.INSTANCE_CONSTRUCTOR) {
-                    return object : FunctionCallStrategy {
-                        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
-                            return CodeBlock.of("\$L.\$L(\$L)", writeExpression(structureExpression), expression.name, getArgumentsBlock(arguments))
-                        }
-                    }
-                }
-            }
-        }
 
         return object: FunctionCallStrategy {
             override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
@@ -1006,22 +918,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
 
     private fun getNamedType(semlangType: Type.NamedType): TypeName {
-
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
-        val interfaceRef = getInterfaceRefForAdapterRef(semlangType.originalRef)
-        if (interfaceRef != null) {
-            val resolvedInterfaceRef = module.resolve(interfaceRef, ResolutionType.Type) ?: error("error")
-            val bareAdapterClass = ClassName.bestGuess("net.semlang.java.Adapter")
-            val dataTypeParameter = getType(semlangType.parameters[0], true)
-            val otherParameters = semlangType.parameters.drop(1).map { getType(it, true) }
-            val bareInterfaceName = getClassNameForTypeId(resolvedInterfaceRef.entityRef)
-            val interfaceJavaName = if (otherParameters.isEmpty()) {
-                bareInterfaceName
-            } else {
-                ParameterizedTypeName.get(bareInterfaceName, *otherParameters.toTypedArray())
-            }
-            return ParameterizedTypeName.get(bareAdapterClass, interfaceJavaName, dataTypeParameter)
-        }
 
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
             listOf("Natural") -> ClassName.get(BigInteger::class.java)
@@ -1295,74 +1192,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
     }
 
-    inner private class InstanceFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
-            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.map { if (it == null) error("") else it }).toMap()
-            val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
-
-            val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(instanceType, false))
-            for ((method, constructorArgument) in interfac.methods.zip(arguments)) {
-                val methodSpec = MethodSpec.methodBuilder(method.name)
-                        // TODO: This "isParameter" fix is probably needed in a lot of places
-                        .returns(getType(method.returnType.replacingExternalParameters(parametersMap), method.returnType in parametersMap.keys))
-                        .addModifiers(Modifier.PUBLIC)
-                for (arg in method.arguments) {
-                    methodSpec.addParameter(getType(arg.type.replacingExternalParameters(parametersMap), false), arg.name)
-                }
-
-                // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-                val returnValue = convertBindingToCall(constructorArgument, method.arguments.map { TypedExpression.Variable(it.type, AliasType.PossiblyAliased, it.name) })
-
-                methodSpec.addStatement("return \$L", writeExpression(returnValue))
-                instanceAnonymousClass.addMethod(methodSpec.build())
-            }
-
-            return CodeBlock.of("\$L", instanceAnonymousClass.build())
-        }
-    }
-
-    inner private class AdapterFunctionCallStrategy(val interfac: Interface): FunctionCallStrategy {
-        override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
-            val dataType = chosenTypes[0]!!
-            val parametersMap = interfac.typeParameters.map { Type.ParameterType(it) }.zip(chosenTypes.drop(1).map { if (it == null) error("") else it }).toMap()
-            val instanceType = interfac.instanceType.replacingExternalParameters(parametersMap)
-
-            val functionAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(Type.FunctionType.create(false, listOf(), listOf(dataType), instanceType), false))
-
-            val applyMethodSpec = MethodSpec.methodBuilder("apply")
-                    .addParameter(getType(dataType, true), "data")
-                    .returns(getType(instanceType, true))
-                    .addModifiers(Modifier.PUBLIC)
-
-            val instanceAnonymousClass = TypeSpec.anonymousClassBuilder("")
-                    .addSuperinterface(getType(instanceType, false))
-            for ((method, adapterArgument) in interfac.methods.zip(arguments)) {
-                val methodSpec = MethodSpec.methodBuilder(method.name)
-                        .returns(getType(method.returnType.replacingExternalParameters(parametersMap), false))
-                        .addModifiers(Modifier.PUBLIC)
-                for (arg in method.arguments) {
-                    methodSpec.addParameter(getType(arg.type.replacingExternalParameters(parametersMap), false), arg.name)
-                }
-
-                // So adapterArgument is something like Function.identity|(_) that we want to replace with Function.identity(data)
-                val returnValue = convertBindingToCallReplacingOnlyOpenBinding(
-                        adapterArgument,
-                        TypedExpression.Variable(dataType, AliasType.PossiblyAliased, "data"),
-                        method.arguments.map { TypedExpression.Variable(it.type, AliasType.PossiblyAliased, it.name) }
-                )
-
-                methodSpec.addStatement("return \$L", writeExpression(returnValue))
-                instanceAnonymousClass.addMethod(methodSpec.build())
-            }
-
-            applyMethodSpec.addStatement("return \$L", instanceAnonymousClass.build())
-            functionAnonymousClass.addMethod(applyMethodSpec.build())
-            return CodeBlock.of("\$L", functionAnonymousClass.build())
-        }
-    }
-
     inner private class OptionConstructorCallStrategy(val unionClassName: ClassName, val option: Option): FunctionCallStrategy {
         override fun apply(chosenTypes: List<Type?>, arguments: List<TypedExpression>): CodeBlock {
             if (option.type != null) {
@@ -1562,8 +1391,6 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                     val struct = containingModule.getInternalStruct(entityResolution.entityRef)
                     isDataStruct(struct.struct, struct.module)
                 }
-                FunctionLikeType.INSTANCE_CONSTRUCTOR -> false
-                FunctionLikeType.ADAPTER_CONSTRUCTOR -> false
                 FunctionLikeType.OPAQUE_TYPE -> false
                 FunctionLikeType.UNION_TYPE -> TODO()
                 FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()

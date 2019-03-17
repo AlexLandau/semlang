@@ -56,9 +56,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
 
         val functions = context.functions.map(::translate)
         val structs = context.structs.map(::translate)
-        val interfaces = context.interfaces.map(::translate)
         val unions = context.unions.map(::translate)
-        return RawContext(functions, structs, interfaces, unions)
+        return RawContext(functions, structs, unions)
     }
 
     private fun translate(function: S2Function): Function {
@@ -243,11 +242,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                                 val memberType = typeInfo.memberTypes[name]
                                 if (memberType != null) {
                                     return RealExpression(Expression.Follow(subexpression.expression, name), memberType)
-                                }
-                            } else if (typeInfo != null && typeInfo is TypeInfo.Interface) {
-                                val methodType = typeInfo.methodTypes[name]
-                                if (methodType != null) {
-                                    return RealExpression(Expression.Follow(subexpression.expression, name), methodType)
                                 }
                             }
                         }
@@ -441,9 +435,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                     if (typeInfo is TypeInfo.Struct) {
                         val parameterReplacementMap = typeInfo.typeParameters.map { it.name }.zip(structureType.parameters).toMap()
                         typeInfo.memberTypes[expression.name]?.replacingNamedParameterTypes(parameterReplacementMap)
-                    } else if (typeInfo is TypeInfo.Interface) {
-                        val parameterReplacementMap = typeInfo.typeParameters.map { it.name }.zip(structureType.parameters).toMap()
-                        typeInfo.methodTypes[expression.name]?.replacingNamedParameterTypes(parameterReplacementMap)
                     } else {
                         null
                     }
@@ -662,15 +653,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
         )
     }
 
-    private fun translate(interfac: S2Interface): UnvalidatedInterface {
-        return UnvalidatedInterface(
-                id = translate(interfac.id),
-                typeParameters = interfac.typeParameters.map(::translate),
-                methods = interfac.methods.map(::translate),
-                annotations = interfac.annotations.map(::translate),
-                idLocation = translate(interfac.idLocation))
-    }
-
     private fun translate(union: S2Union): UnvalidatedUnion {
         return UnvalidatedUnion(
                 id = translate(union.id),
@@ -802,15 +784,6 @@ internal fun translate(member: S2Member): UnvalidatedMember {
     return UnvalidatedMember(
             name = member.name,
             type = translate(member.type)
-    )
-}
-
-internal fun translate(method: S2Method): UnvalidatedMethod {
-    return UnvalidatedMethod(
-            name = method.name,
-            typeParameters = method.typeParameters.map(::translate),
-            arguments = method.arguments.map(::translate),
-            returnType = translate(method.returnType)
     )
 }
 
