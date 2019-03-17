@@ -14,6 +14,7 @@ Major near-term projects:
   - Consider a return keyword and similar imperative control structures?
     - Vars?
   - It would be nice if threaded types were stable first, but this might be a prereq for usability...
+- Convert the standard library to sem2
 - Finish converting the validator to use fine-grained errors
   - and/or port the validator itself to Semlang?
   - Also run through the existing failValidator tests to find undesired behaviors/errors
