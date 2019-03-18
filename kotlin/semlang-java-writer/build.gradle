@@ -12,4 +12,4 @@ dependencies {
 tasks.test.inputs.dir("../../semlang-corpus/src/main/semlang")
 tasks.test.inputs.dir("../../semlang-library/src/main/semlang")
 tasks.test.inputs.dir("../../semlang-library-corpus/src/main/semlang")
-tasks.test.inputs.dir("../../semlang-parser/src/test/semlang/validatorTests/pass")
+tasks.test.inputs.dir("../semlang-parser/src/test/semlang/validatorTests/pass")
