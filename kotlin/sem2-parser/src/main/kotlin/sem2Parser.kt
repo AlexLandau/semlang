@@ -390,6 +390,12 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.PlusOp(left, right, locationOf(expression), locationOf(expression.PLUS().symbol))
             }
 
+            if (expression.HYPHEN() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.MinusOp(left, right, locationOf(expression), locationOf(expression.HYPHEN().symbol))
+            }
+
             if (expression.TIMES() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))

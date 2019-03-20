@@ -51,6 +51,7 @@ PIPE               : '|' ;
 AT                 : '@' ;
 AMPERSAND          : '&' ;
 PLUS               : '+' ;
+HYPHEN             : '-' ;
 TIMES              : '*' ;
 
 // Identifiers

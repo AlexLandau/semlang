@@ -43,6 +43,7 @@ tokens {
   AT,
   AMPERSAND,
   PLUS,
+  HYPHEN,
   TIMES,
   MODULE_ID,
   ID,
@@ -163,6 +164,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   // NOTE: Higher expressions have higher precedence
   | expression TIMES expression // * operator
   | expression PLUS expression // + operator
+  | expression HYPHEN expression // - operator
   | expression LESS_THAN expression // < operator
   | expression GREATER_THAN expression // > operator
   | expression EQUALS expression // == operator

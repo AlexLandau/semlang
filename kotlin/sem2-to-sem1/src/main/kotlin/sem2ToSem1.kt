@@ -478,6 +478,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
                 val right = translateFullExpression(expression.right, varTypes)
                 getOperatorExpression(left, right, "plus", expression, expression.operatorLocation)
             }
+            is S2Expression.MinusOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "minus", expression, expression.operatorLocation)
+            }
             is S2Expression.TimesOp -> {
                 val left = translateFullExpression(expression.left, varTypes)
                 val right = translateFullExpression(expression.right, varTypes)
@@ -877,6 +882,10 @@ private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) 
             addVarNames(expression.block, varNames)
         }
         is S2Expression.PlusOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.MinusOp -> {
             addVarNames(expression.left, varNames)
             addVarNames(expression.right, varNames)
         }

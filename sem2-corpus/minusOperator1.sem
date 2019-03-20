@@ -1,0 +1,6 @@
+// - operator for Integer.minus
+@Test(["7", "1"], "6")
+@Test(["-3", "2"], "-5")
+function testMinusOperator(left: Integer, right: Integer): Integer {
+  left - right
+}
