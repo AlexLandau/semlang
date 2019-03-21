@@ -174,6 +174,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression EQUALS expression // == operator
   | expression NOT_EQUALS expression // != operator
   | expression DOT_ASSIGN expression // .= operator
+  | LPAREN expression RPAREN
   | ID
   ;
     catch[RecognitionException e] { throw e; }
