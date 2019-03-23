@@ -27,6 +27,7 @@ WHILE              : 'while';
 
 // Literals
 LITERAL            : '"' ( ~["\\\n\r] | '\\' ~[\n\r] )* '"' ;
+INTEGER_LITERAL    : [0-9]+ | '-' [0-9]+ ;
 
 // Operators
 DOT                : '.' ;

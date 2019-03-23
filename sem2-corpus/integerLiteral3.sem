@@ -1,0 +1,4 @@
+@Test([], "0")
+function testZeroIntegerLiteral(): Integer {
+  0
+}

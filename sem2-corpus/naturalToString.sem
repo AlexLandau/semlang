@@ -57,11 +57,11 @@ function List.isEmpty<T>(list: List<T>): Boolean {
 // TODO: Also consider a ListLike version for the "replace all the methods" implementation?
 function List.reverse<T>(list: List<T>): List<T> {
   let newList = ListBuilder<T>()
-  let index = Var<Integer>(Integer.minus(list.size(), Integer."1"))
-  while (index.get() > Integer."-1") {
+  let index = Var<Integer>(Integer.minus(list.size(), 1))
+  while (index.get() > -1) {
     let curItem = list.get(Natural(index.get()).assume()).assume()
     newList.append(curItem)
-    let nextIndex = Integer.minus(index.get(), Integer."1")
+    let nextIndex = index.get() - 1
     index.= nextIndex
   }
   newList.build()

@@ -21,6 +21,7 @@ tokens {
   REQUIRES,
   WHILE,
   LITERAL,
+  INTEGER_LITERAL,
   DOT,
   COMMA,
   COLON,
@@ -151,6 +152,7 @@ type_or_underscore : UNDERSCORE | type ;
 expression : IF LPAREN expression RPAREN block ELSE block
   | type_ref DOT LITERAL // sem1-style literal with explicit type, e.g. String."foo" or Integer."42"
   | LITERAL // String literal, e.g. "foo"
+  | INTEGER_LITERAL // Integer literal, e.g. 42
   | LBRACKET cd_expressions RBRACKET LESS_THAN type GREATER_THAN
   | expression ARROW ID
   | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding

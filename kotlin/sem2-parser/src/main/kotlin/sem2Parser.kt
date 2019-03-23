@@ -330,6 +330,10 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 }
             }
 
+            if (expression.INTEGER_LITERAL() != null) {
+                return S2Expression.Literal(S2Type.Integer(), expression.INTEGER_LITERAL().text, locationOf(expression))
+            }
+
             if (expression.ARROW() != null) {
                 if (expression.LPAREN() != null) {
                     // Lambda expression
