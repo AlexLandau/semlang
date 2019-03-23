@@ -86,6 +86,8 @@ function_arguments : | function_argument | function_argument COMMA function_argu
     catch[RecognitionException e] { throw e; }
 function_argument : ID COLON type ;
     catch[RecognitionException e] { throw e; }
+function_arguments_nonempty : function_argument | function_argument COMMA function_arguments_nonempty ;
+    catch[RecognitionException e] { throw e; }
 
 members : | member members ;
     catch[RecognitionException e] { throw e; }
@@ -161,7 +163,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
   | FUNCTION LPAREN function_arguments RPAREN block
-  | LPAREN function_arguments RPAREN ARROW block
+  | LBRACE optional_args statements return_statement RBRACE
   | expression DOT ID
   // NOTE: Higher expressions have higher precedence
   | expression TIMES expression // * operator
@@ -174,6 +176,9 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression DOT_ASSIGN expression // .= operator
   | ID
   ;
+    catch[RecognitionException e] { throw e; }
+
+optional_args : | function_arguments_nonempty ARROW ;
     catch[RecognitionException e] { throw e; }
 
 // cd_expressions may be empty

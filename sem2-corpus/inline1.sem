@@ -4,5 +4,5 @@ function increment(input: Integer): Integer {
 }
 
 function getIncrementer(): (Integer) -> Integer {
-  (input: Integer) -> { Integer.plus(input, Integer."1") }
+  { input: Integer -> Integer.plus(input, Integer."1") }
 }

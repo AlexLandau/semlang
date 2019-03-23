@@ -1,0 +1,8 @@
+@Test([], "2")
+function getGetterValue(): Integer {
+  getGetter()()
+}
+
+function getGetter(): () -> Integer {
+  { Integer."2" }
+}
