@@ -334,18 +334,19 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.Literal(S2Type.Integer(), expression.INTEGER_LITERAL().text, locationOf(expression))
             }
 
+            if (expression.LBRACE() != null) {
+                val args = parseLambdaOptionalArguments(expression.optional_args())
+                val statements = parseStatements(expression.statements())
+                val returnedExpression = parseExpression(expression.return_statement().expression())
+                val block = S2Block(statements, returnedExpression, locationOf(expression))
+                return S2Expression.InlineFunction(args, null, block, locationOf(expression))
+            }
+
             if (expression.ARROW() != null) {
-                if (expression.LPAREN() != null) {
-                    // Lambda expression
-                    val arguments = parseFunctionArguments(expression.function_arguments())
-                    val block = parseBlock(expression.block(0))
-                    return S2Expression.InlineFunction(arguments, null, block, locationOf(expression))
-                } else {
-                    // Follow expression
-                    val inner = parseExpression(expression.expression(0))
-                    val name = expression.ID().text
-                    return S2Expression.Follow(inner, name, locationOf(expression))
-                }
+                // Follow expression
+                val inner = parseExpression(expression.expression(0))
+                val name = expression.ID().text
+                return S2Expression.Follow(inner, name, locationOf(expression))
             }
 
             if (expression.LPAREN() != null) {
@@ -448,6 +449,22 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression), e)
             }
         }
+    }
+
+    private fun parseLambdaOptionalArguments(optional_args: Sem2Parser.Optional_argsContext): List<S2Argument> {
+        val nonemptyFunctionArgs = optional_args.function_arguments_nonempty()
+        if (nonemptyFunctionArgs != null) {
+            return parseNonemptyFunctionArgs(nonemptyFunctionArgs)
+        } else {
+            return listOf()
+        }
+    }
+
+    private fun parseNonemptyFunctionArgs(nonemptyFunctionArgs: Sem2Parser.Function_arguments_nonemptyContext): List<S2Argument> {
+        return parseLinkedList(nonemptyFunctionArgs,
+                Sem2Parser.Function_arguments_nonemptyContext::function_argument,
+                Sem2Parser.Function_arguments_nonemptyContext::function_arguments_nonempty,
+                this::parseFunctionArgument)
     }
 
     private fun parseBindings(cd_expressions_or_underscores: Sem2Parser.Cd_expressions_or_underscoresContext): List<S2Expression?> {

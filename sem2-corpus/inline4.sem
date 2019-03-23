@@ -1,0 +1,8 @@
+@Test(["1", "3"], "4")
+function testAdder(x: Integer, y: Integer): Integer {
+  getAdder()(x, y)
+}
+
+function getAdder(): (Integer, Integer) -> Integer {
+  { x: Integer, y: Integer -> x + y }
+}
