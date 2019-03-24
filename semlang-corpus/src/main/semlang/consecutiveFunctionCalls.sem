@@ -1,0 +1,13 @@
+// Make sure the parser doesn't break here, i.e. f(b)(c)(d) doesn't get broken into statements f(b) and (c)(d)
+@Test(["1", "2", "3", "4"], "10")
+@Test(["8", "4", "2", "1"], "15")
+function addFour(a: Integer, b: Integer, c: Integer, d: Integer): Integer {
+  let f = function(b2: Integer): (Integer) -> (Integer) -> Integer {
+    function(c2: Integer): (Integer) -> Integer {
+      function(d2: Integer): Integer {
+        Integer.plus(a, Integer.plus(b2, Integer.plus(c2, d2)))
+      }
+    }
+  }
+  f(b)(c)(d)
+}
