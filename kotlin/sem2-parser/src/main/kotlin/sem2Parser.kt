@@ -296,8 +296,50 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             val expression = parseExpression(assignment.expression())
             return S2Statement.Normal(name, type, expression, locationOf(assignment.ID().symbol))
         } else {
-            val expression = parseExpression(statement.expression())
+            val expression = parseExpression(statement.active_expression())
             return S2Statement.Normal(null, null, expression, locationOf(statement))
+        }
+    }
+
+    private fun parseExpression(expression: Sem2Parser.Active_expressionContext): S2Expression {
+        try {
+            if (expression.IF() != null) {
+                val condition = parseExpression(expression.expression(0))
+                val thenBlock = parseBlock(expression.block(0))
+                val elseBlock = parseBlock(expression.block(1))
+                return S2Expression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
+            }
+
+            if (expression.LPAREN() != null) {
+                val innerExpression = if (expression.expression() != null) {
+                    parseExpression(expression.expression(0))
+                } else {
+                    null
+                }
+
+                val chosenParameters = if (expression.LESS_THAN() != null) {
+                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
+                } else {
+                    listOf()
+                }
+                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
+            }
+
+
+            if (expression.DOT_ASSIGN() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.DotAssignOp(left, right, locationOf(expression), locationOf(expression.DOT_ASSIGN().symbol))
+            }
+
+            throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
+        } catch (e: Exception) {
+            if (e is LocationAwareParsingException) {
+                throw e
+            } else {
+                throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression), e)
+            }
         }
     }
 
@@ -367,13 +409,18 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     return S2Expression.FunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                 }
 
-                val chosenParameters = if (expression.LESS_THAN() != null) {
-                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
-                } else {
-                    listOf()
+                if (expression.cd_expressions() != null) {
+                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                        parseCommaDelimitedTypes(expression.cd_types_nonempty())
+                    } else {
+                        listOf()
+                    }
+                    val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                    return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
-                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-                return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
+
+                // Expression bounded by parentheses
+                return innerExpression!!
             }
 
             if (expression.LBRACKET() != null) {

@@ -124,7 +124,7 @@ type_class : ID ;
 statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
 statement : assignment
-  | expression
+  | active_expression
   | WHILE LPAREN expression RPAREN block;
     catch[RecognitionException e] { throw e; }
 
@@ -150,6 +150,12 @@ cd_types_nonempty : type | type COMMA | type COMMA cd_types_nonempty ;
 cd_types_or_underscores_nonempty : type_or_underscore | type_or_underscore COMMA | type_or_underscore COMMA cd_types_or_underscores_nonempty ;
     catch[RecognitionException e] { throw e; }
 type_or_underscore : UNDERSCORE | type ;
+    catch[RecognitionException e] { throw e; }
+active_expression : IF LPAREN expression RPAREN block ELSE block
+  | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
+  | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
+  | expression DOT_ASSIGN expression // .= operator
+  ;
     catch[RecognitionException e] { throw e; }
 expression : IF LPAREN expression RPAREN block ELSE block
   | type_ref DOT LITERAL // sem1-style literal with explicit type, e.g. String."foo" or Integer."42"
