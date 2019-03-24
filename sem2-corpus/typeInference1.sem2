@@ -1,0 +1,9 @@
+// Test a case around types known at translation time and inferred type parameters
+@Test([["1", "10"]], "2")
+@Test([["-5", "5"]], "-4")
+function getFirstAndIncrement(list: List<Integer>): Integer {
+  // The output type of Maybe.assume depends on type inference working
+  let intWithInferredType = Maybe.assume(list.get(Natural."0"))
+  // Make a .plus() call where we need to know the type is Integer
+  intWithInferredType + Integer."1"
+}

@@ -1,0 +1,13 @@
+// Test dot notation to access Integer.plus
+@Test(["4", "5"], "9")
+@Test(["-3", "2"], "-1")
+function addTwo(left: Integer, right: Integer): Integer {
+  left.plus(right)
+}
+
+// Test dot notation to access List.get
+@Test([["Hello", "world"], "0"], "Hello")
+@Test([["Hello", "world"], "1"], "world")
+function testListGet(list: List<String>, index: Natural): String {
+  list.get(index).assume()
+}

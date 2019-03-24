@@ -1,6 +1,0 @@
-// * operator for Integer.times
-@Test(["4", "5"], "20")
-@Test(["-3", "2"], "-6")
-function multiplyTwo(left: Integer, right: Integer): Integer {
-  left * right
-}

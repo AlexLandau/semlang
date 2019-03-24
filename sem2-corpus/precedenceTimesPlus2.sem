@@ -1,5 +1,0 @@
-@Test(["1", "2", "3"], "7")
-@Test(["3", "2", "1"], "5")
-function testPrecedence(a: Integer, b: Integer, c: Integer): Integer {
-  a + b * c
-}

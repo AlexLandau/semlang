@@ -1,7 +1,0 @@
-// > operator for Integer.greaterThan
-@Test(["0", "0"], "false")
-@Test(["2", "4"], "false")
-@Test(["4", "2"], "true")
-function checkLessThan(left: Integer, right: Integer): Boolean {
-  left > right
-}

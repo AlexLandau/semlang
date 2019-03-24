@@ -1,0 +1,6 @@
+// Test some basic sem1-equivalent expressions
+@Test(["4", "5"], "9")
+@Test(["-3", "2"], "-1")
+function addTwo(left: Integer, right: Integer): Integer {
+  Integer.plus(left, right)
+}

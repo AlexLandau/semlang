@@ -1,0 +1,6 @@
+// != operator for Boolean.not(Integer.equals)
+@Test(["0", "0"], "false")
+@Test(["2", "4"], "true")
+function checkInequality(left: Natural, right: Natural): Boolean {
+  left.integer != right.integer
+}

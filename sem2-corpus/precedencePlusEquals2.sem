@@ -1,5 +1,0 @@
-@Test(["1", "2", "3"], "false")
-@Test(["3", "2", "1"], "true")
-function testPrecedence(a: Integer, b: Integer, c: Integer): Boolean {
-  a == b + c
-}
