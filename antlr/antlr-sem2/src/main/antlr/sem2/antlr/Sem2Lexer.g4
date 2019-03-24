@@ -5,7 +5,7 @@ lexer grammar Sem2Lexer;
 }
 
 // Whitespace
-NEWLINE            : ('\r\n' | 'r' | '\n') -> skip ;
+NEWLINE            : ('\r\n' | 'r' | '\n') ;
 WS                 : [\t ]+ -> skip ;
 
 // Comments

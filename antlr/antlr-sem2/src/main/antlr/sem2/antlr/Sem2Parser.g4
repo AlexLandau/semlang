@@ -51,7 +51,13 @@ tokens {
   UNDERSCORE
 }
 
-file : top_level_entities EOF ;
+file : newline_allowed top_level_entities EOF ;
+
+// At least one newline
+newlines : NEWLINE | NEWLINE newlines ;
+    catch[RecognitionException e] { throw e; }
+newline_allowed : | newlines ;
+    catch[RecognitionException e] { throw e; }
 
 namespace : ID | ID DOT namespace ;
     catch[RecognitionException e] { throw e; }
@@ -69,20 +75,20 @@ module_id : ID | MODULE_ID ;
     catch[RecognitionException e] { throw e; }
 
 top_level_entities :
-  | function top_level_entities
-  | struct top_level_entities
-  | union top_level_entities ;
+  | function newlines top_level_entities
+  | struct newlines top_level_entities
+  | union newlines top_level_entities ;
 
-function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
+function : annotations FUNCTION entity_id LPAREN newline_allowed function_arguments newline_allowed RPAREN COLON type block
          | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
-struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
-  | annotations STRUCT entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
-union : annotations UNION entity_id LBRACE disjuncts RBRACE
+struct : annotations STRUCT entity_id LBRACE newline_allowed members maybe_requires newline_allowed RBRACE
+  | annotations STRUCT entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE newline_allowed members maybe_requires newline_allowed RBRACE ;
+union : annotations UNION entity_id LBRACE newline_allowed disjuncts newline_allowed RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE statements return_statement RBRACE ;
+block : LBRACE newline_allowed statements return_statement newline_allowed RBRACE ;
     catch[RecognitionException e] { throw e; }
-function_arguments : | function_argument | function_argument COMMA function_arguments ;
+function_arguments : | function_argument | function_argument COMMA newline_allowed function_arguments ;
     catch[RecognitionException e] { throw e; }
 function_argument : ID COLON type ;
     catch[RecognitionException e] { throw e; }
@@ -91,7 +97,7 @@ function_arguments_nonempty : function_argument | function_argument COMMA functi
 
 members : | member members ;
     catch[RecognitionException e] { throw e; }
-member : ID COLON type ;
+member : ID COLON type newline_allowed ;
     catch[RecognitionException e] { throw e; }
 maybe_requires : | REQUIRES block ;
     catch[RecognitionException e] { throw e; }
@@ -103,8 +109,8 @@ disjunct: ID COLON type | ID ;
 
 annotations : | annotation annotations ;
     catch[RecognitionException e] { throw e; }
-annotation : annotation_name
-  | annotation_name LPAREN annotation_contents_list RPAREN ;
+annotation : annotation_name newline_allowed
+  | annotation_name LPAREN annotation_contents_list RPAREN newline_allowed ;
     catch[RecognitionException e] { throw e; }
 annotation_name : AT entity_id ;
     catch[RecognitionException e] { throw e; }
@@ -121,7 +127,7 @@ type_parameter : ID | ID COLON type_class ;
 type_class : ID ;
     catch[RecognitionException e] { throw e; }
 
-statements : | statement statements ;
+statements : | statement | statement newlines statements ;
     catch[RecognitionException e] { throw e; }
 statement : assignment
   | expression

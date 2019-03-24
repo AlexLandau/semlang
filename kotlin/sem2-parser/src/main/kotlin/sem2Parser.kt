@@ -6,12 +6,10 @@ import net.semlang.sem2.api.S2Annotation
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
-import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.tree.TerminalNode
 import sem2.antlr.Sem2Lexer
 import sem2.antlr.Sem2Parser
-import sem2.antlr.Sem2Parser.ID
 import sem2.antlr.Sem2ParserBaseListener
 import java.io.File
 import java.util.*
@@ -367,13 +365,17 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     return S2Expression.FunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                 }
 
-                val chosenParameters = if (expression.LESS_THAN() != null) {
-                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
-                } else {
-                    listOf()
+                if (expression.cd_expressions() != null) {
+                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                        parseCommaDelimitedTypes(expression.cd_types_nonempty())
+                    } else {
+                        listOf()
+                    }
+                    val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                    return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
-                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-                return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
+
+                return innerExpression!!
             }
 
             if (expression.LBRACKET() != null) {
@@ -758,6 +760,7 @@ private class ErrorListener(val documentId: String): ANTLRErrorListener {
     }
 
     override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+        throw new RuntimeException("Context sensitivity; ")
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
