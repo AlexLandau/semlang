@@ -379,6 +379,14 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.LBRACKET() != null) {
+                if (expression.expression().isNotEmpty()) {
+                    // Get operator
+                    val subject = parseExpression(expression.expression(0))
+                    val getArgs = parseCommaDelimitedExpressions(expression.cd_expressions())
+                    return S2Expression.GetOp(subject, getArgs, locationOf(expression), locationOf(expression.LBRACKET().symbol))
+                }
+
+                // List literal
                 val contents = parseCommaDelimitedExpressions(expression.cd_expressions())
                 val chosenParameter = parseType(expression.type())
                 return S2Expression.ListLiteral(contents, chosenParameter, locationOf(expression))

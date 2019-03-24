@@ -8,9 +8,9 @@
 function Natural.toString(value: Natural): String {
   let curValue = Var(value)
   let codePointsBackwardsBuilder = ListBuilder<CodePoint>()
-  while (curValue.get() > Natural."0") {
-    let remainder = curValue.get().modulo(Natural."10").assume()
-    let divided = Natural.dividedBy(curValue.get(), Natural."10").assume()
+  while (curValue[] > Natural."0") {
+    let remainder = curValue[].modulo(Natural."10").assume()
+    let divided = Natural.dividedBy(curValue[], Natural."10").assume()
     let codePoint = CodePoint(remainder + unicodeZero().natural).assume()
     codePointsBackwardsBuilder.append(codePoint)
     curValue.= divided
@@ -58,10 +58,10 @@ function List.isEmpty<T>(list: List<T>): Boolean {
 function List.reverse<T>(list: List<T>): List<T> {
   let newList = ListBuilder<T>()
   let index = Var<Integer>(Integer.minus(list.size(), 1))
-  while (index.get() > -1) {
-    let curItem = list.get(Natural(index.get()).assume()).assume()
+  while (index[] > -1) {
+    let curItem = list[Natural(index[]).assume()].assume()
     newList.append(curItem)
-    let nextIndex = index.get() - 1
+    let nextIndex = index[] - 1
     index.= nextIndex
   }
   newList.build()

@@ -182,6 +182,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression NOT_EQUALS expression // != operator
   | LPAREN expression DOT_ASSIGN expression RPAREN // .= operator
   | expression DOT_ASSIGN expression // .= operator
+  | expression LBRACKET cd_expressions RBRACKET // [] (get) operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

@@ -1,0 +1,7 @@
+@Test(["0"], "1")
+@Test(["2"], "4")
+@Test(["4"], "16")
+function testGetOperator(index: Natural): Integer {
+  let list = [1, 2, 4, 8, 16]<Integer>
+  list[index].assume()
+}

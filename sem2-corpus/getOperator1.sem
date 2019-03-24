@@ -1,0 +1,5 @@
+@Test([], "23")
+function testGetOperator(): Integer {
+  let v = Var(Integer."23")
+  v[]
+}
