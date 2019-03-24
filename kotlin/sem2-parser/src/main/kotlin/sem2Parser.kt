@@ -367,13 +367,15 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     return S2Expression.FunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                 }
 
-                val chosenParameters = if (expression.LESS_THAN() != null) {
-                    parseCommaDelimitedTypes(expression.cd_types_nonempty())
-                } else {
-                    listOf()
+                if (expression.cd_expressions() != null) {
+                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                        parseCommaDelimitedTypes(expression.cd_types_nonempty())
+                    } else {
+                        listOf()
+                    }
+                    val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
+                    return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
-                val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
-                return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
             }
 
             if (expression.LBRACKET() != null) {
@@ -757,8 +759,8 @@ private class ErrorListener(val documentId: String): ANTLRErrorListener {
         // Do nothing
     }
 
-    override fun reportContextSensitivity(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun reportContextSensitivity(recognizer: Parser, dfa: DFA?, startIndex: Int, stopIndex: Int, prediction: Int, configs: ATNConfigSet?) {
+        // Do nothing
     }
 
     override fun reportAttemptingFullContext(recognizer: Parser?, dfa: DFA?, startIndex: Int, stopIndex: Int, conflictingAlts: BitSet?, configs: ATNConfigSet?) {
