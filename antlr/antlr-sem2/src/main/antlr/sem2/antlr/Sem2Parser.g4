@@ -166,13 +166,21 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | LBRACE optional_args statements return_statement RBRACE
   | expression DOT ID
   // NOTE: Higher expressions have higher precedence
+  | LPAREN expression TIMES expression RPAREN // * operator
   | expression TIMES expression // * operator
+  | LPAREN expression PLUS expression RPAREN // + operator
   | expression PLUS expression // + operator
+  | LPAREN expression HYPHEN expression RPAREN // - operator
   | expression HYPHEN expression // - operator
+  | LPAREN expression LESS_THAN expression RPAREN // < operator
   | expression LESS_THAN expression // < operator
+  | LPAREN expression GREATER_THAN expression RPAREN // > operator
   | expression GREATER_THAN expression // > operator
+  | LPAREN expression EQUALS expression RPAREN // == operator
   | expression EQUALS expression // == operator
+  | LPAREN expression NOT_EQUALS expression RPAREN // != operator
   | expression NOT_EQUALS expression // != operator
+  | LPAREN expression DOT_ASSIGN expression RPAREN // .= operator
   | expression DOT_ASSIGN expression // .= operator
   | ID
   ;
