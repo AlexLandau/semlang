@@ -39,9 +39,6 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
                 is ParsingResult.Success -> parsingResult.context
                 is ParsingResult.Failure -> parsingResult.partialContext
             }
-            // TODO: Support module versions correctly...
-            val moduleId = ModuleUniqueId(moduleName, "")
-            val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
             return getTypesSummary(context, {})
         }
 
@@ -140,37 +137,6 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
                     ModuleDirectoryParsingResult.Failure(combinedParsingResult.errors, listOf())
                 }
             }
-
-//            val allTypeInfo = collectAllTypeInfo(filesByDialect)
-
-
-//            val sem2Files = directory.listFiles { dir, name -> name.endsWith(".sem2") }
-//            val moduleName = parsedConfig.info.name
-//            val upstreamModules = listOf<ValidatedModule>() // TODO: Support dependencies
-//            val sem2ParsingResults = sem2Files.map { file ->
-//                try {
-//                    val parsed = net.semlang.sem2.parser.parseFile(file)
-//                    when (parsed) {
-//                        is net.semlang.sem2.parser.ParsingResult.Success -> {
-//                            val sem1Context = translateSem2ContextToSem1(parsed.context, moduleName, upstreamModules)
-//                            ParsingResult.Success(sem1Context)
-//                        }
-//                        is net.semlang.sem2.parser.ParsingResult.Failure -> {
-//                            val sem1PartialContext = translateSem2ContextToSem1(parsed.partialContext, moduleName, upstreamModules)
-//                            ParsingResult.Failure(
-//                                    // TODO: It would be reasonable for the sem1 and sem2 parsers (and other dialects) to share APIs for location and issues
-//                                    parsed.errors.map { Issue(it.message, translate(it.location), translate(it.level)) },
-//                                    sem1PartialContext
-//                            )
-//                        }
-//                    }
-//                } catch (e: RuntimeException) {
-//                    throw RuntimeException("Error parsing file $file", e)
-//                }
-//
-//            }
-
-
         }
     }
 
@@ -241,6 +207,7 @@ fun sortByDialect(allFiles: Array<out File>): Map<Dialect, List<File>> {
     return results
 }
 
+// TODO: Have these parsers share an API (shared by all semlang dialects)
 fun translate(location: net.semlang.sem2.api.Location?): Location? {
     if (location == null) {
         return null
