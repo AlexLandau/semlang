@@ -33,7 +33,7 @@ fun validateModule(context: RawContext, moduleName: ModuleName, nativeModuleVers
     val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
 
     val issuesList = ArrayList<Issue>()
-    val typesInfo = getTypesInfo(context, moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
+    val typesInfo = getTypesInfo(context, moduleId, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
     val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, issuesList)
     return validator.validate(context)
 }

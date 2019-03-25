@@ -92,7 +92,6 @@ enum class ResolutionType {
 class EntityResolver(private val typeResolutions: Map<EntityId, Set<EntityResolution>>, private val functionResolutions: Map<EntityId, Set<EntityResolution>>, private val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>) {
     companion object {
         fun create(ownModuleId: ModuleUniqueId,
-                   nativeModuleVersion: String, // TODO: This is unused
                    ownFunctions: Collection<EntityId>,
                    ownStructs: Collection<EntityId>,
                    ownUnions: Map<EntityId, Set<String>>,
@@ -241,7 +240,6 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
     }
     private val resolver = EntityResolver.create(
             id,
-            nativeModuleVersion,
             ownFunctions.keys,
             ownStructs.keys,
             ownUnions.mapValues { it.value.options.map(Option::name).toSet() },

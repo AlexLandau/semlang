@@ -1,16 +1,17 @@
 package net.semlang.modules
 
-import net.semlang.api.Location
-import net.semlang.api.Position
-import net.semlang.api.Range
+import net.semlang.api.*
 import net.semlang.parser.*
 import net.semlang.sem2.translate.collectTypeInfo
+import net.semlang.sem2.translate.collectTypesSummary
 import net.semlang.sem2.translate.translateSem2ContextToSem1
 import net.semlang.validator.*
 import java.io.File
 import java.lang.UnsupportedOperationException
 
 sealed class ModuleDirectoryParsingResult {
+    // TODO: We may want to go one step further and also include type information in here for the validator to use
+    // (Counterpoint: If a dialect misreports its types, the validation may be inaccurate if that info is reused)
     data class Success(val module: UnvalidatedModule): ModuleDirectoryParsingResult()
     data class Failure(val errors: List<Issue>, val warnings: List<Issue>): ModuleDirectoryParsingResult()
 }
@@ -32,8 +33,16 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             return toIR(net.semlang.parser.parseFile(file))
         }
 
-        override fun getTypesSummary(ir: IR): TypesInfo {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        override fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary {
+            val parsingResult = fromIR(ir)
+            val context = when (parsingResult) {
+                is ParsingResult.Success -> parsingResult.context
+                is ParsingResult.Failure -> parsingResult.partialContext
+            }
+            // TODO: Support module versions correctly...
+            val moduleId = ModuleUniqueId(moduleName, "")
+            val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+            return getTypesSummary(context, {})
         }
 
         override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult {
@@ -56,9 +65,13 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             return ir.value as net.semlang.sem2.parser.ParsingResult
         }
 
-        override fun getTypesSummary(ir: IR): TypesInfo {
-            collectTypeInfo(context, moduleName, upstreamModules)
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        override fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary {
+            val parsingResult = fromIR(ir)
+            val context = when (parsingResult) {
+                is net.semlang.sem2.parser.ParsingResult.Success -> parsingResult.context
+                is net.semlang.sem2.parser.ParsingResult.Failure -> parsingResult.partialContext
+            }
+            return collectTypesSummary(context)
         }
 
         override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult {
@@ -86,7 +99,7 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
 
     // Two-pass parsing API (IR type should be a single type per dialect)
     abstract fun parseToIR(file: File): IR
-    abstract fun getTypesSummary(ir: IR): TypesInfo
+    abstract fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary
     abstract fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult
 
     /**
@@ -104,13 +117,16 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
             ModuleDirectoryParsingResult.Failure(listOf(error), listOf())
         }
         is ModuleInfoParsingResult.Success -> {
+            val moduleName = parsedConfig.info.name
+            val upstreamModules = listOf<ValidatedModule>() // TODO: Support dependencies
+
             // TODO: Generalize to support "external" dialects
             val allFiles = directory.listFiles()
             val filesByDialect = sortByDialect(allFiles)
 
             val combinedParsingResult = if (filesByDialect.keys.any { it.needsTypeInfoToParse }) {
                 // Collect type info in one pass, then parse in a second pass
-                collectParsingResultsTwoPasses(filesByDialect)
+                collectParsingResultsTwoPasses(filesByDialect, moduleName, upstreamModules)
             } else {
                 // Parse everything in one pass
                 collectParsingResultsSinglePass(filesByDialect)
@@ -160,15 +176,15 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
 
 }
 
-fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>): ParsingResult {
-    val typesSummaries = ArrayList<TypesInfo>()
+fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): ParsingResult {
+    val typesSummaries = ArrayList<TypesSummary>()
     val irs = HashMap<File, Dialect.IR>()
     for ((dialect, files) in filesByDialect.entries) {
         for (file in files) {
             try {
                 val ir = dialect.parseToIR(file)
                 irs[file] = ir
-                typesSummaries.add(dialect.getTypesSummary(ir))
+                typesSummaries.add(dialect.getTypesSummary(ir, moduleName, upstreamModules))
             } catch (e: RuntimeException) {
                 throw RuntimeException("Error collecting types summary from file $file", e)
             }
@@ -176,12 +192,17 @@ fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>): Pa
     }
 
     val allTypesSummary = combineTypesSummaries(typesSummaries)
+    // TODO: Actually support upstream modules
+    val moduleId = ModuleUniqueId(moduleName, "")
+    val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+    val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
+    val allTypesInfo = getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
 
     val parsingResults = ArrayList<ParsingResult>()
     for ((dialect, files) in filesByDialect.entries) {
         for (file in files) {
             try {
-                parsingResults.add(dialect.parseWithTypeInfo(irs[file]!!, allTypesSummary))
+                parsingResults.add(dialect.parseWithTypeInfo(irs[file]!!, allTypesInfo))
             } catch (e: RuntimeException) {
                 throw RuntimeException("Error parsing file $file", e)
             }
