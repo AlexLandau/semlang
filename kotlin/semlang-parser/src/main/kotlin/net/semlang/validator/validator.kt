@@ -212,13 +212,13 @@ private class Validator(
                     }
                 }
 
-                val typeInfo = typesInfo.getTypeInfo(type.ref)
+                val typeInfo = typesInfo.getResolvedTypeInfo(type.ref)
 
                 if (typeInfo == null) {
                     errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                     return null
                 }
-                val shouldBeReference = typeInfo.isReference
+                val shouldBeReference = typeInfo.info.isReference
 
                 if (shouldBeReference && !type.isReference()) {
                     errors.add(Issue("Type $type is a reference type and should be marked as such with '&'", type.location, IssueLevel.ERROR))
@@ -456,11 +456,11 @@ private class Validator(
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
-        val functionInfo = typesInfo.getFunctionInfo(functionRef)
-
-        if (functionInfo == null) {
+        val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
+        if (resolvedFunctionInfo == null) {
             fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
         }
+        val functionInfo = resolvedFunctionInfo.info
 
         val bindings = expression.bindings.map { binding ->
             if (binding == null) {
@@ -514,7 +514,7 @@ private class Validator(
             error("Something went wrong")
         }
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, resolvedFunctionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -577,7 +577,7 @@ private class Validator(
         val structureTypeInfo = typesInfo.getTypeInfo(structureNamedType.originalRef) ?: error("No type info for ${structureNamedType.originalRef}")
 
         return when (structureTypeInfo) {
-            is ResolvedTypeInfo.Struct -> {
+            is TypeInfo.Struct -> {
                 val memberType = structureTypeInfo.memberTypes[expression.name]
                 if (memberType == null) {
                     errors.add(Issue("Struct type $structureNamedType does not have a member named '${expression.name}'", expression.location, IssueLevel.ERROR))
@@ -601,10 +601,10 @@ private class Validator(
                 return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
 
             }
-            is ResolvedTypeInfo.Union -> {
+            is TypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
             }
-            is ResolvedTypeInfo.OpaqueType -> {
+            is TypeInfo.OpaqueType -> {
                 error("Currently we don't allow follows for opaque types")
             }
         }
@@ -656,11 +656,12 @@ private class Validator(
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
 
-        val functionInfo = typesInfo.getFunctionInfo(functionRef)
-        if (functionInfo == null) {
+        val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
+        if (resolvedFunctionInfo == null) {
             errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
+        val functionInfo = resolvedFunctionInfo.info
 
         val providedChoices = expression.chosenParameters.map { validateType(it, typeParametersInScope) }
 
@@ -688,7 +689,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, resolvedFunctionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
@@ -744,7 +745,7 @@ private class Validator(
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
-                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? ResolvedTypeInfo.Struct
+                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct
                 if (structInfo == null) {
                     errors.add(Issue("Trying to get a literal of a non-struct or nonexistent type ${type.originalRef}", literalLocation, IssueLevel.ERROR))
                     return null

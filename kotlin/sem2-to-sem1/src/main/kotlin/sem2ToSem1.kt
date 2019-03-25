@@ -13,7 +13,7 @@ import net.semlang.sem2.api.Range
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 import net.semlang.transforms.invalidate
-import net.semlang.validator.ResolvedTypeInfo
+import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypeParameterInferenceSources
 import java.util.*
@@ -247,7 +247,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         val subexpressionType = subexpression.type
                         if (subexpressionType is UnvalidatedType.NamedType) {
                             val typeInfo = typeInfo.getTypeInfo(subexpressionType.ref)
-                            if (typeInfo != null && typeInfo is ResolvedTypeInfo.Struct) {
+                            if (typeInfo != null && typeInfo is TypeInfo.Struct) {
                                 val memberType = typeInfo.memberTypes[name]
                                 if (memberType != null) {
                                     return RealExpression(Expression.Follow(subexpression.expression, name), memberType)
@@ -441,7 +441,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val (structureExpression, structureType) = translateFullExpression(expression.structureExpression, varTypes)
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
                     val typeInfo = typeInfo.getTypeInfo(structureType.ref)
-                    if (typeInfo is ResolvedTypeInfo.Struct) {
+                    if (typeInfo is TypeInfo.Struct) {
                         val parameterReplacementMap = typeInfo.typeParameters.map { it.name }.zip(structureType.parameters).toMap()
                         typeInfo.memberTypes[expression.name]?.replacingNamedParameterTypes(parameterReplacementMap)
                     } else {
@@ -602,7 +602,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             // TODO: This might need a way to tweak this number someday
             if (typeChain.size >= 1000) error("Infinite loop in getAutoboxingTypeChain; types: $typeChain, member names: $memberNames")
             val curTypeInfo = (curType as? UnvalidatedType.NamedType)?.ref?.let { typeInfo.getTypeInfo(it) }
-            if (curTypeInfo !is ResolvedTypeInfo.Struct) {
+            if (curTypeInfo !is TypeInfo.Struct) {
                 break
             }
             val memberEntry = curTypeInfo.memberTypes.entries.singleOrNull()
