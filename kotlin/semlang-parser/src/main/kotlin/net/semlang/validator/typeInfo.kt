@@ -7,14 +7,14 @@ import net.semlang.transforms.invalidateFunctionType
 import java.util.*
 
 class TypesSummary(
-    val localTypes: Map<EntityId, TypeSummaryInfo>,
-    val localFunctions: Map<EntityId, FunctionSummaryInfo>
+    val localTypes: Map<EntityId, TypeInfo>,
+    val localFunctions: Map<EntityId, FunctionInfo>
 )
 
 // TODO: Test the case where different files have overlapping entity IDs, which we'd need to catch here and handle more nicely
 fun combineTypesSummaries(summaries: Collection<TypesSummary>): TypesSummary {
-    val allTypes = HashMap<EntityId, TypeSummaryInfo>()
-    val allFunctions = HashMap<EntityId, FunctionSummaryInfo>()
+    val allTypes = HashMap<EntityId, TypeInfo>()
+    val allFunctions = HashMap<EntityId, FunctionInfo>()
     for (summary in summaries) {
         for ((id, type) in summary.localTypes) {
             if (allTypes.containsKey(id)) {
@@ -87,14 +87,14 @@ class TypesInfo(
 
 }
 
-data class FunctionSummaryInfo(val id: EntityId, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
-sealed class TypeSummaryInfo {
+data class FunctionInfo(val id: EntityId, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
+sealed class TypeInfo {
     abstract val id: EntityId
     abstract val idLocation: Location?
     abstract val isReference: Boolean
-    data class Struct(override val id: EntityId, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeSummaryInfo()
-    data class Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeSummaryInfo()
-    data class OpaqueType(override val id: EntityId, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeSummaryInfo()
+    data class Struct(override val id: EntityId, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class OpaqueType(override val id: EntityId, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
 }
 data class ResolvedFunctionInfo(val resolvedRef: ResolvedEntityRef, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
 sealed class ResolvedTypeInfo {
@@ -123,8 +123,8 @@ private class TypesSummaryCollector(
     val context: RawContext,
     val recordIssue: (Issue) -> Unit
 ) {
-    val localFunctionsMultimap = HashMap<EntityId, MutableList<FunctionSummaryInfo>>()
-    val localTypesMultimap = HashMap<EntityId, MutableList<TypeSummaryInfo>>()
+    val localFunctionsMultimap = HashMap<EntityId, MutableList<FunctionInfo>>()
+    val localTypesMultimap = HashMap<EntityId, MutableList<TypeInfo>>()
 
     fun apply(): TypesSummary {
         /*
@@ -147,7 +147,7 @@ private class TypesSummaryCollector(
         val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { recordIssue(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
         val duplicateLocalTypeIds = HashSet<EntityId>()
-        val uniqueLocalTypes = java.util.HashMap<EntityId, TypeSummaryInfo>()
+        val uniqueLocalTypes = java.util.HashMap<EntityId, TypeInfo>()
         for ((id, typeInfoList) in localTypesMultimap.entries) {
             if (typeInfoList.size > 1) {
                 for (typeInfo in typeInfoList) {
@@ -160,7 +160,7 @@ private class TypesSummaryCollector(
         }
 
         val duplicateLocalFunctionIds = HashSet<EntityId>()
-        val uniqueLocalFunctions = java.util.HashMap<EntityId, FunctionSummaryInfo>()
+        val uniqueLocalFunctions = java.util.HashMap<EntityId, FunctionInfo>()
         for ((id, functionInfoList) in localFunctionsMultimap.entries) {
             if (functionInfoList.size > 1) {
                 for (functionInfo in functionInfoList) {
@@ -183,12 +183,12 @@ private class TypesSummaryCollector(
             for (option in union.options) {
                 val optionId = EntityId(union.id.namespacedName + option.name)
                 val functionType = union.getConstructorSignature(option).getFunctionType()
-                localFunctionsMultimap.multimapPut(optionId, FunctionSummaryInfo(optionId, functionType, union.idLocation))
+                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(optionId, functionType, union.idLocation))
             }
 
             val whenId = EntityId(union.id.namespacedName + "when")
             val functionType = union.getWhenSignature().getFunctionType()
-            localFunctionsMultimap.multimapPut(whenId, FunctionSummaryInfo(whenId, functionType, union.idLocation))
+            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(whenId, functionType, union.idLocation))
         }
     }
 
@@ -198,12 +198,12 @@ private class TypesSummaryCollector(
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(struct))
             // Don't pass in the type parameters because they're already part of the function type
             val constructorType = struct.getConstructorSignature().getFunctionType()
-            localFunctionsMultimap.multimapPut(id, FunctionSummaryInfo(id, constructorType, struct.idLocation))
+            localFunctionsMultimap.multimapPut(id, FunctionInfo(id, constructorType, struct.idLocation))
         }
     }
 
-    private fun getLocalTypeInfo(struct: UnvalidatedStruct): TypeSummaryInfo.Struct {
-        return TypeSummaryInfo.Struct(struct.id, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, false, struct.idLocation)
+    private fun getLocalTypeInfo(struct: UnvalidatedStruct): TypeInfo.Struct {
+        return TypeInfo.Struct(struct.id, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, false, struct.idLocation)
     }
 
     private fun getUnvalidatedMemberTypeMap(members: List<UnvalidatedMember>): Map<String, UnvalidatedType> {
@@ -219,8 +219,8 @@ private class TypesSummaryCollector(
     }
 
 
-    private fun getLocalTypeInfo(union: UnvalidatedUnion): TypeSummaryInfo.Union {
-        return TypeSummaryInfo.Union(union.id, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
+    private fun getLocalTypeInfo(union: UnvalidatedUnion): TypeInfo.Union {
+        return TypeInfo.Union(union.id, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
     }
 
     private fun getUnvalidatedUnionTypeMap(options: List<UnvalidatedOption>): Map<String, Optional<UnvalidatedType>> {
@@ -242,9 +242,9 @@ private class TypesSummaryCollector(
         }
     }
 
-    private fun getLocalFunctionInfo(function: Function): FunctionSummaryInfo {
+    private fun getLocalFunctionInfo(function: Function): FunctionInfo {
         val type = function.getType()
-        return FunctionSummaryInfo(function.id, type, function.idLocation)
+        return FunctionInfo(function.id, type, function.idLocation)
     }
 
 }
@@ -322,13 +322,13 @@ private class TypesSummaryToInfoConverter(
         }
     }
 
-    private fun convertTypeSummary(info: TypeSummaryInfo): ResolvedTypeInfo {
-        // TODO: A TypeInfo (ResolvedTypeInfo) can probably just hold the ResolvedRef and the TypeSummaryInfo (TypeInfo)
+    private fun convertTypeSummary(info: TypeInfo): ResolvedTypeInfo {
+        // TODO: A ResolvedTypeInfo can probably just hold the ResolvedRef and the TypeInfo
         val resolvedRef = ResolvedEntityRef(moduleId, info.id)
         return when (info) {
-            is TypeSummaryInfo.Struct -> ResolvedTypeInfo.Struct(resolvedRef, info.typeParameters, info.memberTypes, info.usesRequires, info.isReference, info.idLocation)
-            is TypeSummaryInfo.Union -> ResolvedTypeInfo.Union(resolvedRef, info.typeParameters, info.optionTypes, info.isReference, info.idLocation)
-            is TypeSummaryInfo.OpaqueType -> ResolvedTypeInfo.OpaqueType(resolvedRef, info.typeParameters, info.isReference, info.idLocation)
+            is TypeInfo.Struct -> ResolvedTypeInfo.Struct(resolvedRef, info.typeParameters, info.memberTypes, info.usesRequires, info.isReference, info.idLocation)
+            is TypeInfo.Union -> ResolvedTypeInfo.Union(resolvedRef, info.typeParameters, info.optionTypes, info.isReference, info.idLocation)
+            is TypeInfo.OpaqueType -> ResolvedTypeInfo.OpaqueType(resolvedRef, info.typeParameters, info.isReference, info.idLocation)
         }
     }
 
@@ -338,7 +338,7 @@ private class TypesSummaryToInfoConverter(
         }
     }
 
-    private fun convertFunctionSummary(info: FunctionSummaryInfo): ResolvedFunctionInfo {
+    private fun convertFunctionSummary(info: FunctionInfo): ResolvedFunctionInfo {
         val resolvedRef = ResolvedEntityRef(moduleId, info.id)
         return ResolvedFunctionInfo(resolvedRef, info.type, info.idLocation)
     }
