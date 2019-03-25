@@ -1,0 +1,4 @@
+@Test(["2", "4"], "6")
+function testAwkwardRedundantBinding1(x: Integer, y: Integer): Integer {
+  Integer.plus|(_, _)(x, y)
+}
