@@ -3,13 +3,9 @@ package net.semlang.sem2.translate
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.sem2.api.*
-import net.semlang.validator.TypesInfo
-import net.semlang.validator.TypesSummary
-import net.semlang.validator.getTypesInfo
-import net.semlang.validator.getTypesSummary
+import net.semlang.validator.*
 
 fun collectTypesSummary(context: S2Context): TypesSummary {
-    // TODO: We could probably collect the info directly at this point...
     val fakeContext = RawContext(
         context.functions.map(::translateForTypeOnly),
         context.structs.map(::translateForTypeOnly),
@@ -18,17 +14,13 @@ fun collectTypesSummary(context: S2Context): TypesSummary {
     return getTypesSummary(fakeContext, {})
 }
 
-// TODO: Hopefully we can delete this and replace with the other thing
 fun collectTypeInfo(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesInfo {
-    val fakeContext = RawContext(
-            context.functions.map(::translateForTypeOnly),
-            context.structs.map(::translateForTypeOnly),
-            context.unions.map(::translateForTypeOnly))
+    val summary = collectTypesSummary(context)
 
     // TODO: Support module versions correctly...
     val moduleId = ModuleUniqueId(moduleName, "")
     val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
-    return getTypesInfo(fakeContext, moduleId, upstreamModules, moduleVersionMappings, {})
+    return getTypesInfoFromSummary(summary, moduleId, upstreamModules, moduleVersionMappings, {})
 }
 
 private val fakeBlock = Block(listOf(), Expression.Literal(UnvalidatedType.Integer(), "111"))

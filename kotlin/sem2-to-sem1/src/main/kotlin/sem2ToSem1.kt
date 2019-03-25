@@ -57,8 +57,6 @@ private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(nu
 private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val options: Sem2ToSem1Options) {
 
     fun translate(): RawContext {
-//        this.typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
-
         val functions = context.functions.map(::translate)
         val structs = context.structs.map(::translate)
         val unions = context.unions.map(::translate)
