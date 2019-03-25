@@ -640,7 +640,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val unboundArgumentNames = ArrayList<String>()
         val arguments = ArrayList<TypedExpression>()
         // Lambda expression
-        val outputType = expression.type as? Type.FunctionType ?: error("")
+        val outputType = expression.type
         var unboundArgumentIndex = 0
         expression.bindings.forEachIndexed { index, binding ->
             if (binding == null) {
@@ -660,8 +660,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
+        unboundArgumentNames.forEach(this::addToVariableScope)
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
-        return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
+        unboundArgumentNames.forEach(this::removeFromVariableScope)
+        return CodeBlock.of("((\$T)(\$L) -> \$L)", getFunctionType(outputType), unboundArgumentNames.joinToString(", "), functionCall)
     }
 
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
@@ -693,6 +695,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         // TODO: More compact references when not binding arguments
         val functionCallStrategy = getNamedFunctionCallStrategy(functionRef)
+        val functionType = signature.getFunctionType().rebindTypeParameters(expression.chosenParameters)
 
         val unboundArgumentNames = ArrayList<String>()
         val arguments = ArrayList<TypedExpression>()
@@ -709,7 +712,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 })
                 unboundArgumentNames.add(argumentName)
 
-                val functionType = signature.getFunctionType().rebindTypeParameters(expression.chosenParameters)
                 val argType = when (functionType) {
                     is Type.FunctionType.Ground -> functionType.argTypes[index]
                     is Type.FunctionType.Parameterized -> functionType.argTypes[index]
@@ -721,10 +723,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             }
         }
 
+        val postBindingFunctionType = getFunctionType(expression.type)
+
         unboundArgumentNames.forEach(this::addToVariableScope)
         val functionCall = functionCallStrategy.apply(expression.chosenParameters, arguments)
         unboundArgumentNames.forEach(this::removeFromVariableScope)
-        return CodeBlock.of("(\$L) -> \$L", unboundArgumentNames.joinToString(", "), functionCall)
+        return CodeBlock.of("((\$T)(\$L) -> \$L)", postBindingFunctionType, unboundArgumentNames.joinToString(", "), functionCall)
     }
 
     val varsInScope = HashSet<String>()
@@ -1127,12 +1131,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
         // CodePoint constructor
         map.put(EntityId.of("CodePoint"), StaticFunctionCallStrategy(javaStrings, "asCodePoint"))
-
-        // Bit constructor
-        map.put(EntityId.of("Bit"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.Bit"), "create"))
-
-        // BitsBigEndian constructor
-        map.put(EntityId.of("BitsBigEndian"), StaticFunctionCallStrategy(ClassName.bestGuess("net.semlang.java.BitsBigEndian"), "create"))
 
         // Void "constructor"
         map.put(EntityId.of("Void"), NullConstantStrategy)

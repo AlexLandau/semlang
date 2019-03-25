@@ -1,5 +1,7 @@
 package net.semlang.java;
 
+import net.semlang.java.function.Function2;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,7 +88,7 @@ public class Lists {
         return collector;
     }
 
-    public static <T, U> U reduce(List<T> list, U initialValue, BiFunction<U, T, U> reducer) {
+    public static <T, U> U reduce(List<T> list, U initialValue, Function2<U, T, U> reducer) {
         U curValue = initialValue;
         for (T element : list) {
             curValue = reducer.apply(curValue, element);
