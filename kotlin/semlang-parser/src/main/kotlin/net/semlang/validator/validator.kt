@@ -577,7 +577,7 @@ private class Validator(
         val structureTypeInfo = typesInfo.getTypeInfo(structureNamedType.originalRef) ?: error("No type info for ${structureNamedType.originalRef}")
 
         return when (structureTypeInfo) {
-            is TypeInfo.Struct -> {
+            is ResolvedTypeInfo.Struct -> {
                 val memberType = structureTypeInfo.memberTypes[expression.name]
                 if (memberType == null) {
                     errors.add(Issue("Struct type $structureNamedType does not have a member named '${expression.name}'", expression.location, IssueLevel.ERROR))
@@ -601,10 +601,10 @@ private class Validator(
                 return TypedExpression.Follow(type, structureExpression.aliasType, structureExpression, expression.name)
 
             }
-            is TypeInfo.Union -> {
+            is ResolvedTypeInfo.Union -> {
                 error("Currently we don't allow follows for unions")
             }
-            is TypeInfo.OpaqueType -> {
+            is ResolvedTypeInfo.OpaqueType -> {
                 error("Currently we don't allow follows for opaque types")
             }
         }
@@ -744,7 +744,7 @@ private class Validator(
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
             if (type is Type.NamedType) {
-                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct
+                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? ResolvedTypeInfo.Struct
                 if (structInfo == null) {
                     errors.add(Issue("Trying to get a literal of a non-struct or nonexistent type ${type.originalRef}", literalLocation, IssueLevel.ERROR))
                     return null
