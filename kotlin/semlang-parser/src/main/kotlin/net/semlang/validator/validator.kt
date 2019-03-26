@@ -2,6 +2,9 @@ package net.semlang.validator
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
+import net.semlang.api.parser.Location
 import net.semlang.modules.computeFake0Version
 import net.semlang.parser.ParsingResult
 import net.semlang.parser.parseFile
@@ -67,13 +70,6 @@ fun parseAndValidateString(text: String, documentUri: String, moduleName: Module
     return validate(parsingResult, moduleName, nativeModuleVersion, listOf())
 }
 
-enum class IssueLevel {
-    WARNING,
-    ERROR,
-}
-
-data class Issue(val message: String, val location: Location?, val level: IssueLevel)
-
 sealed class ValidationResult {
     abstract fun assumeSuccess(): ValidatedModule
     abstract fun getAllIssues(): List<Issue>
@@ -100,7 +96,7 @@ sealed class ValidationResult {
 
 private fun formatForCliOutput(allErrors: List<Issue>): String {
     val sb = StringBuilder()
-    val errorsByDocument: Map<String?, List<Issue>> = allErrors.groupBy { error -> if (error.location == null) null else error.location.documentUri }
+    val errorsByDocument: Map<String?, List<Issue>> = allErrors.groupBy { error -> if (error.location == null) null else error.location!!.documentUri }
     for ((document, errors) in errorsByDocument) {
         if (document == null) {
             sb.append("In an unknown location:\n")
@@ -110,7 +106,7 @@ private fun formatForCliOutput(allErrors: List<Issue>): String {
         for (error in errors) {
             sb.append("  ")
             if (error.location != null) {
-                sb.append(error.location.range).append(": ")
+                sb.append(error.location!!.range).append(": ")
             }
             sb.append(error.message).append("\n")
         }

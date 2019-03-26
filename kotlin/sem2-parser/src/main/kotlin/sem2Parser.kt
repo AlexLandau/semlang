@@ -1,17 +1,14 @@
 package net.semlang.sem2.parser
 
+import net.semlang.api.parser.*
 import net.semlang.sem2.api.*
-import net.semlang.sem2.api.S2Function
-import net.semlang.sem2.api.S2Annotation
 import org.antlr.v4.runtime.*
 import org.antlr.v4.runtime.atn.ATNConfigSet
 import org.antlr.v4.runtime.dfa.DFA
-import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.tree.TerminalNode
 import sem2.antlr.Sem2Lexer
 import sem2.antlr.Sem2Parser
-import sem2.antlr.Sem2Parser.ID
 import sem2.antlr.Sem2ParserBaseListener
 import java.io.File
 import java.util.*
@@ -802,11 +799,3 @@ private fun parseANTLRStreamInner(stream: ANTLRInputStream, documentId: String):
 
     return ParsingResult.Success(context)
 }
-
-// TODO: We may want to combine these with their sem1 versions at some point
-enum class IssueLevel {
-    WARNING,
-    ERROR,
-}
-data class Issue(val message: String, val location: Location?, val level: IssueLevel)
-

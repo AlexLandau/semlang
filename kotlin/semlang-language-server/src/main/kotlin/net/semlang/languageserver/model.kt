@@ -2,12 +2,12 @@ package net.semlang.languageserver
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
+import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
 import net.semlang.modules.getDefaultLocalRepository
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
-import net.semlang.validator.Issue
-import net.semlang.validator.IssueLevel
 import net.semlang.validator.validate
 import org.eclipse.lsp4j.*
 import java.io.File
@@ -406,7 +406,7 @@ class SourcesFolderModel(private val folderUri: URI,
         }
     }
 
-    private fun toLsp4jRange(location: net.semlang.api.Location?): Range {
+    private fun toLsp4jRange(location: net.semlang.api.parser.Location?): Range {
         if (location == null) {
             return Range(Position(0, 0), Position(0, 1))
         } else {
@@ -414,7 +414,7 @@ class SourcesFolderModel(private val folderUri: URI,
         }
     }
 
-    private fun toLsp4jPosition(position: net.semlang.api.Position): Position {
+    private fun toLsp4jPosition(position: net.semlang.api.parser.Position): Position {
         return Position(position.lineNumber - 1, position.column)
     }
 }

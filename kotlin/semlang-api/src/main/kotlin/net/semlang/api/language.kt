@@ -1,6 +1,7 @@
 package net.semlang.api
 
 import java.util.Objects
+import net.semlang.api.parser.Location
 
 // An EntityId uniquely identifies an entity within a module. An EntityRef refers to an entity that may be in this
 // module or another, and may or may not have hints pointing to a particular module.
@@ -903,22 +904,6 @@ data class FunctionSignature private constructor(override val id: EntityId, val 
         return Type.FunctionType.create(false, typeParameters, argumentTypes, outputType)
     }
 }
-
-data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int) {
-    override fun toString(): String {
-        return "L${lineNumber}:${column}"
-    }
-}
-data class Range(val start: Position, val end: Position) {
-    override fun toString(): String {
-        if (start.lineNumber == end.lineNumber) {
-            return "L${start.lineNumber}:${start.column}-${end.column}"
-        } else {
-            return "${start}-${end}"
-        }
-    }
-}
-data class Location(val documentUri: String, val range: Range)
 
 data class Annotation(val name: EntityId, val values: List<AnnotationArgument>)
 sealed class AnnotationArgument {

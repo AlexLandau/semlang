@@ -2,6 +2,9 @@ package net.semlang.validator
 
 import net.semlang.api.*
 import net.semlang.api.Function
+import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
+import net.semlang.api.parser.Location
 import net.semlang.transforms.invalidate
 import net.semlang.transforms.invalidateFunctionType
 import java.util.*

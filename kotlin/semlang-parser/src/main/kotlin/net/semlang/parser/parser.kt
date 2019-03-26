@@ -11,8 +11,7 @@ import sem1.antlr.Sem1ParserBaseListener
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.api.Annotation
-import net.semlang.validator.Issue
-import net.semlang.validator.IssueLevel
+import net.semlang.api.parser.*
 import java.io.File
 import java.util.*
 

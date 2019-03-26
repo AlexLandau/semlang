@@ -4,12 +4,10 @@ import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.api.Annotation
 import net.semlang.api.UnvalidatedMember
+import net.semlang.api.parser.Location
 import net.semlang.sem2.api.*
 import net.semlang.sem2.api.EntityId
 import net.semlang.sem2.api.EntityRef
-import net.semlang.sem2.api.Location
-import net.semlang.sem2.api.Position
-import net.semlang.sem2.api.Range
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 import net.semlang.transforms.invalidate
@@ -71,8 +69,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 returnType = translate(function.returnType),
                 block = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap()).block,
                 annotations = function.annotations.map(::translate),
-                idLocation = translate(function.idLocation),
-                returnTypeLocation = translate(function.returnTypeLocation)
+                idLocation = function.idLocation,
+                returnTypeLocation = function.returnTypeLocation
         )
     }
 
@@ -115,13 +113,13 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             return TypedBlock(Block(
                     statements = s1Statements,
                     returnedExpression = Expression.Variable(varName),
-                    location = translate(block.location)
+                    location = block.location
             ), blockType)
         }
         return TypedBlock(Block(
                 statements = s1Statements,
                 returnedExpression = returnedExpression,
-                location = translate(block.location)
+                location = block.location
         ), blockType)
     }
 
@@ -151,7 +149,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                             statement.type?.let<S2Type, UnvalidatedType>(::translate)
                         },
                         expression = expression,
-                        nameLocation = translate(statement.nameLocation)
+                        nameLocation = statement.nameLocation
                 ), expressionType)
             }
             is S2Statement.WhileLoop -> {
@@ -182,7 +180,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                         )
                                 ),
                                 chosenParameters = listOf(),
-                                location = translate(statement.location),
+                                location = statement.location,
                                 functionRefLocation = null
                         ),
                         nameLocation = null
@@ -304,7 +302,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         condition = translateFullExpression(expression.condition, varTypes).expression,
                         thenBlock = thenBlock,
                         elseBlock = translate(expression.elseBlock, varTypes).block,
-                        location = translate(expression.location)
+                        location = expression.location
                 ), typeInfo)
             }
             is S2Expression.FunctionCall -> {
@@ -359,14 +357,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                             functionRef = functionExpression.functionRef,
                             arguments = combinedArguments,
                             chosenParameters = combinedChosenParameters,
-                            location = translate(expression.location)
+                            location = expression.location
                     ), returnType)
                 } else {
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = postBoxingArguments,
                             chosenParameters = combinedChosenParameters,
-                            location = translate(expression.location)
+                            location = expression.location
                     ), returnType)
                 }
             }
@@ -375,7 +373,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 RealExpression(Expression.Literal(
                         type = type,
                         literal = expression.literal,
-                        location = translate(expression.location)
+                        location = expression.location
                 ), type)
             }
             is S2Expression.ListLiteral -> {
@@ -383,7 +381,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 RealExpression(Expression.ListLiteral(
                         contents = expression.contents.map { translateFullExpression(it, varTypes).expression },
                         chosenParameter = chosenParameter,
-                        location = translate(expression.location)
+                        location = expression.location
                 ), UnvalidatedType.List(chosenParameter))
             }
             is S2Expression.FunctionBinding -> {
@@ -432,7 +430,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         functionExpression = functionExpression,
                         bindings = postBoxingBindings,
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
-                        location = translate(expression.location)
+                        location = expression.location
                 ), postBindingType)
             }
             is S2Expression.Follow -> {
@@ -454,7 +452,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 RealExpression(Expression.Follow(
                         structureExpression = structureExpression,
                         name = expression.name,
-                        location = translate(expression.location)
+                        location = expression.location
                 ), elementType)
             }
             is S2Expression.InlineFunction -> {
@@ -477,7 +475,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         arguments = arguments,
                         returnType = returnType,
                         block = block,
-                        location = translate(expression.location)
+                        location = expression.location
                 ), functionType)
             }
             is S2Expression.PlusOp -> {
@@ -643,8 +641,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 functionRef = functionRef,
                 arguments = listOf(left.expression, right.expression),
                 chosenParameters = listOf(),
-                location = translate(expression.location),
-                functionRefLocation = translate(operatorLocation)
+                location = expression.location,
+                functionRefLocation = operatorLocation
         ), outputType)
     }
 
@@ -671,7 +669,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 members = struct.members.map(::translate),
                 requires = struct.requires?.let { translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block },
                 annotations = struct.annotations.map(::translate),
-                idLocation = translate(struct.idLocation)
+                idLocation = struct.idLocation
         )
     }
 
@@ -681,7 +679,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 typeParameters = union.typeParameters.map(::translate),
                 options = union.options.map(::translate),
                 annotations = union.annotations.map(::translate),
-                idLocation = translate(union.idLocation)
+                idLocation = union.idLocation
         )
     }
 }
@@ -736,50 +734,29 @@ private fun translate(typeClass: TypeClass?): net.semlang.api.TypeClass? {
     }
 }
 
-internal fun translate(location: Location?): net.semlang.api.Location? {
-    return if (location == null) null else {
-        net.semlang.api.Location(
-                documentUri = location.documentUri,
-                range = translate(location.range))
-    }
-}
-
-private fun translate(range: Range): net.semlang.api.Range {
-    return net.semlang.api.Range(
-            start = translate(range.start),
-            end = translate(range.end))
-}
-
-private fun translate(position: Position): net.semlang.api.Position {
-    return net.semlang.api.Position(
-            lineNumber = position.lineNumber,
-            column = position.column,
-            rawIndex = position.rawIndex)
-}
-
 internal fun translate(type: S2Type): UnvalidatedType {
     return when (type) {
-        is S2Type.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger(translate(type.location))
-        is S2Type.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean(translate(type.location))
-        is S2Type.Integer -> UnvalidatedType.Integer(translate(type.location))
-        is S2Type.Boolean -> UnvalidatedType.Boolean(translate(type.location))
+        is S2Type.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger(type.location)
+        is S2Type.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean(type.location)
+        is S2Type.Integer -> UnvalidatedType.Integer(type.location)
+        is S2Type.Boolean -> UnvalidatedType.Boolean(type.location)
         is S2Type.List -> UnvalidatedType.List(
                 parameter = translate(type.parameter),
-                location = translate(type.location))
+                location = type.location)
         is S2Type.Maybe -> UnvalidatedType.Maybe(
                 parameter = translate(type.parameter),
-                location = translate(type.location))
+                location = type.location)
         is S2Type.FunctionType -> UnvalidatedType.FunctionType(
                 isReference = type.isReference,
                 typeParameters = type.typeParameters.map(::translate),
                 argTypes = type.argTypes.map(::translate),
                 outputType = translate(type.outputType),
-                location = translate(type.location))
+                location = type.location)
         is S2Type.NamedType -> UnvalidatedType.NamedType(
                 ref = translate(type.ref),
                 isReference = type.isReference,
                 parameters = type.parameters.map(::translate),
-                location = translate(type.location))
+                location = type.location)
     }
 }
 
@@ -798,7 +775,7 @@ internal fun translate(argument: S2Argument): UnvalidatedArgument {
     return UnvalidatedArgument(
             name = argument.name,
             type = translate(argument.type),
-            location = translate(argument.location)
+            location = argument.location
     )
 }
 
@@ -813,7 +790,7 @@ internal fun translate(option: S2Option): UnvalidatedOption {
     return UnvalidatedOption(
             name = option.name,
             type = option.type?.let(::translate),
-            idLocation = translate(option.idLocation))
+            idLocation = option.idLocation)
 }
 
 private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {

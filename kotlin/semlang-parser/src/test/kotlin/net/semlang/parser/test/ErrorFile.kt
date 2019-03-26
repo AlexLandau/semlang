@@ -1,10 +1,6 @@
 package net.semlang.parser.test
 
-import net.semlang.api.Location
-import net.semlang.api.Position
-import net.semlang.api.Range
-import net.semlang.validator.Issue
-import net.semlang.validator.IssueLevel
+import net.semlang.api.parser.*
 import java.io.File
 import java.util.regex.Pattern
 
@@ -39,7 +35,8 @@ fun parseErrorFileText(contents: String, documentUri: String): ErrorFile {
             val endColumn = initialSpaceCount + tildeCount
             val location = Location(documentUri, Range(
                     Position(lineNumber, startColumn, rawIndexAtLastLineStart + startColumn),
-                    Position(lineNumber, endColumn, rawIndexAtLastLineStart + endColumn - 1)))
+                    Position(lineNumber, endColumn, rawIndexAtLastLineStart + endColumn - 1))
+            )
 
             errors.add(Issue(errorMessage, location, IssueLevel.ERROR))
         } else {

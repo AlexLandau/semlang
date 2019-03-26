@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
-import net.semlang.api.Range
 import net.semlang.api.ValidatedModule
 import net.semlang.internal.test.assertModulesEqual
 import net.semlang.internal.test.assertRawContextsEqual
@@ -15,7 +14,6 @@ import net.semlang.validator.parseAndValidateFile
 import net.semlang.validator.validate
 import net.semlang.validator.validateModule
 import org.junit.Assert
-import org.junit.Assume
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized

@@ -1,5 +1,7 @@
 package net.semlang.sem2.api
 
+import net.semlang.api.parser.Location
+
 data class S2ModuleRef(val group: String?, val module: String, val version: String?) {
     init {
         if (group == null && version != null) {
@@ -270,22 +272,6 @@ data class S2FunctionSignature(override val id: EntityId, val argumentTypes: Lis
         return S2Type.FunctionType(false, typeParameters, argumentTypes, outputType)
     }
 }
-
-data class Position(val lineNumber: Int, val column: Int, val rawIndex: Int) {
-    override fun toString(): String {
-        return "L${lineNumber}:${column}"
-    }
-}
-data class Range(val start: Position, val end: Position) {
-    override fun toString(): String {
-        if (start.lineNumber == end.lineNumber) {
-            return "L${start.lineNumber}:${start.column}-${end.column}"
-        } else {
-            return "${start}-${end}"
-        }
-    }
-}
-data class Location(val documentUri: String, val range: Range)
 
 data class S2Annotation(val name: EntityId, val values: List<S2AnnotationArgument>)
 sealed class S2AnnotationArgument {

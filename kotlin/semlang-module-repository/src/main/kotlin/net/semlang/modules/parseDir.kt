@@ -1,8 +1,9 @@
 package net.semlang.modules
 
 import net.semlang.api.*
+import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
 import net.semlang.parser.*
-import net.semlang.sem2.translate.collectTypeInfo
 import net.semlang.sem2.translate.collectTypesSummary
 import net.semlang.sem2.translate.translateSem2ContextToSem1
 import net.semlang.validator.*
@@ -81,8 +82,7 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
                 is net.semlang.sem2.parser.ParsingResult.Failure -> {
                     val sem1PartialContext = translateSem2ContextToSem1(sem2Result.partialContext, allTypesSummary)
                     ParsingResult.Failure(
-                        // TODO: It would be reasonable for the sem1 and sem2 parsers (and other dialects) to share APIs for location and issues
-                        sem2Result.errors.map { Issue(it.message, translate(it.location), translate(it.level)) },
+                        sem2Result.errors,
                         sem1PartialContext
                     )
                 }
@@ -205,29 +205,6 @@ fun sortByDialect(allFiles: Array<out File>): Map<Dialect, List<File>> {
         }
     }
     return results
-}
-
-// TODO: Have these parsers share an API (shared by all semlang dialects)
-fun translate(location: net.semlang.sem2.api.Location?): Location? {
-    if (location == null) {
-        return null
-    }
-    return Location(location.documentUri, translate(location.range))
-}
-
-fun translate(range: net.semlang.sem2.api.Range): Range {
-    return Range(translate(range.start), translate(range.end))
-}
-
-fun translate(pos: net.semlang.sem2.api.Position): Position {
-    return Position(pos.lineNumber, pos.column, pos.rawIndex)
-}
-
-fun translate(level: net.semlang.sem2.parser.IssueLevel): IssueLevel {
-    return when (level) {
-        net.semlang.sem2.parser.IssueLevel.WARNING -> IssueLevel.WARNING
-        net.semlang.sem2.parser.IssueLevel.ERROR -> IssueLevel.ERROR
-    }
 }
 
 fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String, repository: ModuleRepository): ValidationResult {
