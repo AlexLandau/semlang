@@ -1,6 +1,8 @@
 dependencies {
   compile project(':kotlin:semlang-api')
   compile project(':kotlin:semlang-parser')
+  compile project(':kotlin:sem2-parser')
+  compile project(':kotlin:sem2-to-sem1')
 
   compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
 }

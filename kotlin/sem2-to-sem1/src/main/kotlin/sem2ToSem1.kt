@@ -18,8 +18,14 @@ import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypeParameterInferenceSources
 import java.util.*
 
+// TODO: Do we need to support error reporting instead of failing?
+// TODO: Maybe get rid of this first one?
 fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
-    return Sem2ToSem1Translator(context, moduleName, upstreamModules, options).translate()
+    val typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
+    return Sem2ToSem1Translator(context, typeInfo, options).translate()
+}
+fun translateSem2ContextToSem1(context: S2Context, typeInfo: TypesInfo, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
+    return Sem2ToSem1Translator(context, typeInfo, options).translate()
 }
 
 data class Sem2ToSem1Options(
@@ -48,12 +54,9 @@ private data class NamespacePartExpression(val names: List<String>): TypedExpres
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
-private class Sem2ToSem1Translator(val context: S2Context, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>, val options: Sem2ToSem1Options) {
-    lateinit var typeInfo: TypesInfo
+private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val options: Sem2ToSem1Options) {
 
     fun translate(): RawContext {
-        this.typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
-
         val functions = context.functions.map(::translate)
         val structs = context.structs.map(::translate)
         val unions = context.unions.map(::translate)
@@ -192,27 +195,31 @@ private class Sem2ToSem1Translator(val context: S2Context, val moduleName: Modul
      * Translates a sem2 expression to sem1 and transforms any resulting partial synthetic expression into a real sem1 expression.
      */
     private fun translateFullExpression(expression: S2Expression, varTypes: Map<String, UnvalidatedType?>): RealExpression {
-        val translated = translate(expression, varTypes)
-        return when (translated) {
-            is RealExpression -> translated
-            is NamespacePartExpression -> {
-                // Turn this into a function binding
-                val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(translated.names))
-                val typeInfo = typeInfo.getFunctionInfo(functionRef)
+        try {
+            val translated = translate(expression, varTypes)
+            return when (translated) {
+                is RealExpression -> translated
+                is NamespacePartExpression -> {
+                    // Turn this into a function binding
+                    val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(translated.names))
+                    val typeInfo = typeInfo.getFunctionInfo(functionRef)
 
-                val bindings: List<Expression?>
-                val chosenParameters: List<UnvalidatedType?>
-                if (typeInfo != null) {
-                    bindings = Collections.nCopies(typeInfo.type.getNumArguments(), null)
-                    chosenParameters = Collections.nCopies(typeInfo.type.typeParameters.size, null)
-                } else {
-                    bindings = listOf()
-                    chosenParameters = listOf()
+                    val bindings: List<Expression?>
+                    val chosenParameters: List<UnvalidatedType?>
+                    if (typeInfo != null) {
+                        bindings = Collections.nCopies(typeInfo.type.getNumArguments(), null)
+                        chosenParameters = Collections.nCopies(typeInfo.type.typeParameters.size, null)
+                    } else {
+                        bindings = listOf()
+                        chosenParameters = listOf()
+                    }
+
+                    val functionBinding = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
+                    RealExpression(functionBinding, typeInfo?.type)
                 }
-
-                val functionBinding = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
-                RealExpression(functionBinding, typeInfo?.type)
             }
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Expression being translated was $expression", e)
         }
     }
 
@@ -826,7 +833,7 @@ private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
         }
         return results
     } catch (e: RuntimeException) {
-        throw IllegalArgumentException("fillIntoNulls failed wiith bindings $bindings and fillings $fillings", e)
+        throw IllegalArgumentException("fillIntoNulls failed with bindings $bindings and fillings $fillings", e)
     }
 }
 

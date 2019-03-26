@@ -6,17 +6,43 @@ import net.semlang.transforms.invalidate
 import net.semlang.transforms.invalidateFunctionType
 import java.util.*
 
+class TypesSummary(
+    val localTypes: Map<EntityId, TypeInfo>,
+    val localFunctions: Map<EntityId, FunctionInfo>
+)
+
+// TODO: Test the case where different files have overlapping entity IDs, which we'd need to catch here and handle more nicely
+fun combineTypesSummaries(summaries: Collection<TypesSummary>): TypesSummary {
+    val allTypes = HashMap<EntityId, TypeInfo>()
+    val allFunctions = HashMap<EntityId, FunctionInfo>()
+    for (summary in summaries) {
+        for ((id, type) in summary.localTypes) {
+            if (allTypes.containsKey(id)) {
+                error("Duplicate type $id")
+            }
+            allTypes[id] = type
+        }
+        for ((id, fn) in summary.localFunctions) {
+            if (allFunctions.containsKey(id)) {
+                error("Duplicate function $id")
+            }
+            allFunctions[id] = fn
+        }
+    }
+    return TypesSummary(allTypes, allFunctions)
+}
+
 class TypesInfo(
-        private val upstreamResolver: EntityResolver,
-        val localTypes: Map<EntityId, TypeInfo>,
-        val duplicateLocalTypeIds: Set<EntityId>,
-        val localFunctions: Map<EntityId, FunctionInfo>,
-        val duplicateLocalFunctionIds: Set<EntityId>,
-        val upstreamTypes: Map<ResolvedEntityRef, TypeInfo>,
-        val upstreamFunctions: Map<ResolvedEntityRef, FunctionInfo>,
-        private val moduleId: ModuleUniqueId
+    private val upstreamResolver: EntityResolver,
+    val localTypes: Map<EntityId, ResolvedTypeInfo>,
+    val duplicateLocalTypeIds: Set<EntityId>,
+    val localFunctions: Map<EntityId, ResolvedFunctionInfo>,
+    val duplicateLocalFunctionIds: Set<EntityId>,
+    val upstreamTypes: Map<ResolvedEntityRef, ResolvedTypeInfo>,
+    val upstreamFunctions: Map<ResolvedEntityRef, ResolvedFunctionInfo>,
+    private val moduleId: ModuleUniqueId
 ) {
-    fun getTypeInfo(ref: EntityRef): TypeInfo? {
+    fun getResolvedTypeInfo(ref: EntityRef): ResolvedTypeInfo? {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localTypes[ref.id]
             if (localResult != null) {
@@ -28,6 +54,13 @@ class TypesInfo(
             return upstreamTypes[resolved.entityRef]
         }
         return null
+    }
+    fun getTypeInfo(ref: EntityRef): TypeInfo? {
+        val resolvedInfo = getResolvedTypeInfo(ref)
+        if (resolvedInfo == null) {
+            return null
+        }
+        return resolvedInfo.info
     }
 
     private fun isCompatibleWithThisModule(ref: EntityRef): Boolean {
@@ -45,7 +78,7 @@ class TypesInfo(
         return true
     }
 
-    fun getFunctionInfo(ref: EntityRef): FunctionInfo? {
+    fun getResolvedFunctionInfo(ref: EntityRef): ResolvedFunctionInfo? {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localFunctions[ref.id]
             if (localResult != null) {
@@ -58,43 +91,49 @@ class TypesInfo(
         }
         return null
     }
+    fun getFunctionInfo(ref: EntityRef): FunctionInfo? {
+        val resolvedInfo = getResolvedFunctionInfo(ref)
+        if (resolvedInfo == null) {
+            return null
+        }
+        return resolvedInfo.info
+    }
 
 }
-data class FunctionInfo(val resolvedRef: ResolvedEntityRef, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
+
+data class FunctionInfo(val id: EntityId, val type: UnvalidatedType.FunctionType, val idLocation: Location?)
 sealed class TypeInfo {
-    abstract val resolvedRef: ResolvedEntityRef
+    abstract val id: EntityId
     abstract val idLocation: Location?
     abstract val isReference: Boolean
-    data class Struct(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
-    data class Union(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
-    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class Struct(override val id: EntityId, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, UnvalidatedType>, val usesRequires: Boolean, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+    data class OpaqueType(override val id: EntityId, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
+}
+data class ResolvedFunctionInfo(val resolvedRef: ResolvedEntityRef, val info: FunctionInfo)
+data class ResolvedTypeInfo(val resolvedRef: ResolvedEntityRef, val info: TypeInfo)
+
+fun getTypesInfo(context: RawContext, moduleId: ModuleUniqueId, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
+    val typesSummary = getTypesSummary(context, recordIssue)
+    return getTypesInfoFromSummary(typesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
 }
 
-fun getTypesInfo(context: RawContext, moduleId: ModuleUniqueId, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
-    return TypeInfoCollector(context, moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, recordIssue).apply()
+fun getTypesInfoFromSummary(summary: TypesSummary, moduleId: ModuleUniqueId, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
+    return TypesSummaryToInfoConverter(summary, moduleId, upstreamModules, moduleVersionMappings, recordIssue).apply()
 }
 
-private class TypeInfoCollector(
-        val context: RawContext,
-        val moduleId: ModuleUniqueId,
-        val nativeModuleVersion: String,
-        val upstreamModules: List<ValidatedModule>,
-        val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
-        val recordIssue: (Issue) -> Unit
+fun getTypesSummary(context: RawContext, recordIssue: (Issue) -> Unit): TypesSummary {
+    return TypesSummaryCollector(context, recordIssue).apply()
+}
+
+private class TypesSummaryCollector(
+    val context: RawContext,
+    val recordIssue: (Issue) -> Unit
 ) {
     val localFunctionsMultimap = HashMap<EntityId, MutableList<FunctionInfo>>()
     val localTypesMultimap = HashMap<EntityId, MutableList<TypeInfo>>()
-    val upstreamResolver = EntityResolver.create(
-            moduleId,
-            nativeModuleVersion,
-            listOf(),
-            listOf(),
-            mapOf(),
-            upstreamModules,
-            moduleVersionMappings
-    )
 
-    fun apply(): TypesInfo {
+    fun apply(): TypesSummary {
         /*
          * Some notes about how we deal with error cases here:
          * - Name collisions involving other modules (which are assumed valid at this point) aren't a problem at this
@@ -140,11 +179,7 @@ private class TypeInfoCollector(
             }
         }
 
-        val upstreamTypes = getUpstreamTypes(nativeModuleVersion, upstreamModules)
-        val upstreamFunctions = getUpstreamFunctions(nativeModuleVersion, upstreamModules)
-
-        return TypesInfo(upstreamResolver, uniqueLocalTypes, duplicateLocalTypeIds, uniqueLocalFunctions, duplicateLocalFunctionIds,
-                upstreamTypes, upstreamFunctions, moduleId)
+        return TypesSummary(uniqueLocalTypes, uniqueLocalFunctions)
     }
 
     private fun addLocalUnions() {
@@ -155,14 +190,12 @@ private class TypeInfoCollector(
             for (option in union.options) {
                 val optionId = EntityId(union.id.namespacedName + option.name)
                 val functionType = union.getConstructorSignature(option).getFunctionType()
-                val resolvedRef = ResolvedEntityRef(moduleId, optionId)
-                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(resolvedRef, functionType, union.idLocation))
+                localFunctionsMultimap.multimapPut(optionId, FunctionInfo(optionId, functionType, union.idLocation))
             }
 
             val whenId = EntityId(union.id.namespacedName + "when")
             val functionType = union.getWhenSignature().getFunctionType()
-            val resolvedRef = ResolvedEntityRef(moduleId, whenId)
-            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(resolvedRef, functionType, union.idLocation))
+            localFunctionsMultimap.multimapPut(whenId, FunctionInfo(whenId, functionType, union.idLocation))
         }
     }
 
@@ -172,18 +205,14 @@ private class TypeInfoCollector(
             localTypesMultimap.multimapPut(id, getLocalTypeInfo(struct))
             // Don't pass in the type parameters because they're already part of the function type
             val constructorType = struct.getConstructorSignature().getFunctionType()
-            val resolvedRef = ResolvedEntityRef(moduleId, id)
-            localFunctionsMultimap.multimapPut(id, FunctionInfo(resolvedRef, constructorType, struct.idLocation))
+            localFunctionsMultimap.multimapPut(id, FunctionInfo(id, constructorType, struct.idLocation))
         }
     }
 
     private fun getLocalTypeInfo(struct: UnvalidatedStruct): TypeInfo.Struct {
-        val resolvedRef = ResolvedEntityRef(moduleId, struct.id)
-        return TypeInfo.Struct(resolvedRef, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, false, struct.idLocation)
+        return TypeInfo.Struct(struct.id, struct.typeParameters, getUnvalidatedMemberTypeMap(struct.members), struct.requires != null, false, struct.idLocation)
     }
-    private fun getTypeInfo(struct: Struct, idLocation: Location?): TypeInfo.Struct {
-        return TypeInfo.Struct(struct.resolvedRef, struct.typeParameters, getMemberTypeMap(struct.members), struct.requires != null, false, idLocation)
-    }
+
     private fun getUnvalidatedMemberTypeMap(members: List<UnvalidatedMember>): Map<String, UnvalidatedType> {
         val typeMap = HashMap<String, UnvalidatedType>()
         for (member in members) {
@@ -195,25 +224,10 @@ private class TypeInfoCollector(
         }
         return typeMap
     }
-    private fun getMemberTypeMap(members: List<Member>): Map<String, UnvalidatedType> {
-        val typeMap = HashMap<String, UnvalidatedType>()
-        for (member in members) {
-            if (typeMap.containsKey(member.name)) {
-                error("Duplicate member name ${member.name}")
-            } else {
-                typeMap.put(member.name, invalidate(member.type))
-            }
-        }
-        return typeMap
-    }
 
 
     private fun getLocalTypeInfo(union: UnvalidatedUnion): TypeInfo.Union {
-        val resolvedRef = ResolvedEntityRef(moduleId, union.id)
-        return TypeInfo.Union(resolvedRef, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
-    }
-    private fun getTypeInfo(union: Union, idLocation: Location?): TypeInfo.Union {
-        return TypeInfo.Union(union.resolvedRef, union.typeParameters, getUnionTypeMap(union.options), false, idLocation)
+        return TypeInfo.Union(union.id, union.typeParameters, getUnvalidatedUnionTypeMap(union.options), false, union.idLocation)
     }
 
     private fun getUnvalidatedUnionTypeMap(options: List<UnvalidatedOption>): Map<String, Optional<UnvalidatedType>> {
@@ -228,6 +242,124 @@ private class TypeInfoCollector(
         }
         return typeMap
     }
+
+    private fun addLocalFunctions() {
+        for (function in context.functions) {
+            localFunctionsMultimap.multimapPut(function.id, getLocalFunctionInfo(function))
+        }
+    }
+
+    private fun getLocalFunctionInfo(function: Function): FunctionInfo {
+        val type = function.getType()
+        return FunctionInfo(function.id, type, function.idLocation)
+    }
+
+}
+
+private class TypesSummaryToInfoConverter(
+    val summary: TypesSummary,
+    val moduleId: ModuleUniqueId,
+    val upstreamModules: List<ValidatedModule>,
+    val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
+    val recordIssue: (Issue) -> Unit
+) {
+    val localFunctionsMultimap = HashMap<EntityId, MutableList<ResolvedFunctionInfo>>()
+    val localTypesMultimap = HashMap<EntityId, MutableList<ResolvedTypeInfo>>()
+    val upstreamResolver = EntityResolver.create(
+        moduleId,
+        listOf(),
+        listOf(),
+        mapOf(),
+        upstreamModules,
+        moduleVersionMappings
+    )
+
+    fun apply(): TypesInfo {
+        /*
+         * Some notes about how we deal with error cases here:
+         * - Name collisions involving other modules (which are assumed valid at this point) aren't a problem at this
+         *   level. Instead, there will be an error found at the location of the reference, when the reference is
+         *   ambiguous.
+         * - Name collisions within the module may occur either for both types and functions, or for functions only.
+         * - Collisions should be noted in both locations. References to these types/functions (when they resolve to the
+         *   current module) will then be their own errors.
+         */
+
+        addLocalTypes()
+        addLocalFunctions()
+
+        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { recordIssue(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
+
+        val duplicateLocalTypeIds = HashSet<EntityId>()
+        val uniqueLocalTypes = java.util.HashMap<EntityId, ResolvedTypeInfo>()
+        for ((id, typeInfoList) in localTypesMultimap.entries) {
+            if (typeInfoList.size > 1) {
+                for (typeInfo in typeInfoList) {
+                    addDuplicateIdError(id, typeInfo.info.idLocation)
+                }
+                duplicateLocalTypeIds.add(id)
+            } else {
+                uniqueLocalTypes.put(id, typeInfoList[0])
+            }
+        }
+
+        val duplicateLocalFunctionIds = HashSet<EntityId>()
+        val uniqueLocalFunctions = java.util.HashMap<EntityId, ResolvedFunctionInfo>()
+        for ((id, functionInfoList) in localFunctionsMultimap.entries) {
+            if (functionInfoList.size > 1) {
+                for (functionInfo in functionInfoList) {
+                    addDuplicateIdError(id, functionInfo.info.idLocation)
+                }
+                duplicateLocalFunctionIds.add(id)
+            } else {
+                uniqueLocalFunctions.put(id, functionInfoList[0])
+            }
+        }
+
+        val upstreamTypes = getUpstreamTypes(upstreamModules)
+        val upstreamFunctions = getUpstreamFunctions(upstreamModules)
+
+        return TypesInfo(upstreamResolver, uniqueLocalTypes, duplicateLocalTypeIds, uniqueLocalFunctions, duplicateLocalFunctionIds,
+            upstreamTypes, upstreamFunctions, moduleId)
+    }
+
+    private fun addLocalTypes() {
+        for (type in summary.localTypes.values) {
+            val resolvedRef = ResolvedEntityRef(moduleId, type.id)
+            localTypesMultimap.multimapPut(type.id, ResolvedTypeInfo(resolvedRef, type))
+        }
+    }
+
+    private fun addLocalFunctions() {
+        for (function in summary.localFunctions.values) {
+            val resolvedRef = ResolvedEntityRef(moduleId, function.id)
+            localFunctionsMultimap.multimapPut(function.id, ResolvedFunctionInfo(resolvedRef, function))
+        }
+    }
+
+    private fun getTypeInfo(struct: Struct, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo(struct.resolvedRef,
+            TypeInfo.Struct(struct.id, struct.typeParameters, getMemberTypeMap(struct.members), struct.requires != null, false, idLocation)
+        )
+    }
+    private fun getMemberTypeMap(members: List<Member>): Map<String, UnvalidatedType> {
+        val typeMap = HashMap<String, UnvalidatedType>()
+        for (member in members) {
+            if (typeMap.containsKey(member.name)) {
+                error("Duplicate member name ${member.name}")
+            } else {
+                typeMap.put(member.name, invalidate(member.type))
+            }
+        }
+        return typeMap
+    }
+
+    private fun getTypeInfo(union: Union, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo(union.resolvedRef,
+            TypeInfo.Union(union.id, union.typeParameters, getUnionTypeMap(union.options), false, idLocation)
+        )
+    }
+
     private fun getUnionTypeMap(options: List<Option>): Map<String, Optional<UnvalidatedType>> {
         val typeMap = HashMap<String, Optional<UnvalidatedType>>()
         for (option in options) {
@@ -241,20 +373,8 @@ private class TypeInfoCollector(
         return typeMap
     }
 
-    private fun addLocalFunctions() {
-        for (function in context.functions) {
-            localFunctionsMultimap.multimapPut(function.id, getLocalFunctionInfo(function))
-        }
-    }
-
-    private fun getLocalFunctionInfo(function: Function): FunctionInfo {
-        val resolvedRef = ResolvedEntityRef(moduleId, function.id)
-        val type = function.getType()
-        return FunctionInfo(resolvedRef, type, function.idLocation)
-    }
-
-    private fun getUpstreamTypes(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, TypeInfo> {
-        val upstreamTypes = HashMap<ResolvedEntityRef, TypeInfo>()
+    private fun getUpstreamTypes(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ResolvedTypeInfo> {
+        val upstreamTypes = HashMap<ResolvedEntityRef, ResolvedTypeInfo>()
 
         // TODO: Fix this to use nativeModuleVersion
         val nativeModuleId = CURRENT_NATIVE_MODULE_ID
@@ -281,16 +401,18 @@ private class TypeInfoCollector(
         return upstreamTypes
     }
 
-    private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): TypeInfo {
-        return TypeInfo.OpaqueType(opaqueType.resolvedRef, opaqueType.typeParameters, opaqueType.isReference, idLocation)
+    private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo(opaqueType.resolvedRef,
+            TypeInfo.OpaqueType(opaqueType.id, opaqueType.typeParameters, opaqueType.isReference, idLocation)
+        )
     }
 
-    private fun getUpstreamFunctions(nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, FunctionInfo> {
-        val upstreamFunctions = HashMap<ResolvedEntityRef, FunctionInfo>()
+    private fun getUpstreamFunctions(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ResolvedFunctionInfo> {
+        val upstreamFunctions = HashMap<ResolvedEntityRef, ResolvedFunctionInfo>()
 
         // (We don't need the idPosition for functions in upstream modules)
-        val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): FunctionInfo {
-            return FunctionInfo(ref, invalidateFunctionType(signature.getFunctionType()), null)
+        val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): ResolvedFunctionInfo {
+            return ResolvedFunctionInfo(ref, FunctionInfo(signature.id, invalidateFunctionType(signature.getFunctionType()), null))
         }
 
         // TODO: Fix this to use nativeModuleVersion

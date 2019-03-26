@@ -33,7 +33,7 @@ fun validateModule(context: RawContext, moduleName: ModuleName, nativeModuleVers
     val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
 
     val issuesList = ArrayList<Issue>()
-    val typesInfo = getTypesInfo(context, moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
+    val typesInfo = getTypesInfo(context, moduleId, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
     val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, issuesList)
     return validator.validate(context)
 }
@@ -212,13 +212,13 @@ private class Validator(
                     }
                 }
 
-                val typeInfo = typesInfo.getTypeInfo(type.ref)
+                val typeInfo = typesInfo.getResolvedTypeInfo(type.ref)
 
                 if (typeInfo == null) {
                     errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
                     return null
                 }
-                val shouldBeReference = typeInfo.isReference
+                val shouldBeReference = typeInfo.info.isReference
 
                 if (shouldBeReference && !type.isReference()) {
                     errors.add(Issue("Type $type is a reference type and should be marked as such with '&'", type.location, IssueLevel.ERROR))
@@ -456,11 +456,11 @@ private class Validator(
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
-        val functionInfo = typesInfo.getFunctionInfo(functionRef)
-
-        if (functionInfo == null) {
+        val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
+        if (resolvedFunctionInfo == null) {
             fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
         }
+        val functionInfo = resolvedFunctionInfo.info
 
         val bindings = expression.bindings.map { binding ->
             if (binding == null) {
@@ -514,7 +514,7 @@ private class Validator(
             error("Something went wrong")
         }
 
-        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
+        return TypedExpression.NamedFunctionBinding(postBindingType, AliasType.NotAliased, functionRef, resolvedFunctionInfo.resolvedRef, bindings, inferredTypeParameters, providedChoices)
 
     }
 
@@ -656,11 +656,12 @@ private class Validator(
     private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
 
-        val functionInfo = typesInfo.getFunctionInfo(functionRef)
-        if (functionInfo == null) {
+        val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
+        if (resolvedFunctionInfo == null) {
             errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
             return null
         }
+        val functionInfo = resolvedFunctionInfo.info
 
         val providedChoices = expression.chosenParameters.map { validateType(it, typeParametersInScope) }
 
@@ -688,7 +689,7 @@ private class Validator(
             return null
         }
 
-        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, functionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
+        return TypedExpression.NamedFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionRef, resolvedFunctionInfo.resolvedRef, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
     private fun validateTypeParameterChoice(typeParameter: TypeParameter, chosenType: Type, location: Location?) {
