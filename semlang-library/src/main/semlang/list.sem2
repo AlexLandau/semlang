@@ -32,59 +32,59 @@ function List.nCopies<T>(n: Natural, value: T): List<T> {
 
 @Export
 function List.drop<T>(list: List<T>, n: Natural): List<T> {
-  let end = List.size(list)
+  let end = list.size()
   let start = Natural.lesser(n, end)
-  Maybe.assume(List.subList(list, start, end))
+  list.subList(start, end).assume()
 }
 
 @Export
 function List.dropLast<T>(list: List<T>, n: Natural): List<T> {
-  let endMaybe = Natural(Natural.minus(List.size(list), n))
-  let end = Maybe.orElse(endMaybe, Natural."0")
-  Maybe.assume(List.subList(list, Natural."0", end))
+  let endMaybe = Natural(list.size() - n)
+  let end = endMaybe.orElse(Natural."0")
+  list.subList(Natural."0", end).assume()
 }
 
 @Export
 function List.firstN<T>(list: List<T>, n: Natural): List<T> {
-  let end = Natural.lesser(n, List.size(list))
-  Maybe.assume(List.subList(list, Natural."0", end))
+  let end = Natural.lesser(n, list.size())
+  list.subList(Natural."0", end).assume()
 }
 
 @Export
 function List.lastN<T>(list: List<T>, n: Natural): List<T> {
-  let size = List.size(list)
-  let startMaybe = Natural(Natural.minus(size, n))
-  let start = Maybe.orElse(startMaybe, Natural."0")
-  Maybe.assume(List.subList(list, start, size))
+  let size = list.size()
+  let startMaybe = Natural(size - n)
+  let start = startMaybe.orElse(Natural."0")
+  list.subList(start, size).assume()
 }
 
 @Export
 function List.interpose<T>(list: List<T>, interposer: T): List<T> {
-  if (List.isEmpty(list)) {
+  if (list.isEmpty()) {
     []<T>
   } else {
-    let listWithExtraTrailingItem = List.flatMap(list, function (item: T): List<T> {
+    let listWithExtraTrailingItem = list.flatMap({ item: T ->
       [item, interposer]<T>
     })
-    List.dropLast(listWithExtraTrailingItem, Natural."1")
+    listWithExtraTrailingItem.dropLast(Natural."1")
   }
 }
 
 @Export
 function List.getIndices<T>(list: List<T>): List<Natural> {
-  let size = List.size(list)
-  if (Natural.equals(size, Natural."0")) {
+  let size = list.size()
+  if (size == Natural."0") {
     []<Natural>
   } else {
-    let lastIndex = Maybe.assume(Natural(Natural.minus(size, Natural."1")))
+    let lastIndex = Natural(size - Natural."1").assume()
     Natural.rangeInclusive(Natural."0", lastIndex)
   }
 }
 
 // TODO: Consider exporting some version of this
 function List.getItemsSequence<T>(list: List<T>): Sequence<Maybe<IndexedItem<T>>> {
-  let firstItemMaybe = List.get(list, Natural."0")
-  let firstIndexedItem = Maybe.map(firstItemMaybe, function (item: T): IndexedItem<T> { IndexedItem(Natural."0", item) })
+  let firstItemMaybe = list[Natural."0"]
+  let firstIndexedItem = firstItemMaybe.map({ item: T -> IndexedItem(Natural."0", item) })
   Sequence(firstIndexedItem, function (lastIndexedItemMaybe: Maybe<IndexedItem<T>>): Maybe<IndexedItem<T>> {
     Maybe.flatMap(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Maybe<IndexedItem<T>> {
       let lastIndex = lastIndexedItem->index
@@ -103,10 +103,10 @@ struct IndexedItem<T> {
 
 @Export
 function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Maybe<IndexedItem<T>> {
-  Sequence.first(List.getItemsSequence(list), function (indexedItemMaybe: Maybe<IndexedItem<T>>): Boolean {
-    if (Maybe.isSuccess(indexedItemMaybe)) {
-      let indexedItem = Maybe.assume(indexedItemMaybe)
-      predicate(indexedItem->item)
+  // There are currently no mechanisms to return from within a for or while loop, which would be the natural way to write this
+  list.getItemsSequence().first({ indexedItemMaybe: Maybe<IndexedItem<T>> ->
+    if (indexedItemMaybe.isSuccess()) {
+      predicate(indexedItemMaybe.assume().item)
     } else {
       // End the search by returning true
       Boolean."true"
@@ -117,10 +117,10 @@ function List.firstWith<T>(list: List<T>, predicate: (T) -> Boolean): Maybe<Inde
 @Export
 function List.firstIndexOf<T: Data>(list: List<T>, object: T): Maybe<Natural> {
   Maybe.map(
-    List.firstWith(list, Data.equals|(object, _)),
+    list.firstWith(Data.equals|(object, _)),
     // TODO: Function reference for follows
-    function(indexedItem: IndexedItem<T>): Natural {
-      indexedItem->index
+    { indexedItem: IndexedItem<T> ->
+      indexedItem.index
     }
   )
 }
