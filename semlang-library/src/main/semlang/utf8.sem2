@@ -6,8 +6,8 @@ struct Utf8.CodePointByteCount {
   integer: Integer
   requires {
     Boolean.and(
-      Integer.greaterThan(integer, Integer."0"),
-      Integer.lessThan(integer, Integer."5")
+      integer > 0,
+      integer < 5
     )
   }
 }

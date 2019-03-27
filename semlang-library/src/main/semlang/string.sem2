@@ -13,7 +13,7 @@ function String.join(strings: List<String>, separator: String): String {
   // TODO: Possible optimization: If separator is the empty string, don't call interpose
   let stringsList = strings.interpose(separator)
   let allCharPoints = stringsList.flatMap({ string: String ->
-    string->codePoints
+    string.codePoints
   })
   String(allCharPoints)
 }

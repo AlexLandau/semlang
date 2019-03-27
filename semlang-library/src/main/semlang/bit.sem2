@@ -3,15 +3,15 @@ struct Bit {
   natural: Natural
   requires {
     Boolean.or(
-      Natural.equals(natural, Natural."0"),
-      Natural.equals(natural, Natural."1")
+      natural == Natural."0",
+      natural == Natural."1"
     )
   }
 }
 
 @Export
 function Bit.equals(left: Bit, right: Bit): Boolean {
-  Natural.equals(left->natural, right->natural)
+  left.natural == right.natural
 }
 
 @Export

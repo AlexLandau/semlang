@@ -5,12 +5,9 @@ struct HexString {
   string: String
   requires {
     Boolean.and(
-      Boolean.not(List.isEmpty(string->codePoints)),
+      Boolean.not(string.codePoints.isEmpty()),
       Boolean.all(
-        List.map(
-          string->codePoints,
-          isValidHexCodePoint|(_)
-        )
+        string.codePoints.map(isValidHexCodePoint)
       )
     )
   }

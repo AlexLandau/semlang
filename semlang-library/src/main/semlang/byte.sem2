@@ -3,7 +3,7 @@
 struct Byte {
   natural: Natural
   requires {
-    Natural.lessThan(natural, Natural."256")
+    natural < Natural."256"
   }
 }
 
@@ -11,7 +11,7 @@ struct Byte {
 struct ByteBits {
   bitsBigEndian: BitsBigEndian
   requires {
-    Natural.equals(Natural."8", List.size(bitsBigEndian->bits))
+    Natural."8" == bitsBigEndian.bits.size()
   }
 }
 
@@ -19,17 +19,17 @@ struct ByteBits {
 struct Byte.BitPosition {
   natural: Natural
   requires {
-    Natural.lessThan(natural, Natural."8")
+    natural < Natural."8"
   }
 }
 
 @Export
 function Byte.toBits(byte: Byte): ByteBits {
-  let bits = Maybe.assume(Natural.toNBits(byte->natural, Natural."8"))
-  Maybe.assume(ByteBits(bits))
+  let bits = byte.natural.toNBits(Natural."8").assume()
+  ByteBits(bits).assume()
 }
 
 @Export
 function ByteBits.get(bits: ByteBits, bitPosition: Byte.BitPosition): Bit {
-  Maybe.assume(List.get(bits->bitsBigEndian->bits, bitPosition->natural))
+  bits.bitsBigEndian.bits[bitPosition->natural].assume()
 }
