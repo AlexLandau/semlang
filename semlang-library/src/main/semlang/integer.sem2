@@ -1,20 +1,19 @@
 @Export
 function Integer.sum(integers: List<Integer>): Integer {
-  List.reduce(integers, Integer."0", Integer.plus|(_, _))
+  integers.reduce(0, Integer.plus)
 }
 
 @Export
 function Integer.negative(i: Integer): Integer {
-  Integer.times(i, Integer."-1")
+  i * -1
 }
 
 @Export
 function Integer.toString(i: Integer): String {
-  if (Integer.lessThan(i, Integer."0")) {
-    let absoluteValue = Maybe.assume(Natural(Integer.negative(i)))
-    String.join([String."-", Natural.toString(absoluteValue)]<String>, String."")
+  if (i < 0) {
+    let absoluteValue = Natural(i.negative()).assume()
+    String.join(["-", absoluteValue.toString()]<String>, "")
   } else {
-    let asNatural = Maybe.assume(Natural(i))
-    Natural.toString(asNatural)
+    Natural(i).assume().toString()
   }
 }

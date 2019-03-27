@@ -1,18 +1,18 @@
 @Export
 function String.length(string: String): Natural {
-  List.size(string->codePoints)
+  string.codePoints.size()
 }
 
 function String.appendFront(string: String, codePoint: CodePoint): String {
-  let allCodePoints = List.appendFront(string->codePoints, codePoint)
+  let allCodePoints = string.codePoints.appendFront(codePoint)
   String(allCodePoints)
 }
 
 @Export
 function String.join(strings: List<String>, separator: String): String {
   // TODO: Possible optimization: If separator is the empty string, don't call interpose
-  let stringsList = List.interpose(strings, separator)
-  let allCharPoints = List.flatMap(stringsList, function(string: String): List<CodePoint> {
+  let stringsList = strings.interpose(separator)
+  let allCharPoints = stringsList.flatMap({ string: String ->
     string->codePoints
   })
   String(allCharPoints)
