@@ -4,8 +4,8 @@ struct Int64 {
   integer: Integer
   requires {
     Boolean.and(
-      Integer.lessThan(Integer."-9223372036854775809", integer),
-      Integer.lessThan(integer, Integer."9223372036854775808")
+      -9223372036854775809 < integer,
+      integer < 9223372036854775808
     )
   }
 }
@@ -13,97 +13,94 @@ struct Int64 {
 // This version of plus allows silent overflow or underflow.
 @Export
 function Int64.plusUnsafe(left: Int64, right: Int64): Int64 {
-  let intValue = Integer.plus(left->integer, right->integer)
-  let correctedIntValue = if (Integer.lessThan(Integer."9223372036854775807", intValue)) {
-    Integer.minus(intValue, Integer."18446744073709551616")
+  let intValue = left.integer + right.integer
+  let correctedIntValue = if (9223372036854775807 < intValue) {
+    intValue - 18446744073709551616
   } else {
-    if (Integer.lessThan(intValue, Integer."-9223372036854775808")) {
-      Integer.plus(intValue, Integer."18446744073709551616")
+    if (intValue < -9223372036854775808) {
+      intValue + 18446744073709551616
     } else {
       intValue
     }
   }
-  Maybe.assume(Int64(correctedIntValue))
+  Int64(correctedIntValue).assume()
 }
 
 // This version of plus returns failure if an overflow or underflow would occur.
 @Export
 function Int64.plusSafe(left: Int64, right: Int64): Maybe<Int64> {
-  let intValue = Integer.plus(left->integer, right->integer)
-  Int64(intValue)
+  Int64(left.integer + right.integer)
 }
 
 // This version of minus allows silent overflow or underflow.
 @Export
 function Int64.minusUnsafe(left: Int64, right: Int64): Int64 {
-  let intValue = Integer.minus(left->integer, right->integer)
-  let correctedIntValue = if (Integer.lessThan(Integer."9223372036854775807", intValue)) {
-    Integer.minus(intValue, Integer."18446744073709551616")
+  let intValue = left.integer - right.integer
+  let correctedIntValue = if (9223372036854775807 < intValue) {
+    intValue - 18446744073709551616
   } else {
-    if (Integer.lessThan(intValue, Integer."-9223372036854775808")) {
-      Integer.plus(intValue, Integer."18446744073709551616")
+    if (intValue < -9223372036854775808) {
+      intValue + 18446744073709551616
     } else {
       intValue
     }
   }
-  Maybe.assume(Int64(correctedIntValue))
+  Int64(correctedIntValue).assume()
 }
 
 // This version of minus returns failure if an overflow or underflow would occur.
 @Export
 function Int64.minusSafe(left: Int64, right: Int64): Maybe<Int64> {
-  let intValue = Integer.minus(left->integer, right->integer)
-  Int64(intValue)
+  Int64(left.integer - right.integer)
 }
 
 // This version of times allows silent overflow or underflow.
 @Export
 function Int64.timesUnsafe(left: Int64, right: Int64): Int64 {
-  let intValue = Integer.times(left->integer, right->integer)
+  let intValue = left.integer * right.integer
 
   // TODO: This might do unnecessary work in some cases... maybe check up-front if it's safe?
-  let timesDividesInto2e64 = Maybe.assume(Integer.dividedBy(intValue, Integer."18446744073709551616"))
-  let amountToSubtract = Integer.times(timesDividesInto2e64, Integer."18446744073709551616")
+  let timesDividesInto2e64 = Integer.dividedBy(intValue, 18446744073709551616).assume()
+  let amountToSubtract = timesDividesInto2e64 * 18446744073709551616
 
   // This should get it within one "fix" of being correct
   let approxIntValue = Integer.minus(intValue, amountToSubtract)
 
-  let correctedIntValue = if (Integer.lessThan(Integer."9223372036854775807", approxIntValue)) {
-    Integer.minus(approxIntValue, Integer."18446744073709551616")
+  let correctedIntValue = if (9223372036854775807 < approxIntValue) {
+    Integer.minus(approxIntValue, 18446744073709551616)
   } else {
-    if (Integer.lessThan(approxIntValue, Integer."-9223372036854775808")) {
-      Integer.plus(approxIntValue, Integer."18446744073709551616")
+    if (approxIntValue < -9223372036854775808) {
+      approxIntValue + 18446744073709551616
     } else {
       approxIntValue
     }
   }
-  Maybe.assume(Int64(correctedIntValue))
+  Int64(correctedIntValue).assume()
 }
 
 // This version of times returns failure if an overflow or underflow would occur.
 @Export
 function Int64.timesSafe(left: Int64, right: Int64): Maybe<Int64> {
-  let intValue = Integer.times(left->integer, right->integer)
-  Int64(intValue)
+  Int64(left.integer * right.integer)
 }
 
 @Export
 function Int64.equals(left: Int64, right: Int64): Boolean {
-  Integer.equals(left->integer, right->integer)
+  left.integer == right.integer
 }
 
 @Export
 function Int64.lessThan(left: Int64, right: Int64): Boolean {
-  Integer.lessThan(left->integer, right->integer)
+  left.integer < right.integer
 }
 
 @Export
 function Int64.greaterThan(left: Int64, right: Int64): Boolean {
-  Integer.greaterThan(left->integer, right->integer)
+  left.integer > right.integer
 }
 
 @Export
 function Int64.dividedBy(left: Int64, right: Int64): Maybe<Int64> {
-  let intValue = Integer.dividedBy(left->integer, right->integer)
-  Maybe.flatMap(intValue, Int64|(_))
+  let intValue = Integer.dividedBy(left.integer, right.integer)
+  intValue.flatMap(Int64)
 }
