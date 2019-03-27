@@ -1,0 +1,5 @@
+@Test([], "5")
+function testSimpleReference(): Integer {
+  let add = Integer.plus
+  add(Integer."2", Integer."3")
+}
