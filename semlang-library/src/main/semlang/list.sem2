@@ -1,28 +1,33 @@
 
 @Export
 function List.isEmpty<T>(list: List<T>): Boolean {
-  Natural.equals(List.size(list), Natural."0")
+  list.size() == Natural."0"
 }
 
 @Export
 function List.first<T>(list: List<T>): Maybe<T> {
-  List.get(list, Natural."0")
+  list[Natural."0"]
 }
 
 @Export
 function List.last<T>(list: List<T>): Maybe<T> {
-  let size = List.size(list)
-  let lastIndexMaybe: Maybe<Natural> = Natural(Natural.minus(size, Natural."1"))
-  Maybe.flatMap(lastIndexMaybe, function(lastIndex: Natural): Maybe<T> {
-    List.get(list, lastIndex)
+  let lastIndexMaybe: Maybe<Natural> = Natural(list.size() - Natural."1")
+  lastIndexMaybe.flatMap({ lastIndex: Natural ->
+    list[lastIndex]
   })
 }
 
 @Export
 function List.nCopies<T>(n: Natural, value: T): List<T> {
   // TODO: This should probably be done with a ListBuilder
-  let sequence = Sequence<List<T>>([]<T>, List.append|(_, value))
-  Sequence.get(sequence, n)
+  let builder = ListBuilder<T>()
+  let count = Var(Natural."0")
+  while (count[] < n) {
+    builder.append(value)
+    let nextCount = count[] + Natural."1"
+    count.= nextCount
+  }
+  builder.build()
 }
 
 @Export

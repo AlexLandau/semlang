@@ -160,7 +160,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         name = null,
                         type = null,
                         expression = Expression.NamedFunctionCall(
-                                functionRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Function", "whileTrueDo")),
+                                functionRef = net.semlang.api.EntityRef(ModuleRef(NATIVE_MODULE_NAME.group, NATIVE_MODULE_NAME.module, null), net.semlang.api.EntityId.of("Function", "whileTrueDo")),
                                 arguments = listOf(
                                         Expression.InlineFunction(
                                                 arguments = listOf(),
