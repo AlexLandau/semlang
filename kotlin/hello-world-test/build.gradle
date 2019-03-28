@@ -3,4 +3,4 @@ dependencies {
   testCompile project(":kotlin:semlang-parser")
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-hello-world/src/main/semlang"))
+tasks.test.inputs.dir('../../semlang-hello-world/src/main/semlang')

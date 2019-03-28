@@ -6,9 +6,9 @@ dependencies {
 task translateCorpusToJson(type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   main = 'JsonCorpusKt'
-  inputs.dir file('../../semlang-corpus/src/main/semlang')
-  inputs.dir file('../../semlang-library/src/main/semlang')
-  inputs.dir file('../../semlang-library-corpus/src/main/semlang')
-  outputs.dir file('../../semlang-corpus/build/translations/json')
-  outputs.dir file('../../semlang-library-corpus/build/translations/json')
+  inputs.dir '../../semlang-corpus/src/main/semlang'
+  inputs.dir '../../semlang-library/src/main/semlang'
+  inputs.dir '../../semlang-library-corpus/src/main/semlang'
+  outputs.dir '../../semlang-corpus/build/translations/json'
+  outputs.dir '../../semlang-library-corpus/build/translations/json'
 }

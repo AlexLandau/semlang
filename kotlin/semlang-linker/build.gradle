@@ -5,6 +5,6 @@ dependencies {
   testCompile project(":kotlin:semlang-test-utils")
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-library/src/main/semlang"))
-tasks.test.inputs.files(fileTree("../../semlang-library-corpus/src/main/semlang"))
+tasks.test.inputs.dir('../../semlang-library/src/main/semlang')
+tasks.test.inputs.dir('../../semlang-library-corpus/src/main/semlang')
 tasks.test.dependsOn ':kotlin:semlang-standard-library-support:publishModuleLocally'

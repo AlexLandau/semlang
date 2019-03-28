@@ -5,4 +5,4 @@ dependencies {
   testCompile project(':kotlin:semlang-test-utils')
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
+tasks.test.inputs.dir('../../semlang-corpus/src/main/semlang')

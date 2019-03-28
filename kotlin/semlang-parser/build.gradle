@@ -13,6 +13,6 @@ task regenerateFailValidatorTests(type: JavaExec) {
   main = 'net.semlang.parser.test.RegenerateFailValidatorTestsKt'
 }
 
-tasks.test.inputs.files(fileTree("../../semlang-corpus/src/main/semlang"))
-tasks.test.inputs.files(fileTree("../../semlang-module-test-cases"))
-tasks.test.inputs.files(fileTree("src/test/semlang"))
+tasks.test.inputs.dir('../../semlang-corpus/src/main/semlang')
+tasks.test.inputs.dir('../../semlang-module-test-cases')
+tasks.test.inputs.dir('src/test/semlang')
