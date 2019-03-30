@@ -1,3 +1,5 @@
+package net.semlang.support.typescript
+
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
 import net.semlang.linker.linkModuleWithDependencies

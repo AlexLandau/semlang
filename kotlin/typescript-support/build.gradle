@@ -5,7 +5,7 @@ dependencies {
 
 task translateCorpusToJson(type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
-  main = 'JsonCorpusKt'
+  main = 'net.semlang.support.typescript.JsonCorpusKt'
   inputs.dir '../../semlang-corpus/src/main/semlang'
   inputs.dir '../../semlang-library/src/main/semlang'
   inputs.dir '../../semlang-library-corpus/src/main/semlang'
