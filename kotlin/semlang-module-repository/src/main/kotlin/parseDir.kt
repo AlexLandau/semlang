@@ -105,6 +105,255 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
     data class IR(val value: Any)
 }
 
+/*
+  Save this for later...
+
+// TODO: Also record the state of the file itself, and a checksum of the combined TypesSummary used for parsing
+// Note: Variables in this class are guarded by synchronization on the FilesParsingState instance
+private class PartialFileParsingState(
+    val contents: String,
+    val dialect: Dialect,
+    var ir: Dialect.IR?,
+    var typesSummary: TypesSummary?,
+    var typesInfoUsedInParsing: TypesInfo? = null,
+    var parsingResult: ParsingResult?
+)
+
+// TODO: "Constructor" that forces you to set the configFileContents (?)
+// TODO: I would love to have a framework for writing code like this nicely (i.e., where operations record their intermediate
+//  results and you can update one input without unnecessary work)... and Semlang would be a great language to make that work in
+class FilesParsingState {
+    private var configText: String = ""
+    private var curConfigResult: ModuleInfoParsingResult? = null
+    // This one seems like it would be better with timestamps...
+    private var combinedTypesInfoBasis: List<TypesSummary> = listOf()
+    // TODO: We're going to be comparing this by reference for now, which kind of sucks
+    private var combinedTypesInfo: TypesInfo? = null
+    /**
+     * The key is the filePath.
+     */
+    private val sourceResults: MutableMap<String, PartialFileParsingState> = LinkedHashMap()
+
+    @Synchronized fun getNextStepsOrResult(): PartialParsingResult {
+        val configResult = curConfigResult
+        if (configResult == null) {
+            return PartialParsingResult.Incomplete(listOf(ParsingStep.ParseConfig(configText)))
+        }
+        return when (configResult) {
+            is ModuleInfoParsingResult.Failure -> {
+                val error = Issue("Couldn't parse module.conf: ${configResult.error.message}", null, IssueLevel.ERROR)
+                PartialParsingResult.Complete(ModuleDirectoryParsingResult.Failure(listOf(error), listOf()))
+            }
+            is ModuleInfoParsingResult.Success -> {
+                val moduleName = configResult.info.name
+                val upstreamModules = listOf<ValidatedModule>() // TODO: Support dependencies
+
+                val neededSteps = ArrayList<ParsingStep<out Any>>()
+
+                var anyTypesSummaryMissing = false
+                for ((filePath, partialState) in sourceResults) {
+                    if (partialState.typesSummary == null) {
+                        anyTypesSummaryMissing = true
+                    }
+
+                    if (partialState.ir == null) {
+                        neededSteps.add(ParsingStep.ParseIr(filePath, partialState.contents, partialState.dialect))
+                    } else if (partialState.typesSummary == null) {
+                        neededSteps.add(ParsingStep.SummarizeTypes(filePath,
+                            partialState.ir!!, partialState.dialect, moduleName, upstreamModules))
+                    }
+                }
+
+                if (anyTypesSummaryMissing) {
+                    if (neededSteps.isEmpty()) error("Missing types summaries should result in needed steps")
+                    return PartialParsingResult.Incomplete(neededSteps)
+                }
+
+                val typesInfoBasis = sourceResults.values.map { it.typesSummary!! }
+                if (combinedTypesInfo == null || typesInfoBasis != combinedTypesInfoBasis) {
+                    return PartialParsingResult.Incomplete(listOf(ParsingStep.CombineTypes(typesInfoBasis)))
+                }
+
+                for ((filePath, partialState) in sourceResults) {
+                    if (partialState.parsingResult == null || )
+                }
+            }
+        }
+    }
+
+    @Synchronized fun reportConfigFileChanged(configFileContents: String) {
+        curConfigResult = null
+        configText = configFileContents
+    }
+
+    @Synchronized fun reportSourceFileAddedOrChanged(filePath: String, contents: String) {
+        val dialect = determineDialect(filePath)
+        if (dialect == null) {
+            sourceResults.remove(filePath)
+            return
+        }
+        sourceResults[filePath] = PartialFileParsingState(contents, dialect, null, null, null)
+    }
+
+    @Synchronized fun reportSourceFileRemoved(filePath: String) {
+        sourceResults.remove(filePath)
+    }
+
+    // TODO: Support other dialects, probably by making dialect determination another asynchronous step in the process
+    private fun determineDialect(filePath: String): Dialect? {
+        if (filePath.endsWith(".sem") || filePath.endsWith(".sem1")) {
+            return Dialect.Sem1
+        }
+        if (filePath.endsWith(".sem2")) {
+            return Dialect.Sem2
+        }
+        return null
+    }
+
+    @Synchronized fun <T, S: ParsingStep<T>> reportStepResult(stepResult: StepResult<T, S>) {
+        val step: ParsingStep<T> = stepResult.step
+        val result = stepResult.result
+        val unused = when (step) {
+            is ParsingStep.ParseConfig -> reportStepResultParseConfig(step, result as ModuleInfoParsingResult)
+            is ParsingStep.ParseIr -> reportStepResultParseIr(step, result as Dialect.IR)
+            is ParsingStep.SummarizeTypes -> reportStepResultSummarizeTypes(step, result as TypesSummary)
+            is ParsingStep.CombineTypes -> reportStepResultCombineTypes(step, result as TypesInfo)
+            is ParsingStep.Parse -> reportStepResultParse(step, result as ParsingResult)
+        }
+    }
+
+    private fun reportStepResultCombineTypes(step: ParsingStep.CombineTypes, typesInfo: TypesInfo) {
+        if (step.typesInfoBasis != combinedTypesInfoBasis) {
+            return
+        }
+        this.combinedTypesInfo = typesInfo
+    }
+
+    private fun reportStepResultSummarizeTypes(step: ParsingStep.SummarizeTypes, typesSummary: TypesSummary) {
+        val curResults = this.sourceResults[step.filePath]
+        if (curResults == null) {
+            // We're no longer tracking the file; ignore this result
+            return
+        }
+        if (step.ir != curResults.ir) {
+            // File has been updated since
+            return
+        }
+        curResults.typesSummary = typesSummary
+    }
+
+    private fun reportStepResultParseIr(step: ParsingStep.ParseIr, ir: Dialect.IR) {
+        val curResults = this.sourceResults[step.filePath]
+        if (curResults == null) {
+            // We're no longer tracking the file; ignore this result
+            return
+        }
+        if (step.sourceText != curResults.contents) {
+            // File has been updated since
+            return
+        }
+        curResults.ir = ir
+    }
+
+    private fun reportStepResultParseConfig(step: ParsingStep.ParseConfig, result: ModuleInfoParsingResult) {
+        if (configText != step.configText) {
+            // The config has been updated since this; discard the result
+            return
+        }
+        curConfigResult = result
+    }
+
+}
+
+fun doParsingSynchronously(folder: File): ModuleDirectoryParsingResult {
+    val state = FilesParsingState()
+    state.reportConfigFileChanged(folder.resolve("module.conf").readText())
+    for (file in folder.listFiles()) {
+        if (file.name != "module.conf") {
+            state.reportSourceFileAddedOrChanged(file.path, file.readText())
+        }
+    }
+    while (true) {
+        val output = state.getNextStepsOrResult()
+        val unused = when (output) {
+            is PartialParsingResult.Complete -> {
+                return output.result
+            }
+            is PartialParsingResult.Incomplete -> {
+                for (step in output.nextSteps) {
+                    val stepResult = step.execute()
+                    state.reportStepResult(stepResult)
+                }
+            }
+        }
+    }
+}
+
+sealed class PartialParsingResult {
+    class Complete(val result: ModuleDirectoryParsingResult): PartialParsingResult()
+    class Incomplete(val nextSteps: List<ParsingStep<out Any>>): PartialParsingResult()
+}
+
+// TODO: It would be nice if we could make these lighter-weight; something something weak references and a flyweight cache to map context keys to contexts
+sealed class ParsingStep<T> {
+    abstract fun execute(): StepResult<T, ParsingStep<T>>
+    data class ParseConfig(val configText: String): ParsingStep<ModuleInfoParsingResult>() {
+        override fun execute(): StepResult<ModuleInfoParsingResult, ParsingStep<ModuleInfoParsingResult>> {
+            val parsedConfig = parseConfigFileString(configText)
+            return StepResult(this, parsedConfig)
+        }
+    }
+
+    data class ParseIr(val filePath: String, val sourceText: String, val dialect: Dialect): ParsingStep<Dialect.IR>() {
+        override fun execute(): StepResult<Dialect.IR, ParsingStep<Dialect.IR>> {
+            val ir = dialect.parseToIR(sourceText)
+            return StepResult(this, ir)
+        }
+    }
+
+    data class SummarizeTypes(val filePath: String, val ir: Dialect.IR, val dialect: Dialect, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>): ParsingStep<TypesSummary>() {
+        override fun execute(): StepResult<TypesSummary, ParsingStep<TypesSummary>> {
+            val typesSummary = dialect.getTypesSummary(ir, moduleName, upstreamModules)
+            return StepResult(this, typesSummary)
+        }
+    }
+
+    data class CombineTypes(val typesInfoBasis: List<TypesSummary>, val moduleName: ModuleName, val upstreamModules: List<ValidatedModule>) : ParsingStep<TypesInfo>() {
+        override fun execute(): StepResult<TypesInfo, ParsingStep<TypesInfo>> {
+            val allTypesSummary = combineTypesSummaries(typesInfoBasis)
+            // TODO: Actually support upstream modules
+            val moduleId = ModuleUniqueId(moduleName, "")
+            val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+            val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
+            val allTypesInfo = getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
+            return StepResult(this, allTypesInfo)
+        }
+    }
+
+    data class Parse(val filePath: String, val ir: Dialect.IR, val dialect: Dialect, val allTypesInfo: TypesInfo): ParsingStep<ParsingResult>() {
+        override fun execute(): StepResult<ParsingResult, ParsingStep<ParsingResult>> {
+            val result = dialect.parseWithTypeInfo(ir, allTypesInfo)
+            return StepResult(this, result)
+        }
+    }
+}
+
+class StepResult<T, S: ParsingStep<T>>(val step: S, val result: T)
+ */
+
+//fun combineParsingResults(filesParsingState: FilesParsingState): PartialParsingResult {
+//    val configResult = filesParsingState.configResult
+//    return when (configResult) {
+//        is ModuleInfoParsingResult.Failure -> {
+//            val error = Issue("Couldn't parse module.conf: ${configResult.error.message}", null, IssueLevel.ERROR)
+//            PartialParsingResult.Complete(ModuleDirectoryParsingResult.Failure(listOf(error), listOf()))
+//        }
+//        is ModuleInfoParsingResult.Success -> {
+//
+//        }
+//    }
+//}
+
 fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleDirectoryParsingResult {
     val configFile = File(directory, "module.conf")
     val parsedConfig = parseConfigFile(configFile)

@@ -5,6 +5,8 @@ import net.semlang.api.ModuleName
 import net.semlang.api.parser.Issue
 import net.semlang.api.parser.IssueLevel
 import net.semlang.modules.getDefaultLocalRepository
+import net.semlang.modules.parseAndValidateModuleDirectory
+import net.semlang.modules.parseModuleDirectory
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
@@ -89,6 +91,15 @@ data class FileOnDiskState(val text: String, val lastModifiedTime: FileTime)
 sealed class DocumentSource {
     data class Client(val text: String): DocumentSource()
     data class FileSystem(val lastModifiedTime: FileTime): DocumentSource()
+}
+
+/**
+ * This is going to be really inefficient/potentially not very responsive, but I want the "real" implementation to live in
+ * parseDir eventually...
+ */
+class NaiveSourcesFolderModel(private val folderURI: URI,
+                              private val languageClientProvider: LanguageClientProvider) {
+
 }
 
 /*
@@ -183,39 +194,63 @@ class SourcesFolderModel(private val folderUri: URI,
     private fun getReparseAndRevalidateTask(sourcesNeedingReparsing: Set<String>): () -> Unit {
         return fun() {
             val folderState = this.folderState
-            for (fileName in sourcesNeedingReparsing) {
-                val openFileText = folderState.openFiles[fileName]
+
+            if (sourcesNeedingReparsing.contains("module.conf")) {
+                val openFileText = folderState.openFiles["module.conf"]
                 // Null if the file doesn't exist (can't be accessed, etc.)
                 val fileText: String? = if (openFileText != null) {
-                    sourcesUsedForParsingResults[fileName] = DocumentSource.Client(openFileText)
+                    sourcesUsedForParsingResults["module.conf"] = DocumentSource.Client(openFileText)
                     openFileText
                 } else {
-                    val otherFileState = folderState.otherFiles[fileName]
+                    val otherFileState = folderState.otherFiles["module.conf"]
                     if (otherFileState != null) {
-                        sourcesUsedForParsingResults[fileName] = DocumentSource.FileSystem(otherFileState.lastModifiedTime)
+                        sourcesUsedForParsingResults["module.conf"] = DocumentSource.FileSystem(otherFileState.lastModifiedTime)
                         otherFileState.text
                     } else {
-                        sourcesUsedForParsingResults.remove(fileName)
+                        sourcesUsedForParsingResults.remove("module.conf")
                         null
                     }
                 }
-
-                if (fileName == "module.conf") {
-                    if (fileText != null) {
-                        // TODO: Report errors more helpfully for invalid configs
-                        val configParsingResult = parseConfigFileString(fileText)
-                        if (configParsingResult is ModuleInfoParsingResult.Success) {
-                            this.moduleInfo = configParsingResult.info
-                        } else {
-                            if (configParsingResult is ModuleInfoParsingResult.Failure) {
-                                System.err.println("Config parsing failed: ${configParsingResult.error}")
-                            }
-                            this.moduleInfo = null
-                        }
+                if (fileText != null) {
+                    // TODO: Report errors more helpfully for invalid configs
+                    val configParsingResult = parseConfigFileString(fileText)
+                    if (configParsingResult is ModuleInfoParsingResult.Success) {
+                        this.moduleInfo = configParsingResult.info
                     } else {
+                        if (configParsingResult is ModuleInfoParsingResult.Failure) {
+                            System.err.println("Config parsing failed: ${configParsingResult.error}")
+                        }
                         this.moduleInfo = null
                     }
                 } else {
+                    this.moduleInfo = null
+                }
+            }
+
+            val moduleInfo = this.moduleInfo
+            if (moduleInfo == null) {
+                // Treat each file as its own module
+                for (fileName in sourcesNeedingReparsing) {
+                    if (fileName == "module.conf") {
+                        continue
+                    }
+                    val openFileText = folderState.openFiles[fileName]
+                    // Null if the file doesn't exist (can't be accessed, etc.)
+                    val fileText: String? = if (openFileText != null) {
+                        sourcesUsedForParsingResults[fileName] = DocumentSource.Client(openFileText)
+                        openFileText
+                    } else {
+                        val otherFileState = folderState.otherFiles[fileName]
+                        if (otherFileState != null) {
+                            sourcesUsedForParsingResults[fileName] = DocumentSource.FileSystem(otherFileState.lastModifiedTime)
+                            otherFileState.text
+                        } else {
+                            sourcesUsedForParsingResults.remove(fileName)
+                            null
+                        }
+                    }
+
+
                     if (fileText != null) {
                         val parsingResult = parseString(fileText, getDocumentUriForFileName(fileName))
                         parsingResultsByDocumentName[fileName] = parsingResult
@@ -223,11 +258,8 @@ class SourcesFolderModel(private val folderUri: URI,
                         parsingResultsByDocumentName.remove(fileName)
                     }
                 }
-            }
 
-            val moduleInfo = this.moduleInfo
-            if (moduleInfo == null) {
-                // Treat each file as its own module
+
                 parsingResultsByDocumentName.forEach { fileName, parsingResult ->
                     val fakeModuleName = ModuleName("non-module", fileName.split(".")[0])
                     val validationResult = validate(parsingResult, fakeModuleName, CURRENT_NATIVE_MODULE_VERSION, listOf())
@@ -244,16 +276,18 @@ class SourcesFolderModel(private val folderUri: URI,
                 }
             } else {
                 // We have a single module with a valid config
-                val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
+//                val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
                 // TODO: We need dependencies here
                 val repository = getDefaultLocalRepository()
+//                val combinedParsingResult = parseModuleDirectory(File(folderUri), repository)
                 // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
                 // TODO: Also catch and deal with errors here
                 val loadedDependencies = moduleInfo.dependencies.map {
                     val uniqueId = repository.getModuleUniqueId(it, File(folderUri))
                     repository.loadModule(uniqueId)
                 }
-                val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
+//                val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
+                val validationResult = parseAndValidateModuleDirectory(File(folderUri), CURRENT_NATIVE_MODULE_VERSION, repository)
 
                 val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
                 val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
@@ -266,6 +300,48 @@ class SourcesFolderModel(private val folderUri: URI,
                     client.publishDiagnostics(diagnosticsParams)
                 }
             }
+
+//            val moduleInfo = this.moduleInfo
+//            if (moduleInfo == null) {
+//                // Treat each file as its own module
+//                parsingResultsByDocumentName.forEach { fileName, parsingResult ->
+//                    val fakeModuleName = ModuleName("non-module", fileName.split(".")[0])
+//                    val validationResult = validate(parsingResult, fakeModuleName, CURRENT_NATIVE_MODULE_VERSION, listOf())
+//
+//                    val diagnostics = collectDiagnostics(validationResult.getAllIssues(), listOf(getDocumentUriForFileName(fileName)))
+//
+//                    val client = languageClientProvider.getLanguageClient()
+//                    diagnostics.forEach { uri, diagnosticsList ->
+//                        // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
+//                        // if nothing has changed
+//                        val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
+//                        client.publishDiagnostics(diagnosticsParams)
+//                    }
+//                }
+//            } else {
+//                // We have a single module with a valid config
+//                val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
+//                // TODO: We need dependencies here
+//                val repository = getDefaultLocalRepository()
+//                // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
+//                // TODO: Also catch and deal with errors here
+//                val loadedDependencies = moduleInfo.dependencies.map {
+//                    val uniqueId = repository.getModuleUniqueId(it, File(folderUri))
+//                    repository.loadModule(uniqueId)
+//                }
+//                val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
+//
+//                val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
+//                val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
+//
+//                val client = languageClientProvider.getLanguageClient()
+//                diagnostics.forEach { uri, diagnosticsList ->
+//                    // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
+//                    // if nothing has changed
+//                    val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
+//                    client.publishDiagnostics(diagnosticsParams)
+//                }
+//            }
         }
     }
 
