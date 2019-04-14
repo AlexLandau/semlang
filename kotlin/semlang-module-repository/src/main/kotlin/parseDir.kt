@@ -474,3 +474,132 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
         }
     }
 }
+
+
+fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleRepository): ModuleDirectoryParsingResult {
+    val configFile = File(directory, "module.conf")
+    val definition = getFilesParsingDefinition()
+    val instance = definition.instantiate()
+
+    // I think we could get typings on this if it were either generated from a spec or based on an annotation processor
+    instance.setInput(CONFIG_TEXT, configFile.readText())
+
+    for (file in directory.listFiles()) {
+        instance.addKey(SOURCE_FILE_URLS, file.absolutePath)
+        instance.setKeyedInput(SOURCE_TEXTS, file.absolutePath, file.readText())
+    }
+
+    instance.completeSynchronously()
+
+    // TODO: Also handle the case where we get an error in config parsing
+    val combinedParsingResult = instance.getNodeValue(COMBINED_PARSING_RESULT)
+    when (combinedParsingResult) {
+        is ParsingResult.Success -> {
+            ModuleDirectoryParsingResult.Success(UnvalidatedModule(parsedConfig.info, combinedParsingResult.context))
+        }
+        is ParsingResult.Failure -> {
+            ModuleDirectoryParsingResult.Failure(combinedParsingResult.errors, listOf())
+        }
+    }
+
+//    val parsedConfig = parseConfigFile(configFile)
+//    return when (parsedConfig) {
+//        is ModuleInfoParsingResult.Failure -> {
+//            val error = Issue("Couldn't parse module.conf: ${parsedConfig.error.message}", null, IssueLevel.ERROR)
+//            ModuleDirectoryParsingResult.Failure(listOf(error), listOf())
+//        }
+//        is ModuleInfoParsingResult.Success -> {
+//            val moduleName = parsedConfig.info.name
+//            val upstreamModules = listOf<ValidatedModule>() // TODO: Support dependencies
+//
+//            // TODO: Generalize to support "external" dialects
+//            val allFiles = directory.listFiles()
+//            val filesByDialect = sortByDialect(allFiles)
+//
+//            val combinedParsingResult = if (filesByDialect.keys.any { it.needsTypeInfoToParse }) {
+//                // Collect type info in one pass, then parse in a second pass
+//                collectParsingResultsTwoPasses(filesByDialect, moduleName, upstreamModules)
+//            } else {
+//                // Parse everything in one pass
+//                collectParsingResultsSinglePass(filesByDialect)
+//            }
+//
+//            when (combinedParsingResult) {
+//                is ParsingResult.Success -> {
+//                    ModuleDirectoryParsingResult.Success(UnvalidatedModule(parsedConfig.info, combinedParsingResult.context))
+//                }
+//                is ParsingResult.Failure -> {
+//                    ModuleDirectoryParsingResult.Failure(combinedParsingResult.errors, listOf())
+//                }
+//            }
+//        }
+//    }
+
+}
+
+internal val CONFIG_TEXT = NodeName<String>("configText")
+internal val PARSED_CONFIG = NodeName<ModuleInfoParsingResult.Success>("parsedConfig")
+internal val SOURCE_FILE_URLS = NodeName<String>("sourceFileUrls")
+internal val SOURCE_TEXTS = KeyedNodeName<String, String>("sourceTexts")
+internal val IRS = KeyedNodeName<String, Dialect.IR>("irs")
+internal val TYPE_SUMMARIES = KeyedNodeName<String, TypesSummary>("typeSummaries")
+internal val TYPE_INFO = NodeName<TypesInfo>("typeInfo")
+internal val PARSING_RESULTS = KeyedNodeName<String, ParsingResult>("parsingResults")
+internal val COMBINED_PARSING_RESULT = NodeName<ParsingResult>("combinedParsingResult")
+internal fun getFilesParsingDefinition(): TrickleDefinition {
+    val builder = TrickleDefinitionBuilder()
+    val stringClass = kotlin.String::class.java
+    val configTextInput = builder.createInputNode(CONFIG_TEXT)
+    val parsedConfig = builder.createNode(PARSED_CONFIG, configTextInput, { text ->
+        // Parse the config
+        parseConfigFileString(text) as ModuleInfoParsingResult.Success
+    })
+    val sourceFileUrls = builder.createKeyListInputNode<String>(SOURCE_FILE_URLS)
+    val sourceTexts = builder.createKeyedInputNode<String>(SOURCE_TEXTS, sourceFileUrls)
+
+    val irs = builder.createKeyedNode(IRS, sourceFileUrls, sourceTexts.keyedOutput(), { filePath: String, sourceText: String ->
+        // Do something, make the IR
+        val dialect = determineDialect(filePath)!!
+        dialect.parseToIR(sourceText)
+    })
+    val typeSummaries = builder.createKeyedNode(TYPE_SUMMARIES, sourceFileUrls, irs.keyedOutput(), parsedConfig, { filePath, ir, config ->
+        // Do something, make the type summary
+        val dialect = determineDialect(filePath)!!
+        val moduleName = config.info.name
+        val upstreamModules = listOf<ValidatedModule>() // TODO: support
+        dialect.getTypesSummary(ir, moduleName, upstreamModules)
+    })
+
+    val typeInfoNode = builder.createNode(TYPE_INFO, typeSummaries.fullOutput(), parsedConfig, { summaries, config ->
+        val moduleName = config.info.name
+        val upstreamModules = listOf<ValidatedModule>() // TODO: support
+        val allTypesSummary = combineTypesSummaries(summaries)
+        // TODO: Actually support upstream modules
+        val moduleId = ModuleUniqueId(moduleName, "")
+        val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+        val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
+        getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
+    })
+
+    val parsingResultsNode = builder.createKeyedNode(PARSING_RESULTS, sourceFileUrls, irs.keyedOutput(), typeInfoNode, { filePath, ir, typeInfo ->
+        val dialect = determineDialect(filePath)!!
+        dialect.parseWithTypeInfo(ir, typeInfo)
+    })
+
+    val combinedParsingResultNode = builder.createNode(COMBINED_PARSING_RESULT, parsingResultsNode.fullOutput(), { parsingResults ->
+        combineParsingResults(parsingResults)
+    })
+
+    return builder.build()
+}
+
+// TODO: Support other dialects, probably by making dialect determination another asynchronous step in the process
+private fun determineDialect(filePath: String): Dialect? {
+    if (filePath.endsWith(".sem") || filePath.endsWith(".sem1")) {
+        return Dialect.Sem1
+    }
+    if (filePath.endsWith(".sem2")) {
+        return Dialect.Sem2
+    }
+    return null
+}

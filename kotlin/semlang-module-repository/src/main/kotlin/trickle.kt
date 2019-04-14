@@ -1,6 +1,6 @@
 package net.semlang.modules
 
-import net.semlang.parser.parseConfigFileString
+import java.util.*
 
 /*
  * Trickle: A Kotlin/JVM library (...if I choose to extract it) for defining asynchronous tasks in terms of each
@@ -14,34 +14,142 @@ import net.semlang.parser.parseConfigFileString
 // TODO: "CatchNode" for error handling; nodes can raise an error in their output (one way or another) and the CatchNode
 // will turn errors or successes into
 
+open class NodeName<T>(val name: String) {
+    override fun equals(other: Any?): Boolean {
+        if (other !is NodeName<*>) {
+            return false
+        }
+        return Objects.equals(name, other.name)
+    }
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+}
+class KeyedNodeName<K, T>(name: String): NodeName<T>(name)
+
+class KeyList<T> {
+    fun add(key: T): Boolean {
+        if (set.contains(key)) {
+            return false
+        }
+        set.add(key)
+        return list.add(key)
+    }
+
+    private val list = ArrayList<T>()
+    private val set = HashSet<T>()
+}
+
 // TODO: Synchronize stuff
-class TrickleState(val definition: TrickleDefinition) {
+class TrickleInstance(val definition: TrickleDefinition) {
+    val nonkeyedNodeValues = HashMap<NodeName<*>, Any>()
+    val keyListValues = HashMap<NodeName<*>, KeyList<Any>>()
+    val keyedNodeValues = HashMap<KeyedNodeName<*, *>, HashMap<Any, Any>>()
 
-    fun getResultOrNextSteps(): Something {
+    init {
+        for (node in definition.keyListNodes) {
+            keyListValues[node.value.name] = KeyList()
+        }
+    }
+
+    fun <T> setInput(nodeName: NodeName<T>, value: T) {
+        nonkeyedNodeValues[nodeName] = value as Any
+    }
+    fun <T> addKey(nodeName: NodeName<T>, key: Any) {
+        val added = keyListValues[nodeName]!!.add(key)
+    }
+    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T) {
 
     }
 
-    fun reportInputChanged() {
+    fun completeSynchronously() {
 
     }
 
-    fun reportStepResult() {
-
+    fun <T> getNodeValue(nodeName: NodeName<T>): T? {
+        return nonkeyedNodeValues[nodeName] as? T
     }
 }
 
-data class TrickleDefinition()
+sealed class TrickleInstanceOutput {
+    data class Result()
+    data class NextSteps()
+}
+
+class TrickleDefinition(val nonkeyedNodes: Map<String, TrickleNode<*>>, val keyListNodes: Map<String, KeyListNode<*>>) {
+    fun instantiate(): TrickleInstance {
+        return TrickleInstance(this)
+    }
+}
+class TrickleDefinitionBuilder {
+    val nodes = HashMap<NodeName<*>, TrickleNode<*>>()
+
+    fun <T> createInputNode(name: NodeName<T>): TrickleNode<T> {
+        checkNameNotUsed(name)
+        val node = TrickleNode<T>(name, listOf(), null)
+        nodes[name] = node
+        return node
+    }
+
+    private fun checkNameNotUsed(name: NodeName<*>) {
+        if (nodes.containsKey(name)) {
+            error("Cannot create two nodes with the same name '$name'")
+        }
+    }
+
+    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T): TrickleNode<T> {
+        return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) })
+    }
+    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T): TrickleNode<T> {
+        return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) })
+    }
+    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T): TrickleNode<T> {
+        checkNameNotUsed(name)
+        val node = TrickleNode<T>(name, inputs, fn)
+        nodes[name] = node
+        return node
+    }
+
+    fun <T> createKeyListInputNode(name: NodeName<T>): TrickleKeyNode<T> {
+        checkNameNotUsed(name)
+    }
+
+    fun <T> createKeyedInputNode(name: KeyedNodeName<*, T>, keySource: TrickleKeyNode<*>): TrickleKeyedNode<T> {
+        checkNameNotUsed(name)
+    }
+    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyNode<K>, fn: (K) -> T): TrickleKeyedNode<T> {
+        checkNameNotUsed(name)
+    }
+    fun <T, K, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<T> {
+        checkNameNotUsed(name)
+    }
+    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<T> {
+        checkNameNotUsed(name)
+    }
+
+    fun build(): TrickleDefinition {
+    }
+
+}
 
 interface TrickleInput<T> {
 
 }
 
-class TrickleNode<T>(val name: String, val type: TrickleNode.Type<T>): TrickleInput<T> {
-    sealed class Type<T> {
-        data class Single<T>(val clazz: Class<T>): Type<T>()
-        data class List<T>(val clazz: Class<T>): Type<kotlin.collections.List<T>>()
-        data class Map<K, V>(val keyClass: Class<K>, val valueClass: Class<V>): Type<kotlin.collections.Map<K, V>>()
-    }
+class KeyListNode<T>(
+    val name: NodeName<T>
+)
+
+class TrickleNode<T>(
+    val name: NodeName<T>,
+    val inputs: List<TrickleInput<*>>,
+    val operation: ((List<*>) -> T)?
+): TrickleInput<T> {
+//    sealed class Type<T> {
+//        data class Single<T>(val clazz: Class<T>): Type<T>()
+//        data class List<T>(val clazz: Class<T>): Type<kotlin.collections.List<T>>()
+//        data class Map<K, V>(val keyClass: Class<K>, val valueClass: Class<V>): Type<kotlin.collections.Map<K, V>>()
+//    }
 }
 
 //class TrickleNodeBuilder<T>(val name: String, val type: TrickleNode.Type<T>) {
@@ -58,15 +166,7 @@ class TrickleNode<T>(val name: String, val type: TrickleNode.Type<T>): TrickleIn
 //    }
 //}
 
-fun <T> createInputNode(name: String): TrickleNode<T> {
-}
-fun <T, I1> createNode(name: String, input1: TrickleInput<I1>, fn: (I1) -> T): TrickleNode<T> {
-}
-
 class TrickleKeyNode<T>
-
-fun <T> createKeyListInputNode(name: String): TrickleKeyNode<T> {
-}
 
 // TODO: This might want K in the type parameters
 class TrickleKeyedNode<T> {
@@ -77,31 +177,3 @@ class TrickleKeyedNode<T> {
     }
 }
 
-fun <T> createKeyedInputNode(name: String, keySource: TrickleKeyNode<*>): TrickleKeyedNode<T> {
-}
-fun <T, K> createKeyedNode(name: String, keySource: TrickleKeyNode<K>, fn: (K) -> T): TrickleKeyedNode<T> {
-}
-fun <T, K, I1> createKeyedNode(name: String, keySource: TrickleKeyNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<T> {
-}
-fun <T, K, I1, I2> createKeyedNode(name: String, keySource: TrickleKeyNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<T> {
-}
-
-
-data class SourceText(val id: String, val text: String)
-fun getFilesParsingDefinition(): TrickleDefinition {
-    val stringClass = kotlin.String::class.java
-    val configTextInput = createInputNode<String>("configText")
-    val parsedConfig = createNode("parsedConfig", configTextInput, { text ->
-        // Parse the config
-        parseConfigFileString(text)
-    })
-    val sourceFileUrls = createKeyListInputNode<String>("sourceFileUrls")
-    val sourceTexts = createKeyedInputNode<SourceText>("sourceTexts", sourceFileUrls)
-
-    val irs = createKeyedNode("irs", sourceFileUrls, sourceTexts.keyedOutput(), { fileUrl: String, sourceText: SourceText ->
-        // Do something, make the IR
-    })
-    val typeSummaries = createKeyedNode("typeSummaries", sourceFileUrls, irs.keyedOutput(), parsedConfig, { key, ir, config ->
-        // Do something, make the type summary
-    })
-}
