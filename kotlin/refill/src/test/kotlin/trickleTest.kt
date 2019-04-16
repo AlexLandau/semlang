@@ -80,4 +80,22 @@ class TrickleTests {
         val aNode1 = builder1.createInputNode(A)
         val bNode2 = builder2.createNode(B, aNode1, { it + 1 })
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotShareResultsBetweenInstances() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val definition = builder.build()
+        val instance1 = definition.instantiate()
+        val instance2 = definition.instantiate()
+
+        instance1.setInput(A, 3)
+        val step = instance1.getNextSteps().single()
+        val result = step.execute()
+
+        instance2.reportResult(result)
+    }
 }

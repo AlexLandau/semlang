@@ -66,6 +66,10 @@ data class TimestampedValue(private var timestamp: Long, private var value: Any?
 
 // TODO: Synchronize stuff
 class TrickleInstance(val definition: TrickleDefinition) {
+    // Used to ensure all results we receive originated from this instance
+    class Id internal constructor()
+    private val instanceId = Id()
+
 //    val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, Any>()
 //    val keyListValues = LinkedHashMap<NodeName<*>, KeyList<Any>>()
 //    val keyedNodeValues = LinkedHashMap<KeyedNodeName<*, *>, LinkedHashMap<Any, Any>>()
@@ -151,7 +155,7 @@ class TrickleInstance(val definition: TrickleDefinition) {
 
                         val operation = node.operation ?: error("This was supposed to be an input node, I guess")
                         println("Preparing an operation binding with input values ${inputValues}; our node has ${node.inputs.size} inputs")
-                        nextSteps.add(TrickleStep(nodeName, maximumInputTimestamp, { operation(inputValues) }))
+                        nextSteps.add(TrickleStep(nodeName, maximumInputTimestamp, instanceId, { operation(inputValues) }))
                     } else if (curValueTimestamp > maximumInputTimestamp) {
                         error("This should never happen")
                     } else {
@@ -192,6 +196,9 @@ class TrickleInstance(val definition: TrickleDefinition) {
 
     @Synchronized
     fun reportResult(result: TrickleStepResult) {
+        if (instanceId != result.instanceId) {
+            throw IllegalArgumentException("Received a result that did not originate from this instance")
+        }
         if (result.timestamp > this.nonkeyedNodeValues[result.nodeName]!!.getTimestamp()) {
             this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result)
         }
@@ -204,14 +211,15 @@ class TrickleInstance(val definition: TrickleDefinition) {
     }
 }
 
-class TrickleStep(
+class TrickleStep internal constructor(
     val nodeName: NodeName<*>,
     val timestamp: Long,
+    val instanceId: TrickleInstance.Id,
     val operation: () -> Any?
 ) {
     fun execute(): TrickleStepResult {
         val result = operation()
-        return TrickleStepResult(nodeName, timestamp, result)
+        return TrickleStepResult(nodeName, timestamp, instanceId, result)
     }
 
     override fun toString(): String {
@@ -219,15 +227,16 @@ class TrickleStep(
     }
 }
 
-class TrickleStepResult(
+class TrickleStepResult internal constructor(
     val nodeName: NodeName<*>,
     val timestamp: Long,
+    val instanceId: TrickleInstance.Id,
     val result: Any?
 ) {
 
 }
 
-class TrickleDefinition(val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
+class TrickleDefinition internal constructor(val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
 //                        val keyListNodes: Map<NodeName<*>, TrickleKeyListNode<*>>,
                         val topologicalOrdering: List<NodeName<*>>) {
     fun instantiate(): TrickleInstance {
@@ -237,11 +246,12 @@ class TrickleDefinition(val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
 class TrickleDefinitionBuilder {
     private val nodes = HashMap<NodeName<*>, TrickleNode<*>>()
     private val topologicalOrdering = ArrayList<NodeName<*>>()
-    private val builderId = TrickleDefinitionBuilder.Id()
 //    private val keyListNodes = HashMap<NodeName<*>, TrickleKeyListNode<*>>()
 //    private val keyedNodes = HashMap<KeyedNodeName<*, *>, TrickleKeyedNode<*>>()
 
-    class Id
+    // Used to ensure all node inputs we receive originated from this builder
+    class Id internal constructor()
+    private val builderId = Id()
 
     fun <T> createInputNode(name: NodeName<T>): TrickleNode<T> {
         checkNameNotUsed(name)
@@ -333,7 +343,7 @@ class TrickleError {
 
 }
 
-class TrickleNode<T>(
+class TrickleNode<T> internal constructor(
     val name: NodeName<T>,
     override val builderId: TrickleDefinitionBuilder.Id,
     val inputs: List<TrickleInput<*>>,
