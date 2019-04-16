@@ -3,6 +3,7 @@ import net.semlang.modules.TrickleDefinitionBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 
 class TrickleTests {
     val A = NodeName<Int>("a")
@@ -33,6 +34,34 @@ class TrickleTests {
         instance.setInput(A, 1)
         instance.completeSynchronously()
         assertEquals(8, instance.getNodeValue(D))
+    }
+
+    @Test
+    fun testApplyingResultsAfterMultipleInputs() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 10)
+        val olderStep = instance.getNextSteps().single()
+        instance.setInput(A, 20)
+        val newerStep = instance.getNextSteps().single()
+
+        // Compute and apply the steps in order
+        val olderResult = olderStep.execute()
+        assertEquals(11, olderResult.result)
+        instance.reportResult(olderResult)
+        // TODO: What should we return if we ask for B here?
+        val newerResult = newerStep.execute()
+        assertEquals(21, newerResult.result)
+        instance.reportResult(newerResult)
+
+        assertEquals(0, instance.getNextSteps().size)
+        // The result based on the newer input is returned
+        assertEquals(21, instance.getNodeValue(B))
     }
 
     @Test
@@ -97,5 +126,31 @@ class TrickleTests {
         val result = step.execute()
 
         instance2.reportResult(result)
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun testCannotGetStepsWithInputsUndefined() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.getNextSteps()
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun testCannotGetStepsWithInputsUndefined2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+        val cNode = builder.createInputNode(C)
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 1)
+        instance.getNextSteps()
     }
 }

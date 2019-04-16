@@ -1,6 +1,7 @@
 package net.semlang.modules
 
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 import java.util.*
 
 /*
@@ -49,7 +50,7 @@ class KeyList<T> {
     private val set = HashSet<T>()
 }
 
-data class TimestampedValue(private var timestamp: Long, private var value: Any?) {
+private data class TimestampedValue(private var timestamp: Long, private var value: Any?) {
     fun set(newTimestamp: Long, newValue: Any?) {
         this.timestamp = newTimestamp
         this.value = newValue
@@ -65,7 +66,7 @@ data class TimestampedValue(private var timestamp: Long, private var value: Any?
 }
 
 // TODO: Synchronize stuff
-class TrickleInstance(val definition: TrickleDefinition) {
+class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     // Used to ensure all results we receive originated from this instance
     class Id internal constructor()
     private val instanceId = Id()
@@ -73,11 +74,11 @@ class TrickleInstance(val definition: TrickleDefinition) {
 //    val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, Any>()
 //    val keyListValues = LinkedHashMap<NodeName<*>, KeyList<Any>>()
 //    val keyedNodeValues = LinkedHashMap<KeyedNodeName<*, *>, LinkedHashMap<Any, Any>>()
-    val nonkeyedNodeValues: Map<NodeName<*>, TimestampedValue>
+    private val nonkeyedNodeValues: Map<NodeName<*>, TimestampedValue>
 
 //    val nonkeyedValueTimeStamps = HashMap<NodeName<*>, Long>()
 
-    var curTimestamp = 0L
+    private var curTimestamp = 0L
 
     init {
         val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, TimestampedValue>()
@@ -116,6 +117,7 @@ class TrickleInstance(val definition: TrickleDefinition) {
      */
     @Synchronized
     fun getNextSteps(): List<TrickleStep> {
+        val unsetInputs = ArrayList<NodeName<*>>()
         val nextSteps = ArrayList<TrickleStep>()
         val unkeyedTimeStampIfUpToDate = HashMap<NodeName<*>, Long>()
         for (nodeName in definition.topologicalOrdering) {
@@ -130,6 +132,8 @@ class TrickleInstance(val definition: TrickleDefinition) {
                 println("timestamp: ")
                 if (timestamp >= 0L) {
                     unkeyedTimeStampIfUpToDate[nodeName] = timestamp
+                } else {
+                    unsetInputs.add(nodeName)
                 }
             } else {
                 var anyInputNotUpToDate = false
@@ -164,6 +168,9 @@ class TrickleInstance(val definition: TrickleDefinition) {
                     }
                 }
             }
+        }
+        if (unsetInputs.isNotEmpty()) {
+            throw IllegalStateException("Cannot start the operation before all inputs are set. Unset inputs: $unsetInputs")
         }
         return nextSteps
     }
