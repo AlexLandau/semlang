@@ -1,0 +1,356 @@
+package net.semlang.modules
+
+import java.lang.IllegalArgumentException
+import java.util.*
+
+/*
+ * Trickle: A Kotlin/JVM library (...if I choose to extract it) for defining asynchronous tasks in terms of each
+ * other, going beyond RxJava by adding support for minimal recomputation when portions of the input change.
+ */
+
+// TODO: Concept to use: "Keys" that support equality, and a list of keys is used as the basis for maps and per-item steps
+// A step can be in the "context" of a KeyList, in which case when it accepts other things in that context as inputs, you
+// get the same key's equivalent (a single item) instead of the whole list
+
+// TODO: "CatchNode" for error handling; nodes can raise an error in their output (one way or another) and the CatchNode
+// will turn errors or successes into
+
+open class NodeName<T>(val name: String) {
+    override fun equals(other: Any?): Boolean {
+        if (other !is NodeName<*>) {
+            return false
+        }
+        return Objects.equals(name, other.name)
+    }
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+    override fun toString(): String {
+        return name
+    }
+}
+/**
+ * Note that KeyedNodeName uses the same equals() and hashCode() implementations as NodeName (and is interchangeable
+ * with other NodeNames for those purposes), and only exists as a separate type to include the key type as a type
+ * parameter.
+ */
+class KeyedNodeName<K, T>(name: String): NodeName<T>(name)
+
+class KeyList<T> {
+    fun add(key: T): Boolean {
+        if (set.contains(key)) {
+            return false
+        }
+        set.add(key)
+        return list.add(key)
+    }
+
+    private val list = ArrayList<T>()
+    private val set = HashSet<T>()
+}
+
+data class TimestampedValue(private var timestamp: Long, private var value: Any?) {
+    fun set(newTimestamp: Long, newValue: Any?) {
+        this.timestamp = newTimestamp
+        this.value = newValue
+    }
+
+    fun getValue(): Any? {
+        return value
+    }
+
+    fun getTimestamp(): Long {
+        return timestamp
+    }
+}
+
+// TODO: Synchronize stuff
+class TrickleInstance(val definition: TrickleDefinition) {
+//    val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, Any>()
+//    val keyListValues = LinkedHashMap<NodeName<*>, KeyList<Any>>()
+//    val keyedNodeValues = LinkedHashMap<KeyedNodeName<*, *>, LinkedHashMap<Any, Any>>()
+    val nonkeyedNodeValues: Map<NodeName<*>, TimestampedValue>
+
+//    val nonkeyedValueTimeStamps = HashMap<NodeName<*>, Long>()
+
+    var curTimestamp = 0L
+
+    init {
+        val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, TimestampedValue>()
+        for (node in definition.nonkeyedNodes) {
+            nonkeyedNodeValues[node.value.name] = TimestampedValue(-1L, null)
+        }
+        this.nonkeyedNodeValues = nonkeyedNodeValues
+    }
+
+    @Synchronized
+    fun <T> setInput(nodeName: NodeName<T>, value: T) {
+        curTimestamp++
+        nonkeyedNodeValues[nodeName]!!.set(curTimestamp, value)
+    }
+//    fun <T> addKey(nodeName: NodeName<T>, key: Any) {
+//        val added = keyListValues[nodeName]!!.add(key)
+//    }
+//    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T) {
+//
+//    }
+
+    /*
+    Go through each node in topological order
+    For each one, we should have recorded the timestamp associated with its current value
+
+    Next we look at the node's inputs (if no inputs, it is up-to-date unless its timestamp is -1 for uninitialized)
+    For each input, we want to know 1) if that input is up-to-date, and 2) if so, its timestamp
+    If any input is not up-to-date, the node is not ready to be recomputed
+    If all inputs are up-to-date, then the maximum of the inputs' timestamps is the desired timestamp of this node
+    So either this node is that timestamp (do nothing) or it is not (create a TrickleStep for that node with that timestamp)
+    Then we record that this node is up-to-date or its timestamp
+
+    How does this differ for keylist nodes and keyed nodes? A keylist node can have multiple timestamps for its constituent
+    keys; keyed nodes only look at the keyed portions of the appropriate inputs. Nothing that fundamentally alters the
+    above algorithm.
+     */
+    @Synchronized
+    fun getNextSteps(): List<TrickleStep> {
+        val nextSteps = ArrayList<TrickleStep>()
+        val unkeyedTimeStampIfUpToDate = HashMap<NodeName<*>, Long>()
+        for (nodeName in definition.topologicalOrdering) {
+            println("unkeyedTimeStampIfUpToDate: $unkeyedTimeStampIfUpToDate")
+            println("Dealing with node name $nodeName")
+            // Treat differently if keyed or unkeyed
+            // Pretend this works for now
+            val node = definition.nonkeyedNodes[nodeName]!!
+            if (node.inputs.isEmpty()) {
+                println("Inputs are empty")
+                val timestamp = nonkeyedNodeValues[nodeName]?.getTimestamp() ?: -1L
+                println("timestamp: ")
+                if (timestamp >= 0L) {
+                    unkeyedTimeStampIfUpToDate[nodeName] = timestamp
+                }
+            } else {
+                var anyInputNotUpToDate = false
+                var maximumInputTimestamp = -1L
+                val inputValues = ArrayList<Any?>()
+                for (input in node.inputs) {
+                    // TODO:
+                    val unkeyedInputName: NodeName<*> = getNodeFromInput(input)
+                    val timeStampMaybe = unkeyedTimeStampIfUpToDate[unkeyedInputName]
+                    if (timeStampMaybe == null) {
+                        anyInputNotUpToDate = true
+                    } else {
+                        maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
+                        inputValues.add(nonkeyedNodeValues[unkeyedInputName]!!.getValue())
+                    }
+                }
+                println("Any input not up-to-date?: $anyInputNotUpToDate")
+                if (!anyInputNotUpToDate) {
+                    // All inputs are up-to-date
+                    val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
+                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                        // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
+
+                        val operation = node.operation ?: error("This was supposed to be an input node, I guess")
+                        println("Preparing an operation binding with input values ${inputValues}; our node has ${node.inputs.size} inputs")
+                        nextSteps.add(TrickleStep(nodeName, maximumInputTimestamp, { operation(inputValues) }))
+                    } else if (curValueTimestamp > maximumInputTimestamp) {
+                        error("This should never happen")
+                    } else {
+                        // Report this as being up-to-date for future things
+                        unkeyedTimeStampIfUpToDate[nodeName] = curValueTimestamp
+                    }
+                }
+            }
+        }
+        return nextSteps
+    }
+
+    private fun getNodeFromInput(input: TrickleInput<*>): NodeName<*> {
+        if (input is TrickleNode<*>) {
+            return input.name
+        }
+        error("Unhandled case getting node from input: ${input}")
+    }
+
+//    private fun isUpToDate(input: TrickleInput<*>): Boolean {
+//
+//    }
+
+    fun completeSynchronously() {
+        while (true) {
+            val nextSteps = getNextSteps()
+            println("Next steps: $nextSteps")
+            if (nextSteps.isEmpty()) {
+                return
+            }
+            for (step in nextSteps) {
+                println("Executing step ${step.nodeName}")
+                val result = step.execute()
+                this.reportResult(result)
+            }
+        }
+    }
+
+    @Synchronized
+    fun reportResult(result: TrickleStepResult) {
+        if (result.timestamp > this.nonkeyedNodeValues[result.nodeName]!!.getTimestamp()) {
+            this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result)
+        }
+//        this.nonkeyedValueTimeStamps[result.nodeName] = result.maximumInputTimestamp
+    }
+
+    @Synchronized
+    fun <T> getNodeValue(nodeName: NodeName<T>): T? {
+        return nonkeyedNodeValues[nodeName]?.getValue() as? T
+    }
+}
+
+class TrickleStep(
+    val nodeName: NodeName<*>,
+    val timestamp: Long,
+    val operation: () -> Any?
+) {
+    fun execute(): TrickleStepResult {
+        val result = operation()
+        return TrickleStepResult(nodeName, timestamp, result)
+    }
+
+    override fun toString(): String {
+        return "TrickleStep($nodeName, $timestamp)"
+    }
+}
+
+class TrickleStepResult(
+    val nodeName: NodeName<*>,
+    val timestamp: Long,
+    val result: Any?
+) {
+
+}
+
+class TrickleDefinition(val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
+//                        val keyListNodes: Map<NodeName<*>, TrickleKeyListNode<*>>,
+                        val topologicalOrdering: List<NodeName<*>>) {
+    fun instantiate(): TrickleInstance {
+        return TrickleInstance(this)
+    }
+}
+class TrickleDefinitionBuilder {
+    private val nodes = HashMap<NodeName<*>, TrickleNode<*>>()
+    private val topologicalOrdering = ArrayList<NodeName<*>>()
+    private val builderId = TrickleDefinitionBuilder.Id()
+//    private val keyListNodes = HashMap<NodeName<*>, TrickleKeyListNode<*>>()
+//    private val keyedNodes = HashMap<KeyedNodeName<*, *>, TrickleKeyedNode<*>>()
+
+    class Id
+
+    fun <T> createInputNode(name: NodeName<T>): TrickleNode<T> {
+        checkNameNotUsed(name)
+        val node = TrickleNode<T>(name, builderId, listOf(), null)
+        nodes[name] = node
+        topologicalOrdering.add(name)
+        return node
+    }
+
+    private fun checkNameNotUsed(name: NodeName<*>) {
+        if (nodes.containsKey(name) /*|| keyListNodes.containsKey(name) || keyedNodes.containsKey(name)*/) {
+            error("Cannot create two nodes with the same name '$name'")
+        }
+    }
+
+    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T): TrickleNode<T> {
+        return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) })
+    }
+    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T): TrickleNode<T> {
+        return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) })
+    }
+    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T): TrickleNode<T> {
+        checkNameNotUsed(name)
+        validateBuilderIds(inputs)
+        val node = TrickleNode<T>(name, builderId, inputs, fn)
+        nodes[name] = node
+        topologicalOrdering.add(name)
+        return node
+    }
+
+    private fun validateBuilderIds(inputs: List<TrickleInput<*>>) {
+        for (input in inputs) {
+            if (builderId != input.builderId) {
+                throw IllegalArgumentException("Cannot reuse nodes or inputs across builders")
+            }
+        }
+    }
+
+//    fun <T> createKeyListInputNode(name: NodeName<T>): TrickleKeyListNode<T> {
+//        checkNameNotUsed(name)
+//
+//        val node = TrickleKeyListNode<T>(name)
+//        keyListNodes[name] = node
+//        return node
+//    }
+//
+//    fun <T> createKeyedInputNode(name: KeyedNodeName<*, T>, keySource: TrickleKeyListNode<*>): TrickleKeyedNode<T> {
+//        checkNameNotUsed(name)
+//
+//        val node = TrickleKeyedNode<T>()
+//        keyedNodes[name] = node
+//        return node
+//    }
+//    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, fn: (K) -> T): TrickleKeyedNode<T> {
+//        return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
+//    }
+//    fun <T, K, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<T> {
+//        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
+//    }
+//    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<T> {
+//        return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
+//    }
+//    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleKeyedNode<T> {
+//        checkNameNotUsed(name)
+//        val node = TrickleKeyedNode<T>()
+//        keyedNodes[name] = node
+//        return node
+//    }
+
+    fun build(): TrickleDefinition {
+        return TrickleDefinition(nodes, topologicalOrdering)
+    }
+
+//    fun <T, I1> createCatchNode(nodeName: NodeName<T>, input1: TrickleInput<I1>, handleSuccess: (I1) -> T, handleError: (TrickleError) -> T): TrickleNode<T> {
+//
+//    }
+//    fun <T, I1, I2> createCatchNode(nodeName: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, handleSuccess: (I1, I2) -> T, handleError: (TrickleError) -> T): TrickleNode<T> {
+//
+//    }
+
+}
+
+interface TrickleInput<T> {
+    val builderId: TrickleDefinitionBuilder.Id
+}
+
+// TODO: Maybe rename since it's not actually an Error
+class TrickleError {
+
+}
+
+class TrickleNode<T>(
+    val name: NodeName<T>,
+    override val builderId: TrickleDefinitionBuilder.Id,
+    val inputs: List<TrickleInput<*>>,
+    val operation: ((List<*>) -> T)?
+): TrickleInput<T> {
+}
+
+//class TrickleKeyListNode<T>(
+//    val name: NodeName<T>
+//)
+
+// TODO: This might want K in the type parameters
+//class TrickleKeyedNode<T> {
+//    // TODO: These should probably be getter-based?
+//    fun keyedOutput(): TrickleInput<T> {
+//    }
+//    fun fullOutput(): TrickleInput<List<T>> {
+//    }
+//}
+

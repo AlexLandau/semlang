@@ -1,4 +1,5 @@
 dependencies {
+  compile project(':kotlin:refill')
   compile project(':kotlin:semlang-api')
   compile project(':kotlin:semlang-parser')
   compile project(':kotlin:sem2-parser')

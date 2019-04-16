@@ -30,8 +30,8 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             return ir.value as ParsingResult
         }
 
-        override fun parseToIR(file: File): IR {
-            return toIR(net.semlang.parser.parseFile(file))
+        override fun parseToIR(documentUri: String, text: String): IR {
+            return toIR(net.semlang.parser.parseString(text, documentUri))
         }
 
         override fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary {
@@ -52,8 +52,8 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             throw UnsupportedOperationException()
         }
 
-        override fun parseToIR(file: File): IR {
-            return toIR(net.semlang.sem2.parser.parseFile(file))
+        override fun parseToIR(documentUri: String, text: String): IR {
+            return toIR(net.semlang.sem2.parser.parseString(text, documentUri))
         }
 
         private fun toIR(parsingResult: net.semlang.sem2.parser.ParsingResult): IR {
@@ -95,7 +95,7 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
     abstract fun parseWithoutTypeInfo(file: File): ParsingResult
 
     // Two-pass parsing API (IR type should be a single type per dialect)
-    abstract fun parseToIR(file: File): IR
+    abstract fun parseToIR(documentUri: String, text: String): IR
     abstract fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary
     abstract fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult
 
@@ -397,7 +397,7 @@ fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>, mod
     for ((dialect, files) in filesByDialect.entries) {
         for (file in files) {
             try {
-                val ir = dialect.parseToIR(file)
+                val ir = dialect.parseToIR(file.absolutePath, file.readText())
                 irs[file] = ir
                 typesSummaries.add(dialect.getTypesSummary(ir, moduleName, upstreamModules))
             } catch (e: RuntimeException) {
@@ -546,6 +546,7 @@ internal val TYPE_SUMMARIES = KeyedNodeName<String, TypesSummary>("typeSummaries
 internal val TYPE_INFO = NodeName<TypesInfo>("typeInfo")
 internal val PARSING_RESULTS = KeyedNodeName<String, ParsingResult>("parsingResults")
 internal val COMBINED_PARSING_RESULT = NodeName<ParsingResult>("combinedParsingResult")
+internal val MODULE_PARSING_RESULT = NodeName<ModuleDirectoryParsingResult>("moduleParsingResult")
 internal fun getFilesParsingDefinition(): TrickleDefinition {
     val builder = TrickleDefinitionBuilder()
     val stringClass = kotlin.String::class.java
@@ -588,6 +589,19 @@ internal fun getFilesParsingDefinition(): TrickleDefinition {
 
     val combinedParsingResultNode = builder.createNode(COMBINED_PARSING_RESULT, parsingResultsNode.fullOutput(), { parsingResults ->
         combineParsingResults(parsingResults)
+    })
+
+    val finalResultNode = builder.createCatchNode(MODULE_PARSING_RESULT, parsedConfig, combinedParsingResultNode, { config, combinedParsingResult ->
+        when (combinedParsingResult) {
+            is ParsingResult.Success -> {
+                ModuleDirectoryParsingResult.Success(UnvalidatedModule(config.info, combinedParsingResult.context))
+            }
+            is ParsingResult.Failure -> {
+                ModuleDirectoryParsingResult.Failure(combinedParsingResult.errors, listOf())
+            }
+        }
+    }, { error ->
+        ModuleDirectoryParsingResult.Failure(listOf(), listOf())
     })
 
     return builder.build()
