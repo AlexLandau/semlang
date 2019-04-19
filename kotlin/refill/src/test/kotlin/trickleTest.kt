@@ -1,6 +1,7 @@
 import net.semlang.modules.NodeName
+import net.semlang.modules.NodeOutcome
 import net.semlang.modules.TrickleDefinitionBuilder
-import org.junit.Assert.assertEquals
+import org.junit.Assert.*
 import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
@@ -152,5 +153,27 @@ class TrickleTests {
 
         instance.setInput(A, 1)
         instance.getNextSteps()
+    }
+
+    @Test
+    fun testUncaughtExceptionInCalculation() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val bOutcome = instance.getNodeOutcome(B)
+        println(bOutcome)
+        if (bOutcome !is NodeOutcome.Failure) {
+            fail()
+        } else {
+            val errors = bOutcome.failure.errors
+            assertTrue(errors.containsKey(B))
+            assertTrue(errors[B]!!.message!!.contains("custom exception message"))
+        }
     }
 }

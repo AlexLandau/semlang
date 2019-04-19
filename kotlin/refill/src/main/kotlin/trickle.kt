@@ -50,10 +50,23 @@ class KeyList<T> {
     private val set = HashSet<T>()
 }
 
-private data class TimestampedValue(private var timestamp: Long, private var value: Any?) {
+private data class TimestampedValue(private var timestamp: Long, private var value: Any?, private var error: Throwable?) {
+    fun set(newTimestamp: Long, newValue: Any?, newError: Throwable?) {
+        this.timestamp = newTimestamp
+        this.value = newValue
+        this.error = newError
+    }
+
     fun set(newTimestamp: Long, newValue: Any?) {
         this.timestamp = newTimestamp
         this.value = newValue
+        this.error = null
+    }
+
+    fun setError(newTimestamp: Long, newError: Throwable) {
+        this.timestamp = newTimestamp
+        this.value = null
+        this.error = newError
     }
 
     fun getValue(): Any? {
@@ -62,6 +75,14 @@ private data class TimestampedValue(private var timestamp: Long, private var val
 
     fun getTimestamp(): Long {
         return timestamp
+    }
+
+    fun isError(): Boolean {
+        return error != null
+    }
+
+    fun getError(): Throwable? {
+        return error
     }
 }
 
@@ -83,7 +104,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     init {
         val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, TimestampedValue>()
         for (node in definition.nonkeyedNodes) {
-            nonkeyedNodeValues[node.value.name] = TimestampedValue(-1L, null)
+            nonkeyedNodeValues[node.value.name] = TimestampedValue(-1L, null, null)
         }
         this.nonkeyedNodeValues = nonkeyedNodeValues
     }
@@ -207,7 +228,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             throw IllegalArgumentException("Received a result that did not originate from this instance")
         }
         if (result.timestamp > this.nonkeyedNodeValues[result.nodeName]!!.getTimestamp()) {
-            this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result)
+            this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result, result.error)
         }
 //        this.nonkeyedValueTimeStamps[result.nodeName] = result.maximumInputTimestamp
     }
@@ -216,6 +237,25 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     fun <T> getNodeValue(nodeName: NodeName<T>): T? {
         return nonkeyedNodeValues[nodeName]?.getValue() as? T
     }
+
+    @Synchronized
+    fun <T> getNodeOutcome(nodeName: NodeName<T>): NodeOutcome<T> {
+        val value = nonkeyedNodeValues[nodeName]
+        if (value == null) {
+            return NodeOutcome.NotYetComputed as NodeOutcome<T>
+        }
+        val valueError = value.getError()
+        if (valueError != null) {
+            return NodeOutcome.Failure<T>(TrickleFailure(mapOf(nodeName to valueError)))
+        }
+        return NodeOutcome.Computed<T>(value.getValue() as T)
+    }
+}
+
+sealed class NodeOutcome<T> {
+    object NotYetComputed: NodeOutcome<Any>()
+    data class Computed<T>(val value: T): NodeOutcome<T>()
+    data class Failure<T>(val failure: TrickleFailure): NodeOutcome<T>()
 }
 
 class TrickleStep internal constructor(
@@ -225,8 +265,15 @@ class TrickleStep internal constructor(
     val operation: () -> Any?
 ) {
     fun execute(): TrickleStepResult {
-        val result = operation()
-        return TrickleStepResult(nodeName, timestamp, instanceId, result)
+        try {
+            val result = operation()
+            return TrickleStepResult(nodeName, timestamp, instanceId, result, null)
+        } catch (t: Throwable) {
+            if (t is InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+            return TrickleStepResult(nodeName, timestamp, instanceId, null, t)
+        }
     }
 
     override fun toString(): String {
@@ -238,7 +285,8 @@ class TrickleStepResult internal constructor(
     val nodeName: NodeName<*>,
     val timestamp: Long,
     val instanceId: TrickleInstance.Id,
-    val result: Any?
+    val result: Any?,
+    val error: Throwable?
 ) {
 
 }
@@ -346,7 +394,7 @@ interface TrickleInput<T> {
 }
 
 // TODO: Maybe rename since it's not actually an Error
-class TrickleError {
+class TrickleFailure(val errors: Map<NodeName<*>, Throwable>) {
 
 }
 
