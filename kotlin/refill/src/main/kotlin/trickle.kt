@@ -187,11 +187,26 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                 if (!anyInputNotUpToDate) {
                     // All inputs are up-to-date
                     if (inputFailures.isNotEmpty()) {
+                        // Aggregate the failures for reporting
                         val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
                         if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
                             val newFailure = combineFailures(inputFailures)
-                            nonkeyedNodeValues[nodeName]!!.setFailure(maximumInputTimestamp, newFailure)
+
+                            val onCatch = node.onCatch
+                            if (onCatch != null) {
+                                nextSteps.add(
+                                    TrickleStep(nodeName, maximumInputTimestamp, instanceId, { onCatch(newFailure) })
+                                )
+                            } else {
+                                nonkeyedNodeValues[nodeName]!!.setFailure(maximumInputTimestamp, newFailure)
+                                unkeyedTimeStampIfUpToDate[nodeName] = maximumInputTimestamp
+                            }
+                        } else if (curValueTimestamp > maximumInputTimestamp) {
+                            error("This should never happen")
+                        } else {
+                            unkeyedTimeStampIfUpToDate[nodeName] = maximumInputTimestamp
                         }
+                        // TODO: Might need to mark this as up-to-date so catching can happen downstream
                     } else {
                         val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
                         if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
@@ -269,8 +284,9 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     }
 
     @Synchronized
-    fun <T> getNodeValue(nodeName: NodeName<T>): T? {
-        return nonkeyedNodeValues[nodeName]?.getValue() as? T
+    fun <T> getNodeValue(nodeName: NodeName<T>): T {
+//        return nonkeyedNodeValues[nodeName]?.getValue() as? T
+        return (getNodeOutcome(nodeName) as NodeOutcome.Computed).value
     }
 
     @Synchronized
@@ -345,7 +361,7 @@ class TrickleDefinitionBuilder {
 
     fun <T> createInputNode(name: NodeName<T>): TrickleNode<T> {
         checkNameNotUsed(name)
-        val node = TrickleNode<T>(name, builderId, listOf(), null)
+        val node = TrickleNode<T>(name, builderId, listOf(), null, null)
         nodes[name] = node
         topologicalOrdering.add(name)
         return node
@@ -357,16 +373,19 @@ class TrickleDefinitionBuilder {
         }
     }
 
-    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T): TrickleNode<T> {
-        return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) })
+    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
+        return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) }, onCatch)
     }
-    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T): TrickleNode<T> {
-        return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) })
+//    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T): TrickleNode<T> {
+//        return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, null)
+//    }
+    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
+        return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, onCatch)
     }
-    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T): TrickleNode<T> {
+    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T, onCatch: ((TrickleFailure) -> T)?): TrickleNode<T> {
         checkNameNotUsed(name)
         validateBuilderIds(inputs)
-        val node = TrickleNode<T>(name, builderId, inputs, fn)
+        val node = TrickleNode<T>(name, builderId, inputs, fn, onCatch)
         nodes[name] = node
         topologicalOrdering.add(name)
         return node
@@ -436,7 +455,8 @@ class TrickleNode<T> internal constructor(
     val name: NodeName<T>,
     override val builderId: TrickleDefinitionBuilder.Id,
     val inputs: List<TrickleInput<*>>,
-    val operation: ((List<*>) -> T)?
+    val operation: ((List<*>) -> T)?,
+    val onCatch: ((TrickleFailure) -> T)?
 ): TrickleInput<T> {
 }
 

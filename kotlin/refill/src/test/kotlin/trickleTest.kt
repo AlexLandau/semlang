@@ -238,4 +238,48 @@ class TrickleTests {
             assertTrue(errors[B]!!.message!!.contains("custom exception message"))
         }
     }
+
+    // TODO: Should a catch block also apply to the node's own computation? Also, what if the node fails itself?
+    @Test
+    fun testCatchUpstreamException() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
+        val cNode = builder.createNode(C, bNode, { it * 3 }, { failures -> -1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val cOutcome = instance.getNodeOutcome(C)
+        if (cOutcome !is NodeOutcome.Computed) {
+            fail()
+        } else {
+            assertEquals(-1, cOutcome.value)
+        }
+        assertEquals(-1, instance.getNodeValue(C))
+    }
+
+    @Test
+    fun testCatchUpstreamException2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
+        val cNode = builder.createNode(C, bNode, { it + 1 })
+        val dNode = builder.createNode(D, cNode, { it * 3 }, { failures -> -1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val dOutcome = instance.getNodeOutcome(D)
+        if (dOutcome !is NodeOutcome.Computed) {
+            fail()
+        } else {
+            assertEquals(-1, dOutcome.value)
+        }
+        assertEquals(-1, instance.getNodeValue(D))
+    }
 }
