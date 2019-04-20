@@ -50,23 +50,23 @@ class KeyList<T> {
     private val set = HashSet<T>()
 }
 
-private data class TimestampedValue(private var timestamp: Long, private var value: Any?, private var error: Throwable?) {
-    fun set(newTimestamp: Long, newValue: Any?, newError: Throwable?) {
+private data class TimestampedValue(private var timestamp: Long, private var value: Any?, private var failure: TrickleFailure?) {
+    fun set(newTimestamp: Long, newValue: Any?, newFailure: TrickleFailure?) {
         this.timestamp = newTimestamp
         this.value = newValue
-        this.error = newError
+        this.failure = newFailure
     }
 
     fun set(newTimestamp: Long, newValue: Any?) {
         this.timestamp = newTimestamp
         this.value = newValue
-        this.error = null
+        this.failure = null
     }
 
-    fun setError(newTimestamp: Long, newError: Throwable) {
+    fun setFailure(newTimestamp: Long, newFailure: TrickleFailure) {
         this.timestamp = newTimestamp
         this.value = null
-        this.error = newError
+        this.failure = newFailure
     }
 
     fun getValue(): Any? {
@@ -77,16 +77,17 @@ private data class TimestampedValue(private var timestamp: Long, private var val
         return timestamp
     }
 
-    fun isError(): Boolean {
-        return error != null
-    }
+//    fun isError(): Boolean {
+//        return error != null
+//    }
 
-    fun getError(): Throwable? {
-        return error
+    fun getFailure(): TrickleFailure? {
+        return failure
     }
 }
 
 // TODO: Synchronize stuff
+// TODO: Add methods to ask for a given result, but only after a given timestamp (block until available?)
 class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     // Used to ensure all results we receive originated from this instance
     class Id internal constructor()
@@ -110,9 +111,10 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     }
 
     @Synchronized
-    fun <T> setInput(nodeName: NodeName<T>, value: T) {
+    fun <T> setInput(nodeName: NodeName<T>, value: T): Long {
         curTimestamp++
         nonkeyedNodeValues[nodeName]!!.set(curTimestamp, value)
+        return curTimestamp
     }
 //    fun <T> addKey(nodeName: NodeName<T>, key: Any) {
 //        val added = keyListValues[nodeName]!!.add(key)
@@ -135,12 +137,15 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     How does this differ for keylist nodes and keyed nodes? A keylist node can have multiple timestamps for its constituent
     keys; keyed nodes only look at the keyed portions of the appropriate inputs. Nothing that fundamentally alters the
     above algorithm.
+
+    This also has the job of propagating errors into failures throughout the graph.
      */
     @Synchronized
     fun getNextSteps(): List<TrickleStep> {
         val unsetInputs = ArrayList<NodeName<*>>()
         val nextSteps = ArrayList<TrickleStep>()
         val unkeyedTimeStampIfUpToDate = HashMap<NodeName<*>, Long>()
+        val unkeyedFailures = HashMap<NodeName<*>, TrickleFailure>()
         for (nodeName in definition.topologicalOrdering) {
             println("unkeyedTimeStampIfUpToDate: $unkeyedTimeStampIfUpToDate")
             println("Dealing with node name $nodeName")
@@ -160,6 +165,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                 var anyInputNotUpToDate = false
                 var maximumInputTimestamp = -1L
                 val inputValues = ArrayList<Any?>()
+                val inputFailures = ArrayList<TrickleFailure>()
                 for (input in node.inputs) {
                     // TODO:
                     val unkeyedInputName: NodeName<*> = getNodeFromInput(input)
@@ -168,24 +174,44 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                         anyInputNotUpToDate = true
                     } else {
                         maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
-                        inputValues.add(nonkeyedNodeValues[unkeyedInputName]!!.getValue())
+                        val contents = nonkeyedNodeValues[unkeyedInputName]!!
+                        val failure = contents.getFailure()
+                        if (failure != null) {
+                            inputFailures.add(failure)
+                        } else {
+                            inputValues.add(contents.getValue())
+                        }
                     }
                 }
                 println("Any input not up-to-date?: $anyInputNotUpToDate")
                 if (!anyInputNotUpToDate) {
                     // All inputs are up-to-date
-                    val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
-                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
-                        // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
-
-                        val operation = node.operation ?: error("This was supposed to be an input node, I guess")
-                        println("Preparing an operation binding with input values ${inputValues}; our node has ${node.inputs.size} inputs")
-                        nextSteps.add(TrickleStep(nodeName, maximumInputTimestamp, instanceId, { operation(inputValues) }))
-                    } else if (curValueTimestamp > maximumInputTimestamp) {
-                        error("This should never happen")
+                    if (inputFailures.isNotEmpty()) {
+                        val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
+                        if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                            val newFailure = combineFailures(inputFailures)
+                            nonkeyedNodeValues[nodeName]!!.setFailure(maximumInputTimestamp, newFailure)
+                        }
                     } else {
-                        // Report this as being up-to-date for future things
-                        unkeyedTimeStampIfUpToDate[nodeName] = curValueTimestamp
+                        val curValueTimestamp = nonkeyedNodeValues[nodeName]?.getTimestamp()
+                        if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                            // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
+
+                            val operation = node.operation ?: error("This was supposed to be an input node, I guess")
+                            println("Preparing an operation binding with input values ${inputValues}; our node has ${node.inputs.size} inputs")
+                            nextSteps.add(
+                                TrickleStep(
+                                    nodeName,
+                                    maximumInputTimestamp,
+                                    instanceId,
+                                    { operation(inputValues) })
+                            )
+                        } else if (curValueTimestamp > maximumInputTimestamp) {
+                            error("This should never happen")
+                        } else {
+                            // Report this as being up-to-date for future things
+                            unkeyedTimeStampIfUpToDate[nodeName] = curValueTimestamp
+                        }
                     }
                 }
             }
@@ -194,6 +220,14 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             throw IllegalStateException("Cannot start the operation before all inputs are set. Unset inputs: $unsetInputs")
         }
         return nextSteps
+    }
+
+    private fun combineFailures(inputFailures: ArrayList<TrickleFailure>): TrickleFailure {
+        val allSources = LinkedHashMap<NodeName<*>, Throwable>()
+        for (failure in inputFailures) {
+            allSources.putAll(failure.errors)
+        }
+        return TrickleFailure(allSources)
     }
 
     private fun getNodeFromInput(input: TrickleInput<*>): NodeName<*> {
@@ -228,7 +262,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             throw IllegalArgumentException("Received a result that did not originate from this instance")
         }
         if (result.timestamp > this.nonkeyedNodeValues[result.nodeName]!!.getTimestamp()) {
-            this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result, result.error)
+            val failure = result.error?.let { TrickleFailure(mapOf(result.nodeName to it)) }
+            this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result, failure)
         }
 //        this.nonkeyedValueTimeStamps[result.nodeName] = result.maximumInputTimestamp
     }
@@ -244,9 +279,9 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         if (value == null) {
             return NodeOutcome.NotYetComputed as NodeOutcome<T>
         }
-        val valueError = value.getError()
-        if (valueError != null) {
-            return NodeOutcome.Failure<T>(TrickleFailure(mapOf(nodeName to valueError)))
+        val failure = value.getFailure()
+        if (failure != null) {
+            return NodeOutcome.Failure<T>(failure)
         }
         return NodeOutcome.Computed<T>(value.getValue() as T)
     }
@@ -393,7 +428,6 @@ interface TrickleInput<T> {
     val builderId: TrickleDefinitionBuilder.Id
 }
 
-// TODO: Maybe rename since it's not actually an Error
 class TrickleFailure(val errors: Map<NodeName<*>, Throwable>) {
 
 }

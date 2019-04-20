@@ -11,6 +11,7 @@ class TrickleTests {
     val B = NodeName<Int>("b")
     val C = NodeName<Int>("c")
     val D = NodeName<Int>("d")
+    val E = NodeName<Int>("e")
 
     @Test
     fun testTrickleBasic() {
@@ -102,6 +103,45 @@ class TrickleTests {
         assertEquals(21, instance.getNodeValue(B))
     }
 
+    @Test
+    fun testCaseTryingToTrickTimestamps() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+        val cNode = builder.createInputNode(C)
+        val dNode = builder.createNode(D, cNode, { it + 2 })
+        val eNode = builder.createNode(E, bNode, dNode, { left, right -> left * right } )
+
+        val instance = builder.build().instantiate()
+
+        // Prepare two updates to B followed by one to D
+        instance.setInput(A, 0)
+        instance.setInput(C, 0)
+        val firstBChange = instance.getNextSteps().filter { it.nodeName == B }.single()
+        instance.setInput(A, 10)
+        val secondBChange = instance.getNextSteps().filter { it.nodeName == B }.single()
+        instance.setInput(C, 99)
+        val dChange = instance.getNextSteps().filter { it.nodeName == D }.single()
+
+        // Apply the first B change; no E computation should be suggested yet, and a B update should still be requested
+        instance.reportResult(firstBChange.execute())
+        assertEquals(setOf(B, D), instance.getNextSteps().map { it.nodeName }.toSet())
+        // After reporting on D, we should still be waiting on the newer B
+        instance.reportResult(dChange.execute())
+        assertEquals(setOf(B), instance.getNextSteps().map { it.nodeName }.toSet())
+        // Reporting the more recent version of B finally unlocks E
+        instance.reportResult(secondBChange.execute())
+        assertEquals(setOf(E), instance.getNextSteps().map { it.nodeName }.toSet())
+        // Adding a new input value to C will retract the request for an update to E
+        instance.setInput(C, 100)
+        assertEquals(setOf(D), instance.getNextSteps().map { it.nodeName }.toSet())
+
+        instance.completeSynchronously()
+        assertTrue(instance.getNextSteps().isEmpty())
+        assertEquals(1122, instance.getNodeValue(E))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun testCannotShareNodesBetweenBuilders() {
         val builder1 = TrickleDefinitionBuilder()
@@ -172,7 +212,29 @@ class TrickleTests {
             fail()
         } else {
             val errors = bOutcome.failure.errors
-            assertTrue(errors.containsKey(B))
+            assertEquals(setOf(B), errors.keys)
+            assertTrue(errors[B]!!.message!!.contains("custom exception message"))
+        }
+    }
+
+    @Test
+    fun testUpstreamUncaughtException() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
+        val cNode = builder.createNode(C, bNode, { it * 3 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val cOutcome = instance.getNodeOutcome(C)
+        if (cOutcome !is NodeOutcome.Failure) {
+            fail()
+        } else {
+            val errors = cOutcome.failure.errors
+            assertEquals(setOf(B), errors.keys)
             assertTrue(errors[B]!!.message!!.contains("custom exception message"))
         }
     }
