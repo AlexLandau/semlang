@@ -16,6 +16,13 @@ import java.util.*
 // TODO: "CatchNode" for error handling; nodes can raise an error in their output (one way or another) and the CatchNode
 // will turn errors or successes into
 
+// TODO: Should catch methods also catch errors in the same node, vs. upstream nodes? Should outputs of parent nodes
+// be added to their inputs?
+
+// TODO: Specialty API for synchronous use, with getters for outputs that trigger evaluation of the requested nodes lazily
+
+// TODO: APIs for asynchronous use, with listeners
+
 open class NodeName<T>(val name: String) {
     override fun equals(other: Any?): Boolean {
         if (other !is NodeName<*>) {
@@ -77,10 +84,6 @@ private data class TimestampedValue(private var timestamp: Long, private var val
         return timestamp
     }
 
-//    fun isError(): Boolean {
-//        return error != null
-//    }
-
     fun getFailure(): TrickleFailure? {
         return failure
     }
@@ -93,12 +96,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     class Id internal constructor()
     private val instanceId = Id()
 
-//    val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, Any>()
-//    val keyListValues = LinkedHashMap<NodeName<*>, KeyList<Any>>()
-//    val keyedNodeValues = LinkedHashMap<KeyedNodeName<*, *>, LinkedHashMap<Any, Any>>()
     private val nonkeyedNodeValues: Map<NodeName<*>, TimestampedValue>
-
-//    val nonkeyedValueTimeStamps = HashMap<NodeName<*>, Long>()
 
     private var curTimestamp = 0L
 
@@ -145,17 +143,12 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         val unsetInputs = ArrayList<NodeName<*>>()
         val nextSteps = ArrayList<TrickleStep>()
         val unkeyedTimeStampIfUpToDate = HashMap<NodeName<*>, Long>()
-        val unkeyedFailures = HashMap<NodeName<*>, TrickleFailure>()
         for (nodeName in definition.topologicalOrdering) {
-            println("unkeyedTimeStampIfUpToDate: $unkeyedTimeStampIfUpToDate")
-            println("Dealing with node name $nodeName")
             // Treat differently if keyed or unkeyed
             // Pretend this works for now
             val node = definition.nonkeyedNodes[nodeName]!!
             if (node.inputs.isEmpty()) {
-                println("Inputs are empty")
                 val timestamp = nonkeyedNodeValues[nodeName]?.getTimestamp() ?: -1L
-                println("timestamp: ")
                 if (timestamp >= 0L) {
                     unkeyedTimeStampIfUpToDate[nodeName] = timestamp
                 } else {
@@ -183,7 +176,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                         }
                     }
                 }
-                println("Any input not up-to-date?: $anyInputNotUpToDate")
                 if (!anyInputNotUpToDate) {
                     // All inputs are up-to-date
                     if (inputFailures.isNotEmpty()) {
@@ -213,7 +205,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                             // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
 
                             val operation = node.operation ?: error("This was supposed to be an input node, I guess")
-                            println("Preparing an operation binding with input values ${inputValues}; our node has ${node.inputs.size} inputs")
                             nextSteps.add(
                                 TrickleStep(
                                     nodeName,
@@ -252,19 +243,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         error("Unhandled case getting node from input: ${input}")
     }
 
-//    private fun isUpToDate(input: TrickleInput<*>): Boolean {
-//
-//    }
-
     fun completeSynchronously() {
         while (true) {
             val nextSteps = getNextSteps()
-            println("Next steps: $nextSteps")
             if (nextSteps.isEmpty()) {
                 return
             }
             for (step in nextSteps) {
-                println("Executing step ${step.nodeName}")
                 val result = step.execute()
                 this.reportResult(result)
             }
@@ -280,12 +265,10 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             val failure = result.error?.let { TrickleFailure(mapOf(result.nodeName to it)) }
             this.nonkeyedNodeValues[result.nodeName]!!.set(result.timestamp, result.result, failure)
         }
-//        this.nonkeyedValueTimeStamps[result.nodeName] = result.maximumInputTimestamp
     }
 
     @Synchronized
     fun <T> getNodeValue(nodeName: NodeName<T>): T {
-//        return nonkeyedNodeValues[nodeName]?.getValue() as? T
         return (getNodeOutcome(nodeName) as NodeOutcome.Computed).value
     }
 
@@ -343,7 +326,6 @@ class TrickleStepResult internal constructor(
 }
 
 class TrickleDefinition internal constructor(val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
-//                        val keyListNodes: Map<NodeName<*>, TrickleKeyListNode<*>>,
                         val topologicalOrdering: List<NodeName<*>>) {
     fun instantiate(): TrickleInstance {
         return TrickleInstance(this)
@@ -376,9 +358,6 @@ class TrickleDefinitionBuilder {
     fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
         return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) }, onCatch)
     }
-//    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T): TrickleNode<T> {
-//        return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, null)
-//    }
     fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
         return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, onCatch)
     }
