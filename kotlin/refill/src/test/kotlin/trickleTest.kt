@@ -1,6 +1,4 @@
-import net.semlang.modules.NodeName
-import net.semlang.modules.NodeOutcome
-import net.semlang.modules.TrickleDefinitionBuilder
+import net.semlang.modules.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.lang.IllegalArgumentException
@@ -12,6 +10,9 @@ class TrickleTests {
     val C = NodeName<Int>("c")
     val D = NodeName<Int>("d")
     val E = NodeName<Int>("e")
+
+    val A_KEYS = KeyListNodeName<Int>("aKeys")
+    val B_KEYS = KeyListNodeName<Int>("bKeys")
 
     @Test
     fun testTrickleBasic() {
@@ -118,24 +119,24 @@ class TrickleTests {
         // Prepare two updates to B followed by one to D
         instance.setInput(A, 0)
         instance.setInput(C, 0)
-        val firstBChange = instance.getNextSteps().filter { it.nodeName == B }.single()
+        val firstBChange = instance.getNextSteps().filter { (it.valueId as ValueId.Nonkeyed).nodeName == B }.single()
         instance.setInput(A, 10)
-        val secondBChange = instance.getNextSteps().filter { it.nodeName == B }.single()
+        val secondBChange = instance.getNextSteps().filter { (it.valueId as ValueId.Nonkeyed).nodeName == B }.single()
         instance.setInput(C, 99)
-        val dChange = instance.getNextSteps().filter { it.nodeName == D }.single()
+        val dChange = instance.getNextSteps().filter { (it.valueId as ValueId.Nonkeyed).nodeName == D }.single()
 
         // Apply the first B change; no E computation should be suggested yet, and a B update should still be requested
         instance.reportResult(firstBChange.execute())
-        assertEquals(setOf(B, D), instance.getNextSteps().map { it.nodeName }.toSet())
+        assertEquals(setOf(B, D), instance.getNextSteps().map { (it.valueId as ValueId.Nonkeyed).nodeName }.toSet())
         // After reporting on D, we should still be waiting on the newer B
         instance.reportResult(dChange.execute())
-        assertEquals(setOf(B), instance.getNextSteps().map { it.nodeName }.toSet())
+        assertEquals(setOf(B), instance.getNextSteps().map { (it.valueId as ValueId.Nonkeyed).nodeName }.toSet())
         // Reporting the more recent version of B finally unlocks E
         instance.reportResult(secondBChange.execute())
-        assertEquals(setOf(E), instance.getNextSteps().map { it.nodeName }.toSet())
+        assertEquals(setOf(E), instance.getNextSteps().map { (it.valueId as ValueId.Nonkeyed).nodeName }.toSet())
         // Adding a new input value to C will retract the request for an update to E
         instance.setInput(C, 100)
-        assertEquals(setOf(D), instance.getNextSteps().map { it.nodeName }.toSet())
+        assertEquals(setOf(D), instance.getNextSteps().map { (it.valueId as ValueId.Nonkeyed).nodeName }.toSet())
 
         instance.completeSynchronously()
         assertTrue(instance.getNextSteps().isEmpty())
@@ -212,8 +213,8 @@ class TrickleTests {
             fail()
         } else {
             val errors = bOutcome.failure.errors
-            assertEquals(setOf(B), errors.keys)
-            assertTrue(errors[B]!!.message!!.contains("custom exception message"))
+            assertEquals(setOf(ValueId.Nonkeyed(B)), errors.keys)
+            assertTrue(errors.values.single().message!!.contains("custom exception message"))
         }
     }
 
@@ -234,8 +235,8 @@ class TrickleTests {
             fail()
         } else {
             val errors = cOutcome.failure.errors
-            assertEquals(setOf(B), errors.keys)
-            assertTrue(errors[B]!!.message!!.contains("custom exception message"))
+            assertEquals(setOf(ValueId.Nonkeyed(B)), errors.keys)
+            assertTrue(errors.values.single().message!!.contains("custom exception message"))
         }
     }
 
@@ -281,5 +282,106 @@ class TrickleTests {
             assertEquals(-1, dOutcome.value)
         }
         assertEquals(-1, instance.getNodeValue(D))
+    }
+
+    @Test
+    fun testKeyListNode1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+
+        val instance = builder.build().instantiate()
+
+        assertEquals(listOf<Int>(), instance.getNodeValue(A_KEYS))
+        instance.addKeyInput(A_KEYS, 4)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.addKeyInput(A_KEYS, 5)
+        assertEquals(listOf(4, 3, 5), instance.getNodeValue(A_KEYS))
+    }
+
+    @Test
+    fun testKeyListNode2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        // Note: This is not a realistic example; summing over a set (vs. a list) is usually not useful
+        val bNode = builder.createNode(B, aKeys.listOutput(), { ints -> ints.sum() })
+
+        val instance = builder.build().instantiate()
+
+        instance.completeSynchronously()
+        assertEquals(0, instance.getNodeValue(B))
+        instance.addKeyInput(A_KEYS, 3)
+        instance.addKeyInput(A_KEYS, 4)
+        instance.completeSynchronously()
+        assertEquals(7, instance.getNodeValue(B))
+    }
+
+    @Test
+    fun testKeyListNode3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bKeys = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A, 4)
+        instance.completeSynchronously()
+        assertEquals(listOf(1, 2, 3, 4), instance.getNodeValue(B_KEYS))
+        instance.setInput(A, 2)
+        instance.completeSynchronously()
+        assertEquals(listOf(1, 2), instance.getNodeValue(B_KEYS))
+    }
+
+    @Test
+    fun testKeyListInputBehavior() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+
+        val instance = builder.build().instantiate()
+
+        // It's a set
+        instance.addKeyInput(A_KEYS, 3)
+        instance.addKeyInput(A_KEYS, 3)
+        val result1 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(3), result1)
+        // It maintains order
+        instance.addKeyInput(A_KEYS, 4)
+        instance.addKeyInput(A_KEYS, 6)
+        instance.addKeyInput(A_KEYS, 5)
+        instance.addKeyInput(A_KEYS, 6) //ignored
+        val result2 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(3, 4, 6, 5), result2)
+        // Keys can be removed, and lose their place in the ordering
+        instance.removeKeyInput(A_KEYS, 4)
+        val result3 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(3, 6, 5), result3)
+        instance.addKeyInput(A_KEYS, 4)
+        val result4 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(3, 6, 5, 4), result4)
+        instance.removeKeyInput(A_KEYS, 8)
+        val result7 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(3, 6, 5, 4), result7)
+        // And the list can be replaced entirely, which resets the order
+        instance.setInput(A_KEYS, listOf(4, 3, 5, 6))
+        val result5 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf(4, 3, 5, 6), result5)
+        instance.setInput(A_KEYS, listOf())
+        val result6 = instance.getNodeValue(A_KEYS)
+        assertEquals(listOf<Int>(), result6)
+        // When setting the value, duplicates are lost
+        instance.setInput(A_KEYS, listOf(1, 3, 2, 3, 4, 4, 1))
+        assertEquals(listOf<Int>(1, 3, 2, 4), instance.getNodeValue(A_KEYS))
+
+        // All results are defensive copies of the list, not views of the list
+        assertEquals(listOf(3), result1)
+        assertEquals(listOf(3, 4, 6, 5), result2)
+        assertEquals(listOf(3, 6, 5), result3)
+        assertEquals(listOf(3, 6, 5, 4), result4)
+        assertEquals(listOf(3, 6, 5, 4), result7)
+        assertEquals(listOf(4, 3, 5, 6), result5)
+        assertEquals(listOf<Int>(), result6)
     }
 }
