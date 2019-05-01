@@ -7,6 +7,8 @@ import java.util.*
 /*
  * Trickle: A Kotlin/JVM library (...if I choose to extract it) for defining asynchronous tasks in terms of each
  * other, going beyond RxJava by adding support for minimal recomputation when portions of the input change.
+ *
+ * There's already a Java library named Trickle, so the name is going to change.
  */
 
 // TODO: Concept to use: "Keys" that support equality, and a list of keys is used as the basis for maps and per-item steps
@@ -21,7 +23,7 @@ import java.util.*
 
 // TODO: Specialty API for synchronous use, with getters for outputs that trigger evaluation of the requested nodes lazily
 
-// TODO: APIs for asynchronous use, with listeners
+// TODO: APIs for asynchronous use, with listeners and/or "wait for the version of this that is up-to-date as of this timestamp"
 
 class NodeName<T>(val name: String) {
     override fun equals(other: Any?): Boolean {
@@ -37,17 +39,26 @@ class NodeName<T>(val name: String) {
         return name
     }
 }
+class KeyListNodeName<T>(val name: String)
 /**
  * Note that KeyedNodeName uses the same equals() and hashCode() implementations as NodeName (and is interchangeable
  * with other NodeNames for those purposes), and only exists as a separate type to include the key type as a type
  * parameter.
  */
-class KeyedNodeName<K, T>(val name: String)//: NodeName<T>(name)
-class KeyListNodeName<T>(val name: String)//: NodeName<List<T>>(name)
+class KeyedNodeName<K, T>(val name: String)
 
+// TODO: This might be nicer as a "GenericNodeName" interface
 internal sealed class AnyNodeName {
     data class Basic(val name: NodeName<*>): AnyNodeName()
     data class KeyList(val name: KeyListNodeName<*>): AnyNodeName()
+    data class Keyed(val name: KeyedNodeName<*, *>) : AnyNodeName()
+}
+
+// TODO: Internal or retain as public?
+sealed class ValueId {
+    data class Nonkeyed(val nodeName: NodeName<*>): ValueId()
+    data class FullKeyList(val nodeName: KeyListNodeName<*>): ValueId()
+    data class Keyed(val nodeName: KeyedNodeName<*, *>, val key: Any?): ValueId()
 }
 
 private class KeyList<T> private constructor(val list: List<T>, val set: Set<T>) {
@@ -135,12 +146,6 @@ private data class TimestampedValue(private var timestamp: Long, private var val
     fun getFailure(): TrickleFailure? {
         return failure
     }
-}
-
-// TODO: Internal or retain as public?
-sealed class ValueId {
-    data class Nonkeyed(val nodeName: NodeName<*>): ValueId()
-    data class FullKeyList(val nodeName: KeyListNodeName<*>): ValueId()
 }
 
 // TODO: Synchronize stuff
@@ -420,6 +425,89 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                         }
                     }
                 }
+                is AnyNodeName.Keyed -> {
+                    val nodeName = anyNodeName.name
+                    val node = definition.keyedNodes[nodeName]!!
+                    val keySourceName = node.keySourceName
+                    val fullKeyListId = ValueId.FullKeyList(keySourceName)
+                    val isKeySourceUpToDate = timeStampIfUpToDate.containsKey(fullKeyListId)
+                    if (isKeySourceUpToDate) {
+                        val keyList = values[fullKeyListId]!!.getValue() as KeyList<*>
+                        for (key in keyList.list) {
+                            var anyInputNotUpToDate = false
+                            var maximumInputTimestamp = -1L
+                            val inputValues = ArrayList<Any?>()
+                            val inputFailures = ArrayList<TrickleFailure>()
+                            for (input in node.inputs) {
+                                val unkeyedInputValueId = getValueIdFromInput(input)
+                                val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
+                                if (timeStampMaybe == null) {
+                                    anyInputNotUpToDate = true
+                                } else {
+                                    maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
+                                    val contents = values[unkeyedInputValueId]!!
+                                    val failure = contents.getFailure()
+                                    if (failure != null) {
+                                        inputFailures.add(failure)
+                                    } else {
+                                        // Transform KeyLists into Lists
+                                        if (input is TrickleInput.KeyList<*>) {
+                                            inputValues.add((contents.getValue() as KeyList<*>).asList())
+                                        } else {
+                                            inputValues.add(contents.getValue())
+                                        }
+                                    }
+                                }
+                            }
+                            val keyedValueId = ValueId.Keyed(nodeName, key)
+                            if (!anyInputNotUpToDate) {
+                                // All inputs are up-to-date
+                                if (inputFailures.isNotEmpty()) {
+                                    // Aggregate the failures for reporting
+                                    val curValueTimestamp = values[keyedValueId]?.getTimestamp()
+                                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                                        val newFailure = combineFailures(inputFailures)
+
+                                        val onCatch = node.onCatch
+                                        if (onCatch != null) {
+                                            nextSteps.add(
+                                                TrickleStep(keyedValueId, maximumInputTimestamp, instanceId, { onCatch(newFailure) })
+                                            )
+                                        } else {
+                                            setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
+                                            //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
+                                            timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                        }
+                                    } else if (curValueTimestamp > maximumInputTimestamp) {
+                                        error("This should never happen")
+                                    } else {
+                                        timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                    }
+                                } else {
+                                    val curValueTimestamp = values[keyedValueId]?.getTimestamp()
+                                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                                        // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
+
+                                        val operation = node.operation as (Any?, List<*>) -> Any? ?: error("This was supposed to be an input node, I guess")
+                                        nextSteps.add(
+                                            TrickleStep(
+                                                keyedValueId,
+                                                maximumInputTimestamp,
+                                                instanceId,
+                                                { operation(key, inputValues) })
+                                        )
+                                    } else if (curValueTimestamp > maximumInputTimestamp) {
+                                        error("This should never happen")
+                                    } else {
+                                        // Report this as being up-to-date for future things
+                                        timeStampIfUpToDate[keyedValueId] = curValueTimestamp
+                                    }
+                                }
+                            }
+//                            TODO()
+                        }
+                    }
+                }
             }
 
         }
@@ -516,6 +604,16 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     }
 
     @Synchronized
+    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>, key: K): V {
+        return (getNodeOutcome(nodeName, key) as NodeOutcome.Computed).value
+    }
+
+    @Synchronized
+    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>): List<V> {
+        return (getNodeOutcome(nodeName) as NodeOutcome.Computed).value
+    }
+
+    @Synchronized
     fun <T> getNodeOutcome(nodeName: NodeName<T>): NodeOutcome<T> {
         if (!definition.nonkeyedNodes.containsKey(nodeName)) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
@@ -526,9 +624,9 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         }
         val failure = value.getFailure()
         if (failure != null) {
-            return NodeOutcome.Failure<T>(failure)
+            return NodeOutcome.Failure(failure)
         }
-        return NodeOutcome.Computed<T>(value.getValue() as T)
+        return NodeOutcome.Computed(value.getValue() as T)
     }
 
     @Synchronized
@@ -542,14 +640,64 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         }
         val failure = value.getFailure()
         if (failure != null) {
-            return NodeOutcome.Failure<List<T>>(failure)
+            return NodeOutcome.Failure(failure)
         }
         var computedValue = value.getValue()
         if (computedValue is KeyList<*>) {
             computedValue = computedValue.asList()
         }
-        return NodeOutcome.Computed<List<T>>((value.getValue() as KeyList<T>).asList())
+        return NodeOutcome.Computed((value.getValue() as KeyList<T>).asList())
     }
+
+    @Synchronized
+    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>, key: K): NodeOutcome<V> {
+        if (!definition.keyedNodes.containsKey(nodeName)) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        val value = values[ValueId.Keyed(nodeName, key)]
+        if (value == null) {
+            return NodeOutcome.NotYetComputed as NodeOutcome<V>
+        }
+        val failure = value.getFailure()
+        if (failure != null) {
+            return NodeOutcome.Failure(failure)
+        }
+        return NodeOutcome.Computed(value.getValue() as V)
+    }
+
+    @Synchronized
+    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>): NodeOutcome<List<V>> {
+//        TODO()
+        val nodeDefinition = definition.keyedNodes[nodeName]
+        if (nodeDefinition == null) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+
+        val keyListValue = values[ValueId.FullKeyList(nodeDefinition.keySourceName)]?.getValue() as? KeyList<K>
+        if (keyListValue == null) {
+            return NodeOutcome.NotYetComputed as NodeOutcome<List<V>>
+        }
+
+        val allFailures = ArrayList<TrickleFailure>()
+        val allKeyedValues = ArrayList<V>()
+        for (key in keyListValue.list) {
+            val value = values[ValueId.Keyed(nodeName, key)]
+            if (value == null) {
+                return NodeOutcome.NotYetComputed as NodeOutcome<List<V>>
+            }
+            val failure = value.getFailure()
+            if (failure != null) {
+                allFailures.add(failure)
+            }
+            allKeyedValues.add(value.getValue() as V)
+        }
+        if (allFailures.isNotEmpty()) {
+
+            return NodeOutcome.Failure(combineFailures(allFailures))
+        }
+        return NodeOutcome.Computed(allKeyedValues)
+    }
+
 }
 
 sealed class NodeOutcome<T> {
@@ -579,10 +727,6 @@ class TrickleStep internal constructor(
     override fun toString(): String {
         return "TrickleStep($valueId, $timestamp)"
     }
-
-    fun isNode(name: NodeName<*>): Boolean {
-        return valueId is ValueId.Nonkeyed && valueId.nodeName == name
-    }
 }
 
 class TrickleStepResult internal constructor(
@@ -597,6 +741,7 @@ class TrickleStepResult internal constructor(
 
 class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
                                              internal val keyListNodes: Map<KeyListNodeName<*>, TrickleKeyListNode<*>>,
+                                             internal val keyedNodes: Map<KeyedNodeName<*, *>, TrickleKeyedNode<*, *>>,
                                              internal val topologicalOrdering: List<AnyNodeName>) {
     fun instantiate(): TrickleInstance {
         return TrickleInstance(this)
@@ -608,7 +753,7 @@ class TrickleDefinitionBuilder {
     // TODO: Give this its own sealed class covering all the node name types
     private val topologicalOrdering = ArrayList<AnyNodeName>()
     private val keyListNodes = HashMap<KeyListNodeName<*>, TrickleKeyListNode<*>>()
-//    private val keyedNodes = HashMap<KeyedNodeName<*, *>, TrickleKeyedNode<*>>()
+    private val keyedNodes = HashMap<KeyedNodeName<*, *>, TrickleKeyedNode<*, *>>()
 
     // Used to ensure all node inputs we receive originated from this builder
     class Id internal constructor()
@@ -689,32 +834,26 @@ class TrickleDefinitionBuilder {
 //        keyedNodes[name] = node
 //        return node
 //    }
-//    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, fn: (K) -> T): TrickleKeyedNode<T> {
-//        return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
-//    }
+    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, fn: (K) -> T): TrickleKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
+    }
 //    fun <T, K, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<T> {
 //        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
 //    }
 //    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<T> {
 //        return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
 //    }
-//    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleKeyedNode<T> {
-//        checkNameNotUsed(name)
-//        val node = TrickleKeyedNode<T>()
-//        keyedNodes[name] = node
-//        return node
-//    }
-
-    fun build(): TrickleDefinition {
-        return TrickleDefinition(nodes, keyListNodes, topologicalOrdering)
+    fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleKeyedNode<K, T> {
+        checkNameNotUsed(name.name)
+        val node = TrickleKeyedNode(name, keySource.name, builderId, inputs, fn, null)
+        keyedNodes[name] = node
+        topologicalOrdering.add(AnyNodeName.Keyed(name))
+        return node
     }
 
-//    fun <T, I1> createCatchNode(nodeName: NodeName<T>, input1: TrickleInput<I1>, handleSuccess: (I1) -> T, handleError: (TrickleError) -> T): TrickleNode<T> {
-//
-//    }
-//    fun <T, I1, I2> createCatchNode(nodeName: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, handleSuccess: (I1, I2) -> T, handleError: (TrickleError) -> T): TrickleNode<T> {
-//
-//    }
+    fun build(): TrickleDefinition {
+        return TrickleDefinition(nodes, keyListNodes, keyedNodes, topologicalOrdering)
+    }
 
 }
 
@@ -723,9 +862,7 @@ sealed class TrickleInput<T> {
     data class KeyList<T>(val name: KeyListNodeName<T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<List<T>>()
 }
 
-data class TrickleFailure(val errors: Map<ValueId, Throwable>) {
-
-}
+data class TrickleFailure(val errors: Map<ValueId, Throwable>)
 
 class TrickleNode<T> internal constructor(
     val name: NodeName<T>,
@@ -748,12 +885,20 @@ class TrickleKeyListNode<T>(
     }
 }
 
-// TODO: This might want K in the type parameters
-//class TrickleKeyedNode<T> {
-//    // TODO: These should probably be getter-based?
-//    fun keyedOutput(): TrickleInput<T> {
-//    }
-//    fun fullOutput(): TrickleInput<List<T>> {
-//    }
-//}
+class TrickleKeyedNode<K, T>(
+    val name: KeyedNodeName<K, T>,
+    val keySourceName: KeyListNodeName<K>,
+    val builderId: TrickleDefinitionBuilder.Id,
+    val inputs: List<TrickleInput<*>>,
+    val operation: (K, List<*>) -> T,
+    val onCatch: ((TrickleFailure) -> T)?
+) {
+    // TODO: These should probably be getter-based?
+    fun keyedOutput(): TrickleInput<T> {
+        TODO()
+    }
+    fun fullOutput(): TrickleInput<List<T>> {
+        TODO()
+    }
+}
 

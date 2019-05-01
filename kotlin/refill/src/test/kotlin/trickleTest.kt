@@ -15,6 +15,8 @@ class TrickleTests {
     val B_KEYS = KeyListNodeName<Int>("bKeys")
     val C_KEYS = KeyListNodeName<Int>("cKeys")
 
+    val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
+
     @Test
     fun testTrickleBasic() {
         val builder = TrickleDefinitionBuilder()
@@ -399,5 +401,24 @@ class TrickleTests {
         assertEquals(listOf(3, 6, 5, 4), result7)
         assertEquals(listOf(4, 3, 5, 6), result5)
         assertEquals(listOf<Int>(), result6)
+    }
+
+    @Test
+    fun testKeyedNode1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+
+        val instance = builder.build().instantiate()
+
+        instance.addKeyInput(A_KEYS, 3)
+        instance.addKeyInput(A_KEYS, 1)
+        instance.addKeyInput(A_KEYS, 2)
+        instance.completeSynchronously()
+        assertEquals(2, instance.getNodeValue(B_KEYED, 1))
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(6, instance.getNodeValue(B_KEYED, 3))
+        assertEquals(listOf(6, 2, 4), instance.getNodeValue(B_KEYED))
     }
 }
