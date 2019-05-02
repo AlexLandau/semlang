@@ -16,6 +16,7 @@ class TrickleTests {
     val C_KEYS = KeyListNodeName<Int>("cKeys")
 
     val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
+    val C_KEYED = KeyedNodeName<Int, Int>("cKeyed")
 
     @Test
     fun testTrickleBasic() {
@@ -197,6 +198,54 @@ class TrickleTests {
 
         instance.setInput(A, 1)
         instance.getNextSteps()
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotSetUnrecognizedNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(C, 2)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotSetUnrecognizedKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(C_KEYS, listOf(1, 2, 3))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotSetNonInputNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(B, 2)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotSetNonInputKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(B_KEYS, listOf(1, 2, 3))
     }
 
     @Test
@@ -420,5 +469,77 @@ class TrickleTests {
         assertEquals(4, instance.getNodeValue(B_KEYED, 2))
         assertEquals(6, instance.getNodeValue(B_KEYED, 3))
         assertEquals(listOf(6, 2, 4), instance.getNodeValue(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedNode2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+
+        val instance = builder.build().instantiate()
+
+        instance.completeSynchronously()
+        assertEquals(listOf<Int>(), instance.getNodeValue(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedNode3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bNode = builder.createInputNode(B)
+        val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bNode, { a, b -> a*2 + b })
+
+        val instance = builder.build().instantiate()
+
+        instance.addKeyInput(A_KEYS, 3)
+        instance.addKeyInput(A_KEYS, 1)
+        instance.addKeyInput(A_KEYS, 2)
+        instance.setInput(B, 1)
+        instance.completeSynchronously()
+        assertEquals(3, instance.getNodeValue(C_KEYED, 1))
+        assertEquals(5, instance.getNodeValue(C_KEYED, 2))
+        assertEquals(7, instance.getNodeValue(C_KEYED, 3))
+        assertEquals(listOf(7, 3, 5), instance.getNodeValue(C_KEYED))
+    }
+
+    @Test
+    fun testKeyedValuesNotRecomputedWhenKeyOrderChanges() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        assertEquals(3, instance.getNextSteps().size)
+        instance.completeSynchronously()
+        assertEquals(listOf(2, 4, 6), instance.getNodeValue(B_KEYED))
+        assertEquals(0, instance.getNextSteps().size)
+        instance.setInput(A_KEYS, listOf(3, 2, 1))
+        assertEquals(0, instance.getNextSteps().size)
+        assertEquals(listOf(6, 4, 2), instance.getNodeValue(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedValuesNotRecomputedWhenSingleKeyAdded() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+
+        val instance = builder.build().instantiate()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        assertEquals(3, instance.getNextSteps().size)
+        instance.completeSynchronously()
+        assertEquals(listOf(2, 4, 6), instance.getNodeValue(B_KEYED))
+        assertEquals(0, instance.getNextSteps().size)
+        instance.addKeyInput(A_KEYS, 4)
+        assertEquals(1, instance.getNextSteps().size)
+        assertEquals(ValueId.Keyed(B_KEYED, 4), instance.getNextSteps().single().valueId)
     }
 }

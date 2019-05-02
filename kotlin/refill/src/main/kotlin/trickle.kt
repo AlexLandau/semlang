@@ -11,12 +11,7 @@ import java.util.*
  * There's already a Java library named Trickle, so the name is going to change.
  */
 
-// TODO: Concept to use: "Keys" that support equality, and a list of keys is used as the basis for maps and per-item steps
-// A step can be in the "context" of a KeyList, in which case when it accepts other things in that context as inputs, you
-// get the same key's equivalent (a single item) instead of the whole list
-
-// TODO: "CatchNode" for error handling; nodes can raise an error in their output (one way or another) and the CatchNode
-// will turn errors or successes into
+// TODO: Should we allow keyed input nodes?
 
 // TODO: Should catch methods also catch errors in the same node, vs. upstream nodes? Should outputs of parent nodes
 // be added to their inputs?
@@ -24,6 +19,9 @@ import java.util.*
 // TODO: Specialty API for synchronous use, with getters for outputs that trigger evaluation of the requested nodes lazily
 
 // TODO: APIs for asynchronous use, with listeners and/or "wait for the version of this that is up-to-date as of this timestamp"
+
+// TODO: Currently this hangs on to references of keyed values associated with keys that have been removed; finding a way
+// to avoid that would be good
 
 class NodeName<T>(val name: String) {
     override fun equals(other: Any?): Boolean {
@@ -161,12 +159,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     private var curTimestamp = 0L
 
     init {
-//        val nonkeyedNodeValues = LinkedHashMap<NodeName<*>, TimestampedValue>()
-//        for (node in definition.nonkeyedNodes) {
-//            nonkeyedNodeValues[node.value.name] = TimestampedValue(-1L, null, null)
-//        }
-//        this.nonkeyedNodeValues = nonkeyedNodeValues
-
         // Key list input nodes start out as empty lists
         for (keyListNode in definition.keyListNodes.values) {
             if (keyListNode.inputs.isEmpty()) {
@@ -185,16 +177,29 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         valueHolder.set(newTimestamp, newValue, newFailure)
     }
 
-    // TODO: Validate that the nodes in question are actually input nodes
     @Synchronized
     fun <T> setInput(nodeName: NodeName<T>, value: T): Long {
+        val node = definition.nonkeyedNodes[nodeName]
+        if (node == null) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        if (node.inputs.isNotEmpty()) {
+            throw IllegalArgumentException("Cannot directly set the value of a non-input node $nodeName")
+        }
         curTimestamp++
         setValue(ValueId.Nonkeyed(nodeName), curTimestamp, value, null)
         return curTimestamp
     }
-    // TODO: Validate that the nodes in question are actually input nodes
+
     @Synchronized
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long {
+        val node = definition.keyListNodes[nodeName]
+        if (node == null) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        if (node.inputs.isNotEmpty()) {
+            throw IllegalArgumentException("Cannot directly set the value of a non-input node $nodeName")
+        }
         curTimestamp++
         val keyList = KeyList.copyOf(list)
         setValue(ValueId.FullKeyList(nodeName), curTimestamp, keyList, null)
@@ -837,9 +842,9 @@ class TrickleDefinitionBuilder {
     fun <T, K> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, fn: (K) -> T): TrickleKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
     }
-//    fun <T, K, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<T> {
-//        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
-//    }
+    fun <T, K, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
+    }
 //    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<T> {
 //        return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
 //    }
