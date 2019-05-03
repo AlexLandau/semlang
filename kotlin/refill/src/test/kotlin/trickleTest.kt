@@ -225,6 +225,30 @@ class TrickleTests {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun testCannotAddToUnrecognizedKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.addKeyInput(C_KEYS, 1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotRemoveFromUnrecognizedKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { it + 1 })
+
+        val instance = builder.build().instantiate()
+
+        instance.removeKeyInput(C_KEYS, 1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun testCannotSetNonInputNode() {
         val builder = TrickleDefinitionBuilder()
 
@@ -246,6 +270,30 @@ class TrickleTests {
         val instance = builder.build().instantiate()
 
         instance.setInput(B_KEYS, listOf(1, 2, 3))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotAddToNonInputKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
+
+        val instance = builder.build().instantiate()
+
+        instance.addKeyInput(B_KEYS, 1)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun testCannotRemoveFromNonInputKeyListNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
+
+        val instance = builder.build().instantiate()
+
+        instance.removeKeyInput(B_KEYS, 1)
     }
 
     @Test

@@ -206,11 +206,16 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         return curTimestamp
     }
 
-
-    // TODO: Validate that the nodes in question are actually input nodes
     // TODO: Don't bump the timestamp if nothing changed (e.g. key already existed)
     @Synchronized
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+        val node = definition.keyListNodes[nodeName]
+        if (node == null) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        if (node.inputs.isNotEmpty()) {
+            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
+        }
         curTimestamp++
         val listValueId = ValueId.FullKeyList(nodeName)
         // TODO: This could be a problem when it comes to input types...
@@ -219,10 +224,17 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         setValue(listValueId, curTimestamp, newList, null)
         return curTimestamp
     }
-    // TODO: Validate that the nodes in question are actually input nodes
+
     // TODO: Don't bump the timestamp if nothing changed (e.g. key did not exist)
     @Synchronized
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+        val node = definition.keyListNodes[nodeName]
+        if (node == null) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        if (node.inputs.isNotEmpty()) {
+            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
+        }
         curTimestamp++
         val listValueId = ValueId.FullKeyList(nodeName)
         val oldList = values[listValueId]!!.getValue() as KeyList<T> //?: KeyList<T>()
@@ -230,13 +242,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
         setValue(listValueId, curTimestamp, newList, null)
         return curTimestamp
     }
-
-//    fun <T> addKey(nodeName: NodeName<T>, key: Any) {
-//        val added = keyListValues[nodeName]!!.add(key)
-//    }
-//    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T) {
-//
-//    }
 
     /*
     Go through each node in topological order
