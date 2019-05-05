@@ -121,7 +121,12 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
             return
         }
 
-        val tempDirectory = Files.createTempDirectory("prepublishedSemlangModule").toFile()
+        // Create the temporary file in a staging area inside the repository itself to avoid
+        // issues where we try to do atomic moves across disk partitions (e.g. with / and /home on
+        // different partitions)
+        val tempParent = File(rootDirectory, "temp")
+        tempParent.mkdirs()
+        val tempDirectory = Files.createTempDirectory(tempParent.toPath(), "prepublishedSemlangModule").toFile()
 
         // Publish the .sem file
         val sourceFile = File(tempDirectory, "module.sem")
@@ -156,7 +161,12 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
             return
         }
 
-        val tempDirectory = Files.createTempDirectory("prepublishedUnvalidatedSemlangModule").toFile()
+        // Create the temporary file in a staging area inside the repository itself to avoid
+        // issues where we try to do atomic moves across disk partitions (e.g. with / and /home on
+        // different partitions)
+        val tempParent = File(rootDirectory, "temp")
+        tempParent.mkdirs()
+        val tempDirectory = Files.createTempDirectory(tempParent.toPath(), "prepublishedUnvalidatedSemlangModule").toFile()
 
         // Publish the .sem file
         val sourceFile = File(tempDirectory, "module.sem")
@@ -174,7 +184,7 @@ class LocalRepository(private val rootDirectory: File): ModuleRepository {
 
         // Publish the directory to its real location
         try {
-        Files.move(tempDirectory.toPath(), finalDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE)
+            Files.move(tempDirectory.toPath(), finalDirectory.toPath(), StandardCopyOption.ATOMIC_MOVE)
         } catch (e: java.nio.file.FileAlreadyExistsException) {
             if (finalDirectory.isDirectory) {
                 // The module has already been published
