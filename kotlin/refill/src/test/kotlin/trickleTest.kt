@@ -590,4 +590,32 @@ class TrickleTests {
         assertEquals(1, instance.getNextSteps().size)
         assertEquals(ValueId.Keyed(B_KEYED, 4), instance.getNextSteps().single().valueId)
     }
+
+    @Test
+    fun testKeyedNodeOutputs1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+        val c = builder.createNode(C, bKeyed.fullOutput(), { it.sum() })
+
+        val instance = builder.build().instantiate()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(2 + 4 + 6, instance.getNodeValue(C))
+    }
+
+    @Test
+    fun testKeyedNodeOutputs2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
+        val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bKeyed.keyedOutput(), { key, bValue -> bValue + 1 })
+
+        val instance = builder.build().instantiate()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(listOf(3, 5, 7), instance.getNodeValue(C_KEYED))
+    }
 }

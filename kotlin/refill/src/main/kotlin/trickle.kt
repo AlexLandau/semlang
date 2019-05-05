@@ -23,6 +23,11 @@ import java.util.*
 // TODO: Currently this hangs on to references of keyed values associated with keys that have been removed; finding a way
 // to avoid that would be good
 
+// TODO: It might be nice to be able to compose keylists within keylists, on the general principle that composability is good
+// (Say e.g. one keylist represents directories, a composed keylist could represent a list of files within each of those
+// directories; and then as opposed to a flat keylist of all files, this would allow per-file computations that could then
+// be filtered back into a per-directory view before being brought back to a global list.)
+
 class NodeName<T>(val name: String) {
     override fun equals(other: Any?): Boolean {
         if (other !is NodeName<*>) {
@@ -536,6 +541,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     }
 
     // TODO: This should probably just be a function on TrickleInput
+    // TODO: This doesn't really work for keyed node outputs: we also need to be able to get both things tied to a key
+    // and the list containing all the keys
     private fun getValueIdFromInput(input: TrickleInput<*>): ValueId {
         if (input is TrickleNode<*>) {
             return ValueId.Nonkeyed(input.name)
