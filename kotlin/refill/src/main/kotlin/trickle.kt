@@ -64,7 +64,7 @@ sealed class ValueId {
     // Note: Stored values associated with KeyListKeys are booleans
     data class KeyListKey(val nodeName: KeyListNodeName<*>, val key: Any?): ValueId()
     data class Keyed(val nodeName: KeyedNodeName<*, *>, val key: Any?): ValueId()
-    data class KeyedList(val nodeName: KeyedNodeName<*, *>): ValueId()
+    data class FullKeyedList(val nodeName: KeyedNodeName<*, *>): ValueId()
 }
 
 private class KeyList<T> private constructor(val list: List<T>, val set: Set<T>) {
@@ -496,10 +496,11 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                             val inputValues = ArrayList<Any?>()
                             val inputFailures = ArrayList<TrickleFailure>()
                             for (input in node.inputs) {
-                                val unkeyedInputValueId = getValueIdFromInput(input)
+                                val unkeyedInputValueId = getValueIdFromInput(input, key)
                                 val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
                                 if (timeStampMaybe == null) {
                                     anyInputNotUpToDate = true
+                                    anyKeyedValueNotUpToDate = true
                                 } else {
                                     maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
                                     val contents = values[unkeyedInputValueId]!!
@@ -572,7 +573,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
                         // If every key value is up-to-date, but the full keyed list is not, update the keyed list
                         if (!anyKeyedValueNotUpToDate) {
                             // All keyed values are up-to-date; update the full list
-                            val fullListValueId = ValueId.KeyedList(nodeName)
+                            val fullListValueId = ValueId.FullKeyedList(nodeName)
                             if (allInputFailuresAcrossAllKeys.isNotEmpty()) {
                                 val combinedFailure = combineFailures(allInputFailuresAcrossAllKeys)
                                 setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, null, combinedFailure)
@@ -608,12 +609,18 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     // TODO: This should probably just be a function on TrickleInput
     // TODO: This doesn't really work for keyed node outputs: we also need to be able to get both things tied to a key
     // and the list containing all the keys
-    private fun getValueIdFromInput(input: TrickleInput<*>): ValueId {
+    private fun getValueIdFromInput(input: TrickleInput<*>, key: Any? = null): ValueId {
         if (input is TrickleNode<*>) {
             return ValueId.Nonkeyed(input.name)
         }
         if (input is TrickleInput.KeyList<*>) {
             return ValueId.FullKeyList(input.name)
+        }
+        if (input is TrickleInput.Keyed<*, *>) {
+            return ValueId.Keyed(input.name, key)
+        }
+        if (input is TrickleInput.FullKeyedList<*, *>) {
+            return ValueId.FullKeyedList(input.name)
         }
         error("Unhandled case getting node from input: ${input}")
     }
@@ -649,7 +656,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             is ValueId.Keyed -> {
                 reportKeyedResult(valueId, result.timestamp, result.result, result.error)
             }
-            is ValueId.KeyedList -> TODO()
+            is ValueId.FullKeyedList -> TODO()
             else -> error("Unhandled valueId type")
         }
     }
@@ -801,7 +808,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
 
-        val value = values[ValueId.KeyedList(nodeName)]
+        val value = values[ValueId.FullKeyedList(nodeName)]
         if (value == null) {
             return NodeOutcome.NotYetComputed as NodeOutcome<List<V>>
         }
@@ -972,6 +979,8 @@ class TrickleDefinitionBuilder {
 sealed class TrickleInput<T> {
     abstract val builderId: TrickleDefinitionBuilder.Id
     data class KeyList<T>(val name: KeyListNodeName<T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<List<T>>()
+    data class Keyed<K, T>(val name: KeyedNodeName<K, T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<T>()
+    data class FullKeyedList<K, T>(val name: KeyedNodeName<K, T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<List<T>>()
 }
 
 data class TrickleFailure(val errors: Map<ValueId, Throwable>)
@@ -1007,10 +1016,10 @@ class TrickleKeyedNode<K, T>(
 ) {
     // TODO: These should probably be getter-based?
     fun keyedOutput(): TrickleInput<T> {
-        TODO()
+        return TrickleInput.Keyed(name, builderId)
     }
     fun fullOutput(): TrickleInput<List<T>> {
-        TODO()
+        return TrickleInput.FullKeyedList(name, builderId)
     }
 }
 
