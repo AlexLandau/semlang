@@ -481,7 +481,6 @@ fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleReposito
     val definition = getFilesParsingDefinition()
     val instance = definition.instantiate()
 
-    // I think we could get typings on this if it were either generated from a spec or based on an annotation processor
     instance.setInput(CONFIG_TEXT, configFile.readText())
 
     for (file in directory.listFiles()) {

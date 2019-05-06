@@ -28,27 +28,24 @@ import java.util.*
 // directories; and then as opposed to a flat keylist of all files, this would allow per-file computations that could then
 // be filtered back into a per-directory view before being brought back to a global list.)
 
+// TODO: Probably out of scope, but I think we could get typings on the input setters if code were either generated from
+// a spec or based on an annotation processor
+
 class NodeName<T>(val name: String) {
-    override fun equals(other: Any?): Boolean {
-        if (other !is NodeName<*>) {
-            return false
-        }
-        return Objects.equals(name, other.name)
-    }
-    override fun hashCode(): Int {
-        return name.hashCode()
-    }
     override fun toString(): String {
         return name
     }
 }
-class KeyListNodeName<T>(val name: String)
-/**
- * Note that KeyedNodeName uses the same equals() and hashCode() implementations as NodeName (and is interchangeable
- * with other NodeNames for those purposes), and only exists as a separate type to include the key type as a type
- * parameter.
- */
-class KeyedNodeName<K, T>(val name: String)
+class KeyListNodeName<T>(val name: String) {
+    override fun toString(): String {
+        return name
+    }
+}
+class KeyedNodeName<K, T>(val name: String) {
+    override fun toString(): String {
+        return name
+    }
+}
 
 // TODO: This might be nicer as a "GenericNodeName" interface
 internal sealed class AnyNodeName {
