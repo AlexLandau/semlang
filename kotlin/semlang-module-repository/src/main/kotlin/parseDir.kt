@@ -485,22 +485,14 @@ fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleReposito
     instance.setInput(CONFIG_TEXT, configFile.readText())
 
     for (file in directory.listFiles()) {
-        instance.addKey(SOURCE_FILE_URLS, file.absolutePath)
+        instance.addKeyInput(SOURCE_FILE_URLS, file.absolutePath)
         instance.setKeyedInput(SOURCE_TEXTS, file.absolutePath, file.readText())
     }
 
     instance.completeSynchronously()
 
     // TODO: Also handle the case where we get an error in config parsing
-    val combinedParsingResult = instance.getNodeValue(COMBINED_PARSING_RESULT)
-    when (combinedParsingResult) {
-        is ParsingResult.Success -> {
-            ModuleDirectoryParsingResult.Success(UnvalidatedModule(parsedConfig.info, combinedParsingResult.context))
-        }
-        is ParsingResult.Failure -> {
-            ModuleDirectoryParsingResult.Failure(combinedParsingResult.errors, listOf())
-        }
-    }
+    return instance.getNodeValue(MODULE_PARSING_RESULT)
 
 //    val parsedConfig = parseConfigFile(configFile)
 //    return when (parsedConfig) {
@@ -539,7 +531,7 @@ fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleReposito
 
 internal val CONFIG_TEXT = NodeName<String>("configText")
 internal val PARSED_CONFIG = NodeName<ModuleInfoParsingResult.Success>("parsedConfig")
-internal val SOURCE_FILE_URLS = NodeName<String>("sourceFileUrls")
+internal val SOURCE_FILE_URLS = KeyListNodeName<String>("sourceFileUrls")
 internal val SOURCE_TEXTS = KeyedNodeName<String, String>("sourceTexts")
 internal val IRS = KeyedNodeName<String, Dialect.IR>("irs")
 internal val TYPE_SUMMARIES = KeyedNodeName<String, TypesSummary>("typeSummaries")
@@ -555,13 +547,13 @@ internal fun getFilesParsingDefinition(): TrickleDefinition {
         // Parse the config
         parseConfigFileString(text) as ModuleInfoParsingResult.Success
     })
-    val sourceFileUrls = builder.createKeyListInputNode<String>(SOURCE_FILE_URLS)
-    val sourceTexts = builder.createKeyedInputNode<String>(SOURCE_TEXTS, sourceFileUrls)
+    val sourceFileUrls = builder.createKeyListInputNode(SOURCE_FILE_URLS)
+    val sourceTexts = builder.createKeyedInputNode(SOURCE_TEXTS, sourceFileUrls)
 
     val irs = builder.createKeyedNode(IRS, sourceFileUrls, sourceTexts.keyedOutput(), { filePath: String, sourceText: String ->
         // Do something, make the IR
         val dialect = determineDialect(filePath)!!
-        dialect.parseToIR(sourceText)
+        dialect.parseToIR(filePath, sourceText)
     })
     val typeSummaries = builder.createKeyedNode(TYPE_SUMMARIES, sourceFileUrls, irs.keyedOutput(), parsedConfig, { filePath, ir, config ->
         // Do something, make the type summary
@@ -591,7 +583,7 @@ internal fun getFilesParsingDefinition(): TrickleDefinition {
         combineParsingResults(parsingResults)
     })
 
-    val finalResultNode = builder.createCatchNode(MODULE_PARSING_RESULT, parsedConfig, combinedParsingResultNode, { config, combinedParsingResult ->
+    val finalResultNode = builder.createNode(MODULE_PARSING_RESULT, parsedConfig, combinedParsingResultNode, { config, combinedParsingResult ->
         when (combinedParsingResult) {
             is ParsingResult.Success -> {
                 ModuleDirectoryParsingResult.Success(UnvalidatedModule(config.info, combinedParsingResult.context))

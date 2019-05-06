@@ -4,6 +4,9 @@ import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 
+// TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
+// as the input to a basic or key list node)
+
 class TrickleTests {
     val A = NodeName<Int>("a")
     val B = NodeName<Int>("b")
@@ -551,6 +554,28 @@ class TrickleTests {
         assertEquals(5, instance.getNodeValue(C_KEYED, 2))
         assertEquals(7, instance.getNodeValue(C_KEYED, 3))
         assertEquals(listOf(7, 3, 5), instance.getNodeValue(C_KEYED))
+    }
+
+    @Test
+    fun testKeyedInputNode1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiate()
+
+        instance.addKeyInput(A_KEYS, 1)
+        instance.addKeyInput(A_KEYS, 2)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.setKeyedInput(B_KEYED, 1, 6)
+        instance.setKeyedInput(B_KEYED, 2, 4)
+        instance.setKeyedInput(B_KEYED, 3, 5)
+        instance.completeSynchronously()
+        assertEquals(6, instance.getNodeValue(B_KEYED, 1))
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(5, instance.getNodeValue(B_KEYED, 3))
+        assertEquals(listOf(6, 4, 5), instance.getNodeValue(B_KEYED))
     }
 
     @Test
