@@ -647,19 +647,12 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition) {
     // TODO: This doesn't really work for keyed node outputs: we also need to be able to get both things tied to a key
     // and the list containing all the keys
     private fun getValueIdFromInput(input: TrickleInput<*>, key: Any? = null): ValueId {
-        if (input is TrickleNode<*>) {
-            return ValueId.Nonkeyed(input.name)
+        return when (input) {
+            is TrickleBuiltNode -> ValueId.Nonkeyed(input.name)
+            is TrickleInput.KeyList<*> -> ValueId.FullKeyList(input.name)
+            is TrickleInput.Keyed<*, *> -> ValueId.Keyed(input.name, key)
+            is TrickleInput.FullKeyedList<*, *> -> ValueId.FullKeyedList(input.name)
         }
-        if (input is TrickleInput.KeyList<*>) {
-            return ValueId.FullKeyList(input.name)
-        }
-        if (input is TrickleInput.Keyed<*, *>) {
-            return ValueId.Keyed(input.name, key)
-        }
-        if (input is TrickleInput.FullKeyedList<*, *>) {
-            return ValueId.FullKeyedList(input.name)
-        }
-        error("Unhandled case getting node from input: ${input}")
     }
 
     fun completeSynchronously() {
@@ -915,12 +908,12 @@ class TrickleDefinitionBuilder {
     class Id internal constructor()
     private val builderId = Id()
 
-    fun <T> createInputNode(name: NodeName<T>): TrickleNode<T> {
+    fun <T> createInputNode(name: NodeName<T>): TrickleBuiltNode<T> {
         checkNameNotUsed(name.name)
-        val node = TrickleNode<T>(name, builderId, listOf(), null, null)
+        val node = TrickleNode<T>(name, listOf(), null, null)
         nodes[name] = node
         topologicalOrdering.add(AnyNodeName.Basic(name))
-        return node
+        return TrickleBuiltNode(name, builderId)
     }
 
     private fun checkNameNotUsed(name: String) {
@@ -930,23 +923,23 @@ class TrickleDefinitionBuilder {
         usedNodeNames.add(name)
     }
 
-    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
+    fun <T, I1> createNode(name: NodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltNode<T> {
         return createNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) }, onCatch)
     }
-    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleNode<T> {
+    fun <T, I1, I2> createNode(name: NodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltNode<T> {
         return createNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, onCatch)
     }
-    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T, onCatch: ((TrickleFailure) -> T)?): TrickleNode<T> {
+    fun <T> createNode(name: NodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> T, onCatch: ((TrickleFailure) -> T)?): TrickleBuiltNode<T> {
         if (inputs.isEmpty()) {
             // TODO: We might want to allow this as long as fn and onCatch are null
             error("Use createInputNode to create a node with no inputs.")
         }
         checkNameNotUsed(name.name)
         validateBuilderIds(inputs)
-        val node = TrickleNode<T>(name, builderId, inputs, fn, onCatch)
+        val node = TrickleNode<T>(name, inputs, fn, onCatch)
         nodes[name] = node
         topologicalOrdering.add(AnyNodeName.Basic(name))
-        return node
+        return TrickleBuiltNode(name, builderId)
     }
 
     private fun validateBuilderIds(inputs: List<TrickleInput<*>>) {
@@ -957,54 +950,53 @@ class TrickleDefinitionBuilder {
         }
     }
 
-    fun <T> createKeyListInputNode(name: KeyListNodeName<T>): TrickleKeyListNode<T> {
+    fun <T> createKeyListInputNode(name: KeyListNodeName<T>): TrickleBuiltKeyListNode<T> {
         checkNameNotUsed(name.name)
 
-        val node = TrickleKeyListNode<T>(name, builderId, listOf(), null, null)
+        val node = TrickleKeyListNode<T>(name, listOf(), null, null)
         keyListNodes[name] = node
         topologicalOrdering.add(AnyNodeName.KeyList(name))
-        return node
+        return TrickleBuiltKeyListNode(name, builderId)
     }
-    fun <T, I1> createKeyListNode(name: KeyListNodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)? = null): TrickleKeyListNode<T> {
+    fun <T, I1> createKeyListNode(name: KeyListNodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)? = null): TrickleBuiltKeyListNode<T> {
         return createKeyListNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) }, onCatch)
     }
-    fun <T> createKeyListNode(name: KeyListNodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)?): TrickleKeyListNode<T> {
+    fun <T> createKeyListNode(name: KeyListNodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)?): TrickleBuiltKeyListNode<T> {
         if (inputs.isEmpty()) {
             // TODO: We might want to allow this as long as fn and onCatch are null
             error("Use createInputNode to create a node with no inputs.")
         }
         checkNameNotUsed(name.name)
         validateBuilderIds(inputs)
-        val node = TrickleKeyListNode<T>(name, builderId, inputs, fn, onCatch)
-//        val node = TrickleNode<T>(name, builderId, inputs, fn, onCatch)
+        val node = TrickleKeyListNode<T>(name, inputs, fn, onCatch)
         keyListNodes[name] = node
         topologicalOrdering.add(AnyNodeName.KeyList(name))
-        return node
+        return TrickleBuiltKeyListNode(name, builderId)
     }
 
-    fun <K, T> createKeyedInputNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>): TrickleKeyedNode<K, T> {
+    fun <K, T> createKeyedInputNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
 
-        val node = TrickleKeyedNode(name, keySource.name, builderId, listOf(), null, null)
+        val node = TrickleKeyedNode(name, keySource.name, listOf(), null, null)
         keyedNodes[name] = node
         topologicalOrdering.add(AnyNodeName.Keyed(name))
-        return node
+        return TrickleBuiltKeyedNode(name, builderId)
     }
-    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, fn: (K) -> T): TrickleKeyedNode<K, T> {
+    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
     }
-    fun <K, T, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleKeyedNode<K, T> {
+    fun <K, T, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
     }
-    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleKeyedNode<K, T> {
+    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
     }
-    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleKeyedNode<K, T> {
+    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
-        val node = TrickleKeyedNode(name, keySource.name, builderId, inputs, fn, null)
+        val node = TrickleKeyedNode(name, keySource.name, inputs, fn, null)
         keyedNodes[name] = node
         topologicalOrdering.add(AnyNodeName.Keyed(name))
-        return node
+        return TrickleBuiltKeyedNode(name, builderId)
     }
 
     fun build(): TrickleDefinition {
@@ -1013,6 +1005,21 @@ class TrickleDefinitionBuilder {
 
 }
 
+class TrickleBuiltNode<T>(val name: NodeName<T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<T>() {
+}
+class TrickleBuiltKeyListNode<T>(val name: KeyListNodeName<T>, val builderId: TrickleDefinitionBuilder.Id) {
+    fun listOutput(): TrickleInput<List<T>> {
+        return TrickleInput.KeyList<T>(name, builderId)
+    }
+}
+class TrickleBuiltKeyedNode<K, T>(val name: KeyedNodeName<K, T>, val builderId: TrickleDefinitionBuilder.Id) {
+    fun keyedOutput(): TrickleInput<T> {
+        return TrickleInput.Keyed(name, builderId)
+    }
+    fun fullOutput(): TrickleInput<List<T>> {
+        return TrickleInput.FullKeyedList(name, builderId)
+    }
+}
 sealed class TrickleInput<T> {
     abstract val builderId: TrickleDefinitionBuilder.Id
     data class KeyList<T>(val name: KeyListNodeName<T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<List<T>>()
@@ -1022,13 +1029,12 @@ sealed class TrickleInput<T> {
 
 data class TrickleFailure(val errors: Map<ValueId, Throwable>)
 
-class TrickleNode<T> internal constructor(
+internal class TrickleNode<T> internal constructor(
     val name: NodeName<T>,
-    override val builderId: TrickleDefinitionBuilder.Id,
     val inputs: List<TrickleInput<*>>,
     val operation: ((List<*>) -> T)?,
     val onCatch: ((TrickleFailure) -> T)?
-): TrickleInput<T>() {
+) {
     init {
         if (operation == null && inputs.isNotEmpty()) {
             error("Internal error: When operation is null (input node), inputs should be empty")
@@ -1036,9 +1042,8 @@ class TrickleNode<T> internal constructor(
     }
 }
 
-class TrickleKeyListNode<T>(
+internal class TrickleKeyListNode<T>(
     val name: KeyListNodeName<T>,
-    val builderId: TrickleDefinitionBuilder.Id,
     val inputs: List<TrickleInput<*>>,
     val operation: ((List<*>) -> List<T>)?,
     val onCatch: ((TrickleFailure) -> List<T>)?
@@ -1048,15 +1053,11 @@ class TrickleKeyListNode<T>(
             error("Internal error: When operation is null (input node), inputs should be empty")
         }
     }
-    fun listOutput(): TrickleInput<List<T>> {
-        return TrickleInput.KeyList<T>(name, builderId)
-    }
 }
 
-class TrickleKeyedNode<K, T>(
+internal class TrickleKeyedNode<K, T>(
     val name: KeyedNodeName<K, T>,
     val keySourceName: KeyListNodeName<K>,
-    val builderId: TrickleDefinitionBuilder.Id,
     val inputs: List<TrickleInput<*>>,
     val operation: ((K, List<*>) -> T)?,
     val onCatch: ((TrickleFailure) -> T)?
@@ -1065,13 +1066,6 @@ class TrickleKeyedNode<K, T>(
         if (operation == null && inputs.isNotEmpty()) {
             error("Internal error: When operation is null (input node), inputs should be empty")
         }
-    }
-    // TODO: These should probably be getter-based?
-    fun keyedOutput(): TrickleInput<T> {
-        return TrickleInput.Keyed(name, builderId)
-    }
-    fun fullOutput(): TrickleInput<List<T>> {
-        return TrickleInput.FullKeyedList(name, builderId)
     }
 }
 
