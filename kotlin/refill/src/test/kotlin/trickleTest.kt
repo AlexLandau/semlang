@@ -2,7 +2,7 @@ import net.semlang.modules.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.lang.IllegalArgumentException
-import java.lang.IllegalStateException
+import java.util.concurrent.atomic.AtomicBoolean
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
 // as the input to a basic or key list node)
@@ -32,7 +32,7 @@ class TrickleTests {
         builder.createNode(D, bNode, cNode, { b, c -> b * c })
 
         val definition = builder.build()
-        val instance = definition.instantiate()
+        val instance = definition.instantiateRaw()
 
         instance.setInput(A, 0)
         instance.completeSynchronously()
@@ -53,7 +53,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 10)
         val olderStep = instance.getNextSteps().single()
@@ -81,7 +81,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 10)
         val olderStep = instance.getNextSteps().single()
@@ -121,7 +121,7 @@ class TrickleTests {
         val dNode = builder.createNode(D, cNode, { it + 2 })
         val eNode = builder.createNode(E, bNode, dNode, { left, right -> left * right } )
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         // Prepare two updates to B followed by one to D
         instance.setInput(A, 0)
@@ -167,8 +167,8 @@ class TrickleTests {
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
         val definition = builder.build()
-        val instance1 = definition.instantiate()
-        val instance2 = definition.instantiate()
+        val instance1 = definition.instantiateRaw()
+        val instance2 = definition.instantiateRaw()
 
         instance1.setInput(A, 3)
         val step = instance1.getNextSteps().single()
@@ -177,19 +177,18 @@ class TrickleTests {
         instance2.reportResult(result)
     }
 
-    @Test(expected = IllegalStateException::class)
-    fun testCannotGetStepsWithInputsUndefined() {
+    fun testCanGetStepsWithInputsUndefined() {
         val builder = TrickleDefinitionBuilder()
 
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
-        instance.getNextSteps()
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B))
     }
 
-    @Test(expected = IllegalStateException::class)
     fun testCannotGetStepsWithInputsUndefined2() {
         val builder = TrickleDefinitionBuilder()
 
@@ -197,10 +196,12 @@ class TrickleTests {
         val bNode = builder.createNode(B, aNode, { it + 1 })
         val cNode = builder.createInputNode(C)
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 1)
-        instance.getNextSteps()
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.Computed(2), instance.getNodeOutcome(B))
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(C))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -210,7 +211,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(C, 2)
     }
@@ -222,7 +223,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(C_KEYS, listOf(1, 2, 3))
     }
@@ -234,7 +235,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(C_KEYS, 1)
     }
@@ -246,7 +247,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.removeKeyInput(C_KEYS, 1)
     }
@@ -258,7 +259,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { it + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(B, 2)
     }
@@ -270,7 +271,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(B_KEYS, listOf(1, 2, 3))
     }
@@ -282,7 +283,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(B_KEYS, 1)
     }
@@ -294,7 +295,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.removeKeyInput(B_KEYS, 1)
     }
@@ -306,7 +307,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 1)
         instance.completeSynchronously()
@@ -329,7 +330,7 @@ class TrickleTests {
         val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
         val cNode = builder.createNode(C, bNode, { it * 3 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 1)
         instance.completeSynchronously()
@@ -352,7 +353,7 @@ class TrickleTests {
         val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") })
         val cNode = builder.createNode(C, bNode, { it * 3 }, { failures -> -1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 1)
         instance.completeSynchronously()
@@ -374,7 +375,7 @@ class TrickleTests {
         val cNode = builder.createNode(C, bNode, { it + 1 })
         val dNode = builder.createNode(D, cNode, { it * 3 }, { failures -> -1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 1)
         instance.completeSynchronously()
@@ -393,7 +394,7 @@ class TrickleTests {
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         assertEquals(listOf<Int>(), instance.getNodeValue(A_KEYS))
         instance.addKeyInput(A_KEYS, 4)
@@ -410,7 +411,7 @@ class TrickleTests {
         // Note: This is not a realistic example; summing over a set (vs. a list) is usually not useful
         val bNode = builder.createNode(B, aKeys.listOutput(), { ints -> ints.sum() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.completeSynchronously()
         assertEquals(0, instance.getNodeValue(B))
@@ -427,7 +428,7 @@ class TrickleTests {
         val aNode = builder.createInputNode(A)
         val bKeys = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 4)
         instance.completeSynchronously()
@@ -445,7 +446,7 @@ class TrickleTests {
         val bNode = builder.createNode(B, aNode, { error("Something went wrong") })
         val cKeys = builder.createKeyListNode(C_KEYS, bNode, { (1..it).toList() }, { _ -> listOf(-1) })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A, 4)
         instance.completeSynchronously()
@@ -458,7 +459,7 @@ class TrickleTests {
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         // It's a set
         instance.addKeyInput(A_KEYS, 3)
@@ -510,7 +511,7 @@ class TrickleTests {
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(A_KEYS, 3)
         instance.addKeyInput(A_KEYS, 1)
@@ -529,7 +530,7 @@ class TrickleTests {
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.completeSynchronously()
         assertEquals(listOf<Int>(), instance.getNodeValue(B_KEYED))
@@ -543,7 +544,7 @@ class TrickleTests {
         val bNode = builder.createInputNode(B)
         val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bNode, { a, b -> a*2 + b })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(A_KEYS, 3)
         instance.addKeyInput(A_KEYS, 1)
@@ -563,7 +564,7 @@ class TrickleTests {
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(A_KEYS, 1)
         instance.addKeyInput(A_KEYS, 2)
@@ -586,7 +587,7 @@ class TrickleTests {
         val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
         val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bKeyed.keyedOutput(), { key, b -> key * b })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.addKeyInput(A_KEYS, 1)
         instance.addKeyInput(A_KEYS, 2)
@@ -612,7 +613,7 @@ class TrickleTests {
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         assertEquals(3, instance.getNextSteps().size)
@@ -631,7 +632,7 @@ class TrickleTests {
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
 
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         assertEquals(3, instance.getNextSteps().size)
@@ -651,7 +652,7 @@ class TrickleTests {
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
         val c = builder.createNode(C, bKeyed.fullOutput(), { it.sum() })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         instance.completeSynchronously()
         assertEquals(2 + 4 + 6, instance.getNodeValue(C))
@@ -665,9 +666,52 @@ class TrickleTests {
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2})
         val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bKeyed.keyedOutput(), { key, bValue -> bValue + 1 })
 
-        val instance = builder.build().instantiate()
+        val instance = builder.build().instantiateRaw()
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         instance.completeSynchronously()
         assertEquals(listOf(3, 5, 7), instance.getNodeValue(C_KEYED))
+    }
+
+    @Test
+    fun testTrickleSyncIsLazy1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val didUnnecessaryWork = AtomicBoolean(false)
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { it + 4 })
+        val c = builder.createNode(C, a, { didUnnecessaryWork.set(true); -1 })
+
+        val instance = builder.build().instantiateSync()
+
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B))
+        instance.setInput(A, 3)
+        assertEquals(7, instance.getValue(B))
+        assertFalse(didUnnecessaryWork.get())
+    }
+
+    @Test
+    fun testTrickleSyncIsLazy2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val didUnnecessaryWork = AtomicBoolean(false)
+
+        val a = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createKeyedNode(B_KEYED, a, {
+            if (it == 1) {
+                didUnnecessaryWork.set(true)
+                -1
+            } else {
+                0
+            }
+        })
+
+        val instance = builder.build().instantiateSync()
+
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B_KEYED, 1))
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B_KEYED, 2))
+        instance.setInput(A_KEYS, listOf(1, 2))
+        assertEquals(0, instance.getValue(B_KEYED, 2))
+        assertFalse(didUnnecessaryWork.get())
     }
 }

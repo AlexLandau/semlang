@@ -479,7 +479,7 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
 fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleRepository): ModuleDirectoryParsingResult {
     val configFile = File(directory, "module.conf")
     val definition = getFilesParsingDefinition()
-    val instance = definition.instantiate()
+    val instance = definition.instantiateRaw()
 
     instance.setInput(CONFIG_TEXT, configFile.readText())
 
