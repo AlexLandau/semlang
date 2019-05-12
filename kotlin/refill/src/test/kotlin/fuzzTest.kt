@@ -4,13 +4,40 @@ import org.junit.Test
 import java.util.*
 import kotlin.collections.ArrayList
 
-/*
- * TODO: Currently failing in a case where we ask a keyed node about a key that may or may not be in the key list
- *
- * I guess it should count as computed
- */
+// TODO: Currently failing in a case where we ask a keyed node about a key that used to be, but is no longer, in the key list
 // TODO: Also add keyed input nodes
 class TrickleFuzzTests {
+    @Test
+    fun specificTest1() {
+        runSpecificTest(6, 0)
+    }
+
+    private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
+        val definition = getFuzzedDefinition(definitionSeed)
+
+        try {
+            val descriptionBeforeGen = definition.toMultiLineString()
+            val script = getOperationsScript(definition, operationsSeed)
+            val descriptionAfterGen = definition.toMultiLineString()
+            if (descriptionBeforeGen != descriptionAfterGen) {
+                throw RuntimeException("The description changed; before:\n$descriptionBeforeGen\nAfter:\n$descriptionAfterGen")
+            }
+
+            try {
+                checkRawInstance1(definition.instantiateRaw(), script.operations)
+                checkRawInstance2(definition.instantiateRaw(), script.operations)
+                checkSyncInstance(definition.instantiateSync(), script.operations)
+            } catch (t: Throwable) {
+                throw RuntimeException(
+                    "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
+                    t
+                )
+            }
+        } catch (t: Throwable) {
+            throw RuntimeException("Definition:\n" + definition.toMultiLineString(), t)
+        }
+    }
+
     @Test
     fun runFuzzTests() {
         for (definitionSeed in 0..99) {
@@ -20,9 +47,7 @@ class TrickleFuzzTests {
                 for (operationsSeed in 0..9) {
                     try {
                         val descriptionBeforeGen = definition.toMultiLineString()
-//                        println("Before script gen:\n" + definition.toMultiLineString())
                         val script = getOperationsScript(definition, operationsSeed)
-//                        println("After script gen:\n" + definition.toMultiLineString())
                         val descriptionAfterGen = definition.toMultiLineString()
                         if (descriptionBeforeGen != descriptionAfterGen) {
                             throw RuntimeException("The description changed; before:\n$descriptionBeforeGen\nAfter:\n$descriptionAfterGen")
@@ -516,7 +541,7 @@ private fun <E> List<E>.getAtRandom(random: Random, ifZero: () -> E): E {
 
 private fun <E> List<E>.randomSubset(random: Random, n: Int): List<E> {
     if (n >= this.size) {
-        return this
+        return ArrayList(this)
     }
     if (n == 0) {
         return listOf()
