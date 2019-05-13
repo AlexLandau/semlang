@@ -817,4 +817,28 @@ class TrickleTests {
         // would be different if computation happened in between the two input changes above.
         assertEquals(101, instance.getNodeValue(E))
     }
+
+    @Test
+    fun testNodeGetsHungUpByKeyedInputNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+        val c = builder.createNode(C, bKeyed.fullOutput(), { it.sum() + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        assertEquals(1, instance.getNodeValue(C))
+        instance.addKeyInput(A_KEYS, 1)
+        instance.setKeyedInput(B_KEYED, 1, 30)
+        instance.completeSynchronously()
+        assertEquals(31, instance.getNodeValue(C))
+        instance.addKeyInput(A_KEYS, 2)
+        instance.setKeyedInput(B_KEYED, 2, 60)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.completeSynchronously()
+        // TODO: Also not good! If the addition of <2, 60> had been registered, the value would be 91, not 31.
+        assertEquals(31, instance.getNodeValue(C))
+    }
 }
