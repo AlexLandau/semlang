@@ -122,6 +122,22 @@ private class KeyList<T> private constructor(val list: List<T>, val set: Set<T>)
     fun contains(key: T): Boolean {
         return set.contains(key)
     }
+
+    override fun toString(): String {
+        return list.toString()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other is KeyList<*>) {
+            return list.equals(other.list)
+        } else {
+            return false
+        }
+    }
+
+    override fun hashCode(): Int {
+        return list.hashCode()
+    }
 }
 
 private data class TimestampedValue(private var timestamp: Long, private var value: Any?, private var failure: TrickleFailure?) {

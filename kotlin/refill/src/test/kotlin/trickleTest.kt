@@ -770,4 +770,51 @@ class TrickleTests {
         // Reverts to "uncomputed"
         assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
     }
+
+    @Test
+    fun testFullOutputsFromKeyedNodeWhenKeyListIsSometimesEmpty() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val cKeyed = builder.createKeyedNode(C_KEYED, bKeys, a, { key, bVal -> key + bVal + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
+        instance.addKeyInput(B_KEYS, 42)
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(C_KEYED, 42))
+        instance.completeSynchronously()
+        // TODO: This probably isn't good
+        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
+    }
+
+    @Test
+    fun testNodeGetsHungUpByOtherNodeBecomingNonempty() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val cKeyed = builder.createKeyedNode(C_KEYED, bKeys, a, { key, bVal -> key + bVal + 1 })
+        val d = builder.createInputNode(D)
+        val e = builder.createNode(E, cKeyed.fullOutput(), d, { cList, d -> cList.hashCode() + d })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(E))
+        instance.setInput(D, 100)
+        instance.completeSynchronously()
+        assertEquals(101, instance.getNodeValue(E))
+
+        instance.setInput(D, 1000)
+        instance.addKeyInput(B_KEYS, 42)
+        instance.completeSynchronously()
+        // TODO: This isn't good! We'd like it to be something more recent or just "uncomputed". It also means the behavior
+        // would be different if computation happened in between the two input changes above.
+        assertEquals(101, instance.getNodeValue(E))
+    }
 }

@@ -4,6 +4,13 @@ import org.junit.Test
 import java.util.*
 import kotlin.collections.ArrayList
 
+// There's an issue around the following structure, it looks like:
+// 1) Inputs are a basic node and a key list
+// 2) There's also a keyed node that is based on the key list and takes the basic node as an input
+// 3) Another node depends on the keyed node's full output (or that output is checked directly)
+// The consequence appears to be something like: the final node in the chain takes on a value due to the keyed node
+// "having a full value" so long as the key list is empty, but it stops getting updated when a key is added to the list.
+
 // TODO: Also add keyed input nodes
 class TrickleFuzzTests {
     @Test
@@ -336,19 +343,15 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
 
 private fun getAllInputNodes(definition: TrickleDefinition): List<AnyNodeName> {
     val result = ArrayList<AnyNodeName>()
-    for (node in definition.nonkeyedNodes.values) {
-        if (node.operation == null) {
-            result.add(AnyNodeName.Basic(node.name))
+    // Use topologicalOrdering so nodes end up in the same order in each run
+    for (nodeName in definition.topologicalOrdering) {
+        val operation = when (nodeName) {
+            is AnyNodeName.Basic -> definition.nonkeyedNodes[nodeName.name]!!.operation
+            is AnyNodeName.KeyList -> definition.keyListNodes[nodeName.name]!!.operation
+            is AnyNodeName.Keyed -> definition.keyedNodes[nodeName.name]!!.operation
         }
-    }
-    for (node in definition.keyListNodes.values) {
-        if (node.operation == null) {
-            result.add(AnyNodeName.KeyList(node.name))
-        }
-    }
-    for (node in definition.keyedNodes.values) {
-        if (node.operation == null) {
-            result.add(AnyNodeName.Keyed(node.name))
+        if (operation == null) {
+            result.add(nodeName)
         }
     }
     return result
