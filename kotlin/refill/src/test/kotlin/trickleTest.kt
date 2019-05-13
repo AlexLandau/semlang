@@ -714,4 +714,60 @@ class TrickleTests {
         assertEquals(0, instance.getValue(B_KEYED, 2))
         assertFalse(didUnnecessaryWork.get())
     }
+
+    @Test
+    fun testBehaviorWhenNodeDependsOnlyOnKeyListInputs() {
+        // Key lists default to true, so values can be computed without setting any inputs
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createNode(B, aKeys.listOutput(), { it.sum() })
+
+        val instance = builder.build().instantiateRaw()
+
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B))
+        assertEquals(1, instance.getNextSteps().size)
+        instance.completeSynchronously()
+        assertEquals(0, instance.getNodeValue(B))
+    }
+
+    @Test
+    fun testGettingKeyedValuesForRemovedKey1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(listOf(2, 4, 6), instance.getNodeValue(B_KEYED))
+        instance.removeKeyInput(A_KEYS, 2)
+        instance.completeSynchronously()
+        assertEquals(listOf(2, 6), instance.getNodeValue(B_KEYED))
+        // Reverts to "uncomputed"
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+    }
+
+    @Test
+    fun testGettingKeyedValuesForRemovedKey2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(listOf(2, 4, 6), instance.getNodeValue(B_KEYED))
+        instance.setInput(A_KEYS, listOf(1, 3))
+        instance.completeSynchronously()
+        assertEquals(listOf(2, 6), instance.getNodeValue(B_KEYED))
+        // Reverts to "uncomputed"
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+    }
 }

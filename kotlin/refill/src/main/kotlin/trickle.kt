@@ -610,7 +610,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         }
                         // TODO: Remove values for non-up-to-date keys
 
-                        // If every key value is up-to-date, but the full keyed list is not, update the keyed list
+                        // If every key value is up-to-date, but the full keyed list is not, update the keyed list and prune old values
                         if (!anyKeyedValueNotUpToDate) {
                             // All keyed values are up-to-date; update the full list
                             val fullListValueId = ValueId.FullKeyedList(nodeName)
@@ -625,6 +625,15 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 }
                                 setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, newList, null)
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
+                            }
+
+                            // Prune values for keys that no longer exist in the key list
+                            // These will now return "NotYetComputed"
+                            // TODO: Should we remove these as soon as the key list is updated instead?
+                            for (valueId in values.keys.toList()) {
+                                if (valueId is ValueId.Keyed && valueId.nodeName == nodeName && !keyList.set.contains(valueId.key)) {
+                                    values.remove(valueId)
+                                }
                             }
                         }
                     }

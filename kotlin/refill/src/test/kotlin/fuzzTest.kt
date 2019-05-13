@@ -4,12 +4,11 @@ import org.junit.Test
 import java.util.*
 import kotlin.collections.ArrayList
 
-// TODO: Currently failing in a case where we ask a keyed node about a key that used to be, but is no longer, in the key list
 // TODO: Also add keyed input nodes
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(6, 0)
+        runSpecificTest(64, 0)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
