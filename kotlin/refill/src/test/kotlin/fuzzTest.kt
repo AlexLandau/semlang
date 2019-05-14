@@ -264,6 +264,8 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                         is NodeOutcome.NotYetComputed -> 0
                         is NodeOutcome.Computed -> existingListOutcome.value.getAtRandom(random, { 2 })
                         is NodeOutcome.Failure -> 1
+                        is NodeOutcome.NoSuchKey -> 3
+                        is NodeOutcome.InputMissing -> 4
                     }
                     rawInstance.removeKeyInput(nodeName, valueToRemove)
                     return FuzzOperation.RemoveKey(nodeName, valueToRemove)
@@ -286,6 +288,8 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                     is NodeOutcome.NotYetComputed -> listOf(0)
                     is NodeOutcome.Computed -> curKeyListOutcome.value as List<Int>
                     is NodeOutcome.Failure -> listOf(-1)
+                    is NodeOutcome.NoSuchKey -> listOf(2)
+                    is NodeOutcome.InputMissing -> listOf(3)
                 }
                 // Look at the _ to find a thing to set
                 val keyedRoll = random.nextDouble()
@@ -332,6 +336,8 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                         is NodeOutcome.NotYetComputed -> 0
                         is NodeOutcome.Computed -> keySourceOutcome.value.getAtRandom(random, { 2 }) as Int
                         is NodeOutcome.Failure -> 1
+                        is NodeOutcome.NoSuchKey -> 3
+                        is NodeOutcome.InputMissing -> 4
                     }
                     val outcome = rawInstance.getNodeOutcome(nodeName, key)
                     return FuzzOperation.CheckKeyedValue(nodeName, key, outcome)

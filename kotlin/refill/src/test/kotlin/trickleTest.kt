@@ -186,7 +186,7 @@ class TrickleTests {
         val instance = builder.build().instantiateRaw()
 
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B))
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(B))
     }
 
     fun testCannotGetStepsWithInputsUndefined2() {
@@ -201,7 +201,7 @@ class TrickleTests {
         instance.setInput(A, 1)
         instance.completeSynchronously()
         assertEquals(NodeOutcome.Computed(2), instance.getNodeOutcome(B))
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(C))
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(C))), instance.getNodeOutcome(C))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -747,8 +747,8 @@ class TrickleTests {
         instance.removeKeyInput(A_KEYS, 2)
         instance.completeSynchronously()
         assertEquals(listOf(2, 6), instance.getNodeValue(B_KEYED))
-        // Reverts to "uncomputed"
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        // Reverts to "no such key"
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
     }
 
     @Test
@@ -767,8 +767,8 @@ class TrickleTests {
         instance.setInput(A_KEYS, listOf(1, 3))
         instance.completeSynchronously()
         assertEquals(listOf(2, 6), instance.getNodeValue(B_KEYED))
-        // Reverts to "uncomputed"
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        // Reverts to "no such key"
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
     }
 
     @Test
@@ -785,10 +785,12 @@ class TrickleTests {
         assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
         instance.addKeyInput(B_KEYS, 42)
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(C_KEYED, 42))
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(C_KEYED, 42))
         instance.completeSynchronously()
         // TODO: This probably isn't good
-        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
+//        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
+        // This would be preferable
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(C_KEYED))
     }
 
     @Test
@@ -815,7 +817,9 @@ class TrickleTests {
         instance.completeSynchronously()
         // TODO: This isn't good! We'd like it to be something more recent or just "uncomputed". It also means the behavior
         // would be different if computation happened in between the two input changes above.
-        assertEquals(101, instance.getNodeValue(E))
+//        assertEquals(101, instance.getNodeValue(E))
+        // This would be preferable:
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(E))
     }
 
     @Test
@@ -839,6 +843,20 @@ class TrickleTests {
         instance.addKeyInput(A_KEYS, 3)
         instance.completeSynchronously()
         // TODO: Also not good! If the addition of <2, 60> had been registered, the value would be 91, not 31.
-        assertEquals(31, instance.getNodeValue(C))
+//        assertEquals(31, instance.getNodeValue(C))
+        // This would be preferable:
+        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Keyed(B_KEYED, 3))), instance.getNodeOutcome(C))
     }
+
+    /*
+So some thoughts on how to address the last couple of cases...
+
+First, returning NotYetComputed probably makes less sense than something like InputMissing. This is more helpful (it
+points to what exactly needs to be added to get a result) and it makes more sense as something to switch the output to.
+
+Once that's in place and works more like the other "value" types, (we might also want a "NoSuchKey" outcome?) we can go
+back to propagating appropriate values.
+
+This means we don't quite yet have to address starvation, but this approach will dovetail nicely with any fixes for that.
+     */
 }

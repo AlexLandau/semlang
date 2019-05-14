@@ -604,7 +604,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                             // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
 
                                             val operation = node.operation as (Any?, List<*>) -> Any?
-                                                ?: error("This was supposed to be an input node, I guess")
                                             nextSteps.add(
                                                 TrickleStep(
                                                     keyedValueId,
@@ -781,6 +780,12 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                     exception.addSuppressed(e)
                 }
                 throw exception
+            }
+            is NodeOutcome.InputMissing -> {
+                throw IllegalStateException("Missing inputs for node $nodeName: ${outcome.inputsNeeded}")
+            }
+            is NodeOutcome.NoSuchKey -> {
+                error("This shouldn't happen in this particular function")
             }
         }
 //        error("Value for node $nodeName was not computed successfully: $outcome")
@@ -991,6 +996,24 @@ sealed class NodeOutcome<T> {
             }
         }
     }
+    class NoSuchKey<T> private constructor(): NodeOutcome<T>() {
+        companion object {
+            private val INSTANCE = NoSuchKey<Any>()
+            fun <T> get(): NoSuchKey<T> {
+                return INSTANCE as NoSuchKey<T>
+            }
+            override fun toString(): String {
+                return "NoSuchKey"
+            }
+            override fun equals(other: Any?): Boolean {
+                return other is NoSuchKey<*>
+            }
+            override fun hashCode(): Int {
+                return 892753869
+            }
+        }
+    }
+    data class InputMissing<T>(val inputsNeeded: Set<ValueId>): NodeOutcome<T>()
     data class Computed<T>(val value: T): NodeOutcome<T>()
     data class Failure<T>(val failure: TrickleFailure): NodeOutcome<T>()
 }
