@@ -12,8 +12,6 @@ import java.util.function.Predicate
  * There's already a Java library named Trickle, so the name is going to change.
  */
 
-// TODO: Should we allow keyed input nodes?
-
 // TODO: Should catch methods also catch errors in the same node, vs. upstream nodes? Should outputs of parent nodes
 // be added to their inputs?
 
@@ -28,6 +26,9 @@ import java.util.function.Predicate
 // (Say e.g. one keylist represents directories, a composed keylist could represent a list of files within each of those
 // directories; and then as opposed to a flat keylist of all files, this would allow per-file computations that could then
 // be filtered back into a per-directory view before being brought back to a global list.)
+
+// TODO: Add the ability to make multiple input changes with a single timestamp, e.g. adding both a key and a keyed input
+// based on that key
 
 // TODO: Probably out of scope, but I think we could get typings on the input setters if code were either generated from
 // a spec or based on an annotation processor
@@ -338,6 +339,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
     This also has the job of propagating errors into failures throughout the graph.
      */
+    // TODO: Propagating "input is missing" should be similar to propagating errors. But should they be different concepts
+    // or a combined notion of failure? One difference is that "catch" should only apply to errors, not missing inputs...
     @Synchronized
     fun getNextSteps(): List<TrickleStep> {
         val nextSteps = ArrayList<TrickleStep>()
