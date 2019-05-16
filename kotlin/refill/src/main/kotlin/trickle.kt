@@ -194,9 +194,15 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private var curTimestamp = 0L
 
     init {
+        for (unkeyedNode in definition.nonkeyedNodes.values) {
+            if (unkeyedNode.operation == null) {
+                val valueId = ValueId.Nonkeyed(unkeyedNode.name)
+                setValue(valueId, 0L, null, TrickleFailure(mapOf(), setOf(valueId)))
+            }
+        }
         // Key list input nodes start out as empty lists
         for (keyListNode in definition.keyListNodes.values) {
-            if (keyListNode.inputs.isEmpty()) {
+            if (keyListNode.operation == null) {
                 setValue(ValueId.FullKeyList(keyListNode.name), 0L, KeyList.empty<Any>(), null)
             }
         }
@@ -351,7 +357,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                     val nodeName = anyNodeName.name
                     val node = definition.nonkeyedNodes[nodeName]!!
                     val nodeValueId = ValueId.Nonkeyed(nodeName)
-                    if (node.inputs.isEmpty()) {
+                    if (node.operation == null) {
                         val timestamp = values[nodeValueId]?.getTimestamp() ?: -1L
                         if (timestamp >= 0L) {
                             timeStampIfUpToDate[nodeValueId] = timestamp
@@ -362,13 +368,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         val inputValues = ArrayList<Any?>()
                         val inputFailures = ArrayList<TrickleFailure>()
                         for (input in node.inputs) {
-                            val unkeyedInputValueId = getValueIdFromInput(input)
-                            val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
+                            val inputValueId = getValueIdFromInput(input)
+                            val timeStampMaybe = timeStampIfUpToDate[inputValueId]
                             if (timeStampMaybe == null) {
                                 anyInputNotUpToDate = true
                             } else {
                                 maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
-                                val contents = values[unkeyedInputValueId]!!
+                                val contents = values[inputValueId]!!
                                 val failure = contents.getFailure()
                                 if (failure != null) {
                                     inputFailures.add(failure)
@@ -434,7 +440,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                     val nodeValueId = ValueId.FullKeyList(nodeName)
                     // TODO: We can store things differently to make this more efficient
                     val keyValueIds = values.keys.filter { it is ValueId.KeyListKey && it.nodeName == nodeName }
-                    if (node.inputs.isEmpty()) {
+                    if (node.operation == null) {
                         val timestamp = values[nodeValueId]?.getTimestamp() ?: -1L
                         if (timestamp >= 0L) {
                             timeStampIfUpToDate[nodeValueId] = timestamp
@@ -664,11 +670,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     private fun combineFailures(inputFailures: ArrayList<TrickleFailure>): TrickleFailure {
-        val allSources = LinkedHashMap<ValueId, Throwable>()
+        val allErrors = LinkedHashMap<ValueId, Throwable>()
+        val allMissingInputs = LinkedHashSet<ValueId>()
         for (failure in inputFailures) {
-            allSources.putAll(failure.errors)
+            allErrors.putAll(failure.errors)
+            allMissingInputs.addAll(failure.missingInputs)
         }
-        return TrickleFailure(allSources)
+        return TrickleFailure(allErrors, allMissingInputs)
     }
 
     // TODO: This should probably just be a function on TrickleInput
@@ -722,7 +730,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private fun reportBasicResult(valueId: ValueId.Nonkeyed, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
-            val failure = error?.let { TrickleFailure(mapOf(valueId to it)) }
+            val failure = error?.let { TrickleFailure(mapOf(valueId to it), setOf()) }
             setValue(valueId, timestamp, result, failure)
         }
     }
@@ -730,7 +738,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private fun reportKeyedResult(valueId: ValueId.Keyed, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
-            val failure = error?.let { TrickleFailure(mapOf(valueId to it)) }
+            val failure = error?.let { TrickleFailure(mapOf(valueId to it), setOf()) }
             setValue(valueId, timestamp, result, failure)
         }
         // TODO: For keyed nodes, also adjust the values/timestamps of the whole list (?)
@@ -739,7 +747,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private fun reportKeyListResult(valueId: ValueId.FullKeyList, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
-            val failure = error?.let { TrickleFailure(mapOf(valueId to it)) }
+            val failure = error?.let { TrickleFailure(mapOf(valueId to it), setOf()) }
             if (result == null) {
                 setValue(valueId, timestamp, null, failure)
             } else {
@@ -784,9 +792,9 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                 }
                 throw exception
             }
-            is NodeOutcome.InputMissing -> {
-                throw IllegalStateException("Missing inputs for node $nodeName: ${outcome.inputsNeeded}")
-            }
+//            is NodeOutcome.InputMissing -> {
+//                throw IllegalStateException("Missing inputs for node $nodeName: ${outcome.inputsNeeded}")
+//            }
             is NodeOutcome.NoSuchKey -> {
                 error("This shouldn't happen in this particular function")
             }
@@ -851,8 +859,14 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
     @Synchronized
     fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>, key: K): NodeOutcome<V> {
-        if (!definition.keyedNodes.containsKey(nodeName)) {
+        val nodeDefinition = definition.keyedNodes[nodeName]
+        if (nodeDefinition == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        val keyListId = ValueId.FullKeyList(nodeDefinition.keySourceName)
+        val keyListValueHolder = values[keyListId]
+        if (keyListValueHolder != null && !(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+            return NodeOutcome.NoSuchKey.get()
         }
         val value = values[ValueId.Keyed(nodeName, key)]
         if (value == null) {
@@ -1016,7 +1030,7 @@ sealed class NodeOutcome<T> {
             }
         }
     }
-    data class InputMissing<T>(val inputsNeeded: Set<ValueId>): NodeOutcome<T>()
+//    data class InputMissing<T>(val inputsNeeded: Set<ValueId>): NodeOutcome<T>()
     data class Computed<T>(val value: T): NodeOutcome<T>()
     data class Failure<T>(val failure: TrickleFailure): NodeOutcome<T>()
 }
@@ -1265,7 +1279,8 @@ sealed class TrickleInput<T> {
     }
 }
 
-data class TrickleFailure(val errors: Map<ValueId, Throwable>)
+// TODO: Add a method for turning this into a single Exception with a reasonable human-friendly summary
+data class TrickleFailure(val errors: Map<ValueId, Throwable>, val missingInputs: Set<ValueId>)
 
 internal class TrickleNode<T> internal constructor(
     val name: NodeName<T>,

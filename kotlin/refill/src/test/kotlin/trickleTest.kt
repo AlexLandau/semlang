@@ -186,7 +186,11 @@ class TrickleTests {
         val instance = builder.build().instantiateRaw()
 
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(B))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(A)), instance.getNodeOutcome(B))
+    }
+
+    private fun inputsMissingOutcome(vararg valueIds: ValueId): NodeOutcome.Failure<Int> {
+        return NodeOutcome.Failure(TrickleFailure(mapOf(), valueIds.toSet()))
     }
 
     fun testCannotGetStepsWithInputsUndefined2() {
@@ -201,7 +205,7 @@ class TrickleTests {
         instance.setInput(A, 1)
         instance.completeSynchronously()
         assertEquals(NodeOutcome.Computed(2), instance.getNodeOutcome(B))
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(C))), instance.getNodeOutcome(C))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(C)), instance.getNodeOutcome(C))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -342,6 +346,23 @@ class TrickleTests {
             assertEquals(setOf(ValueId.Nonkeyed(B)), errors.keys)
             assertTrue(errors.values.single().message!!.contains("custom exception message"))
         }
+    }
+
+    @Test
+    fun testUpstreamMixedMissingAndException() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createInputNode(B)
+        val cNode = builder.createNode(C, aNode, { throw RuntimeException("simulated failure") })
+        val dNode = builder.createNode(D, bNode, cNode, { b, c -> b * c })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val outcome = instance.getNodeOutcome(D)
+        println(outcome)
     }
 
     // TODO: Should a catch block also apply to the node's own computation? Also, what if the node fails itself?
@@ -684,7 +705,7 @@ class TrickleTests {
 
         val instance = builder.build().instantiateSync()
 
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(A)), instance.getOutcome(B))
         instance.setInput(A, 3)
         assertEquals(7, instance.getValue(B))
         assertFalse(didUnnecessaryWork.get())
@@ -729,6 +750,22 @@ class TrickleTests {
         assertEquals(1, instance.getNextSteps().size)
         instance.completeSynchronously()
         assertEquals(0, instance.getNodeValue(B))
+    }
+
+    @Test
+    fun testGettingKeyedValuesForNonexistentKey() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(listOf(2, 4, 6), instance.getNodeValue(B_KEYED))
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getNodeOutcome(B_KEYED, 10))
     }
 
     @Test
@@ -785,12 +822,12 @@ class TrickleTests {
         assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
         instance.addKeyInput(B_KEYS, 42)
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(C_KEYED, 42))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(A)), instance.getNodeOutcome(C_KEYED, 42))
         instance.completeSynchronously()
         // TODO: This probably isn't good
 //        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
         // This would be preferable
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(C_KEYED))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(A)), instance.getNodeOutcome(C_KEYED))
     }
 
     @Test
@@ -807,7 +844,7 @@ class TrickleTests {
 
         instance.completeSynchronously()
         assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getNodeOutcome(C_KEYED))
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(E))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(D)), instance.getNodeOutcome(E))
         instance.setInput(D, 100)
         instance.completeSynchronously()
         assertEquals(101, instance.getNodeValue(E))
@@ -819,7 +856,7 @@ class TrickleTests {
         // would be different if computation happened in between the two input changes above.
 //        assertEquals(101, instance.getNodeValue(E))
         // This would be preferable:
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Nonkeyed(A))), instance.getNodeOutcome(E))
+        assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(A)), instance.getNodeOutcome(E))
     }
 
     @Test
@@ -845,7 +882,7 @@ class TrickleTests {
         // TODO: Also not good! If the addition of <2, 60> had been registered, the value would be 91, not 31.
 //        assertEquals(31, instance.getNodeValue(C))
         // This would be preferable:
-        assertEquals(NodeOutcome.InputMissing<Int>(setOf(ValueId.Keyed(B_KEYED, 3))), instance.getNodeOutcome(C))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(C))
     }
 
     /*
