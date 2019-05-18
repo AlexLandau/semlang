@@ -4,18 +4,10 @@ import org.junit.Test
 import java.util.*
 import kotlin.collections.ArrayList
 
-// There's an issue around the following structure, it looks like:
-// 1) Inputs are a basic node and a key list
-// 2) There's also a keyed node that is based on the key list and takes the basic node as an input
-// 3) Another node depends on the keyed node's full output (or that output is checked directly)
-// The consequence appears to be something like: the final node in the chain takes on a value due to the keyed node
-// "having a full value" so long as the key list is empty, but it stops getting updated when a key is added to the list.
-
-// TODO: Also add keyed input nodes
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(1, 0)
+        runSpecificTest(15, 1)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -437,9 +429,19 @@ private class FuzzedDefinitionBuilder(seed: Int) {
     }
 
     private fun makeKeyedNode(i: Int) {
-        val name = KeyedNodeName<Int, Int>("keyed$i")
+        // We put input generation here instead of with the other inputs because it relied on key lists already existing.
+        val makeInput = random.nextDouble() < 0.4
+        val name = KeyedNodeName<Int, Int>(if (makeInput) "keyedInput$i" else "keyed$i")
 
         val keySource = existingKeyListNodes.getAtRandom(random, { error("This shouldn't be empty") })
+
+        if (makeInput) {
+            val node = builder.createKeyedInputNode(name, keySource)
+            existingNodes.add(AnyNodeName.Keyed(name))
+            existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
+            unkeyedInputs.add(node.fullOutput())
+            return
+        }
 
         val possibleInputs = ArrayList<TrickleInput<*>>()
         possibleInputs.addAll(unkeyedInputs)

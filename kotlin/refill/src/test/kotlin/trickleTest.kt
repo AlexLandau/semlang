@@ -885,6 +885,44 @@ class TrickleTests {
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(C))
     }
 
+    @Test
+    fun testSettingKeyedInputBeforeKeyExists1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        // This should be ignored since that key doesn't exist currently
+        instance.setKeyedInput(B_KEYED, 2, 10)
+        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
+    }
+
+    @Test
+    fun testSettingKeyedInputBeforeKeyExists2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        // This should be ignored since that key doesn't exist currently
+        instance.setKeyedInput(B_KEYED, 2, 10)
+//        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
+    }
+
     /*
 So some thoughts on how to address the last couple of cases...
 
