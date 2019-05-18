@@ -1087,10 +1087,60 @@ class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<Nod
     }
 
     // TODO: This actually wants to be a Predicate, because we might want all keys within a group
+    // TODO: This might benefit from caching
     internal fun getRelevantValuesPredicate(valueId: ValueId): Predicate<ValueId> {
-//        val set = HashSet<ValueId>()
-//        val toAdd =
-        return Predicate<ValueId>() { true }
+        val relevantValues = HashSet<ValueId>()
+        val keyedNamesWithAllKeysRelevant = HashSet<KeyedNodeName<*, *>>()
+        val toAdd = HashSet<ValueId>()
+        toAdd.add(valueId)
+
+        while (toAdd.isNotEmpty()) {
+            val curId = toAdd.first()
+            toAdd.remove(curId)
+            if (relevantValues.contains(curId)) {
+                continue
+            }
+            relevantValues.add(curId)
+
+            val inputs = when (curId) {
+                is ValueId.Nonkeyed -> nonkeyedNodes.getValue(curId.nodeName).inputs
+                is ValueId.FullKeyList -> keyListNodes.getValue(curId.nodeName).inputs
+                is ValueId.KeyListKey -> keyListNodes.getValue(curId.nodeName).inputs
+                is ValueId.Keyed -> keyedNodes.getValue(curId.nodeName).inputs
+                is ValueId.FullKeyedList -> keyedNodes.getValue(curId.nodeName).inputs
+            }
+            for (input in inputs) {
+                when (input) {
+                    is TrickleBuiltNode -> toAdd.add(ValueId.Nonkeyed(input.name))
+                    is TrickleInput.KeyList<*> -> toAdd.add(ValueId.FullKeyList(input.name))
+                    is TrickleInput.Keyed<*, *> -> {
+                        if (curId is ValueId.Keyed) {
+                            toAdd.add(ValueId.Keyed(input.name, curId.key))
+                        } else if (curId is ValueId.FullKeyedList) {
+                            toAdd.add(ValueId.FullKeyedList(input.name))
+                        } else {
+                            error("This shouldn't happen")
+                        }
+                    }
+                    is TrickleInput.FullKeyedList<*, *> -> toAdd.add(ValueId.FullKeyedList(input.name))
+                }
+            }
+            // TODO: Also add a section for "keyed nodes rely on their inputs"
+            if (curId is ValueId.FullKeyedList) {
+                keyedNamesWithAllKeysRelevant.add(curId.nodeName)
+                val keySourceName = keyedNodes.getValue(curId.nodeName).keySourceName
+                toAdd.add(ValueId.FullKeyList(keySourceName))
+            }
+            if (curId is ValueId.Keyed) {
+                val keySourceName = keyedNodes.getValue(curId.nodeName).keySourceName
+                toAdd.add(ValueId.FullKeyList(keySourceName))
+            }
+        }
+
+        return Predicate {
+//            true
+            relevantValues.contains(it) || (it is ValueId.Keyed && keyedNamesWithAllKeysRelevant.contains(it.nodeName))
+        }
     }
 
     fun toMultiLineString(): String {

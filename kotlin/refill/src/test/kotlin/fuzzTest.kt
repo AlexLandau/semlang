@@ -15,7 +15,7 @@ import kotlin.collections.ArrayList
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(2, 0)
+        runSpecificTest(1, 0)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
