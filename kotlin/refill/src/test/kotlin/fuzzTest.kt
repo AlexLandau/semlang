@@ -15,7 +15,7 @@ import kotlin.collections.ArrayList
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(64, 0)
+        runSpecificTest(2, 0)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -409,8 +409,6 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val maxInputs = Math.min(unkeyedInputs.size, 4)
         val numInputs = random.nextInt(maxInputs) + 1
         val inputs = unkeyedInputs.randomSubset(random, numInputs)
-        println("Generating basic node $name, unkeyedInputs has size ${unkeyedInputs.size}, numInputs is $numInputs")
-        println("Chosen inputs: $inputs")
 
         val fn = createRandomIntProducingFunction(random)
         val onCatch = null // TODO: Create throwing methods and onCatch methods

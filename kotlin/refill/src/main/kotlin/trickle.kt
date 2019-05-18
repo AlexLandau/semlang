@@ -534,7 +534,16 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         var anyKeyedValueNotUpToDate = false
                         var maximumInputTimestampAcrossAllKeys = timeStampIfUpToDate[fullKeyListId]!!
                         val allInputFailuresAcrossAllKeys = ArrayList<TrickleFailure>()
-                        val keyList = values[fullKeyListId]!!.getValue() as KeyList<*>
+
+                        val keyListHolder = values[fullKeyListId]!!
+                        val keyList = if (keyListHolder.getFailure() != null) {
+                            allInputFailuresAcrossAllKeys.add(keyListHolder.getFailure()!!)
+                            KeyList.empty<Any?>()
+                        } else {
+                            keyListHolder.getValue() as KeyList<*>
+                        }
+//                        val keyList = values[fullKeyListId]!!.getValue() as KeyList<*>
+
                         for (key in keyList.list) {
                             if (node.operation == null) {
                                 // This keyed node is an input
@@ -865,7 +874,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
         val keyListId = ValueId.FullKeyList(nodeDefinition.keySourceName)
         val keyListValueHolder = values[keyListId]
-        if (keyListValueHolder != null && !(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+        if (keyListValueHolder?.getValue() != null && !(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
             return NodeOutcome.NoSuchKey.get()
         }
         val value = values[ValueId.Keyed(nodeName, key)]
