@@ -544,7 +544,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 if (timestamp >= 0L) {
                                     timeStampIfUpToDate[inputValueId] = timestamp
                                 } else {
-                                    anyKeyedValueNotUpToDate = true
+//                                    anyKeyedValueNotUpToDate = true
+                                    allInputFailuresAcrossAllKeys.add(TrickleFailure(mapOf(), setOf(inputValueId)))
                                 }
                                 maximumInputTimestampAcrossAllKeys = Math.max(maximumInputTimestampAcrossAllKeys, timestamp)
                             } else {
@@ -651,13 +652,12 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
                             }
 
-                            // Prune values for keys that no longer exist in the key list
-                            // These will now return "NotYetComputed"
-                            // TODO: Should we remove these as soon as the key list is updated instead?
-                            for (valueId in values.keys.toList()) {
-                                if (valueId is ValueId.Keyed && valueId.nodeName == nodeName && !keyList.set.contains(valueId.key)) {
-                                    values.remove(valueId)
-                                }
+                        }
+                        // Prune values for keys that no longer exist in the key list
+                        // These will now return "NoSuchKey"
+                        for (valueId in values.keys.toList()) {
+                            if (valueId is ValueId.Keyed && valueId.nodeName == nodeName && !keyList.set.contains(valueId.key)) {
+                                values.remove(valueId)
                             }
                         }
                     }

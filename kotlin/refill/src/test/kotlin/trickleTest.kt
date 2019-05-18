@@ -729,8 +729,8 @@ class TrickleTests {
 
         val instance = builder.build().instantiateSync()
 
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B_KEYED, 1))
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getOutcome(B_KEYED, 2))
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1))
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 2))
         instance.setInput(A_KEYS, listOf(1, 2))
         assertEquals(0, instance.getValue(B_KEYED, 2))
         assertFalse(didUnnecessaryWork.get())
