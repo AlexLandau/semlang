@@ -236,14 +236,14 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
         val inputName = allInputNames.getAtRandom(random, { error("This shouldn't be empty") })
         // TODO: Add multi-setting when that's a thing
         when (inputName) {
-            is AnyNodeName.Basic -> {
-                val nodeName = inputName.name as NodeName<Int>
+            is NodeName<*> -> {
+                val nodeName = inputName as NodeName<Int>
                 val valueToSet = random.nextInt(100)
                 rawInstance.setInput(nodeName, valueToSet)
                 return FuzzOperation.SetBasic(nodeName, valueToSet)
             }
-            is AnyNodeName.KeyList -> {
-                val nodeName = inputName.name as KeyListNodeName<Int>
+            is KeyListNodeName<*> -> {
+                val nodeName = inputName as KeyListNodeName<Int>
                 val keyListRoll = random.nextDouble()
                 if (keyListRoll < 0.3) {
                     val valueToAdd = random.nextInt(100)
@@ -271,9 +271,9 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                     return FuzzOperation.SetKeyList(nodeName, newList)
                 }
             }
-            is AnyNodeName.Keyed -> {
-                val nodeName = inputName.name as KeyedNodeName<Int, Int>
-                val keySourceName = definition.keyedNodes[nodeName]!!.keySourceName
+            is KeyedNodeName<*, *> -> {
+                val nodeName = inputName as KeyedNodeName<Int, Int>
+                val keySourceName = definition.keyedNodes.getValue(nodeName).keySourceName
                 val curKeyListOutcome = rawInstance.getNodeOutcome(keySourceName)
                 val curKeyList = when (curKeyListOutcome) {
                     is NodeOutcome.NotYetComputed -> listOf(0)
@@ -301,18 +301,18 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
         // Do a random observation of a node outcome
         val randomNode = definition.topologicalOrdering.getAtRandom(random, { error("This shouldn't be empty") })
         when (randomNode) {
-            is AnyNodeName.Basic -> {
-                val nodeName = randomNode.name as NodeName<Int>
+            is NodeName<*> -> {
+                val nodeName = randomNode as NodeName<Int>
                 val outcome = rawInstance.getNodeOutcome(nodeName)
                 return FuzzOperation.CheckBasic(nodeName, outcome)
             }
-            is AnyNodeName.KeyList -> {
-                val nodeName = randomNode.name as KeyListNodeName<Int>
+            is KeyListNodeName<*> -> {
+                val nodeName = randomNode as KeyListNodeName<Int>
                 val outcome = rawInstance.getNodeOutcome(nodeName)
                 return FuzzOperation.CheckKeyList(nodeName, outcome)
             }
-            is AnyNodeName.Keyed -> {
-                val nodeName = randomNode.name as KeyedNodeName<Int, Int>
+            is KeyedNodeName<*, *> -> {
+                val nodeName = randomNode as KeyedNodeName<Int, Int>
                 val checkTypeRoll = random.nextDouble()
                 if (checkTypeRoll < 0.5) {
                     // Check all values
@@ -336,14 +336,14 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
     }
 }
 
-private fun getAllInputNodes(definition: TrickleDefinition): List<AnyNodeName> {
-    val result = ArrayList<AnyNodeName>()
+private fun getAllInputNodes(definition: TrickleDefinition): List<GenericNodeName> {
+    val result = ArrayList<GenericNodeName>()
     // Use topologicalOrdering so nodes end up in the same order in each run
     for (nodeName in definition.topologicalOrdering) {
         val operation = when (nodeName) {
-            is AnyNodeName.Basic -> definition.nonkeyedNodes[nodeName.name]!!.operation
-            is AnyNodeName.KeyList -> definition.keyListNodes[nodeName.name]!!.operation
-            is AnyNodeName.Keyed -> definition.keyedNodes[nodeName.name]!!.operation
+            is NodeName<*> -> definition.nonkeyedNodes.getValue(nodeName).operation
+            is KeyListNodeName<*> -> definition.keyListNodes.getValue(nodeName).operation
+            is KeyedNodeName<*, *> -> definition.keyedNodes.getValue(nodeName).operation
         }
         if (operation == null) {
             result.add(nodeName)
@@ -361,7 +361,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
     val numNodes = 5 + random.nextInt(6)
 
     val builder = TrickleDefinitionBuilder()
-    val existingNodes = ArrayList<AnyNodeName>()
+    val existingNodes = ArrayList<GenericNodeName>()
     val existingKeyListNodes = ArrayList<TrickleBuiltKeyListNode<Int>>()
     val existingKeyedNodes = HashMap<KeyListNodeName<*>, ArrayList<TrickleInput<*>>>()
 
@@ -406,7 +406,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val onCatch = null // TODO: Create throwing methods and onCatch methods
 
         val node = builder.createNode(name, inputs, fn, onCatch)
-        existingNodes.add(AnyNodeName.Basic(name))
+        existingNodes.add(name)
         unkeyedInputs.add(node)
     }
 
@@ -422,7 +422,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val onCatch = null
 
         val node = builder.createKeyListNode(name, inputs, fn, onCatch)
-        existingNodes.add(AnyNodeName.KeyList(name))
+        existingNodes.add(name)
         unkeyedInputs.add(node.listOutput())
         existingKeyListNodes.add(node)
         existingKeyedNodes[name] = ArrayList()
@@ -442,7 +442,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
 
         if (makeInput) {
             val node = builder.createKeyedInputNode(name, keySource)
-            existingNodes.add(AnyNodeName.Keyed(name))
+            existingNodes.add(name)
             existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
             unkeyedInputs.add(node.fullOutput())
             return
@@ -462,7 +462,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         }
 
         val node = builder.createKeyedNode(name, keySource, inputs, fn)
-        existingNodes.add(AnyNodeName.Keyed(name))
+        existingNodes.add(name)
         existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
         unkeyedInputs.add(node.fullOutput())
     }
@@ -471,12 +471,12 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         if (curNodeRoll < 0.6) {
             val name = NodeName<Int>("basicInput$i")
             val node = builder.createInputNode(name)
-            existingNodes.add(AnyNodeName.Basic(name))
+            existingNodes.add(name)
             unkeyedInputs.add(node)
         } else {
             val name = KeyListNodeName<Int>("listInput$i")
             val node = builder.createKeyListInputNode(name)
-            existingNodes.add(AnyNodeName.KeyList(name))
+            existingNodes.add(name)
             existingKeyListNodes.add(node)
             unkeyedInputs.add(node.listOutput())
             existingKeyedNodes[name] = ArrayList()

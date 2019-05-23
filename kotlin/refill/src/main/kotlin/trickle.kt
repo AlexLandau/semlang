@@ -33,28 +33,23 @@ import java.util.function.Predicate
 // TODO: Probably out of scope, but I think we could get typings on the input setters if code were either generated from
 // a spec or based on an annotation processor
 
-class NodeName<T>(val name: String) {
+sealed class GenericNodeName
+class NodeName<T>(val name: String): GenericNodeName() {
     override fun toString(): String {
         return name
     }
 }
-class KeyListNodeName<T>(val name: String) {
+class KeyListNodeName<T>(val name: String): GenericNodeName() {
     override fun toString(): String {
         return name
     }
 }
-class KeyedNodeName<K, T>(val name: String) {
+class KeyedNodeName<K, T>(val name: String): GenericNodeName() {
     override fun toString(): String {
         return name
     }
 }
 
-// TODO: This might be nicer as a "GenericNodeName" interface
-internal sealed class AnyNodeName {
-    data class Basic(val name: NodeName<*>): AnyNodeName()
-    data class KeyList(val name: KeyListNodeName<*>): AnyNodeName()
-    data class Keyed(val name: KeyedNodeName<*, *>) : AnyNodeName()
-}
 
 // TODO: Internal or retain as public?
 sealed class ValueId {
@@ -379,10 +374,9 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     fun getNextSteps(): List<TrickleStep> {
         val nextSteps = ArrayList<TrickleStep>()
         val timeStampIfUpToDate = HashMap<ValueId, Long>()
-        for (anyNodeName in definition.topologicalOrdering) {
-            when (anyNodeName) {
-                is AnyNodeName.Basic -> {
-                    val nodeName = anyNodeName.name
+        for (nodeName in definition.topologicalOrdering) {
+            when (nodeName) {
+                is NodeName<*> -> {
                     val node = definition.nonkeyedNodes[nodeName]!!
                     val nodeValueId = ValueId.Nonkeyed(nodeName)
                     if (node.operation == null) {
@@ -462,8 +456,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         }
                     }
                 }
-                is AnyNodeName.KeyList -> {
-                    val nodeName = anyNodeName.name
+                is KeyListNodeName<*> -> {
                     val node = definition.keyListNodes[nodeName]!!
                     val nodeValueId = ValueId.FullKeyList(nodeName)
                     // TODO: We can store things differently to make this more efficient
@@ -551,8 +544,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         }
                     }
                 }
-                is AnyNodeName.Keyed -> {
-                    val nodeName = anyNodeName.name
+                is KeyedNodeName<*, *> -> {
                     val node = definition.keyedNodes[nodeName]!!
                     val keySourceName = node.keySourceName
                     val fullKeyListId = ValueId.FullKeyList(keySourceName)
@@ -1106,7 +1098,7 @@ class TrickleStepResult internal constructor(
 class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<NodeName<*>, TrickleNode<*>>,
                                              internal val keyListNodes: Map<KeyListNodeName<*>, TrickleKeyListNode<*>>,
                                              internal val keyedNodes: Map<KeyedNodeName<*, *>, TrickleKeyedNode<*, *>>,
-                                             internal val topologicalOrdering: List<AnyNodeName>) {
+                                             internal val topologicalOrdering: List<GenericNodeName>) {
     fun instantiateRaw(): TrickleInstance {
         return TrickleInstance(this)
     }
@@ -1175,30 +1167,30 @@ class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<Nod
         val sb = StringBuilder()
         for (nodeName in topologicalOrdering) {
             when (nodeName) {
-                is AnyNodeName.Basic -> {
-                    val node = nonkeyedNodes[nodeName.name]!!
+                is NodeName<*> -> {
+                    val node = nonkeyedNodes.getValue(nodeName)
                     sb.append("Basic   ")
-                    sb.append(nodeName.name)
+                    sb.append(nodeName)
                     if (node.operation != null) {
                         sb.append("(")
                         sb.append(node.inputs.map { it.toString() }.joinToString(", "))
                         sb.append(")")
                     }
                 }
-                is AnyNodeName.KeyList -> {
-                    val node = keyListNodes[nodeName.name]!!
+                is KeyListNodeName<*> -> {
+                    val node = keyListNodes.getValue(nodeName)
                     sb.append("KeyList ")
-                    sb.append(nodeName.name)
+                    sb.append(nodeName)
                     if (node.operation != null) {
                         sb.append("(")
                         sb.append(node.inputs.map { it.toString() }.joinToString(", "))
                         sb.append(")")
                     }
                 }
-                is AnyNodeName.Keyed -> {
-                    val node = keyedNodes[nodeName.name]!!
+                is KeyedNodeName<*, *> -> {
+                    val node = keyedNodes.getValue(nodeName)
                     sb.append("Keyed   ")
-                    sb.append(nodeName.name)
+                    sb.append(nodeName)
                     sb.append("<")
                     sb.append(node.keySourceName)
                     sb.append(">")
@@ -1218,7 +1210,7 @@ class TrickleDefinitionBuilder {
     private val usedNodeNames = HashSet<String>()
     private val nodes = HashMap<NodeName<*>, TrickleNode<*>>()
     // TODO: Give this its own sealed class covering all the node name types
-    private val topologicalOrdering = ArrayList<AnyNodeName>()
+    private val topologicalOrdering = ArrayList<GenericNodeName>()
     private val keyListNodes = HashMap<KeyListNodeName<*>, TrickleKeyListNode<*>>()
     private val keyedNodes = HashMap<KeyedNodeName<*, *>, TrickleKeyedNode<*, *>>()
 
@@ -1230,7 +1222,7 @@ class TrickleDefinitionBuilder {
         checkNameNotUsed(name.name)
         val node = TrickleNode<T>(name, listOf(), null, null)
         nodes[name] = node
-        topologicalOrdering.add(AnyNodeName.Basic(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltNode(name, builderId)
     }
 
@@ -1256,7 +1248,7 @@ class TrickleDefinitionBuilder {
         validateBuilderIds(inputs)
         val node = TrickleNode<T>(name, inputs, fn, onCatch)
         nodes[name] = node
-        topologicalOrdering.add(AnyNodeName.Basic(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltNode(name, builderId)
     }
 
@@ -1273,7 +1265,7 @@ class TrickleDefinitionBuilder {
 
         val node = TrickleKeyListNode<T>(name, listOf(), null, null)
         keyListNodes[name] = node
-        topologicalOrdering.add(AnyNodeName.KeyList(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltKeyListNode(name, builderId)
     }
     fun <T, I1> createKeyListNode(name: KeyListNodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)? = null): TrickleBuiltKeyListNode<T> {
@@ -1288,7 +1280,7 @@ class TrickleDefinitionBuilder {
         validateBuilderIds(inputs)
         val node = TrickleKeyListNode<T>(name, inputs, fn, onCatch)
         keyListNodes[name] = node
-        topologicalOrdering.add(AnyNodeName.KeyList(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltKeyListNode(name, builderId)
     }
 
@@ -1301,7 +1293,7 @@ class TrickleDefinitionBuilder {
 
         val node = TrickleKeyedNode(name, keySource.name, listOf(), null, null)
         keyedNodes[name] = node
-        topologicalOrdering.add(AnyNodeName.Keyed(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltKeyedNode(name, builderId)
     }
     fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T): TrickleBuiltKeyedNode<K, T> {
@@ -1318,7 +1310,7 @@ class TrickleDefinitionBuilder {
         // TODO: Support onCatch in keyed nodes
         val node = TrickleKeyedNode(name, keySource.name, inputs, fn, null)
         keyedNodes[name] = node
-        topologicalOrdering.add(AnyNodeName.Keyed(name))
+        topologicalOrdering.add(name)
         return TrickleBuiltKeyedNode(name, builderId)
     }
 
