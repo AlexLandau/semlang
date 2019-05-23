@@ -224,7 +224,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         if (node == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
-        if (node.inputs.isNotEmpty()) {
+        if (node.operation != null) {
             throw IllegalArgumentException("Cannot directly set the value of a non-input node $nodeName")
         }
         curTimestamp++
@@ -238,7 +238,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         if (node == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
-        if (node.inputs.isNotEmpty()) {
+        if (node.operation != null) {
             throw IllegalArgumentException("Cannot directly set the value of a non-input node $nodeName")
         }
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -272,7 +272,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         if (node == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
-        if (node.inputs.isNotEmpty()) {
+        if (node.operation != null) {
             throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
         }
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -294,7 +294,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         if (node == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
-        if (node.inputs.isNotEmpty()) {
+        if (node.operation != null) {
             throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
         }
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -317,8 +317,36 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         if (node == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
-        if (node.inputs.isNotEmpty()) {
+        if (node.operation != null) {
             throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
+        }
+
+        // If the key doesn't exist, ignore this
+        val keySourceNode = definition.keyListNodes[node.keySourceName]!!
+        val keyListValueId = ValueId.FullKeyList(node.keySourceName)
+        val keyListValueHolder = values[keyListValueId]!!
+        // TODO: There are going to be some weird cases here when the key list is computed but the keyed node based on it is an input
+        /*
+        Ugh, I probably need to put more complete semantics in place to handle this case, and figure out when we should
+        accept an update and when we should discard it, considering that the corresponding key list may not be up-to-date...
+        We'll probably need to add this to some sort of queue to be evaluated by the getNextSteps() (or whatever else is
+        maintaining consistency -- would be great to define consistency!) so it can figure out whether the keyed value
+        should be accepted at the given timestamp.
+
+        Alternatively, maybe we should maintain these sorts of values even when the key has been removed, though that
+        will shift the burden over to the user to remove keyed inputs to avoid memory leaks.
+
+        Another option would be to see if there's any reasonable way to remove keyed inputs from the design in general.
+        It's not clear whether there's more of a problem having them here vs. having key list inputs accept an additional
+        non-key "payload" as part of the input that is not part of the key.
+         */
+        if (keyListValueHolder.getValue() == null) {
+//            error("TODO: Handle this case")
+            // Ignore this input
+            return curTimestamp
+        } else if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+            // Ignore this input
+            return curTimestamp
         }
 
         val keyedValueId = ValueId.Keyed(nodeName, key)
@@ -1267,6 +1295,10 @@ class TrickleDefinitionBuilder {
     fun <K, T> createKeyedInputNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
 
+        if (keyListNodes[keySource.name]!!.operation != null) {
+            error("Keyed input nodes can only use input key lists as their key sources, but ${keySource.name} is not an input.")
+        }
+
         val node = TrickleKeyedNode(name, keySource.name, listOf(), null, null)
         keyedNodes[name] = node
         topologicalOrdering.add(AnyNodeName.Keyed(name))
@@ -1283,6 +1315,7 @@ class TrickleDefinitionBuilder {
     }
     fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
+        // TODO: Support onCatch in keyed nodes
         val node = TrickleKeyedNode(name, keySource.name, inputs, fn, null)
         keyedNodes[name] = node
         topologicalOrdering.add(AnyNodeName.Keyed(name))

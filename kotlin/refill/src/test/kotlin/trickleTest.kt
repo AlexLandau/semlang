@@ -2,6 +2,7 @@ import net.semlang.modules.*
 import org.junit.Assert.*
 import org.junit.Test
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicBoolean
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
@@ -923,15 +924,12 @@ class TrickleTests {
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
     }
 
-    /*
-So some thoughts on how to address the last couple of cases...
+    @Test(expected = IllegalStateException::class)
+    fun testCannotUseNonInputKeyListAsKeyedInputSource() {
+        val builder = TrickleDefinitionBuilder()
 
-First, returning NotYetComputed probably makes less sense than something like InputMissing. This is more helpful (it
-points to what exactly needs to be added to get a result) and it makes more sense as something to switch the output to.
-
-Once that's in place and works more like the other "value" types, (we might also want a "NoSuchKey" outcome?) we can go
-back to propagating appropriate values.
-
-This means we don't quite yet have to address starvation, but this approach will dovetail nicely with any fixes for that.
-     */
+        val a = builder.createInputNode(A)
+        val bKeys = builder.createKeyListNode(B_KEYS, a, { (0..it).toList() })
+        val cKeyed = builder.createKeyedInputNode(C_KEYED, bKeys)
+    }
 }

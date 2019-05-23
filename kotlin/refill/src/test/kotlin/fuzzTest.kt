@@ -429,11 +429,16 @@ private class FuzzedDefinitionBuilder(seed: Int) {
     }
 
     private fun makeKeyedNode(i: Int) {
-        // We put input generation here instead of with the other inputs because it relied on key lists already existing.
-        val makeInput = random.nextDouble() < 0.4
-        val name = KeyedNodeName<Int, Int>(if (makeInput) "keyedInput$i" else "keyed$i")
-
         val keySource = existingKeyListNodes.getAtRandom(random, { error("This shouldn't be empty") })
+
+        // We put input generation here instead of with the other inputs because it relied on key lists already existing.
+        val makeInput = if (keySource.name.name.contains("Input")) {
+            random.nextDouble() < 0.5
+        } else {
+            // The test is slightly hacky, but keyed inputs can only have input key lists as their key sources
+            false
+        }
+        val name = KeyedNodeName<Int, Int>(if (makeInput) "keyedInput$i" else "keyed$i")
 
         if (makeInput) {
             val node = builder.createKeyedInputNode(name, keySource)
