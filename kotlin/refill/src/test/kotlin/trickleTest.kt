@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
 // as the input to a basic or key list node)
 
+// TODO: Test multi-input setting and consistency
+
 class TrickleTests {
     val A = NodeName<Int>("a")
     val B = NodeName<Int>("b")
