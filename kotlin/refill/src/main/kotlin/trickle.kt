@@ -31,6 +31,9 @@ import java.util.function.Predicate
 // TODO: Probably out of scope, but I think we could get typings on the input setters if code were either generated from
 // a spec or based on an annotation processor
 
+// TODO: Should we use names as the arguments to builders instead of the outputs of previous builder calls? Still use
+// the topological-ordering-as-you-go, but rely on runtime checks of inputs instead of compile-time?
+
 sealed class GenericNodeName
 class NodeName<T>(val name: String): GenericNodeName() {
     override fun toString(): String {

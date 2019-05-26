@@ -7,7 +7,7 @@ import kotlin.collections.ArrayList
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(44, 1)
+        runSpecificTest(0, 4)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -75,38 +75,42 @@ class TrickleFuzzTests {
     }
 
     private fun checkSyncInstance(instance: TrickleSyncInstance, operations: List<FuzzOperation>) {
-        for (op in operations) {
-            val unused: Any = when (op) {
-                is FuzzOperation.SetBasic -> {
-                    instance.setInput(op.name, op.value)
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.AddKey -> {
+                        instance.addKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        instance.removeKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        instance.setKeyedInput(op.name, op.key, op.value)
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        instance.setInputs(op.changes)
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key))
+                    }
                 }
-                is FuzzOperation.AddKey -> {
-                    instance.addKeyInput(op.name, op.key)
-                }
-                is FuzzOperation.RemoveKey -> {
-                    instance.removeKeyInput(op.name, op.key)
-                }
-                is FuzzOperation.SetKeyList -> {
-                    instance.setInput(op.name, op.value)
-                }
-                is FuzzOperation.SetKeyed -> {
-                    instance.setKeyedInput(op.name, op.key, op.value)
-                }
-                is FuzzOperation.SetMultiple -> {
-                    instance.setInputs(op.changes)
-                }
-                is FuzzOperation.CheckBasic -> {
-                    assertEquals(op.outcome, instance.getOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyList -> {
-                    assertEquals(op.outcome, instance.getOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyedList -> {
-                    assertEquals(op.outcome, instance.getOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyedValue -> {
-                    assertEquals(op.outcome, instance.getOutcome(op.name, op.key))
-                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
         }
     }
