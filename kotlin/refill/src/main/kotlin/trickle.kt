@@ -738,6 +738,10 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 val timestamp = values[keyedInputValueId]?.getTimestamp() ?: -1L
                                 if (timestamp >= 0L) {
                                     timeStampIfUpToDate[keyedInputValueId] = timestamp
+                                    val failure = values[keyedInputValueId]!!.getFailure()
+                                    if (failure != null) {
+                                        allInputFailuresAcrossAllKeys.add(failure)
+                                    }
                                 } else {
 //                                    anyKeyedValueNotUpToDate = true
 
@@ -1096,6 +1100,20 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
             return NodeOutcome.Failure(failure)
         }
         return NodeOutcome.Computed(value.getValue() as List<V>)
+    }
+
+    internal fun printStoredState() {
+        println("*** Raw instance state ***")
+        println("  Current timestamp: $curTimestamp")
+        val sortedValueIds = ArrayList(values.keys)
+        sortedValueIds.sortBy { it.toString() }
+        for (valueId in sortedValueIds) {
+            val valueHolder = values[valueId]
+            if (valueHolder != null) {
+                println("  ${valueId}: ${valueHolder.getValue()}, ${valueHolder.getFailure()} (${valueHolder.getTimestamp()})")
+            }
+        }
+        println("**************************")
     }
 }
 
@@ -1584,4 +1602,3 @@ internal class TrickleKeyedNode<K, T>(
         }
     }
 }
-

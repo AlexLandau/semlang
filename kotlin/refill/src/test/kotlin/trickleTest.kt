@@ -1003,8 +1003,23 @@ class TrickleTests {
 
         instance.setInput(A_KEYS, listOf(5, 10, 6))
         instance.setKeyedInput(B_KEYED, 5, 10)
-        instance.getOutcome(B_KEYED, 5)
+        assertEquals(NodeOutcome.Computed(10), instance.getOutcome(B_KEYED, 5))
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 10), ValueId.Keyed(B_KEYED, 6)), instance.getOutcome(B_KEYED))
     }
 
+    @Test
+    fun testRawKeyedInputsRegression() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(5, 10, 6))
+        instance.setKeyedInput(B_KEYED, 5, 10)
+        instance.getNextSteps()
+        instance.getNextSteps()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 10), ValueId.Keyed(B_KEYED, 6)), instance.getNodeOutcome(B_KEYED))
+    }
 }

@@ -38,7 +38,7 @@ class TrickleFuzzTests {
 
     @Test
     fun runFuzzTests() {
-        for (definitionSeed in 0..99) {
+        for (definitionSeed in 0..999) {
             val definition = getFuzzedDefinition(definitionSeed)
 
             try {
