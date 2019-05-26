@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 // as the input to a basic or key list node)
 
 // TODO: Test multi-input setting and consistency
+// (regression test: short-circuiting or in the wrong spot)
 
 class TrickleTests {
     val A = NodeName<Int>("a")
@@ -23,6 +24,8 @@ class TrickleTests {
 
     val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
     val C_KEYED = KeyedNodeName<Int, Int>("cKeyed")
+    val D_KEYED = KeyedNodeName<Int, Int>("dKeyed")
+    val E_KEYED = KeyedNodeName<Int, Int>("eKeyed")
 
     @Test
     fun testTrickleBasic() {
@@ -319,7 +322,6 @@ class TrickleTests {
         instance.setInput(A, 1)
         instance.completeSynchronously()
         val bOutcome = instance.getNodeOutcome(B)
-        println(bOutcome)
         if (bOutcome !is NodeOutcome.Failure) {
             fail()
         } else {
@@ -355,9 +357,11 @@ class TrickleTests {
     fun testUpstreamMixedMissingAndException() {
         val builder = TrickleDefinitionBuilder()
 
+        val exception = java.lang.RuntimeException("simulated failure")
+
         val aNode = builder.createInputNode(A)
         val bNode = builder.createInputNode(B)
-        val cNode = builder.createNode(C, aNode, { throw RuntimeException("simulated failure") })
+        val cNode = builder.createNode(C, aNode, { throw exception })
         val dNode = builder.createNode(D, bNode, cNode, { b, c -> b * c })
 
         val instance = builder.build().instantiateRaw()
@@ -365,7 +369,11 @@ class TrickleTests {
         instance.setInput(A, 1)
         instance.completeSynchronously()
         val outcome = instance.getNodeOutcome(D)
-        println(outcome)
+        assertEquals(
+                NodeOutcome.Failure<Int>(TrickleFailure(
+                        mapOf(ValueId.Nonkeyed(C) to exception),
+                        setOf(ValueId.Nonkeyed(B)))),
+                outcome)
     }
 
     // TODO: Should a catch block also apply to the node's own computation? Also, what if the node fails itself?
@@ -903,7 +911,7 @@ class TrickleTests {
         instance.completeSynchronously()
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 2)), instance.getNodeOutcome(B_KEYED, 2))
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
     }
 
@@ -922,7 +930,7 @@ class TrickleTests {
 //        instance.completeSynchronously()
         instance.setInput(A_KEYS, listOf(1, 2, 3))
         instance.completeSynchronously()
-        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 2)), instance.getNodeOutcome(B_KEYED, 2))
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
     }
 
@@ -933,5 +941,54 @@ class TrickleTests {
         val a = builder.createInputNode(A)
         val bKeys = builder.createKeyListNode(B_KEYS, a, { (0..it).toList() })
         val cKeyed = builder.createKeyedInputNode(C_KEYED, bKeys)
+    }
+
+    @Test
+    fun testKeyedInputsGiveOutOfDateKeyedOutputsWhenKeysChange1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, bKeys)
+        val eKeyed = builder.createKeyedNode(E_KEYED, bKeys, dKeyed.keyedOutput(), { k, e1 -> k + e1 })
+        // TODO: Does it ever make sense for a keyed node to take its key source as an input? Are there problems that causes?
+        // It must be accepting the full key list as the input here...
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(B_KEYS, listOf(1, 2)) // op 3
+        instance.setKeyedInput(D_KEYED, 1, 10) // op 4
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 2)), instance.getNodeOutcome(E_KEYED))
+
+        instance.setKeyedInput(D_KEYED, 2, 20)
+        instance.completeSynchronously()
+        instance.addKeyInput(B_KEYS, 3)
+        instance.completeSynchronously()
+
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 3)), instance.getNodeOutcome(E_KEYED)) // op 8
+    }
+
+    @Test
+    fun testKeyedInputsGiveOutOfDateKeyedOutputsWhenKeysChange2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, bKeys)
+        val eKeyed = builder.createKeyedNode(E_KEYED, bKeys, dKeyed.keyedOutput(), { k, e1 -> k + e1 })
+        // TODO: Does it ever make sense for a keyed node to take its key source as an input? Are there problems that causes?
+        // It must be accepting the full key list as the input here...
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(B_KEYS, listOf(1, 2)) // op 3
+        instance.setKeyedInput(D_KEYED, 1, 10) // op 4
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 2)), instance.getNodeOutcome(E_KEYED))
+
+        instance.setKeyedInput(D_KEYED, 2, 20)
+        instance.addKeyInput(B_KEYS, 3)
+        instance.completeSynchronously()
+
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 3)), instance.getNodeOutcome(E_KEYED)) // op 8
     }
 }

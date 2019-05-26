@@ -229,7 +229,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         val prospectiveNewTimestamp = curTimestamp + 1
         var somethingChanged = false
         for (change in changes) {
-            somethingChanged = somethingChanged || applyChange(change, prospectiveNewTimestamp)
+            somethingChanged = applyChange(change, prospectiveNewTimestamp) || somethingChanged
         }
         if (somethingChanged) {
             curTimestamp = prospectiveNewTimestamp
@@ -730,14 +730,20 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         for (key in keyList.list) {
                             if (node.operation == null) {
                                 // This keyed node is an input
-                                val inputValueId = ValueId.Keyed(nodeName, key)
+                                val keyedInputValueId = ValueId.Keyed(nodeName, key)
 
-                                val timestamp = values[inputValueId]?.getTimestamp() ?: -1L
+                                val timestamp = values[keyedInputValueId]?.getTimestamp() ?: -1L
                                 if (timestamp >= 0L) {
-                                    timeStampIfUpToDate[inputValueId] = timestamp
+                                    timeStampIfUpToDate[keyedInputValueId] = timestamp
                                 } else {
 //                                    anyKeyedValueNotUpToDate = true
-                                    allInputFailuresAcrossAllKeys.add(TrickleFailure(mapOf(), setOf(inputValueId)))
+
+                                    val failure = TrickleFailure(mapOf(), setOf(keyedInputValueId))
+
+                                    setValue(keyedInputValueId, keyListHolder.getTimestamp(), null, failure)
+                                    timeStampIfUpToDate[keyedInputValueId] = keyListHolder.getTimestamp()
+
+                                    allInputFailuresAcrossAllKeys.add(failure)
                                 }
                                 maximumInputTimestampAcrossAllKeys = Math.max(maximumInputTimestampAcrossAllKeys, timestamp)
                             } else {
@@ -1472,6 +1478,9 @@ class TrickleDefinitionBuilder {
     fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
     }
+    fun <T, K, I1, I2, I3> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, input3: TrickleInput<I3>, fn: (K, I1, I2, I3) -> T): TrickleBuiltKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(input1, input2, input3), { key, list -> fn(key, list[0] as I1, list[1] as I2, list[2] as I3) })
+    }
     fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
         // TODO: Support onCatch in keyed nodes
@@ -1520,12 +1529,12 @@ sealed class TrickleInput<T> {
     }
     data class Keyed<K, T>(val name: KeyedNodeName<K, T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<T>() {
         override fun toString(): String {
-            return name.toString()
+            return "$name (keyed)"
         }
     }
     data class FullKeyedList<K, T>(val name: KeyedNodeName<K, T>, override val builderId: TrickleDefinitionBuilder.Id): TrickleInput<List<T>>() {
         override fun toString(): String {
-            return name.toString()
+            return "$name (full list)"
         }
     }
 }

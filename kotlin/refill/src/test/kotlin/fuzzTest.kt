@@ -7,7 +7,7 @@ import kotlin.collections.ArrayList
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(15, 1)
+        runSpecificTest(44, 1)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -81,16 +81,19 @@ class TrickleFuzzTests {
                     instance.setInput(op.name, op.value)
                 }
                 is FuzzOperation.AddKey -> {
-                    instance.addKeyInput(op.name, op.value)
+                    instance.addKeyInput(op.name, op.key)
                 }
                 is FuzzOperation.RemoveKey -> {
-                    instance.removeKeyInput(op.name, op.value)
+                    instance.removeKeyInput(op.name, op.key)
                 }
                 is FuzzOperation.SetKeyList -> {
                     instance.setInput(op.name, op.value)
                 }
                 is FuzzOperation.SetKeyed -> {
                     instance.setKeyedInput(op.name, op.key, op.value)
+                }
+                is FuzzOperation.SetMultiple -> {
+                    instance.setInputs(op.changes)
                 }
                 is FuzzOperation.CheckBasic -> {
                     assertEquals(op.outcome, instance.getOutcome(op.name))
@@ -111,40 +114,48 @@ class TrickleFuzzTests {
     private fun checkRawInstance1(instance: TrickleInstance, operations: List<FuzzOperation>) {
         // Handle cases where a node we query depends only on key list inputs
         instance.completeSynchronously()
-        for (op in operations) {
-            val unused: Any = when (op) {
-                is FuzzOperation.SetBasic -> {
-                    instance.setInput(op.name, op.value)
-                    instance.completeSynchronously()
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        instance.setInput(op.name, op.value)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.AddKey -> {
+                        instance.addKeyInput(op.name, op.key)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        instance.removeKeyInput(op.name, op.key)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        instance.setInput(op.name, op.value)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        instance.setKeyedInput(op.name, op.key, op.value)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        instance.setInputs(op.changes)
+                        instance.completeSynchronously()
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name, op.key))
+                    }
                 }
-                is FuzzOperation.AddKey -> {
-                    instance.addKeyInput(op.name, op.value)
-                    instance.completeSynchronously()
-                }
-                is FuzzOperation.RemoveKey -> {
-                    instance.removeKeyInput(op.name, op.value)
-                    instance.completeSynchronously()
-                }
-                is FuzzOperation.SetKeyList -> {
-                    instance.setInput(op.name, op.value)
-                    instance.completeSynchronously()
-                }
-                is FuzzOperation.SetKeyed -> {
-                    instance.setKeyedInput(op.name, op.key, op.value)
-                    instance.completeSynchronously()
-                }
-                is FuzzOperation.CheckBasic -> {
-                    assertEquals(op.outcome, instance.getNodeOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyList -> {
-                    assertEquals(op.outcome, instance.getNodeOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyedList -> {
-                    assertEquals(op.outcome, instance.getNodeOutcome(op.name))
-                }
-                is FuzzOperation.CheckKeyedValue -> {
-                    assertEquals(op.outcome, instance.getNodeOutcome(op.name, op.key))
-                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
         }
     }
@@ -157,16 +168,19 @@ class TrickleFuzzTests {
                         instance.setInput(op.name, op.value)
                     }
                     is FuzzOperation.AddKey -> {
-                        instance.addKeyInput(op.name, op.value)
+                        instance.addKeyInput(op.name, op.key)
                     }
                     is FuzzOperation.RemoveKey -> {
-                        instance.removeKeyInput(op.name, op.value)
+                        instance.removeKeyInput(op.name, op.key)
                     }
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
                     }
                     is FuzzOperation.SetKeyed -> {
                         instance.setKeyedInput(op.name, op.key, op.value)
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        instance.setInputs(op.changes)
                     }
                     is FuzzOperation.CheckBasic -> {
                         instance.completeSynchronously()
@@ -195,10 +209,11 @@ class TrickleFuzzTests {
 
 sealed class FuzzOperation {
     data class SetBasic(val name: NodeName<Int>, val value: Int) : FuzzOperation()
-    data class AddKey(val name: KeyListNodeName<Int>, val value: Int) : FuzzOperation()
-    data class RemoveKey(val name: KeyListNodeName<Int>, val value: Int) : FuzzOperation()
+    data class AddKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
+    data class RemoveKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
     data class SetKeyList(val name: KeyListNodeName<Int>, val value: List<Int>) : FuzzOperation()
     data class SetKeyed(val name: KeyedNodeName<Int, Int>, val key: Int, val value: Int) : FuzzOperation()
+    data class SetMultiple(val changes: List<TrickleInputChange>): FuzzOperation()
     data class CheckBasic(val name: NodeName<Int>, val outcome: NodeOutcome<Int>) : FuzzOperation()
     data class CheckKeyList(val name: KeyListNodeName<Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
     data class CheckKeyedList(val name: KeyedNodeName<Int, Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
@@ -230,73 +245,13 @@ fun getState(instance: TrickleInstance): Map<ValueId, Any> {
 
 private fun getRandomOperation(rawInstance: TrickleInstance, definition: TrickleDefinition, random: Random): FuzzOperation {
     val roll = random.nextDouble()
-    if (roll < 0.5) {
+    if (roll < 0.15) {
+        val numberOfInputs = random.nextInt(6)
+        val inputOperations = (0..numberOfInputs).map { getRandomInputChange(definition, random, rawInstance) }
+        return FuzzOperation.SetMultiple(inputOperations)
+    } else if (roll < 0.5) {
         // Do a random input operation
-        val allInputNames = getAllInputNodes(definition)
-        val inputName = allInputNames.getAtRandom(random, { error("This shouldn't be empty") })
-        // TODO: Add multi-setting when that's a thing
-        when (inputName) {
-            is NodeName<*> -> {
-                val nodeName = inputName as NodeName<Int>
-                val valueToSet = random.nextInt(100)
-                rawInstance.setInput(nodeName, valueToSet)
-                return FuzzOperation.SetBasic(nodeName, valueToSet)
-            }
-            is KeyListNodeName<*> -> {
-                val nodeName = inputName as KeyListNodeName<Int>
-                val keyListRoll = random.nextDouble()
-                if (keyListRoll < 0.3) {
-                    val valueToAdd = random.nextInt(100)
-                    rawInstance.addKeyInput(nodeName, valueToAdd)
-                    return FuzzOperation.AddKey(nodeName, valueToAdd)
-                } else if (keyListRoll < 0.55) {
-                    // Pick an existing key to delete
-                    val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
-                    val valueToRemove = when (existingListOutcome) {
-                        is NodeOutcome.NotYetComputed -> 0
-                        is NodeOutcome.Computed -> existingListOutcome.value.getAtRandom(random, { 2 })
-                        is NodeOutcome.Failure -> 1
-                        is NodeOutcome.NoSuchKey -> 3
-                    }
-                    rawInstance.removeKeyInput(nodeName, valueToRemove)
-                    return FuzzOperation.RemoveKey(nodeName, valueToRemove)
-                } else if (keyListRoll < 0.6) {
-                    // Pick a random key to maybe delete if it's there
-                    val valueToRemove = random.nextInt(100)
-                    rawInstance.removeKeyInput(nodeName, valueToRemove)
-                    return FuzzOperation.RemoveKey(nodeName, valueToRemove)
-                } else {
-                    val newList = createRandomListProducingFunction(random)(listOf(random.nextInt(100)))
-                    rawInstance.setInput(nodeName, newList)
-                    return FuzzOperation.SetKeyList(nodeName, newList)
-                }
-            }
-            is KeyedNodeName<*, *> -> {
-                val nodeName = inputName as KeyedNodeName<Int, Int>
-                val keySourceName = definition.keyedNodes.getValue(nodeName).keySourceName
-                val curKeyListOutcome = rawInstance.getNodeOutcome(keySourceName)
-                val curKeyList = when (curKeyListOutcome) {
-                    is NodeOutcome.NotYetComputed -> listOf(0)
-                    is NodeOutcome.Computed -> curKeyListOutcome.value as List<Int>
-                    is NodeOutcome.Failure -> listOf(-1)
-                    is NodeOutcome.NoSuchKey -> listOf(2)
-                }
-                // Look at the _ to find a thing to set
-                val keyedRoll = random.nextDouble()
-                val key = if (keyedRoll < 0.05) {
-                    // Use a random key value
-                    random.nextInt(100)
-                } else {
-                    // Look up an existing key
-                    curKeyList.getAtRandom(random, { 1 })
-                }
-
-                val valueToSet = random.nextInt(100)
-                rawInstance.setKeyedInput(nodeName, key, valueToSet)
-                return FuzzOperation.SetKeyed(nodeName, key, valueToSet)
-            }
-            else -> error("Unexpected situation")
-        }
+        return toOperation(getRandomInputChange(definition, random, rawInstance))
     } else {
         // Do a random observation of a node outcome
         val randomNode = definition.topologicalOrdering.getAtRandom(random, { error("This shouldn't be empty") })
@@ -333,6 +288,86 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                 }
             }
         }
+    }
+}
+
+// Note: These aren't the same type because TrickleInputChange has generics, but those make it difficult to call the
+// implementations when we run the operations
+fun toOperation(change: TrickleInputChange): FuzzOperation {
+    return when (change) {
+        is TrickleInputChange.SetBasic<*> -> FuzzOperation.SetBasic(change.nodeName as NodeName<Int>, change.value as Int)
+        is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
+        is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
+        is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
+        is TrickleInputChange.SetKeyed<*, *> -> FuzzOperation.SetKeyed(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
+    }
+}
+
+private fun getRandomInputChange(definition: TrickleDefinition, random: Random, rawInstance: TrickleInstance): TrickleInputChange {
+    val allInputNames = getAllInputNodes(definition)
+    val inputName = allInputNames.getAtRandom(random, { error("This shouldn't be empty") })
+    // TODO: Add multi-setting when that's a thing
+    when (inputName) {
+        is NodeName<*> -> {
+            val nodeName = inputName as NodeName<Int>
+            val valueToSet = random.nextInt(100)
+            rawInstance.setInput(nodeName, valueToSet)
+            return TrickleInputChange.SetBasic(nodeName, valueToSet)
+        }
+        is KeyListNodeName<*> -> {
+            val nodeName = inputName as KeyListNodeName<Int>
+            val keyListRoll = random.nextDouble()
+            if (keyListRoll < 0.3) {
+                val valueToAdd = random.nextInt(100)
+                rawInstance.addKeyInput(nodeName, valueToAdd)
+                return TrickleInputChange.AddKey(nodeName, valueToAdd)
+            } else if (keyListRoll < 0.55) {
+                // Pick an existing key to delete
+                val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
+                val valueToRemove = when (existingListOutcome) {
+                    is NodeOutcome.NotYetComputed -> 0
+                    is NodeOutcome.Computed -> existingListOutcome.value.getAtRandom(random, { 2 })
+                    is NodeOutcome.Failure -> 1
+                    is NodeOutcome.NoSuchKey -> 3
+                }
+                rawInstance.removeKeyInput(nodeName, valueToRemove)
+                return TrickleInputChange.RemoveKey(nodeName, valueToRemove)
+            } else if (keyListRoll < 0.6) {
+                // Pick a random key to maybe delete if it's there
+                val valueToRemove = random.nextInt(100)
+                rawInstance.removeKeyInput(nodeName, valueToRemove)
+                return TrickleInputChange.RemoveKey(nodeName, valueToRemove)
+            } else {
+                val newList = createRandomListProducingFunction(random)(listOf(random.nextInt(100)))
+                rawInstance.setInput(nodeName, newList)
+                return TrickleInputChange.SetKeys(nodeName, newList)
+            }
+        }
+        is KeyedNodeName<*, *> -> {
+            val nodeName = inputName as KeyedNodeName<Int, Int>
+            val keySourceName = definition.keyedNodes.getValue(nodeName).keySourceName
+            val curKeyListOutcome = rawInstance.getNodeOutcome(keySourceName)
+            val curKeyList = when (curKeyListOutcome) {
+                is NodeOutcome.NotYetComputed -> listOf(0)
+                is NodeOutcome.Computed -> curKeyListOutcome.value as List<Int>
+                is NodeOutcome.Failure -> listOf(-1)
+                is NodeOutcome.NoSuchKey -> listOf(2)
+            }
+            // Look at the _ to find a thing to set
+            val keyedRoll = random.nextDouble()
+            val key = if (keyedRoll < 0.05) {
+                // Use a random key value
+                random.nextInt(100)
+            } else {
+                // Look up an existing key
+                curKeyList.getAtRandom(random, { 1 })
+            }
+
+            val valueToSet = random.nextInt(100)
+            rawInstance.setKeyedInput(nodeName, key, valueToSet)
+            return TrickleInputChange.SetKeyed(nodeName, key, valueToSet)
+        }
+        else -> error("Unexpected situation")
     }
 }
 
