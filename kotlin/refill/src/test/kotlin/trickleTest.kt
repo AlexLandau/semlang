@@ -1,4 +1,5 @@
-import net.semlang.modules.*
+package net.semlang.refill
+
 import org.junit.Assert.*
 import org.junit.Test
 import java.lang.IllegalArgumentException
