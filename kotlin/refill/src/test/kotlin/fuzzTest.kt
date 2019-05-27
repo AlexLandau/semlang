@@ -7,7 +7,7 @@ import kotlin.collections.ArrayList
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(0, 4)
+        runSpecificTest(71, 5)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -234,7 +234,7 @@ private fun getOperationsScript(definition: TrickleDefinition, operationsSeed: I
     val random = Random(operationsSeed.toLong())
     val operations = ArrayList<FuzzOperation>()
     val states = ArrayList<Map<ValueId, Any>>()
-    for (i in 1..15) {
+    for (i in 1..20) {
         operations.add(getRandomOperation(rawInstance, definition, random))
         rawInstance.completeSynchronously()
         states.add(getState(rawInstance))

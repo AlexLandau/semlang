@@ -993,7 +993,7 @@ class TrickleTests {
     }
 
     @Test
-    fun testSyncKeyedInputsRegression() {
+    fun testSyncKeyedInputsBug() {
         val builder = TrickleDefinitionBuilder()
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
@@ -1008,7 +1008,7 @@ class TrickleTests {
     }
 
     @Test
-    fun testRawKeyedInputsRegression() {
+    fun testRawKeyedInputsBug() {
         val builder = TrickleDefinitionBuilder()
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
@@ -1021,5 +1021,42 @@ class TrickleTests {
         instance.getNextSteps()
         instance.getNextSteps()
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 10), ValueId.Keyed(B_KEYED, 6)), instance.getNodeOutcome(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedInputsRemovedAfterKeyRemoved1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.getNodeOutcome(A_KEYS)
+        instance.addKeyInput(A_KEYS, 0)
+        instance.setKeyedInput(B_KEYED, 0, 57)
+        instance.removeKeyInput(A_KEYS, 0)
+        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(0, 1))
+        instance.setKeyedInput(B_KEYED, 1, 58)
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
+    }
+
+    @Test
+    fun testKeyedInputsRemovedAfterKeyRemoved2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.getNodeOutcome(A_KEYS)
+        instance.addKeyInput(A_KEYS, 0)
+        instance.setKeyedInput(B_KEYED, 0, 57)
+        instance.removeKeyInput(A_KEYS, 0)
+        instance.setInput(A_KEYS, listOf(0, 1))
+        instance.setKeyedInput(B_KEYED, 1, 58)
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
     }
 }
