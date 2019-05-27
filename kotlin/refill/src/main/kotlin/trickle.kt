@@ -20,6 +20,9 @@ import java.util.function.Predicate
 // TODO: Currently this hangs on to references of keyed values associated with keys that have been removed; finding a way
 // to avoid that would be good
 
+// TODO: Add the ability to skip computations based on the equality of certain inputs (and other inputs remaining at the timestamp
+// they were last time)
+
 // TODO: It might be nice to be able to compose keylists within keylists, on the general principle that composability is good
 // (Say e.g. one keylist represents directories, a composed keylist could represent a list of files within each of those
 // directories; and then as opposed to a flat keylist of all files, this would allow per-file computations that could then
