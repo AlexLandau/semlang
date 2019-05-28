@@ -4,6 +4,7 @@ import net.semlang.api.*
 import net.semlang.api.parser.Issue
 import net.semlang.api.parser.IssueLevel
 import net.semlang.parser.*
+import net.semlang.refill.*
 import net.semlang.sem2.translate.collectTypesSummary
 import net.semlang.sem2.translate.translateSem2ContextToSem1
 import net.semlang.validator.*
