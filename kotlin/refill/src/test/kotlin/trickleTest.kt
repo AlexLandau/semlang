@@ -1040,6 +1040,7 @@ class TrickleTests {
         instance.completeSynchronously()
         instance.setInput(A_KEYS, listOf(0, 1))
         instance.setKeyedInput(B_KEYED, 1, 58)
+        instance.getNextSteps()
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
     }
 
@@ -1058,6 +1059,7 @@ class TrickleTests {
         instance.removeKeyInput(A_KEYS, 0)
         instance.setInput(A_KEYS, listOf(0, 1))
         instance.setKeyedInput(B_KEYED, 1, 58)
+        instance.getNextSteps()
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
     }
 }

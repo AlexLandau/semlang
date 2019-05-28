@@ -364,6 +364,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
                 setValue(keyValueId, curTimestamp, false, null)
             }
+            pruneKeyedInputsForRemovedKeys(nodeName, removals)
+
         }
         return curTimestamp
     }
@@ -390,6 +392,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
                 setValue(keyValueId, newTimestamp, false, null)
             }
+            pruneKeyedInputsForRemovedKeys(nodeName, removals)
+
             return true
         }
         return false
@@ -450,6 +454,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
             val keyValueId = ValueId.KeyListKey(nodeName, key)
             setValue(keyValueId, curTimestamp, false, null)
+
+            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key))
         }
         return curTimestamp
     }
@@ -464,9 +470,28 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
             val keyValueId = ValueId.KeyListKey(nodeName, key)
             setValue(keyValueId, newTimestamp, false, null)
+
+            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key))
+
             return true
         }
         return false
+    }
+
+    private fun <T> pruneKeyedInputsForRemovedKeys(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>) {
+        // Prune values for keys that no longer exist in the key list
+        // These will now return "NoSuchKey"
+        for (valueId in values.keys.toList()) {
+            if (valueId is ValueId.Keyed && keysRemoved.contains(valueId.key)) {
+                // Check that the key is correct
+                // TODO: We can store or memoize things so this is easier to determine...
+                val keyedNodeName = valueId.nodeName
+                val keySourceName = definition.keyedNodes.getValue(keyedNodeName).keySourceName
+                if (keySourceName == nodeName) {
+                    values.remove(valueId)
+                }
+            }
+        }
     }
 
     @Synchronized
@@ -860,13 +885,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
                             }
 
-                        }
-                        // Prune values for keys that no longer exist in the key list
-                        // These will now return "NoSuchKey"
-                        for (valueId in values.keys.toList()) {
-                            if (valueId is ValueId.Keyed && valueId.nodeName == nodeName && !keyList.set.contains(valueId.key)) {
-                                values.remove(valueId)
-                            }
                         }
                     }
                 }
