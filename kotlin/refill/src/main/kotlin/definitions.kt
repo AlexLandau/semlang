@@ -183,6 +183,9 @@ class TrickleDefinitionBuilder {
     fun <T, I1> createKeyListNode(name: KeyListNodeName<T>, input1: TrickleInput<I1>, fn: (I1) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)? = null): TrickleBuiltKeyListNode<T> {
         return createKeyListNode(name, listOf(input1), { inputs -> fn(inputs[0] as I1) }, onCatch)
     }
+    fun <T, I1, I2> createKeyListNode(name: KeyListNodeName<T>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (I1, I2) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)? = null): TrickleBuiltKeyListNode<T> {
+        return createKeyListNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, onCatch)
+    }
     fun <T> createKeyListNode(name: KeyListNodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)?): TrickleBuiltKeyListNode<T> {
         if (inputs.isEmpty()) {
             // TODO: We might want to allow this as long as fn and onCatch are null

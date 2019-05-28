@@ -13,20 +13,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 // (regression test: short-circuiting or in the wrong spot)
 
 class TrickleTests {
-    val A = NodeName<Int>("a")
-    val B = NodeName<Int>("b")
-    val C = NodeName<Int>("c")
-    val D = NodeName<Int>("d")
-    val E = NodeName<Int>("e")
+    private val A = NodeName<Int>("a")
+    private val B = NodeName<Int>("b")
+    private val C = NodeName<Int>("c")
+    private val D = NodeName<Int>("d")
+    private val E = NodeName<Int>("e")
 
-    val A_KEYS = KeyListNodeName<Int>("aKeys")
-    val B_KEYS = KeyListNodeName<Int>("bKeys")
-    val C_KEYS = KeyListNodeName<Int>("cKeys")
+    private val A_KEYS = KeyListNodeName<Int>("aKeys")
+    private val B_KEYS = KeyListNodeName<Int>("bKeys")
+    private val C_KEYS = KeyListNodeName<Int>("cKeys")
+    private val D_KEYS = KeyListNodeName<Int>("dKeys")
+    private val E_KEYS = KeyListNodeName<Int>("eKeys")
 
-    val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
-    val C_KEYED = KeyedNodeName<Int, Int>("cKeyed")
-    val D_KEYED = KeyedNodeName<Int, Int>("dKeyed")
-    val E_KEYED = KeyedNodeName<Int, Int>("eKeyed")
+    private val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
+    private val C_KEYED = KeyedNodeName<Int, Int>("cKeyed")
+    private val D_KEYED = KeyedNodeName<Int, Int>("dKeyed")
+    private val E_KEYED = KeyedNodeName<Int, Int>("eKeyed")
+    private val F_KEYED = KeyedNodeName<Int, Int>("fKeyed")
 
     @Test
     fun testTrickleBasic() {
@@ -1061,5 +1064,64 @@ class TrickleTests {
         instance.setKeyedInput(B_KEYED, 1, 58)
         instance.getNextSteps()
         assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
+    }
+
+    @Test
+    fun testFuzzTestRepro1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createInputNode(B)
+        val c = builder.createNode(C, b, { it + 1 })
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, aKeys)
+        val eKeys = builder.createKeyListNode(E_KEYS, c, dKeyed.fullOutput(), { cVal, dList -> dList.map { it + cVal } })
+        val fKeyed = builder.createKeyedNode(F_KEYED, eKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        instance.setInput(B, 6)
+        instance.completeSynchronously()
+        instance.addKeyInput(A_KEYS, 23)
+        instance.completeSynchronously()
+
+        instance.addKeyInput(A_KEYS, 29)
+        instance.setKeyedInput(D_KEYED, 29, 20)
+        instance.setKeyedInput(D_KEYED, 23, 31)
+        instance.completeSynchronously()
+
+        instance.setInput(A_KEYS, listOf(0))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(F_KEYED, 38))
+    }
+
+
+    @Test
+    fun testFuzzTestRepro2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createInputNode(B)
+        val c = builder.createNode(C, b, { it + 1 })
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, aKeys)
+        val eKeys = builder.createKeyListNode(E_KEYS, c, dKeyed.fullOutput(), { cVal, dList -> dList.map { it + cVal } })
+        val fKeyed = builder.createKeyedNode(F_KEYED, eKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        instance.setInput(B, 6)
+        instance.completeSynchronously()
+        instance.addKeyInput(A_KEYS, 23)
+        instance.completeSynchronously()
+
+        instance.addKeyInput(A_KEYS, 29)
+        instance.setKeyedInput(D_KEYED, 29, 20)
+        instance.setKeyedInput(D_KEYED, 23, 31)
+//        instance.completeSynchronously()
+
+        instance.setInput(A_KEYS, listOf(0))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(F_KEYED, 38))
     }
 }

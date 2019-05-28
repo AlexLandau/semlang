@@ -1091,7 +1091,11 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
         val keyListId = ValueId.FullKeyList(nodeDefinition.keySourceName)
         val keyListValueHolder = values[keyListId]
-        if (keyListValueHolder?.getValue() != null && !(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+        if (keyListValueHolder == null || keyListValueHolder.getValue() == null) {
+            // The key list itself has not been successfully computed
+            return NodeOutcome.NotYetComputed.get()
+        }
+        if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
             return NodeOutcome.NoSuchKey.get()
         }
         val value = values[ValueId.Keyed(nodeName, key)]
