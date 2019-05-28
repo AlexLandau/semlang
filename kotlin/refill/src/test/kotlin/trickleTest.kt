@@ -1067,7 +1067,7 @@ class TrickleTests {
     }
 
     @Test
-    fun testFuzzTestRepro1() {
+    fun testKeyedValuesClearedWhenInputListsInvalidated1() {
         val builder = TrickleDefinitionBuilder()
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
@@ -1097,7 +1097,7 @@ class TrickleTests {
 
 
     @Test
-    fun testFuzzTestRepro2() {
+    fun testKeyedValuesClearedWhenInputListsInvalidated2() {
         val builder = TrickleDefinitionBuilder()
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
@@ -1123,5 +1123,35 @@ class TrickleTests {
         instance.setInput(A_KEYS, listOf(0))
         instance.completeSynchronously()
         assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(F_KEYED, 38))
+    }
+
+    @Test
+    fun testArgumentEqualityCheck1() {
+        val builder = TrickleDefinitionBuilder()
+
+        var computationCount = 0
+        // TODO: Next step is to figure out the right way to pass in "If this is equal, don't recompute outputs" to A
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, {
+            computationCount++
+            it + 1
+        })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A, 10)
+        assertEquals(0, computationCount)
+        instance.completeSynchronously()
+        assertEquals(1, computationCount)
+        assertEquals(11, instance.getNodeValue(B))
+        instance.setInput(A, 10)
+        // There is a step for determining B, but it does not end up running the operation
+        assertEquals(1, instance.getNextSteps().size)
+        instance.completeSynchronously()
+        assertEquals(1, computationCount)
+        instance.setInput(A, 20)
+        instance.setInput(A, 10)
+        instance.completeSynchronously()
+        assertEquals(1, computationCount)
     }
 }
