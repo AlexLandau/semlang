@@ -23,6 +23,7 @@ class TrickleFuzzTests {
             }
 
             try {
+                checkReferenceInstance(ReferenceInstance(definition), script.operations)
                 checkRawInstance1(definition.instantiateRaw(), script.operations)
                 checkRawInstance2(definition.instantiateRaw(), script.operations)
                 checkSyncInstance(definition.instantiateSync(), script.operations)
@@ -53,6 +54,7 @@ class TrickleFuzzTests {
                         }
 
                         try {
+                            checkReferenceInstance(ReferenceInstance(definition), script.operations)
                             checkRawInstance1(definition.instantiateRaw(), script.operations)
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
@@ -71,6 +73,47 @@ class TrickleFuzzTests {
                 }
             } catch (t: Throwable) {
                 throw RuntimeException("Definition:\n" + definition.toMultiLineString(), t)
+            }
+        }
+    }
+
+    private fun checkReferenceInstance(instance: ReferenceInstance, operations: List<FuzzOperation>) {
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.AddKey -> {
+                        instance.addKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        instance.removeKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        instance.setKeyedInput(op.name, op.key, op.value)
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        instance.setInputs(op.changes)
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getNodeOutcome(op.name, op.key))
+                    }
+                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
         }
     }

@@ -65,7 +65,7 @@ sealed class ValueId {
     data class FullKeyedList(val nodeName: KeyedNodeName<*, *>): ValueId()
 }
 
-private class KeyList<T> private constructor(val list: List<T>, val set: Set<T>) {
+internal class KeyList<T> private constructor(val list: List<T>, val set: Set<T>) {
     companion object {
         fun <T> copyOf(collection: Collection<T>): KeyList<T> {
             val list = ArrayList<T>()
