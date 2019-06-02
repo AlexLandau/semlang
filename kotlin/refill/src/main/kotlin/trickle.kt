@@ -895,7 +895,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return nextSteps
     }
 
-    private fun combineFailures(inputFailures: ArrayList<TrickleFailure>): TrickleFailure {
+    private fun combineFailures(inputFailures: List<TrickleFailure>): TrickleFailure {
         val allErrors = LinkedHashMap<ValueId, Throwable>()
         val allMissingInputs = LinkedHashSet<ValueId>()
         for (failure in inputFailures) {
