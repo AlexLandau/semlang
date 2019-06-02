@@ -121,12 +121,17 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
     private fun getInputValuesOrCombinedFailure(inputs: List<TrickleInput<*>>, curKey: Int?): ValueOrFailure<List<*>> {
         val allInputs = ArrayList<Any?>()
         val allFailures = ArrayList<TrickleFailure>()
-        for (input in inputs) {
+        perInputLoop@for (input in inputs) {
             when (input) {
                 is TrickleBuiltNode -> {
                     val name = input.name
                     if (isInput(name)) {
-                        allInputs.add(basicInputs[name]!!)
+                        val valueMaybe = basicInputs[name]
+                        if (valueMaybe == null) {
+                            allFailures.add(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(name))))
+                        } else {
+                            allInputs.add(valueMaybe)
+                        }
                     } else {
                         when (val output = basicOutputs[name]!!) {
                             is ValueOrFailure.Value -> {
@@ -169,7 +174,53 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                         }
                     }
                 }
-                is TrickleInput.FullKeyedList<*, *> -> TODO()
+                is TrickleInput.FullKeyedList<*, *> -> {
+                    val name = input.name
+                    val keySourceName = definition.keyedNodes[name]!!.keySourceName
+                    val keyList: List<Int> = if (isInput(keySourceName)) {
+                        keyListInputs[keySourceName]!!.list
+                    } else {
+                        when (val result = keyListOutputs[keySourceName]) {
+                            is ValueOrFailure.Value -> {
+                                result.value.list
+                            }
+                            is ValueOrFailure.Failure -> {
+                                allFailures.add(result.failure)
+                                continue@perInputLoop
+                            }
+                            null -> TODO()
+                        }
+                    }
+                    val allKeyedValues = ArrayList<Int>()
+                    val allKeyedFailures = ArrayList<TrickleFailure>()
+                    if (isInput(name)) {
+                        for (key in keyList) {
+                            val valueMaybe = keyedInputs[name]!![key]
+                            if (valueMaybe != null) {
+                                allKeyedValues.add(valueMaybe)
+                            } else {
+                                allKeyedFailures.add(TrickleFailure(mapOf(), setOf(ValueId.Keyed(name, key))))
+                            }
+                        }
+                    } else {
+                        for (key in keyList) {
+                            when (val result = keyedOutputs[name]!![key]) {
+                                is ValueOrFailure.Value -> {
+                                    allKeyedValues.add(result.value)
+                                }
+                                is ValueOrFailure.Failure -> {
+                                    allKeyedFailures.add(result.failure)
+                                }
+                                null -> error("I don't think this should happen")
+                            }
+                        }
+                    }
+                    if (allKeyedFailures.isNotEmpty()) {
+                        allFailures.addAll(allKeyedFailures)
+                    } else {
+                        allInputs.add(allKeyedValues)
+                    }
+                }
             }
         }
         if (allFailures.isNotEmpty()) {
@@ -220,7 +271,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
 
     fun getNodeOutcome(name: NodeName<Int>): NodeOutcome<Int> {
         if (isInput(name)) {
-            return basicInputs[name]?.let { NodeOutcome.Computed(it) } ?: NodeOutcome.NotYetComputed.get()
+            return basicInputs[name]?.let { NodeOutcome.Computed(it) } ?: NodeOutcome.Failure(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(name))))
         } else {
             when (val result = basicOutputs[name]) {
                 null -> {
