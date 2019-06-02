@@ -90,6 +90,9 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                         }
                     } else {
                         // TODO: Compute and store new value
+                        if (keyedOutputs[nodeName] == null) {
+                            keyedOutputs[nodeName] = HashMap()
+                        }
                         val node = definition.keyedNodes[nodeName]!!
                         val curKeyListOutcome = getNodeOutcome(node.keySourceName as KeyListNodeName<Int>)
                         when (curKeyListOutcome) {
@@ -110,7 +113,9 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                                     }
                                 }
                             }
-                            is NodeOutcome.Failure -> TODO()
+                            is NodeOutcome.Failure -> {
+                                // TODO: Do nothing??? Propagating the failure might be better
+                            }
                         }
                     }
                 }
@@ -162,7 +167,12 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                     curKey ?: error("Expected a key to be specified")
                     val name = input.name
                     if (isInput(name)) {
-                        allInputs.add(keyedInputs[name]!![curKey]!!)
+                        val result = keyedInputs[name]!![curKey]
+                        if (result == null) {
+                            allFailures.add(TrickleFailure(mapOf(), setOf(ValueId.Keyed(name, curKey))))
+                        } else {
+                            allInputs.add(result)
+                        }
                     } else {
                         when (val output = keyedOutputs[name]!![curKey]!!) {
                             is ValueOrFailure.Value -> {
@@ -360,7 +370,9 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                 return NodeOutcome.NotYetComputed.get()
             }
             is NodeOutcome.Failure -> {
-                return NodeOutcome.Failure(keyListOutcome.failure)
+//                return NodeOutcome.Failure(keyListOutcome.failure)
+                // TODO: Do we want this? Failure might be better
+                return NodeOutcome.NotYetComputed.get()
             }
             is NodeOutcome.NoSuchKey -> TODO()
             is NodeOutcome.Computed -> {
