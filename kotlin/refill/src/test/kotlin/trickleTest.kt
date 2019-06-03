@@ -1126,6 +1126,30 @@ class TrickleTests {
     }
 
     @Test
+    fun testErrorPropagationPastKeyedNodeOfKeyListFailure() {
+        val builder = TrickleDefinitionBuilder()
+
+        val exception = RuntimeException("error creating list")
+        val failure = TrickleFailure(mapOf(ValueId.FullKeyList(A_KEYS) to exception), setOf())
+
+        val aKeys = builder.createKeyListNode(A_KEYS, listOf(), { throw exception }, null)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+        val c = builder.createNode(C, bKeyed.fullOutput(), { it.sum() })
+        val d = builder.createNode(D, bKeyed.fullOutput(), { it.sum() }, { -1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.Failure<List<Int>>(failure), instance.getNodeOutcome(A_KEYS))
+        assertEquals(NodeOutcome.Failure<List<Int>>(failure), instance.getNodeOutcome(B_KEYED))
+//        assertEquals(NodeOutcome.Failure<Int>(failure), instance.getNodeOutcome(B_KEYED, 1))
+        // TODO: This feels wrong
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(B_KEYED, 1))
+        assertEquals(NodeOutcome.Failure<Int>(failure), instance.getNodeOutcome(C))
+        assertEquals(NodeOutcome.Computed(-1), instance.getNodeOutcome(D))
+    }
+
+    @Test
     fun testArgumentEqualityCheck1() {
         val builder = TrickleDefinitionBuilder()
 

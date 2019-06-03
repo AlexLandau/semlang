@@ -115,6 +115,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                             }
                             is NodeOutcome.Failure -> {
                                 // TODO: Do nothing??? Propagating the failure might be better
+                                // Do nothing; error propagation will happen when we try to get these results (?)
                             }
                         }
                     }

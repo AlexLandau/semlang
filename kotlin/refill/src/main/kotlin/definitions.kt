@@ -187,10 +187,6 @@ class TrickleDefinitionBuilder {
         return createKeyListNode(name, listOf(input1, input2), { inputs -> fn(inputs[0] as I1, inputs[1] as I2) }, onCatch)
     }
     fun <T> createKeyListNode(name: KeyListNodeName<T>, inputs: List<TrickleInput<*>>, fn: (List<*>) -> List<T>, onCatch: ((TrickleFailure) -> List<T>)?): TrickleBuiltKeyListNode<T> {
-        if (inputs.isEmpty()) {
-            // TODO: We might want to allow this as long as fn and onCatch are null
-            error("Use createInputNode to create a node with no inputs.")
-        }
         checkNameNotUsed(name.name)
         validateBuilderIds(inputs)
         val node = TrickleKeyListNode<T>(name, inputs, fn, onCatch)
