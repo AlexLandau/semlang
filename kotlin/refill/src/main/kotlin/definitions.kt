@@ -4,6 +4,7 @@ import java.lang.IllegalArgumentException
 import java.util.ArrayList
 import java.util.HashMap
 import java.util.HashSet
+import java.util.concurrent.ExecutorService
 import java.util.function.Predicate
 
 
@@ -116,6 +117,10 @@ class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<Nod
             sb.append("\n")
         }
         return sb.toString()
+    }
+
+    fun instantiateAsync(executorService: ExecutorService): TrickleAsyncInstance {
+        return TrickleAsyncInstance(TrickleInstance(this), executorService)
     }
 }
 class TrickleDefinitionBuilder {

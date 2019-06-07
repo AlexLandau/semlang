@@ -3,6 +3,7 @@ package net.semlang.refill
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.*
+import java.util.concurrent.Executors
 import kotlin.collections.ArrayList
 
 class TrickleFuzzTests {
@@ -58,6 +59,7 @@ class TrickleFuzzTests {
                             checkRawInstance1(definition.instantiateRaw(), script.operations)
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                         } catch (t: Throwable) {
                             throw RuntimeException(
                                 "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -110,47 +112,6 @@ class TrickleFuzzTests {
                     }
                     is FuzzOperation.CheckKeyedValue -> {
                         assertEquals(op.outcome, instance.getNodeOutcome(op.name, op.key))
-                    }
-                }
-            } catch (t: Throwable) {
-                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
-            }
-        }
-    }
-
-    private fun checkSyncInstance(instance: TrickleSyncInstance, operations: List<FuzzOperation>) {
-        for ((opIndex, op) in operations.withIndex()) {
-            try {
-                val unused: Any = when (op) {
-                    is FuzzOperation.SetBasic -> {
-                        instance.setInput(op.name, op.value)
-                    }
-                    is FuzzOperation.AddKey -> {
-                        instance.addKeyInput(op.name, op.key)
-                    }
-                    is FuzzOperation.RemoveKey -> {
-                        instance.removeKeyInput(op.name, op.key)
-                    }
-                    is FuzzOperation.SetKeyList -> {
-                        instance.setInput(op.name, op.value)
-                    }
-                    is FuzzOperation.SetKeyed -> {
-                        instance.setKeyedInput(op.name, op.key, op.value)
-                    }
-                    is FuzzOperation.SetMultiple -> {
-                        instance.setInputs(op.changes)
-                    }
-                    is FuzzOperation.CheckBasic -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name))
-                    }
-                    is FuzzOperation.CheckKeyList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name))
-                    }
-                    is FuzzOperation.CheckKeyedList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name))
-                    }
-                    is FuzzOperation.CheckKeyedValue -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key))
                     }
                 }
             } catch (t: Throwable) {
@@ -245,6 +206,90 @@ class TrickleFuzzTests {
                     is FuzzOperation.CheckKeyedValue -> {
                         instance.completeSynchronously()
                         assertEquals(op.outcome, instance.getNodeOutcome(op.name, op.key))
+                    }
+                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
+            }
+        }
+    }
+
+    private fun checkSyncInstance(instance: TrickleSyncInstance, operations: List<FuzzOperation>) {
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.AddKey -> {
+                        instance.addKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        instance.removeKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        instance.setKeyedInput(op.name, op.key, op.value)
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        instance.setInputs(op.changes)
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key))
+                    }
+                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
+            }
+        }
+    }
+
+
+    private fun checkAsyncInstance1(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
+        var lastTimestamp = 0L
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        lastTimestamp = instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.AddKey -> {
+                        lastTimestamp = instance.addKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        lastTimestamp = instance.removeKeyInput(op.name, op.key)
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        lastTimestamp = instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        lastTimestamp = instance.setKeyedInput(op.name, op.key, op.value)
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        lastTimestamp = instance.setInputs(op.changes)
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, lastTimestamp))
                     }
                 }
             } catch (t: Throwable) {
