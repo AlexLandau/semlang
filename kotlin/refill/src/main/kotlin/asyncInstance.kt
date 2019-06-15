@@ -1,6 +1,9 @@
 package net.semlang.refill
 
+import java.util.*
+import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.LinkedBlockingQueue
 
 /*
 
@@ -26,45 +29,109 @@ not only compute values and report their results, but make sure the management j
 - All of this should work on a single-threaded executor while also taking advantage of multithreading the execute() calls
 when more threads are available.
 
+5) How will we track timestamps and doneness for the synchronous getters? Maybe there's some kind of latch or barrier
+system per-value; clearly we want the call to be waiting. That wouldn't be part of the raw instance, so that's something
+else the internal "execute something" job is going to need to do.
+
+6) We really ought to include a limit on how long to wait.
+
  */
-class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService): TrickleInputReceiver {
-    override fun setInputs(changes: List<TrickleInputChange>): Long {
+
+// This is probably not a great name, but needs to be public API
+// TODO: Explain how this works, because it's unintuitive
+class TrickleAsyncTimestamp
+
+data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
+
+class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
+    // TODO: Guard this
+    private val timestamps = WeakHashMap<TrickleAsyncTimestamp, Long>()
+    // TODO: Guard this if/when appropriate?
+    private val inputsQueue = LinkedBlockingQueue<TimestampedInput>()
+
+
+    /*
+When do we want to trigger the management job?
+
+Obviously, if we're in a situation where we're reporting a result or setting an input and nothing else is running that
+is going to trigger the job, we should trigger it. What about the remaining situations?
+
+Strawman 1: Rerun the job after every execute job reports.
+
+Strawman 2: When the management job creates a bunch of execute jobs, rerun the job after the last of those finishes.
+
+Version 1 adds additional overhead time of running getNextSteps() constantly and version 2 could lag in its response
+to new changes or otherwise fail to take advantage of full parallelism (i.e. A, B, and C are being computed; D depends
+only on A; D won't get enqueued until B and C are finished).
+
+It's possible that the raw instance could be reworked so that getNextSteps() has lower overhead. In that case, just
+running it frequently may be fine (with the caveat of offering a no-starvation mode, but that would be handled within
+the runnable itself).
+
+
+     */
+    fun getManagementJob(): Runnable {
+        return Runnable {
+            // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
+
+            val nextSteps = instance.getNextSteps()
+
+            // TODO: This needs to make runnables for those steps and pass them to the executor
+        }
+    }
+
+    fun getExecuteJob(step: TrickleStep): Runnable {
+        return Runnable {
+            val result = step.execute()
+
+            instance.reportResult(result)
+
+            // TODO: This needs to do something to trigger things waiting on this result at this timestamp
+            // TODO: This should trigger the management job under certain circumstances
+        }
+    }
+
+
+    fun setInputs(changes: List<TrickleInputChange>): TrickleAsyncTimestamp {
+        val timestamp = TrickleAsyncTimestamp()
+        inputsQueue.put(TimestampedInput(changes, timestamp))
+        triggerManagementJob()
+        return timestamp
+    }
+
+    fun <T> setInput(nodeName: NodeName<T>, value: T): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.SetBasic(nodeName, value)))
+    }
+
+    fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): TrickleAsyncTimestamp {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun <T> setInput(nodeName: NodeName<T>, value: T): Long {
+    fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long {
+    fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): TrickleAsyncTimestamp {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    fun <T> getOutcome(name: NodeName<T>, minTimestamp: Long): NodeOutcome<T> {
+    fun <T> getOutcome(name: NodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<T> {
         TODO()
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: Long): NodeOutcome<List<T>> {
+    fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
         TODO()
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: Long): NodeOutcome<List<T>> {
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
         TODO()
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: Long): NodeOutcome<T> {
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<T> {
         TODO()
     }
 
