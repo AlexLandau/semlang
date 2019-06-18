@@ -1140,6 +1140,29 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
         println("**************************")
     }
+
+    @Synchronized
+    fun <T> getNodeTimestamp(nodeName: NodeName<T>): Long {
+        if (!definition.nonkeyedNodes.containsKey(nodeName)) {
+            throw IllegalArgumentException("Unrecognized node name $nodeName")
+        }
+        val value = values[ValueId.Nonkeyed(nodeName)]
+        return if (value == null) {
+            -1L
+        } else {
+            value.getTimestamp()
+        }
+    }
+
+    @Synchronized
+    fun getTimestamp(valueId: ValueId): Long {
+        val value = values[valueId]
+        return if (value == null) {
+            -1L
+        } else {
+            value.getTimestamp()
+        }
+    }
 }
 
 sealed class NodeOutcome<T> {
@@ -1202,6 +1225,28 @@ class TrickleStep internal constructor(
 
     override fun toString(): String {
         return "TrickleStep($valueId, $timestamp)"
+    }
+
+    // Note: equals() and hashCode() ignore the operation
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TrickleStep
+
+        if (valueId != other.valueId) return false
+        if (timestamp != other.timestamp) return false
+        if (instanceId != other.instanceId) return false
+
+        return true
+    }
+
+    // Note: equals() and hashCode() ignore the operation
+    override fun hashCode(): Int {
+        var result = valueId.hashCode()
+        result = 31 * result + timestamp.hashCode()
+        result = 31 * result + instanceId.hashCode()
+        return result
     }
 }
 

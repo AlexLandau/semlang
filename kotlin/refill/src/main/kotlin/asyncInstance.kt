@@ -1,9 +1,9 @@
 package net.semlang.refill
 
 import java.util.*
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 
 /*
 
@@ -44,39 +44,144 @@ class TrickleAsyncTimestamp
 data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
 
 class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
-    // TODO: Guard this
-    private val timestamps = WeakHashMap<TrickleAsyncTimestamp, Long>()
-    // TODO: Guard this if/when appropriate?
-    private val inputsQueue = LinkedBlockingQueue<TimestampedInput>()
+    // Use with care; note the use of synchronizedMap.
+    // Keys should be added by the instantiator of the async timestamp.
+    // Keys will be removed by garbage collection only.
+    private val asyncToRawTimestampMap = Collections.synchronizedMap(WeakHashMap<TrickleAsyncTimestamp, CompletableFuture<Long>>())
+    // Unguarded; BlockingQueue handles multithreaded access
+    private val inputsQueue: BlockingQueue<TimestampedInput> = LinkedBlockingQueue<TimestampedInput>()
 
+    /*
+    So these two bits work in conjunction to ensure we run management jobs whenever we need to while making sure no more
+    than one management job works at a time...
+
+    When we run a management job, we do the following:
+    1) Flip the "should run management" boolean to true
+    2) Try grabbing the lock; end if we fail
+    If we succeed at grabbing the lock:
+    3) Flip the "should run management" boolean to false
+    4) Run management
+    5) Release the lock
+    6) If the "should run management" boolean is true, go to 2
+
+    This ensures that for each job, either 1) we run the management job ourselves (when the lock is available), or 2)
+    the job that does have the lock either will see that it needs to rerun in step 6, or hasn't run step 3 yet and therefore
+    will run management after the set of changes we care about have been made.
+
+    This lets us enqueue management jobs whenever we want without thinking about optimizations on the caller's part.
+     */
+    private val shouldRunManagement = AtomicBoolean(false)
+    private val managementJobLock = ReentrantLock()
+
+    // This is guarded by the management job lock; it should only be used by the management job
+    private val enqueuedJobTasks = HashMap<TrickleStep, Future<*>>()
+
+    // Unguarded; operations are synchronized
+    private val timestampBarriers = TimestampBarrierMultimap()
 
     /*
 When do we want to trigger the management job?
-
-Obviously, if we're in a situation where we're reporting a result or setting an input and nothing else is running that
-is going to trigger the job, we should trigger it. What about the remaining situations?
-
-Strawman 1: Rerun the job after every execute job reports.
-
-Strawman 2: When the management job creates a bunch of execute jobs, rerun the job after the last of those finishes.
-
-Version 1 adds additional overhead time of running getNextSteps() constantly and version 2 could lag in its response
-to new changes or otherwise fail to take advantage of full parallelism (i.e. A, B, and C are being computed; D depends
-only on A; D won't get enqueued until B and C are finished).
-
-It's possible that the raw instance could be reworked so that getNextSteps() has lower overhead. In that case, just
-running it frequently may be fine (with the caveat of offering a no-starvation mode, but that would be handled within
-the runnable itself).
-
-
+Current resolution: Trigger frequently, collapse redundant jobs
+At some point, we may want to improve how this handles for single-threaded executors, or just have some different model for that
      */
     fun getManagementJob(): Runnable {
-        return Runnable {
-            // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
+        return Runnable runnable@{
+/*
+            Coordination between management jobs:
+            1) Flip the "should run management" boolean to true
+            2) Try grabbing the lock; end if we fail
+                If we succeed at grabbing the lock:
+            3) Flip the "should run management" boolean to false
+            4) Run management
+            5) Release the lock
+            6) If the "should run management" boolean is true, go to 2
+ */
 
-            val nextSteps = instance.getNextSteps()
+            shouldRunManagement.set(true)
+            while (true) {
+                val acquiredLock = managementJobLock.tryLock()
+                if (!acquiredLock) {
+                    return@runnable
+                }
+                try {
+                    shouldRunManagement.set(false)
 
-            // TODO: This needs to make runnables for those steps and pass them to the executor
+                    runManagement()
+                } finally {
+                    managementJobLock.unlock()
+                }
+                if (!shouldRunManagement.get()) {
+                    return@runnable
+                }
+            }
+        }
+    }
+
+    private fun runManagement() {
+        // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
+
+        // TODO:
+        val inputsToAdd = ArrayList<TimestampedInput>()
+        inputsQueue.drainTo(inputsToAdd)
+        val newRawTimestamp = instance.setInputs(inputsToAdd.map { it.inputs }.flatten())
+        for (asyncTimestamp in inputsToAdd.map { it.timestamp }) {
+            asyncToRawTimestampMap[asyncTimestamp]!!.complete(newRawTimestamp)
+        }
+        for (input in inputsToAdd.map { it.inputs }.flatten()) {
+            updateInputTimestampBarrier(input, newRawTimestamp)
+        }
+
+        val nextSteps = instance.getNextSteps()
+
+        // In some cases, getNextSteps() will cause the timestamps for certain ValueIds to advance, so we need to check
+        // all the ones we're waiting on
+        for ((valueId, barrier) in timestampBarriers.getAll()) {
+            val curTimestamp = instance.getTimestamp(valueId)
+            if (curTimestamp >= barrier.minTimestampWanted) {
+                barrier.latch.countDown()
+                timestampBarriers.remove(valueId, barrier)
+            }
+        }
+
+        val alreadyEnqueuedSteps = enqueuedJobTasks.keys.toSet()
+        for (step in nextSteps) {
+            if (!alreadyEnqueuedSteps.contains(step)) {
+                val future = executor.submit(getExecuteJob(step))
+                enqueuedJobTasks[step] = future
+            }
+        }
+        // TODO: What if something is getting removed? I guess the easy way is just to have management do the removal
+        // TODO: Also cancel tasks that are no longer in nextSteps
+        val nextStepsSet = nextSteps.toSet()
+        for (step in alreadyEnqueuedSteps) {
+            if (!nextStepsSet.contains(step)) {
+                enqueuedJobTasks[step]!!.cancel(true)
+                enqueuedJobTasks.remove(step)
+            }
+        }
+
+        // TODO: This needs to make runnables for those steps and pass them to the executor (done)
+
+    }
+
+    private fun updateInputTimestampBarrier(input: TrickleInputChange, newTimestamp: Long) {
+        // TODO: Is this done elsewhere? Should this be a utility method on TIC?
+        val valueId = when (input) {
+            is TrickleInputChange.SetBasic<*> -> ValueId.Nonkeyed(input.nodeName)
+            is TrickleInputChange.SetKeys<*> -> TODO()
+            is TrickleInputChange.AddKey<*> -> TODO()
+            is TrickleInputChange.RemoveKey<*> -> TODO()
+            is TrickleInputChange.SetKeyed<*, *> -> TODO()
+        }
+        unblockWaitingTimestampBarriers(valueId, newTimestamp)
+    }
+
+    private fun unblockWaitingTimestampBarriers(valueId: ValueId, newTimestamp: Long) {
+        for (barrier in timestampBarriers.get(valueId)) {
+            if (barrier.minTimestampWanted <= newTimestamp) {
+                barrier.latch.countDown()
+                timestampBarriers.remove(valueId, barrier)
+            }
         }
     }
 
@@ -86,17 +191,34 @@ the runnable itself).
 
             instance.reportResult(result)
 
-            // TODO: This needs to do something to trigger things waiting on this result at this timestamp
-            // TODO: This should trigger the management job under certain circumstances
+            // Unblock things waiting on this result at this timestamp
+            unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
+            /*
+            TODO: Design flaw here...
+            There are certain cases (e.g. failure outcomes where something upstream threw) where timestamps update during
+            getNextSteps(), and we'll need to check those somehow
+            One approach is to just iterate through the listeners in the management thread after we run getNextSteps()
+            and look at the relevant ValueIds
+             */
+
+            // TODO: Support listeners, by either invoking them here or enqueueing new runnables for them
+
+            // Trigger the management job in case new steps are available
+            enqueueManagementJob()
         }
     }
 
 
     fun setInputs(changes: List<TrickleInputChange>): TrickleAsyncTimestamp {
         val timestamp = TrickleAsyncTimestamp()
+        asyncToRawTimestampMap[timestamp] = CompletableFuture()
         inputsQueue.put(TimestampedInput(changes, timestamp))
-        triggerManagementJob()
+        enqueueManagementJob()
         return timestamp
+    }
+
+    private fun enqueueManagementJob() {
+        executor.submit(getManagementJob())
     }
 
     fun <T> setInput(nodeName: NodeName<T>, value: T): TrickleAsyncTimestamp {
@@ -119,8 +241,37 @@ the runnable itself).
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
+    // TODO: Add a variant that waits a limited amount of time
     fun <T> getOutcome(name: NodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<T> {
-        TODO()
+        // TODO: This map access needs to be guarded (but separate the guarding from the get())
+        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get()
+
+        // Wait for the timestamp to be done
+        val valueId = ValueId.Nonkeyed(name)
+        waitForTimestamp(valueId, rawMinTimestamp)
+
+        return instance.getNodeOutcome(name)
+    }
+
+    private fun waitForTimestamp(valueId: ValueId, rawMinTimestamp: Long) {
+        if (instance.getTimestamp(valueId) < rawMinTimestamp) {
+            // TODO: Do something to wait longer until the new min timestamp is satisfied
+            // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
+            // However, we also want the values to be per-getOutcome and not shared for simplicity, right? So a multimap, but an actual
+            // proper one that removes its key when all associated values are removed
+            // Though I'd rather not add Guava as a dependency...
+            val timestampBarrier = timestampBarriers.add(valueId, rawMinTimestamp)
+            // Now that it's been added, double-check before waiting, in case the timestamp was updated to a new value before the barrier
+            // was created
+            if (instance.getTimestamp(valueId) < rawMinTimestamp) {
+                // General case, we need to wait on the barrier
+                // TODO: Do we need to handle interruption here?
+                timestampBarrier.latch.await()
+            } else {
+                // Rare case, don't bother waiting
+                timestampBarriers.remove(valueId, timestampBarrier)
+            }
+        }
     }
 
     fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
@@ -138,11 +289,59 @@ the runnable itself).
     // TODO: Add some way to unsubscribe (?)
     // TODO: How do we make sure listeners run in order when that's important? Is that something the instance promises
     // to account for when calling listeners, or do we just pass timestamps and make the user take care of it?
-    fun <T> addListener(name: NodeName<T>, listener: RefillListener<T>) {
-        TODO()
-    }
+//    fun <T> addListener(name: NodeName<T>, listener: RefillListener<T>) {
+//        TODO()
+//    }
 }
 
-interface RefillListener<T> {
-    fun nodeEvaluated(outcome: NodeOutcome<T>)
+//interface RefillListener<T> {
+//    fun nodeEvaluated(outcome: NodeOutcome<T>)
+//}
+
+// Note: This should explicitly *not* implement hashCode/equals
+class TimestampBarrier(val minTimestampWanted: Long) {
+    val latch = CountDownLatch(1)
+}
+
+class TimestampBarrierMultimap {
+    private val map = HashMap<ValueId, HashSet<TimestampBarrier>>()
+
+    // TODO: Reconsider if this is the best way to guard all these properly
+    @Synchronized
+    fun add(valueId: ValueId, minTimestampWanted: Long): TimestampBarrier {
+        val existingSet = map[valueId]
+        val set = if (existingSet != null) {
+            existingSet
+        } else {
+            val newSet = HashSet<TimestampBarrier>()
+            map[valueId] = newSet
+            newSet
+        }
+        val newBarrier = TimestampBarrier(minTimestampWanted)
+        set.add(newBarrier)
+        return newBarrier
+    }
+
+    @Synchronized
+    fun remove(valueId: ValueId, barrier: TimestampBarrier) {
+        val set = map[valueId]
+        if (set != null) {
+            set.remove(barrier)
+            if (set.isEmpty()) {
+                map.remove(valueId)
+            }
+        }
+    }
+
+    @Synchronized
+    fun get(valueId: ValueId): Collection<TimestampBarrier> {
+        return map[valueId]?.toList() ?: emptyList()
+    }
+
+    @Synchronized
+    fun getAll(): Collection<Pair<ValueId, TimestampBarrier>> {
+        return map.flatMap { (valueId, barriers) ->
+            barriers.map { valueId to it }
+        }
+    }
 }
