@@ -28,6 +28,7 @@ class TrickleFuzzTests {
                 checkRawInstance1(definition.instantiateRaw(), script.operations)
                 checkRawInstance2(definition.instantiateRaw(), script.operations)
                 checkSyncInstance(definition.instantiateSync(), script.operations)
+                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
                 throw RuntimeException(
                     "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -257,7 +258,10 @@ class TrickleFuzzTests {
 
 
     private fun checkAsyncInstance1(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
-        var lastTimestamp = 0L
+        // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
+        // thread and the queue preserves order so that the timestamps end up "later". It may be better to be able to
+        // submit a set or list of timestamps and require that it be after all of them.
+        var lastTimestamp: TrickleAsyncTimestamp? = null
         for ((opIndex, op) in operations.withIndex()) {
             try {
                 val unused: Any = when (op) {

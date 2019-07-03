@@ -84,7 +84,7 @@ When do we want to trigger the management job?
 Current resolution: Trigger frequently, collapse redundant jobs
 At some point, we may want to improve how this handles for single-threaded executors, or just have some different model for that
      */
-    fun getManagementJob(): Runnable {
+    private fun getManagementJob(): Runnable {
         return Runnable runnable@{
 /*
             Coordination between management jobs:
@@ -185,7 +185,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
     }
 
-    fun getExecuteJob(step: TrickleStep): Runnable {
+    private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
             val result = step.execute()
 
@@ -226,34 +226,46 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): TrickleAsyncTimestamp {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return setInputs(listOf(TrickleInputChange.SetKeys(nodeName, list)))
     }
 
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return setInputs(listOf(TrickleInputChange.AddKey(nodeName, key)))
     }
 
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return setInputs(listOf(TrickleInputChange.RemoveKey(nodeName, key)))
     }
 
     fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): TrickleAsyncTimestamp {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, key, value)))
     }
 
     // TODO: Add a variant that waits a limited amount of time
-    fun <T> getOutcome(name: NodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<T> {
-        // TODO: This map access needs to be guarded (but separate the guarding from the get())
-        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get()
-
-        // Wait for the timestamp to be done
-        val valueId = ValueId.Nonkeyed(name)
-        waitForTimestamp(valueId, rawMinTimestamp)
+    // TODO: We actually want to accept a variable number of these timestamps
+    fun <T> getOutcome(name: NodeName<T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.Nonkeyed(name), minTimestamp)
+        }
 
         return instance.getNodeOutcome(name)
     }
 
-    private fun waitForTimestamp(valueId: ValueId, rawMinTimestamp: Long) {
+    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp) {
+        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get()
+
+        /*
+        TODO: This whole approach is inconsistent with how the raw instance uses its timestamps and will result in hanging
+
+        One hack to work around this for now is to find all the input nodes upstream of the thing and look at their timestamps,
+        getting the most recent versions I guess, or this rawMinTimestamp if it's smaller... but that's still unsatisfying
+        in the case where that causes us to wait longer than necessary
+
+        What does the ideal solution for this actually look like? When do we associate timestamp-for-one-input to timestamps
+        across all inputs? When a new timestamp is added to one part of the graph, when and how do we associate the "current"
+        values elsewhere in the graph to say they're also up-to-date with respect to that new timestamp?
+         */
+
         if (instance.getTimestamp(valueId) < rawMinTimestamp) {
             // TODO: Do something to wait longer until the new min timestamp is satisfied
             // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
@@ -274,16 +286,28 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
-        TODO()
+    fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.FullKeyList(name), minTimestamp)
+        }
+
+        return instance.getNodeOutcome(name)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
-        TODO()
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.FullKeyedList(name), minTimestamp)
+        }
+
+        return instance.getNodeOutcome(name)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: TrickleAsyncTimestamp): NodeOutcome<T> {
-        TODO()
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.Keyed(name, key), minTimestamp)
+        }
+
+        return instance.getNodeOutcome(name, key)
     }
 
     // TODO: Add some way to unsubscribe (?)

@@ -5,6 +5,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
@@ -1179,5 +1180,29 @@ class TrickleTests {
         instance.setInput(A, 10)
         instance.completeSynchronously()
         assertEquals(1, computationCount)
+    }
+
+    @Test
+    fun testBasicAsync1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { it + 1 })
+        val c = builder.createNode(C, a, { it * 2 })
+        val d = builder.createNode(D, b, c, { left, right -> left * right })
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        val timestamp1 = instance.setInput(A, 1)
+        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(C, timestamp1))
+        assertEquals(NodeOutcome.Computed(4), instance.getOutcome(D, timestamp1))
+        val timestamp2 = instance.setInput(A, 2)
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(A, timestamp2))
+        assertEquals(NodeOutcome.Computed(3), instance.getOutcome(B, timestamp2))
+        assertEquals(NodeOutcome.Computed(4), instance.getOutcome(C, timestamp2))
+        assertEquals(NodeOutcome.Computed(12), instance.getOutcome(D, timestamp2))
     }
 }
