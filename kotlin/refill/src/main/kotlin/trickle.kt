@@ -140,23 +140,30 @@ internal class KeyList<T> private constructor(val list: List<T>, val set: Set<T>
     }
 }
 
-private data class TimestampedValue(private var timestamp: Long, private var value: Any?, private var failure: TrickleFailure?) {
+private data class TimestampedValue(private var timestamp: Long, private var latestConsistentTimestamp: Long, private var value: Any?, private var failure: TrickleFailure?) {
     fun set(newTimestamp: Long, newValue: Any?, newFailure: TrickleFailure?) {
         this.timestamp = newTimestamp
+        this.latestConsistentTimestamp = newTimestamp
         this.value = newValue
         this.failure = newFailure
     }
 
     fun set(newTimestamp: Long, newValue: Any?) {
         this.timestamp = newTimestamp
+        this.latestConsistentTimestamp = newTimestamp
         this.value = newValue
         this.failure = null
     }
 
     fun setFailure(newTimestamp: Long, newFailure: TrickleFailure) {
         this.timestamp = newTimestamp
+        this.latestConsistentTimestamp = newTimestamp
         this.value = null
         this.failure = newFailure
+    }
+
+    fun setLatestConsistentTimestamp(latestConsistentTimestamp: Long) {
+        this.latestConsistentTimestamp = latestConsistentTimestamp
     }
 
     fun getValue(): Any? {
@@ -165,6 +172,10 @@ private data class TimestampedValue(private var timestamp: Long, private var val
 
     fun getTimestamp(): Long {
         return timestamp
+    }
+
+    fun getLatestConsistentTimestamp(): Long {
+        return latestConsistentTimestamp
     }
 
     fun getFailure(): TrickleFailure? {
@@ -220,7 +231,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private fun setValue(valueId: ValueId, newTimestamp: Long, newValue: Any?, newFailure: TrickleFailure?) {
         var valueHolder = values[valueId]
         if (valueHolder == null) {
-            valueHolder = TimestampedValue(-1L, null, null)
+            valueHolder = TimestampedValue(-1L, -1L, null, null)
             values[valueId] = valueHolder
         }
         valueHolder.set(newTimestamp, newValue, newFailure)
@@ -561,6 +572,8 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     above algorithm.
 
     This also has the job of propagating errors into failures throughout the graph.
+
+    This also has the job of updating "latest consistent" timestamps for values due to unrelated inputs changing.
      */
     // TODO: Propagating "input is missing" should be similar to propagating errors. But should they be different concepts
     // or a combined notion of failure? One difference is that "catch" should only apply to errors, not missing inputs...
@@ -1141,12 +1154,29 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         println("**************************")
     }
 
+//    @Synchronized
+//    fun <T> getNodeTimestamp(nodeName: NodeName<T>): Long {
+//        if (!definition.nonkeyedNodes.containsKey(nodeName)) {
+//            throw IllegalArgumentException("Unrecognized node name $nodeName")
+//        }
+//        val value = values[ValueId.Nonkeyed(nodeName)]
+//        return if (value == null) {
+//            -1L
+//        } else {
+//            value.getTimestamp()
+//        }
+//    }
+
+    /**
+     * This returns the last timestamp for which the given value ID had an update due to an input changing.
+     *
+     * This is the timestamp at which the current value was computed. (TODO: How will this work with equality-checking)
+     *
+     * This does not update as unrelated inputs nodes change.
+     */
     @Synchronized
-    fun <T> getNodeTimestamp(nodeName: NodeName<T>): Long {
-        if (!definition.nonkeyedNodes.containsKey(nodeName)) {
-            throw IllegalArgumentException("Unrecognized node name $nodeName")
-        }
-        val value = values[ValueId.Nonkeyed(nodeName)]
+    fun getLastUpdateTimestamp(valueId: ValueId): Long {
+        val value = values[valueId]
         return if (value == null) {
             -1L
         } else {
@@ -1154,13 +1184,18 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
+    /**
+     * This returns the last timestamp that is consistent with the value ID's current value.
+     *
+     * This can update as unrelated input nodes change.
+     */
     @Synchronized
-    fun getTimestamp(valueId: ValueId): Long {
+    fun getLatestTimestampWithValue(valueId: ValueId): Long {
         val value = values[valueId]
         return if (value == null) {
             -1L
         } else {
-            value.getTimestamp()
+            value.getLatestConsistentTimestamp()
         }
     }
 }

@@ -43,6 +43,7 @@ class TrickleAsyncTimestamp
 
 data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
 
+// TODO: Separate into an interface (to be returned by the TrickleDefinition) and a class
 class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
     // Use with care; note the use of synchronizedMap.
     // Keys should be added by the instantiator of the async timestamp.
@@ -136,7 +137,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // In some cases, getNextSteps() will cause the timestamps for certain ValueIds to advance, so we need to check
         // all the ones we're waiting on
         for ((valueId, barrier) in timestampBarriers.getAll()) {
-            val curTimestamp = instance.getTimestamp(valueId)
+            val curTimestamp = instance.getLatestTimestampWithValue(valueId)
             if (curTimestamp >= barrier.minTimestampWanted) {
                 barrier.latch.countDown()
                 timestampBarriers.remove(valueId, barrier)
@@ -251,8 +252,22 @@ At some point, we may want to improve how this handles for single-threaded execu
         return instance.getNodeOutcome(name)
     }
 
+    fun <T> getOutcome(name: NodeName<T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.Nonkeyed(name), minTimestamp, timeToWait, timeUnits)
+        }
+
+        return instance.getNodeOutcome(name)
+    }
+
     private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp) {
-        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get()
+        waitForTimestamp(valueId, minTimestamp, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+    }
+
+    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp, timeToWait: Long, timeUnits: TimeUnit) {
+        val millisToWait = timeUnits.toMillis(timeToWait)
+        val startTime = System.currentTimeMillis()
+        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
 
         /*
         TODO: This whole approach is inconsistent with how the raw instance uses its timestamps and will result in hanging
@@ -264,9 +279,44 @@ At some point, we may want to improve how this handles for single-threaded execu
         What does the ideal solution for this actually look like? When do we associate timestamp-for-one-input to timestamps
         across all inputs? When a new timestamp is added to one part of the graph, when and how do we associate the "current"
         values elsewhere in the graph to say they're also up-to-date with respect to that new timestamp?
+
+
+
+        Okay, so let's say we have the getNextSteps() function be responsible for propagating along the graph the values
+        of timestamps that are actually relevant to a given location.
+
+        Value id of what we query -> list of timestamps that are actually relevant
+
+        With some pruning mechanism for sufficiently old timestamps.
+
+        So then we want to get a value of some node at a given timestamp...
+
+        - If the timestamp is in the list for that node, wait for that exact timestamp
+        - If the timestamp is not in the list but some greater timestamp is, we wait for the timestamp preceding the
+          greater one
+        - If the timestamp is not in the list and no greater timestamps are in the list... well, that could mean multiple
+          things and we sort of have to sort them out by ironing out the details of when this list is populated and what
+          it means
+
+        In particular, we may want to associate this timestamp list with an additional value, that of the latest timestamp
+        that was known when the list was made. In that case, we can differentiate between "the timestamp is newer than the
+        list" and "use the last value in the list though it's lower than the value you're asking for". But this also
+        depends on how the list is synchronized; it's possible that the former case wouldn't come up at all if the
+        synchronization is held for both the creation of timestamps and the subsequent updating of lists.
+
+        So what's the other thread that's going to be in contention with getNextSteps() (run by the management thread)?
+        That would be here. I guess one way to think about this is to ask not "what's the current timestamp of this value?",
+        but "what's the latest timestamp that this value is up-to-date for?" That makes sense for the original question
+        and could be tracked as easily as the other thing. But I guess we could also phrase the question as "what timestamps
+        do we need to wait for between this value and ___?"
+
+        The big issue is that the current approach to timestamps when we have to wait is to wait for the corresponding
+        Result object, and that's not great when it only returns one timestamp-shaped thing. On the other hand, we could
+        maybe arrange so that that triggers a new query about which timestamps we need to wait for (?).
+
          */
 
-        if (instance.getTimestamp(valueId) < rawMinTimestamp) {
+        if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
             // TODO: Do something to wait longer until the new min timestamp is satisfied
             // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
             // However, we also want the values to be per-getOutcome and not shared for simplicity, right? So a multimap, but an actual
@@ -275,10 +325,13 @@ At some point, we may want to improve how this handles for single-threaded execu
             val timestampBarrier = timestampBarriers.add(valueId, rawMinTimestamp)
             // Now that it's been added, double-check before waiting, in case the timestamp was updated to a new value before the barrier
             // was created
-            if (instance.getTimestamp(valueId) < rawMinTimestamp) {
+            if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
                 // General case, we need to wait on the barrier
                 // TODO: Do we need to handle interruption here?
-                timestampBarrier.latch.await()
+                val gotLatch = timestampBarrier.latch.await(millisToWait - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS)
+                if (!gotLatch) {
+                    throw TimeoutException()
+                }
             } else {
                 // Rare case, don't bother waiting
                 timestampBarriers.remove(valueId, timestampBarrier)

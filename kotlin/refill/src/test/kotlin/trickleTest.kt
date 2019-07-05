@@ -6,6 +6,8 @@ import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
@@ -1204,5 +1206,53 @@ class TrickleTests {
         assertEquals(NodeOutcome.Computed(3), instance.getOutcome(B, timestamp2))
         assertEquals(NodeOutcome.Computed(4), instance.getOutcome(C, timestamp2))
         assertEquals(NodeOutcome.Computed(12), instance.getOutcome(D, timestamp2))
+    }
+
+
+    @Test
+    fun testBasicAsync2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { it + 1 })
+        val c = builder.createInputNode(C)
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        val timestamp1 = instance.setInput(A, 1)
+        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
+        val timestamp2 = instance.setInput(C, 1)
+        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, 2, TimeUnit.SECONDS, timestamp2))
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 2, TimeUnit.SECONDS, timestamp2))
+    }
+
+    @Test
+    fun testAsyncTimeout1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { Thread.sleep(100); it + 1 })
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        val timestamp1 = instance.setInput(A, 1)
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 1, TimeUnit.SECONDS, timestamp1))
+    }
+
+    @Test(expected = TimeoutException::class)
+    fun testAsyncTimeout2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { Thread.sleep(1000); it + 1 })
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        val timestamp1 = instance.setInput(A, 1)
+        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 100, TimeUnit.MILLISECONDS, timestamp1))
     }
 }

@@ -28,7 +28,7 @@ class TrickleFuzzTests {
                 checkRawInstance1(definition.instantiateRaw(), script.operations)
                 checkRawInstance2(definition.instantiateRaw(), script.operations)
                 checkSyncInstance(definition.instantiateSync(), script.operations)
-                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
                 throw RuntimeException(
                     "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -60,7 +60,7 @@ class TrickleFuzzTests {
                             checkRawInstance1(definition.instantiateRaw(), script.operations)
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
-                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                         } catch (t: Throwable) {
                             throw RuntimeException(
                                 "Operations script: \n${script.operations.withIndex().joinToString("\n")}",

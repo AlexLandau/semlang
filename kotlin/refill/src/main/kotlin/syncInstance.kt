@@ -5,6 +5,7 @@ import java.util.function.Predicate
 
 // TODO: The TrickleInputReceiver methods here should probably just not return the timestamps to avoid confusion
 // TODO: Should the Outcome methods here be a different type? I guess if inputs are not filled in, uncomputed is fine...
+// TODO: Separate into an interface (to be returned by the TrickleDefinition) and a class
 class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputReceiver {
     override fun setInputs(changes: List<TrickleInputChange>): Long {
         return instance.setInputs(changes)
