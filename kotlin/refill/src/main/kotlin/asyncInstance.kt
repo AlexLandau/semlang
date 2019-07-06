@@ -289,15 +289,29 @@ At some point, we may want to improve how this handles for single-threaded execu
         waitForTimestamp(valueId, minTimestamps, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
     }
 
-    // We may always need to wait until time 0...
-    // TODO: Maintain that behavior in the multi-timestamp approach
-    private fun waitForTimestamp(valueId: ValueId, minTimestamps: Collection<TrickleAsyncTimestamp>, timeToWait: Long, timeUnits: TimeUnit) {
+    private fun waitForTimestamp(initialValueId: ValueId, minTimestamps: Collection<TrickleAsyncTimestamp>, timeToWait: Long, timeUnits: TimeUnit) {
         val millisToWait = timeUnits.toMillis(timeToWait)
         val startTime = System.currentTimeMillis()
-//        val rawMinTimestamp = if (minTimestamp == null) 0 else asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+
+        // TODO: The new problem here is that we might be waiting on a value ID for a keyed value (or, in theory, a key list value?)
+        // for which the key doesn't exist. Ideally we'd wait on both the keyed value and the full-key value and accept
+        // either as a prompt to continue.
+        // TODO: Can we find a way to not have to wait?
+        // I think we'd have to first wait for the key list timestamp, then check the key list, then use that to figure
+        // out which ValueId to wait for.
+        // For now, try the simpler version of just waiting for the full keyed list.
+        val valueId = when (initialValueId) {
+            is ValueId.Nonkeyed -> initialValueId
+            is ValueId.FullKeyList -> initialValueId
+            is ValueId.KeyListKey -> ValueId.FullKeyList(initialValueId.nodeName)
+            is ValueId.Keyed -> ValueId.FullKeyedList(initialValueId.nodeName)
+            is ValueId.FullKeyedList -> initialValueId
+        }
+
+        // We always need to wait until at least time 0, for calculations based on empty key lists
         var rawMinTimestamp = 0L
         for (minTimestamp in minTimestamps) {
-            val curRawMin = asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+            val curRawMin = asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS)
             if (curRawMin > rawMinTimestamp) {
                 rawMinTimestamp = curRawMin
             }
