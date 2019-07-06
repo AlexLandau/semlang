@@ -4,12 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 
 class TrickleFuzzTests {
     @Test
     fun specificTest1() {
-        runSpecificTest(15, 7)
+        runSpecificTest(0, 3)
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -28,7 +29,7 @@ class TrickleFuzzTests {
                 checkRawInstance1(definition.instantiateRaw(), script.operations)
                 checkRawInstance2(definition.instantiateRaw(), script.operations)
                 checkSyncInstance(definition.instantiateSync(), script.operations)
-//                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
                 throw RuntimeException(
                     "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -60,7 +61,7 @@ class TrickleFuzzTests {
                             checkRawInstance1(definition.instantiateRaw(), script.operations)
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
-//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                         } catch (t: Throwable) {
                             throw RuntimeException(
                                 "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -284,16 +285,16 @@ class TrickleFuzzTests {
                         lastTimestamp = instance.setInputs(op.changes)
                     }
                     is FuzzOperation.CheckBasic -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10, TimeUnit.SECONDS, lastTimestamp))
                     }
                     is FuzzOperation.CheckKeyList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10, TimeUnit.SECONDS, lastTimestamp))
                     }
                     is FuzzOperation.CheckKeyedList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, lastTimestamp))
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10, TimeUnit.SECONDS, lastTimestamp))
                     }
                     is FuzzOperation.CheckKeyedValue -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, lastTimestamp))
+                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, 10, TimeUnit.SECONDS, lastTimestamp))
                     }
                 }
             } catch (t: Throwable) {

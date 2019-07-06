@@ -577,10 +577,14 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
      */
     // TODO: Propagating "input is missing" should be similar to propagating errors. But should they be different concepts
     // or a combined notion of failure? One difference is that "catch" should only apply to errors, not missing inputs...
+    // TODO: Update all nodes's "consistent" timestamps to curTimestamp if they're up-to-date
     @Synchronized
     fun getNextSteps(): List<TrickleStep> {
         val nextSteps = ArrayList<TrickleStep>()
         val timeStampIfUpToDate = HashMap<ValueId, Long>()
+        fun updateLatestConsistentTimestamp(valueId: ValueId) {
+            values[valueId]!!.setLatestConsistentTimestamp(curTimestamp)
+        }
         for (nodeName in definition.topologicalOrdering) {
             when (nodeName) {
                 is NodeName<*> -> {
@@ -590,6 +594,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         val timestamp = values[nodeValueId]?.getTimestamp() ?: -1L
                         if (timestamp >= 0L) {
                             timeStampIfUpToDate[nodeValueId] = timestamp
+                            updateLatestConsistentTimestamp(nodeValueId)
                         }
                     } else {
                         var anyInputNotUpToDate = false
@@ -634,11 +639,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                         setValue(nodeValueId, maximumInputTimestamp, null, newFailure)
         //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
                                         timeStampIfUpToDate[nodeValueId] = maximumInputTimestamp
+                                        updateLatestConsistentTimestamp(nodeValueId)
                                     }
                                 } else if (curValueTimestamp > maximumInputTimestamp) {
                                     error("This should never happen")
                                 } else {
                                     timeStampIfUpToDate[nodeValueId] = maximumInputTimestamp
+                                    updateLatestConsistentTimestamp(nodeValueId)
                                 }
                             } else {
                                 val curValueTimestamp = values[nodeValueId]?.getTimestamp()
@@ -658,6 +665,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 } else {
                                     // Report this as being up-to-date for future things
                                     timeStampIfUpToDate[nodeValueId] = curValueTimestamp
+                                    updateLatestConsistentTimestamp(nodeValueId)
                                 }
                             }
                         }
@@ -672,8 +680,10 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         val timestamp = values[nodeValueId]?.getTimestamp() ?: -1L
                         if (timestamp >= 0L) {
                             timeStampIfUpToDate[nodeValueId] = timestamp
+                            updateLatestConsistentTimestamp(nodeValueId)
                             for (keyValueId in keyValueIds) {
                                 timeStampIfUpToDate[keyValueId] = values[keyValueId]!!.getTimestamp()
+                                updateLatestConsistentTimestamp(keyValueId)
                             }
                         } else {
                             // Key lists are initialized to be empty
@@ -722,11 +732,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                         setValue(nodeValueId, maximumInputTimestamp, null, newFailure)
                                         //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
                                         timeStampIfUpToDate[nodeValueId] = maximumInputTimestamp
+                                        updateLatestConsistentTimestamp(nodeValueId)
                                     }
                                 } else if (curValueTimestamp > maximumInputTimestamp) {
                                     error("This should never happen")
                                 } else {
                                     timeStampIfUpToDate[nodeValueId] = maximumInputTimestamp
+                                    updateLatestConsistentTimestamp(nodeValueId)
                                 }
                             } else {
                                 val curValueTimestamp = values[nodeValueId]?.getTimestamp()
@@ -746,6 +758,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 } else {
                                     // Report this as being up-to-date for future things
                                     timeStampIfUpToDate[nodeValueId] = curValueTimestamp
+                                    updateLatestConsistentTimestamp(nodeValueId)
                                 }
                             }
                         }
@@ -779,6 +792,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 val timestamp = values[keyedInputValueId]?.getTimestamp() ?: -1L
                                 if (timestamp >= 0L) {
                                     timeStampIfUpToDate[keyedInputValueId] = timestamp
+                                    updateLatestConsistentTimestamp(keyedInputValueId)
                                     val failure = values[keyedInputValueId]!!.getFailure()
                                     if (failure != null) {
                                         allInputFailuresAcrossAllKeys.add(failure)
@@ -790,6 +804,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
                                     setValue(keyedInputValueId, keyListHolder.getTimestamp(), null, failure)
                                     timeStampIfUpToDate[keyedInputValueId] = keyListHolder.getTimestamp()
+                                    updateLatestConsistentTimestamp(keyedInputValueId)
 
                                     allInputFailuresAcrossAllKeys.add(failure)
                                 }
@@ -848,11 +863,13 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                                 setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
                                                 //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
                                                 timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                                updateLatestConsistentTimestamp(keyedValueId)
                                             }
                                         } else if (curValueTimestamp > maximumInputTimestamp) {
                                             error("This should never happen")
                                         } else {
                                             timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                            updateLatestConsistentTimestamp(keyedValueId)
                                         }
                                     } else {
                                         val curValueTimestamp = values[keyedValueId]?.getTimestamp()
@@ -873,6 +890,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                         } else {
                                             // Report this as being up-to-date for future things
                                             timeStampIfUpToDate[keyedValueId] = curValueTimestamp
+                                            updateLatestConsistentTimestamp(keyedValueId)
                                         }
                                     }
                                 }
@@ -889,6 +907,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 val combinedFailure = combineFailures(allInputFailuresAcrossAllKeys)
                                 setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, null, combinedFailure)
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
+                                updateLatestConsistentTimestamp(fullListValueId)
                             } else {
                                 val newList = ArrayList<Any?>()
                                 for (key in keyList.list) {
@@ -896,6 +915,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 }
                                 setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, newList, null)
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
+                                updateLatestConsistentTimestamp(fullListValueId)
                             }
 
                         }
@@ -1140,6 +1160,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return NodeOutcome.Computed(value.getValue() as List<V>)
     }
 
+    @Synchronized
     internal fun printStoredState() {
         println("*** Raw instance state ***")
         println("  Current timestamp: $curTimestamp")

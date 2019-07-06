@@ -80,6 +80,11 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
     // Unguarded; operations are synchronized
     private val timestampBarriers = TimestampBarrierMultimap()
 
+    init {
+        // Run initial management before users can start asking for values
+        getManagementJob().run()
+    }
+
     /*
 When do we want to trigger the management job?
 Current resolution: Trigger frequently, collapse redundant jobs
@@ -120,22 +125,30 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun runManagement() {
         // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
+        println("Running management")
 
         // TODO:
         val inputsToAdd = ArrayList<TimestampedInput>()
+        println("Draining inputsQueue")
         inputsQueue.drainTo(inputsToAdd)
+        println("Done draining inputs queue")
         val newRawTimestamp = instance.setInputs(inputsToAdd.map { it.inputs }.flatten())
         for (asyncTimestamp in inputsToAdd.map { it.timestamp }) {
             asyncToRawTimestampMap[asyncTimestamp]!!.complete(newRawTimestamp)
         }
+        println("About to update input timestamp barriers")
         for (input in inputsToAdd.map { it.inputs }.flatten()) {
+            println("Running for input $input")
             updateInputTimestampBarrier(input, newRawTimestamp)
         }
 
+        println("Running getNextSteps")
         val nextSteps = instance.getNextSteps()
+        println("Done with getNextSteps")
 
         // In some cases, getNextSteps() will cause the timestamps for certain ValueIds to advance, so we need to check
         // all the ones we're waiting on
+        println("Checking timestamps we're waiting for")
         for ((valueId, barrier) in timestampBarriers.getAll()) {
             val curTimestamp = instance.getLatestTimestampWithValue(valueId)
             if (curTimestamp >= barrier.minTimestampWanted) {
@@ -143,14 +156,18 @@ At some point, we may want to improve how this handles for single-threaded execu
                 timestampBarriers.remove(valueId, barrier)
             }
         }
+        println("Done checking timestamps")
 
         val alreadyEnqueuedSteps = enqueuedJobTasks.keys.toSet()
         for (step in nextSteps) {
             if (!alreadyEnqueuedSteps.contains(step)) {
+                println("About to submit an execute job for step $step")
                 val future = executor.submit(getExecuteJob(step))
+                println("Submitted an execute job for step $step")
                 enqueuedJobTasks[step] = future
             }
         }
+        println("Done enqueueing")
         // TODO: What if something is getting removed? I guess the easy way is just to have management do the removal
         // TODO: Also cancel tasks that are no longer in nextSteps
         val nextStepsSet = nextSteps.toSet()
@@ -162,35 +179,47 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
 
         // TODO: This needs to make runnables for those steps and pass them to the executor (done)
-
+        println("Done with the management job")
     }
 
     private fun updateInputTimestampBarrier(input: TrickleInputChange, newTimestamp: Long) {
         // TODO: Is this done elsewhere? Should this be a utility method on TIC?
-        val valueId = when (input) {
-            is TrickleInputChange.SetBasic<*> -> ValueId.Nonkeyed(input.nodeName)
-            is TrickleInputChange.SetKeys<*> -> TODO()
-            is TrickleInputChange.AddKey<*> -> TODO()
-            is TrickleInputChange.RemoveKey<*> -> TODO()
-            is TrickleInputChange.SetKeyed<*, *> -> TODO()
+        println("About to get valueIds")
+        val valueIds = when (input) {
+            is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
+            // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
+            is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+            is TrickleInputChange.AddKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+            is TrickleInputChange.RemoveKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+            is TrickleInputChange.SetKeyed<*, *> -> listOf(ValueId.Keyed(input.nodeName, input.key),
+                    ValueId.FullKeyedList(input.nodeName))
         }
-        unblockWaitingTimestampBarriers(valueId, newTimestamp)
+        println("Got valueIds: $valueIds")
+        for (valueId in valueIds) {
+            unblockWaitingTimestampBarriers(valueId, newTimestamp)
+        }
     }
 
     private fun unblockWaitingTimestampBarriers(valueId: ValueId, newTimestamp: Long) {
+        println("About to iterate over barriers")
         for (barrier in timestampBarriers.get(valueId)) {
             if (barrier.minTimestampWanted <= newTimestamp) {
+                println("About to count down")
                 barrier.latch.countDown()
+                println("Counted down")
                 timestampBarriers.remove(valueId, barrier)
             }
         }
+        println("Done iterating over barriers")
     }
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
+            println("Starting execute job for step $step")
             val result = step.execute()
 
             instance.reportResult(result)
+            println("Reported result for step $step")
 
             // Unblock things waiting on this result at this timestamp
             unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
@@ -253,9 +282,9 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <T> getOutcome(name: NodeName<T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
-        if (minTimestamp != null) {
+//        if (minTimestamp != null) {
             waitForTimestamp(ValueId.Nonkeyed(name), minTimestamp, timeToWait, timeUnits)
-        }
+//        }
 
         return instance.getNodeOutcome(name)
     }
@@ -264,10 +293,12 @@ At some point, we may want to improve how this handles for single-threaded execu
         waitForTimestamp(valueId, minTimestamp, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
     }
 
-    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp, timeToWait: Long, timeUnits: TimeUnit) {
+    // We may always need to wait until time 0...
+    // TODO: Maintain that behavior in the multi-timestamp approach
+    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp?, timeToWait: Long, timeUnits: TimeUnit) {
         val millisToWait = timeUnits.toMillis(timeToWait)
         val startTime = System.currentTimeMillis()
-        val rawMinTimestamp = asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+        val rawMinTimestamp = if (minTimestamp == null) 0 else asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
 
         /*
         TODO: This whole approach is inconsistent with how the raw instance uses its timestamps and will result in hanging
@@ -347,6 +378,14 @@ At some point, we may want to improve how this handles for single-threaded execu
         return instance.getNodeOutcome(name)
     }
 
+    fun <T> getOutcome(name: KeyListNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.FullKeyList(name), minTimestamp, timeToWait, timeUnits)
+        }
+
+        return instance.getNodeOutcome(name)
+    }
+
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
         if (minTimestamp != null) {
             waitForTimestamp(ValueId.FullKeyedList(name), minTimestamp)
@@ -355,9 +394,25 @@ At some point, we may want to improve how this handles for single-threaded execu
         return instance.getNodeOutcome(name)
     }
 
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.FullKeyedList(name), minTimestamp, timeToWait, timeUnits)
+        }
+
+        return instance.getNodeOutcome(name)
+    }
+
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
         if (minTimestamp != null) {
             waitForTimestamp(ValueId.Keyed(name, key), minTimestamp)
+        }
+
+        return instance.getNodeOutcome(name, key)
+    }
+
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
+        if (minTimestamp != null) {
+            waitForTimestamp(ValueId.Keyed(name, key), minTimestamp, timeToWait, timeUnits)
         }
 
         return instance.getNodeOutcome(name, key)
