@@ -1255,4 +1255,20 @@ class TrickleTests {
         val timestamp1 = instance.setInput(A, 1)
         assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 100, TimeUnit.MILLISECONDS, timestamp1))
     }
+
+    @Test
+    fun testAsyncNoSuchKey() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val syncInstance = builder.build().instantiateSync()
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), syncInstance.getOutcome(B_KEYED, 1))
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+    }
 }
