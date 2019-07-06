@@ -273,32 +273,35 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     // TODO: Add a variant that waits a limited amount of time
     // TODO: We actually want to accept a variable number of these timestamps
-    fun <T> getOutcome(name: NodeName<T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.Nonkeyed(name), minTimestamp)
-        }
+    fun <T> getOutcome(name: NodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        waitForTimestamp(ValueId.Nonkeyed(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <T> getOutcome(name: NodeName<T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
-//        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.Nonkeyed(name), minTimestamp, timeToWait, timeUnits)
-//        }
+    fun <T> getOutcome(name: NodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        waitForTimestamp(ValueId.Nonkeyed(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
 
-    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp) {
-        waitForTimestamp(valueId, minTimestamp, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+    private fun waitForTimestamp(valueId: ValueId, minTimestamps: Collection<TrickleAsyncTimestamp>) {
+        waitForTimestamp(valueId, minTimestamps, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
     }
 
     // We may always need to wait until time 0...
     // TODO: Maintain that behavior in the multi-timestamp approach
-    private fun waitForTimestamp(valueId: ValueId, minTimestamp: TrickleAsyncTimestamp?, timeToWait: Long, timeUnits: TimeUnit) {
+    private fun waitForTimestamp(valueId: ValueId, minTimestamps: Collection<TrickleAsyncTimestamp>, timeToWait: Long, timeUnits: TimeUnit) {
         val millisToWait = timeUnits.toMillis(timeToWait)
         val startTime = System.currentTimeMillis()
-        val rawMinTimestamp = if (minTimestamp == null) 0 else asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+//        val rawMinTimestamp = if (minTimestamp == null) 0 else asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+        var rawMinTimestamp = 0L
+        for (minTimestamp in minTimestamps) {
+            val curRawMin = asyncToRawTimestampMap[minTimestamp]!!.get(millisToWait, TimeUnit.MILLISECONDS)
+            if (curRawMin > rawMinTimestamp) {
+                rawMinTimestamp = curRawMin
+            }
+        }
 
         /*
         TODO: This whole approach is inconsistent with how the raw instance uses its timestamps and will result in hanging
@@ -370,50 +373,38 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.FullKeyList(name), minTimestamp)
-        }
+    fun <T> getOutcome(name: KeyListNodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.FullKeyList(name), minTimestamp, timeToWait, timeUnits)
-        }
+    fun <T> getOutcome(name: KeyListNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.FullKeyedList(name), minTimestamp)
-        }
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        waitForTimestamp(ValueId.FullKeyedList(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<List<T>> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.FullKeyedList(name), minTimestamp, timeToWait, timeUnits)
-        }
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        waitForTimestamp(ValueId.FullKeyedList(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.Keyed(name, key), minTimestamp)
-        }
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        waitForTimestamp(ValueId.Keyed(name, key), minTimestamps.asList())
 
         return instance.getNodeOutcome(name, key)
     }
 
-    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, timeToWait: Long, timeUnits: TimeUnit, minTimestamp: TrickleAsyncTimestamp?): NodeOutcome<T> {
-        if (minTimestamp != null) {
-            waitForTimestamp(ValueId.Keyed(name, key), minTimestamp, timeToWait, timeUnits)
-        }
+    fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        waitForTimestamp(ValueId.Keyed(name, key), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name, key)
     }
