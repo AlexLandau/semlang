@@ -8,9 +8,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 
 class TrickleFuzzTests {
+
+    // Input not up-to-date: FullKeyedList(nodeName=keyed3)
+    // from: Not up-to-date 3: Keyed(nodeName=keyed3, key=70)
+    // TODO: Debug further by making a delegator to the raw interface that stores all interactions
+    // (and maybe write something to output them in unit-test form?)
     @Test
     fun specificTest1() {
         runSpecificTest(528, 2)
+        System.out.flush()
     }
 
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
@@ -25,13 +31,15 @@ class TrickleFuzzTests {
             }
 
             try {
-                checkReferenceInstance(ReferenceInstance(definition), script.operations)
-                checkRawInstance1(definition.instantiateRaw(), script.operations)
-                checkRawInstance2(definition.instantiateRaw(), script.operations)
-                checkSyncInstance(definition.instantiateSync(), script.operations)
+//                checkReferenceInstance(ReferenceInstance(definition), script.operations)
+//                checkRawInstance1(definition.instantiateRaw(), script.operations)
+//                checkRawInstance2(definition.instantiateRaw(), script.operations)
+//                checkSyncInstance(definition.instantiateSync(), script.operations)
+                println(" *** Running test *** ")
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
-                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
+                System.out.flush()
                 throw RuntimeException(
                     "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
                     t
@@ -65,6 +73,11 @@ class TrickleFuzzTests {
                             // TODO: Add tests with other executor types, in particular a single-threaded executor
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            // TODO: Add these to the single-test runner
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                         } catch (t: Throwable) {
                             throw RuntimeException(
                                 "Operations script: \n${script.operations.withIndex().joinToString("\n")}",

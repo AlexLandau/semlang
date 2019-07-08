@@ -163,6 +163,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // all the ones we're waiting on
         for ((valueId, barrier) in timestampBarriers.getAll()) {
             val curTimestamp = instance.getLatestTimestampWithValue(valueId)
+            println("Checking barrier for value ID $valueId; our actual timestamp is $curTimestamp")
             if (curTimestamp >= barrier.minTimestampWanted) {
                 barrier.latch.countDown()
                 timestampBarriers.remove(valueId, barrier)
@@ -216,9 +217,11 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
+            println("Running execute job for $step")
             val result = step.execute()
 
             instance.reportResult(result)
+            println("Reported result for $step")
 
             // Unblock things waiting on this result at this timestamp
             unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
@@ -366,7 +369,7 @@ At some point, we may want to improve how this handles for single-threaded execu
          */
 
         if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
-//            print("Latest timestamp $rawMinTimestamp is not sufficient, will set up barrier\n")
+            print("Latest timestamp $rawMinTimestamp is not sufficient, will set up barrier\n")
             // TODO: Do something to wait longer until the new min timestamp is satisfied
             // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
             // However, we also want the values to be per-getOutcome and not shared for simplicity, right? So a multimap, but an actual
@@ -378,16 +381,16 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
                 // General case, we need to wait on the barrier
                 // TODO: Do we need to handle interruption here?
-//                print("Waiting on barrier for $valueId\n")
+                print("Waiting on barrier for $valueId, timestamp $rawMinTimestamp\n")
                 val gotLatch = timestampBarrier.latch.await(millisToWait - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS)
-//                print("Awoke from barrier\n")
-//                print(rawMinTimestamp)
+                print("Awoke from barrier\n")
+                print(rawMinTimestamp)
                 if (!gotLatch) {
                     throw TimeoutException()
                 }
             } else {
                 // Rare case, don't bother waiting
-//                print("Not waiting on barrier\n")
+                print("Not waiting on barrier\n")
                 timestampBarriers.remove(valueId, timestampBarrier)
             }
         }
