@@ -213,16 +213,18 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     private var curTimestamp = 0L
 
     init {
-        for (unkeyedNode in definition.nonkeyedNodes.values) {
-            if (unkeyedNode.operation == null) {
-                val valueId = ValueId.Nonkeyed(unkeyedNode.name)
-                setValue(valueId, 0L, null, TrickleFailure(mapOf(), setOf(valueId)))
+        synchronized(this) {
+            for (unkeyedNode in definition.nonkeyedNodes.values) {
+                if (unkeyedNode.operation == null) {
+                    val valueId = ValueId.Nonkeyed(unkeyedNode.name)
+                    setValue(valueId, 0L, null, TrickleFailure(mapOf(), setOf(valueId)))
+                }
             }
-        }
-        // Key list input nodes start out as empty lists
-        for (keyListNode in definition.keyListNodes.values) {
-            if (keyListNode.operation == null) {
-                setValue(ValueId.FullKeyList(keyListNode.name), 0L, KeyList.empty<Any>(), null)
+            // Key list input nodes start out as empty lists
+            for (keyListNode in definition.keyListNodes.values) {
+                if (keyListNode.operation == null) {
+                    setValue(ValueId.FullKeyList(keyListNode.name), 0L, KeyList.empty<Any>(), null)
+                }
             }
         }
     }
@@ -258,6 +260,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
      * Returns true iff something changed. (This may be the case if, e.g., a key is added to a key list that is already
      * in the list.)
      */
+    @Synchronized
     private fun applyChange(change: TrickleInputChange, newTimestamp: Long): Boolean {
         return when (change) {
             is TrickleInputChange.SetBasic<*> -> applySetBasicChange(change, newTimestamp)
@@ -268,6 +271,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
+    @Synchronized
     private fun checkHasValidInputNode(change: TrickleInputChange) {
         val unused = when (change) {
             is TrickleInputChange.SetBasic<*> -> {
@@ -340,6 +344,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     // TODO: Currently we don't check equality here but we may want to in the future
+    @Synchronized
     private fun <T> applySetBasicChange(change: TrickleInputChange.SetBasic<T>, newTimestamp: Long): Boolean {
         setValue(ValueId.Nonkeyed(change.nodeName), newTimestamp, change.value, null)
         return true
@@ -381,6 +386,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return curTimestamp
     }
 
+    @Synchronized
     private fun <T> applySetKeysChange(change: TrickleInputChange.SetKeys<T>, newTimestamp: Long): Boolean {
         val (nodeName, value) = change
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -432,6 +438,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return curTimestamp
     }
 
+    @Synchronized
     private fun <T> applyAddKeyChange(change: TrickleInputChange.AddKey<T>, newTimestamp: Long): Boolean {
         val (nodeName, key) = change
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -471,6 +478,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return curTimestamp
     }
 
+    @Synchronized
     private fun <T> applyRemoveKeyChange(change: TrickleInputChange.RemoveKey<T>, newTimestamp: Long): Boolean {
         val (nodeName, key) = change
         val listValueId = ValueId.FullKeyList(nodeName)
@@ -489,6 +497,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return false
     }
 
+    @Synchronized
     private fun <T> pruneKeyedInputsForRemovedKeys(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>) {
         // Prune values for keys that no longer exist in the key list
         // These will now return "NoSuchKey"
@@ -534,6 +543,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return curTimestamp
     }
 
+    @Synchronized
     private fun <K, T> applySetKeyedChange(change: TrickleInputChange.SetKeyed<K, T>, newTimestamp: Long): Boolean {
         val (nodeName, key, value) = change
         val node = definition.keyedNodes[nodeName]!!
@@ -928,6 +938,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         return nextSteps
     }
 
+    @Synchronized
     private fun combineFailures(inputFailures: List<TrickleFailure>): TrickleFailure {
         val allErrors = LinkedHashMap<ValueId, Throwable>()
         val allMissingInputs = LinkedHashSet<ValueId>()
@@ -941,6 +952,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     // TODO: This should probably just be a function on TrickleInput
     // TODO: This doesn't really work for keyed node outputs: we also need to be able to get both things tied to a key
     // and the list containing all the keys
+    @Synchronized
     private fun getValueIdFromInput(input: TrickleInput<*>, key: Any? = null): ValueId {
         return when (input) {
             is TrickleBuiltNode -> ValueId.Nonkeyed(input.name)
@@ -950,6 +962,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
+    // Explicitly not synchronized
     fun completeSynchronously() {
         while (true) {
             val nextSteps = getNextSteps()
@@ -986,6 +999,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
+    @Synchronized
     private fun reportBasicResult(valueId: ValueId.Nonkeyed, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
@@ -994,6 +1008,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
+    @Synchronized
     private fun reportKeyedResult(valueId: ValueId.Keyed, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
@@ -1003,6 +1018,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         // TODO: For keyed nodes, also adjust the values/timestamps of the whole list (?)
     }
 
+    @Synchronized
     private fun reportKeyListResult(valueId: ValueId.FullKeyList, timestamp: Long, result: Any?, error: Throwable?) {
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
@@ -1133,10 +1149,12 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
         val value = values[ValueId.Keyed(nodeName, key)]
         if (value == null) {
+//            println("The value holder for the ValueId is null")
             return NodeOutcome.NotYetComputed.get()
         }
         val failure = value.getFailure()
         if (failure != null) {
+//            println("There is a failure in the value holder")
             return NodeOutcome.Failure(failure)
         }
         return NodeOutcome.Computed(value.getValue() as V)

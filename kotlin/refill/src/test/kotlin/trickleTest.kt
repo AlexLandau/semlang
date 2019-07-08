@@ -1271,4 +1271,156 @@ class TrickleTests {
 
         assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
     }
+
+    @Test
+    fun testAsyncMissingInputBasic() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, { it + 1 })
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(A, 1, TimeUnit.SECONDS))
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(B, 1, TimeUnit.SECONDS))
+    }
+
+
+    @Test
+    fun testAsyncMissingKeyedInput1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+//        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun testAsyncMissingKeyedInput2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        val ts = instance.addKeyInput(A_KEYS, 1)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1)))), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS, ts))
+    }
+
+    @Test
+    fun testAsyncMissingKeyedInput3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        instance.removeKeyInput(A_KEYS, 77)
+        instance.setKeyedInput(B_KEYED, 1, 37)
+        instance.setKeyedInput(B_KEYED, 1, 25)
+        instance.setKeyedInput(B_KEYED, 1, 30)
+        instance.setInput(A_KEYS, listOf(14, 6, 4, 13, 11, 8))
+        instance.addKeyInput(A_KEYS, 18)
+        var timestamp = instance.setKeyedInput(B_KEYED, 13, 26)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 4)))), instance.getOutcome(B_KEYED, 4, 5, TimeUnit.SECONDS, timestamp))
+        instance.setInput(A_KEYS, listOf(104, 98, 101))
+        instance.addKeyInput(A_KEYS, 34)
+        instance.setKeyedInput(B_KEYED, 98, 84)
+        instance.setKeyedInput(B_KEYED, 98, 53)
+        timestamp = instance.removeKeyInput(A_KEYS, 101)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 34)))), instance.getOutcome(B_KEYED, 34, timestamp))
+    }
+
+    // TODO: So, we're seeing some race here where there is either a value holder with a failure in it, or null value holder
+    @Test
+    fun testAsyncMissingKeyedInput4() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newFixedThreadPool(4))
+
+        // IndexedValue(index=1, value=RemoveKey(name=listInput1, key=77))
+        instance.removeKeyInput(A_KEYS, 77)
+        // IndexedValue(index=3, value=SetMultiple(changes=[AddKey(nodeName=listInput2, key=92), SetKeyed(nodeName=keyedInput5, key=1, value=37), SetKeyed(nodeName=keyedInput5, key=1, value=25)]))
+        instance.setKeyedInput(B_KEYED, 1, 37)
+        instance.setKeyedInput(B_KEYED, 1, 25)
+        // IndexedValue(index=4, value=SetMultiple(changes=[SetKeyed(nodeName=keyedInput5, key=1, value=30), SetKeys(nodeName=listInput2, value=[20, 21, 18]), SetKeys(nodeName=listInput1, value=[14, 6, 4, 13, 11, 8]), AddKey(nodeName=listInput1, key=18)]))
+        instance.setKeyedInput(B_KEYED, 1, 30)
+        instance.setInput(A_KEYS, listOf(14, 6, 4, 13, 11, 8))
+        instance.addKeyInput(A_KEYS, 18)
+        // IndexedValue(index=5, value=SetKeyed(name=keyedInput5, key=13, value=26))
+        var timestamp = instance.setKeyedInput(B_KEYED, 13, 26)
+        // IndexedValue(index=8, value=CheckKeyedValue(name=keyedInput5, key=4, outcome=Failure(failure=TrickleFailure(errors={}, missingInputs=[Keyed(nodeName=keyedInput5, key=4)]))))
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 4)))), instance.getOutcome(B_KEYED, 4, 5, TimeUnit.SECONDS, timestamp))
+        // IndexedValue(index=11, value=SetMultiple(changes=[SetKeys(nodeName=listInput1, value=[104, 98, 101]), RemoveKey(nodeName=listInput2, key=1), AddKey(nodeName=listInput1, key=34), SetKeyed(nodeName=keyedInput5, key=98, value=84), SetKeyed(nodeName=keyedInput5, key=98, value=53), RemoveKey(nodeName=listInput1, key=101)]))
+//        instance.setInput(A_KEYS, listOf(104, 98, 101))
+//        instance.addKeyInput(A_KEYS, 34)
+//        instance.setKeyedInput(B_KEYED, 98, 84)
+//        instance.setKeyedInput(B_KEYED, 98, 53)
+//        timestamp = instance.removeKeyInput(A_KEYS, 101)
+
+        timestamp = instance.setInputs(listOf(
+                TrickleInputChange.SetKeys(A_KEYS, listOf(104, 98, 101)),
+                TrickleInputChange.AddKey(A_KEYS, 34),
+                TrickleInputChange.SetKeyed(B_KEYED, 98, 84),
+                TrickleInputChange.SetKeyed(B_KEYED, 98, 53),
+                TrickleInputChange.RemoveKey(A_KEYS, 101)
+        ))
+
+        // Currently returns NotYetComputed
+        // This is non-deterministic -_-
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 34)))), instance.getOutcome(B_KEYED, 34, timestamp))
+        System.out.flush()
+    }
+
+
+    @Test
+    fun testAsyncUnusedName1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        // TODO: This should be something other than a TimeoutException
+        instance.getOutcome(E, 1, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun testAnotherAsyncRegression() {
+        val builder = TrickleDefinitionBuilder()
+//        Basic   basicInput1
+//        KeyList listInput2
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+//        Keyed   keyed3<listInput2>()
+//        Basic   basic4(basicInput1, listInput2)
+//        Basic   basic5(basic4, basicInput1)
+//        KeyList list6(keyed3 (full list), basic5)
+//        Basic   basic7(basicInput1, basic4)
+//        Keyed   keyedInput8<listInput2>
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+//        Basic   basic9(basicInput1)
+//        KeyList list10(basic4, keyed3 (full list))
+
+
+
+//        IndexedValue(index=0, value=CheckBasic(name=basicInput1, outcome=Failure(failure=TrickleFailure(errors={}, missingInputs=[Nonkeyed(nodeName=basicInput1)]))))
+//        IndexedValue(index=1, value=SetMultiple(changes=[SetBasic(nodeName=basicInput1, value=19)]))
+//        IndexedValue(index=2, value=CheckBasic(name=basic5, outcome=Computed(value=241428)))
+//        IndexedValue(index=3, value=SetBasic(name=basicInput1, value=14))
+//        IndexedValue(index=4, value=CheckKeyList(name=list10, outcome=Computed(value=[23])))
+//        IndexedValue(index=5, value=CheckBasic(name=basic9, outcome=Computed(value=25)))
+//        IndexedValue(index=6, value=SetMultiple(changes=[RemoveKey(nodeName=listInput2, key=2), SetKeyed(nodeName=keyedInput8, key=1, value=79), SetBasic(nodeName=basicInput1, value=7), SetKeyed(nodeName=keyedInput8, key=1, value=97), AddKey(nodeName=listInput2, key=2)]))
+//        IndexedValue(index=7, value=AddKey(name=listInput2, key=34))
+//        IndexedValue(index=8, value=CheckKeyedList(name=keyedInput8, outcome=Failure(failure=TrickleFailure(errors={}, missingInputs=[Keyed(nodeName=keyedInput8, key=2), Keyed(nodeName=keyedInput8, key=34)]))))
+
+    }
 }

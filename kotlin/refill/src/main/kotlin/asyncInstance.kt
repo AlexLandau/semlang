@@ -125,30 +125,42 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun runManagement() {
         // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
-        println("Running management")
 
         // TODO:
         val inputsToAdd = ArrayList<TimestampedInput>()
-        println("Draining inputsQueue")
         inputsQueue.drainTo(inputsToAdd)
-        println("Done draining inputs queue")
+//        print("Inputs: (" + inputsToAdd + ")\n")
+        // TODO: Try just doing separate timestamps for the separate groups
+
         val newRawTimestamp = instance.setInputs(inputsToAdd.map { it.inputs }.flatten())
         for (asyncTimestamp in inputsToAdd.map { it.timestamp }) {
             asyncToRawTimestampMap[asyncTimestamp]!!.complete(newRawTimestamp)
         }
-        println("About to update input timestamp barriers")
+
+
+        // Alternative where we just do separate timestamps for separate groups:
+//        for (inputToAdd in inputsToAdd) {
+//            val newRawTimestamp = instance.setInputs(inputToAdd.inputs)
+//            asyncToRawTimestampMap[inputToAdd.timestamp]!!.complete(newRawTimestamp)
+//            for (input in inputToAdd.inputs) {
+//                updateInputTimestampBarrier(input, newRawTimestamp)
+//            }
+//        }
+
+
+        val nextSteps = instance.getNextSteps()
+
+        // Note: It may be unintuitive that we have to wait until after getNextSteps() to unlock these, but when we're
+        // checking a keyed input that is absent that is related to a present key, we rely on getNextSteps() to populate
+        // the TrickleFailure that says it's absent but expected. That in turn uses a FullKeyedList ValueId (for some
+        // reason I forget at the moment) that can get triggered for the given timestamp by an unrelated input.
+        // Also, querying your instance for an input value is not a great look to begin with.
         for (input in inputsToAdd.map { it.inputs }.flatten()) {
-            println("Running for input $input")
             updateInputTimestampBarrier(input, newRawTimestamp)
         }
 
-        println("Running getNextSteps")
-        val nextSteps = instance.getNextSteps()
-        println("Done with getNextSteps")
-
         // In some cases, getNextSteps() will cause the timestamps for certain ValueIds to advance, so we need to check
         // all the ones we're waiting on
-        println("Checking timestamps we're waiting for")
         for ((valueId, barrier) in timestampBarriers.getAll()) {
             val curTimestamp = instance.getLatestTimestampWithValue(valueId)
             if (curTimestamp >= barrier.minTimestampWanted) {
@@ -156,18 +168,14 @@ At some point, we may want to improve how this handles for single-threaded execu
                 timestampBarriers.remove(valueId, barrier)
             }
         }
-        println("Done checking timestamps")
 
         val alreadyEnqueuedSteps = enqueuedJobTasks.keys.toSet()
         for (step in nextSteps) {
             if (!alreadyEnqueuedSteps.contains(step)) {
-                println("About to submit an execute job for step $step")
                 val future = executor.submit(getExecuteJob(step))
-                println("Submitted an execute job for step $step")
                 enqueuedJobTasks[step] = future
             }
         }
-        println("Done enqueueing")
         // TODO: What if something is getting removed? I guess the easy way is just to have management do the removal
         // TODO: Also cancel tasks that are no longer in nextSteps
         val nextStepsSet = nextSteps.toSet()
@@ -179,12 +187,10 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
 
         // TODO: This needs to make runnables for those steps and pass them to the executor (done)
-        println("Done with the management job")
     }
 
     private fun updateInputTimestampBarrier(input: TrickleInputChange, newTimestamp: Long) {
         // TODO: Is this done elsewhere? Should this be a utility method on TIC?
-        println("About to get valueIds")
         val valueIds = when (input) {
             is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
             // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
@@ -194,32 +200,25 @@ At some point, we may want to improve how this handles for single-threaded execu
             is TrickleInputChange.SetKeyed<*, *> -> listOf(ValueId.Keyed(input.nodeName, input.key),
                     ValueId.FullKeyedList(input.nodeName))
         }
-        println("Got valueIds: $valueIds")
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
         }
     }
 
     private fun unblockWaitingTimestampBarriers(valueId: ValueId, newTimestamp: Long) {
-        println("About to iterate over barriers")
         for (barrier in timestampBarriers.get(valueId)) {
             if (barrier.minTimestampWanted <= newTimestamp) {
-                println("About to count down")
                 barrier.latch.countDown()
-                println("Counted down")
                 timestampBarriers.remove(valueId, barrier)
             }
         }
-        println("Done iterating over barriers")
     }
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
-            println("Starting execute job for step $step")
             val result = step.execute()
 
             instance.reportResult(result)
-            println("Reported result for step $step")
 
             // Unblock things waiting on this result at this timestamp
             unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
@@ -300,6 +299,8 @@ At some point, we may want to improve how this handles for single-threaded execu
         // I think we'd have to first wait for the key list timestamp, then check the key list, then use that to figure
         // out which ValueId to wait for.
         // For now, try the simpler version of just waiting for the full keyed list.
+
+        // TODO: Problem here!!! Real problem here. Apparently.
         val valueId = when (initialValueId) {
             is ValueId.Nonkeyed -> initialValueId
             is ValueId.FullKeyList -> initialValueId
@@ -365,6 +366,7 @@ At some point, we may want to improve how this handles for single-threaded execu
          */
 
         if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
+//            print("Latest timestamp $rawMinTimestamp is not sufficient, will set up barrier\n")
             // TODO: Do something to wait longer until the new min timestamp is satisfied
             // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
             // However, we also want the values to be per-getOutcome and not shared for simplicity, right? So a multimap, but an actual
@@ -376,12 +378,16 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
                 // General case, we need to wait on the barrier
                 // TODO: Do we need to handle interruption here?
+//                print("Waiting on barrier for $valueId\n")
                 val gotLatch = timestampBarrier.latch.await(millisToWait - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS)
+//                print("Awoke from barrier\n")
+//                print(rawMinTimestamp)
                 if (!gotLatch) {
                     throw TimeoutException()
                 }
             } else {
                 // Rare case, don't bother waiting
+//                print("Not waiting on barrier\n")
                 timestampBarriers.remove(valueId, timestampBarrier)
             }
         }
