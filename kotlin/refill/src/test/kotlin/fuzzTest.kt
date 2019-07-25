@@ -19,6 +19,7 @@ class TrickleFuzzTests {
         System.out.flush()
     }
 
+
     private fun runSpecificTest(definitionSeed: Int, operationsSeed: Int) {
         val definition = getFuzzedDefinition(definitionSeed)
 
@@ -36,7 +37,8 @@ class TrickleFuzzTests {
 //                checkRawInstance2(definition.instantiateRaw(), script.operations)
 //                checkSyncInstance(definition.instantiateSync(), script.operations)
                 println(" *** Running test *** ")
-                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                checkAsyncInstance1b(definition, script.operations)
 //                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
                 System.out.flush()
@@ -319,6 +321,58 @@ class TrickleFuzzTests {
                 throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
         }
+    }
+
+
+    private fun checkAsyncInstance1b(definition: TrickleDefinition, operations: List<FuzzOperation>) {
+        val recordingRawInstance = RecordingRawInstance(definition.instantiateRaw())
+        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
+
+        // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
+        // thread and the queue preserves order so that the timestamps end up "later". It may be better to be able to
+        // submit a set or list of timestamps and require that it be after all of them.
+        // TODO: Revive the "single-timestamp" type as well
+//        var lastTimestamp: TrickleAsyncTimestamp? = null
+        val timestamps = ArrayList<TrickleAsyncTimestamp>()
+        for ((opIndex, op) in operations.withIndex()) {
+            try {
+                val unused: Any = when (op) {
+                    is FuzzOperation.SetBasic -> {
+                        timestamps.add(instance.setInput(op.name, op.value))
+                    }
+                    is FuzzOperation.AddKey -> {
+                        timestamps.add(instance.addKeyInput(op.name, op.key))
+                    }
+                    is FuzzOperation.RemoveKey -> {
+                        timestamps.add(instance.removeKeyInput(op.name, op.key))
+                    }
+                    is FuzzOperation.SetKeyList -> {
+                        timestamps.add(instance.setInput(op.name, op.value))
+                    }
+                    is FuzzOperation.SetKeyed -> {
+                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
+                    }
+                    is FuzzOperation.SetMultiple -> {
+                        timestamps.add(instance.setInputs(op.changes))
+                    }
+                    is FuzzOperation.CheckBasic -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                    }
+                    is FuzzOperation.CheckKeyList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                    }
+                    is FuzzOperation.CheckKeyedList -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                    }
+                    is FuzzOperation.CheckKeyedValue -> {
+                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                    }
+                }
+            } catch (t: Throwable) {
+                throw RuntimeException("Failed on operation #$opIndex: #$op\n\nRecording: ${recordingRawInstance.getRecording().joinToString("\n")}", t)
+            }
+        }
+        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
     }
 
     private fun checkAsyncInstance2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {

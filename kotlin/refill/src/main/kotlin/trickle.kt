@@ -200,9 +200,32 @@ sealed class TrickleInputChange {
     data class SetKeyed<K, T>(val nodeName: KeyedNodeName<K, T>, val key: K, val value: T): TrickleInputChange()
 }
 
+interface TrickleRawInstance {
+    fun setInputs(changes: List<TrickleInputChange>): Long
+    fun <T> setInput(nodeName: NodeName<T>, value: T): Long
+    fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long
+    fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
+    fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
+    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long
+    fun getNextSteps(): List<TrickleStep>
+    fun completeSynchronously()
+    fun reportResult(result: TrickleStepResult)
+    fun <T> getNodeValue(nodeName: NodeName<T>): T
+    fun <T> getNodeValue(nodeName: KeyListNodeName<T>): List<T>
+    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>, key: K): V
+    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>): List<V>
+    fun <T> getNodeOutcome(nodeName: NodeName<T>): NodeOutcome<T>
+    fun <T> getNodeOutcome(nodeName: KeyListNodeName<T>): NodeOutcome<List<T>>
+    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>, key: K): NodeOutcome<V>
+    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>): NodeOutcome<List<V>>
+    // TODO: Maybe remove this if unused?
+    fun getLastUpdateTimestamp(valueId: ValueId): Long
+    fun getLatestTimestampWithValue(valueId: ValueId): Long
+}
+
 // TODO: Synchronize stuff
 // TODO: Add methods to ask for a given result, but only after a given timestamp (block until available?)
-class TrickleInstance internal constructor(val definition: TrickleDefinition): TrickleInputReceiver {
+class TrickleInstance internal constructor(val definition: TrickleDefinition): TrickleRawInstance {
     // Used to ensure all results we receive originated from this instance
     class Id internal constructor()
     private val instanceId = Id()
@@ -589,7 +612,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     // or a combined notion of failure? One difference is that "catch" should only apply to errors, not missing inputs...
     // TODO: Update all nodes's "consistent" timestamps to curTimestamp if they're up-to-date
     @Synchronized
-    fun getNextSteps(): List<TrickleStep> {
+    override fun getNextSteps(): List<TrickleStep> {
         val nextSteps = ArrayList<TrickleStep>()
         val timeStampIfUpToDate = HashMap<ValueId, Long>()
         fun updateLatestConsistentTimestamp(valueId: ValueId) {
@@ -993,7 +1016,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     // Explicitly not synchronized
-    fun completeSynchronously() {
+    override fun completeSynchronously() {
         while (true) {
             val nextSteps = getNextSteps()
             if (nextSteps.isEmpty()) {
@@ -1007,7 +1030,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     @Synchronized
-    fun reportResult(result: TrickleStepResult) {
+    override fun reportResult(result: TrickleStepResult) {
         if (instanceId != result.instanceId) {
             throw IllegalArgumentException("Received a result that did not originate from this instance")
         }
@@ -1078,7 +1101,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     @Synchronized
-    fun <T> getNodeValue(nodeName: NodeName<T>): T {
+    override fun <T> getNodeValue(nodeName: NodeName<T>): T {
         val outcome = getNodeOutcome(nodeName)
         when (outcome) {
             is NodeOutcome.Computed -> {
@@ -1110,24 +1133,24 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 
     // TODO: Descriptive exceptions
     @Synchronized
-    fun <T> getNodeValue(nodeName: KeyListNodeName<T>): List<T> {
+    override fun <T> getNodeValue(nodeName: KeyListNodeName<T>): List<T> {
         return (getNodeOutcome(nodeName) as NodeOutcome.Computed).value
     }
 
     // TODO: Descriptive exceptions
     @Synchronized
-    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>, key: K): V {
+    override fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>, key: K): V {
         return (getNodeOutcome(nodeName, key) as NodeOutcome.Computed).value
     }
 
     // TODO: Descriptive exceptions
     @Synchronized
-    fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>): List<V> {
+    override fun <K, V> getNodeValue(nodeName: KeyedNodeName<K, V>): List<V> {
         return (getNodeOutcome(nodeName) as NodeOutcome.Computed).value
     }
 
     @Synchronized
-    fun <T> getNodeOutcome(nodeName: NodeName<T>): NodeOutcome<T> {
+    override fun <T> getNodeOutcome(nodeName: NodeName<T>): NodeOutcome<T> {
         if (!definition.nonkeyedNodes.containsKey(nodeName)) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
@@ -1143,7 +1166,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     @Synchronized
-    fun <T> getNodeOutcome(nodeName: KeyListNodeName<T>): NodeOutcome<List<T>> {
+    override fun <T> getNodeOutcome(nodeName: KeyListNodeName<T>): NodeOutcome<List<T>> {
         if (!definition.keyListNodes.containsKey(nodeName)) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
         }
@@ -1163,7 +1186,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     @Synchronized
-    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>, key: K): NodeOutcome<V> {
+    override fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>, key: K): NodeOutcome<V> {
         val nodeDefinition = definition.keyedNodes[nodeName]
         if (nodeDefinition == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
@@ -1191,7 +1214,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
     }
 
     @Synchronized
-    fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>): NodeOutcome<List<V>> {
+    override fun <K, V> getNodeOutcome(nodeName: KeyedNodeName<K, V>): NodeOutcome<List<V>> {
         val nodeDefinition = definition.keyedNodes[nodeName]
         if (nodeDefinition == null) {
             throw IllegalArgumentException("Unrecognized node name $nodeName")
@@ -1244,7 +1267,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
      * This does not update as unrelated inputs nodes change.
      */
     @Synchronized
-    fun getLastUpdateTimestamp(valueId: ValueId): Long {
+    override fun getLastUpdateTimestamp(valueId: ValueId): Long {
         val value = values[valueId]
         return if (value == null) {
             -1L
@@ -1259,7 +1282,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
      * This can update as unrelated input nodes change.
      */
     @Synchronized
-    fun getLatestTimestampWithValue(valueId: ValueId): Long {
+    override fun getLatestTimestampWithValue(valueId: ValueId): Long {
         val value = values[valueId]
         return if (value == null) {
             -1L
@@ -1354,7 +1377,7 @@ class TrickleStep internal constructor(
     }
 }
 
-class TrickleStepResult internal constructor(
+data class TrickleStepResult internal constructor(
     val valueId: ValueId,
     val timestamp: Long,
     val instanceId: TrickleInstance.Id,
@@ -1404,3 +1427,4 @@ internal class TrickleKeyedNode<K, T>(
         }
     }
 }
+

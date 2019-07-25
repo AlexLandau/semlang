@@ -43,8 +43,7 @@ class TrickleAsyncTimestamp
 
 data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
 
-// TODO: Separate into an interface (to be returned by the TrickleDefinition) and a class
-class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
+class TrickleAsyncInstance(private val instance: TrickleRawInstance, private val executor: ExecutorService) {
     // Use with care; note the use of synchronizedMap.
     // Keys should be added by the instantiator of the async timestamp.
     // Keys will be removed by garbage collection only.
