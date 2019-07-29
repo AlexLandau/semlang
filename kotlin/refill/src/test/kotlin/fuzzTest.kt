@@ -448,7 +448,7 @@ class TrickleFuzzTests {
                 throw RuntimeException("Failed on operation #$opIndex: #$op\n\nRecording: ${recordingRawInstance.getRecording().joinToString("\n")}", t)
             }
         }
-        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
+//        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
     }
 
     private fun checkAsyncInstance2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {

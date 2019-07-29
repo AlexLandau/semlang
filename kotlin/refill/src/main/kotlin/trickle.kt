@@ -837,125 +837,127 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 //                        val keyList = values[fullKeyListId]!!.getValue() as KeyList<*>
 
                         for (key in keyList.list) {
-                            if (node.operation == null) {
-                                // This keyed node is an input
-                                val keyedInputValueId = ValueId.Keyed(nodeName, key)
+//                            if (node.operation == null) {
+//                                // This keyed node is an input
+//                                val keyedInputValueId = ValueId.Keyed(nodeName, key)
+//
+//                                val timestamp = values[keyedInputValueId]?.getTimestamp() ?: -1L
+//                                if (timestamp >= 0L) {
+//                                    timeStampIfUpToDate[keyedInputValueId] = timestamp
+//                                    updateLatestConsistentTimestamp(keyedInputValueId)
+//                                    val failure = values[keyedInputValueId]!!.getFailure()
+//                                    if (failure != null) {
+//                                        allInputFailuresAcrossAllKeys.add(failure)
+//                                    }
+//                                } else {
+////                                    anyKeyedValueNotUpToDate = true
+//
+//                                    val failure = TrickleFailure(mapOf(), setOf(keyedInputValueId))
+//
+//                                    setValue(keyedInputValueId, keyListHolder.getTimestamp(), null, failure)
+//                                    timeStampIfUpToDate[keyedInputValueId] = keyListHolder.getTimestamp()
+//                                    updateLatestConsistentTimestamp(keyedInputValueId)
+//
+//                                    allInputFailuresAcrossAllKeys.add(failure)
+//                                }
+//                                maximumInputTimestampAcrossAllKeys = Math.max(maximumInputTimestampAcrossAllKeys, timestamp)
+//                            } else {
 
-                                val timestamp = values[keyedInputValueId]?.getTimestamp() ?: -1L
-                                if (timestamp >= 0L) {
-                                    timeStampIfUpToDate[keyedInputValueId] = timestamp
-                                    updateLatestConsistentTimestamp(keyedInputValueId)
-                                    val failure = values[keyedInputValueId]!!.getFailure()
-                                    if (failure != null) {
-                                        allInputFailuresAcrossAllKeys.add(failure)
-                                    }
-                                } else {
-//                                    anyKeyedValueNotUpToDate = true
-
-                                    val failure = TrickleFailure(mapOf(), setOf(keyedInputValueId))
-
-                                    setValue(keyedInputValueId, keyListHolder.getTimestamp(), null, failure)
-                                    timeStampIfUpToDate[keyedInputValueId] = keyListHolder.getTimestamp()
-                                    updateLatestConsistentTimestamp(keyedInputValueId)
-
-                                    allInputFailuresAcrossAllKeys.add(failure)
-                                }
-                                maximumInputTimestampAcrossAllKeys = Math.max(maximumInputTimestampAcrossAllKeys, timestamp)
-                            } else {
-
-                                var anyInputNotUpToDate = false
-                                var maximumInputTimestamp = -1L
-                                val inputValues = ArrayList<Any?>()
-                                val inputFailures = ArrayList<TrickleFailure>()
-                                for (input in node.inputs) {
-                                    val unkeyedInputValueId = getValueIdFromInput(input, key)
-                                    val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
-                                    if (timeStampMaybe == null) {
-                                        anyInputNotUpToDate = true
-                                        anyKeyedValueNotUpToDate = true
+                            var anyInputNotUpToDate = false
+//                            var maximumInputTimestamp = -1L
+                            var maximumInputTimestamp = values.getValue(ValueId.KeyListKey(keySourceName, key)).getTimestamp()
+//                            println("Maximum timestamp from key timestamp: $maximumInputTimestamp")
+                            val inputValues = ArrayList<Any?>()
+                            val inputFailures = ArrayList<TrickleFailure>()
+                            for (input in node.inputs) {
+                                val unkeyedInputValueId = getValueIdFromInput(input, key)
+                                val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
+                                if (timeStampMaybe == null) {
+                                    anyInputNotUpToDate = true
+                                    anyKeyedValueNotUpToDate = true
 //                                        if (node.name.name == "keyed3") {
 //                                            println("Not up-to-date 1: $unkeyedInputValueId")
 //                                        }
+                                } else {
+                                    maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
+                                    val contents = values[unkeyedInputValueId]!!
+                                    val failure = contents.getFailure()
+                                    if (failure != null) {
+                                        inputFailures.add(failure)
                                     } else {
-                                        maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
-                                        val contents = values[unkeyedInputValueId]!!
-                                        val failure = contents.getFailure()
-                                        if (failure != null) {
-                                            inputFailures.add(failure)
+                                        // Transform KeyLists into Lists
+                                        if (input is TrickleInput.KeyList<*>) {
+                                            inputValues.add((contents.getValue() as KeyList<*>).asList())
                                         } else {
-                                            // Transform KeyLists into Lists
-                                            if (input is TrickleInput.KeyList<*>) {
-                                                inputValues.add((contents.getValue() as KeyList<*>).asList())
-                                            } else {
-                                                inputValues.add(contents.getValue())
-                                            }
+                                            inputValues.add(contents.getValue())
                                         }
                                     }
                                 }
-                                maximumInputTimestampAcrossAllKeys =
-                                    Math.max(maximumInputTimestampAcrossAllKeys, maximumInputTimestamp)
-                                allInputFailuresAcrossAllKeys.addAll(inputFailures)
-                                val keyedValueId = ValueId.Keyed(nodeName, key)
-                                if (!anyInputNotUpToDate) {
-                                    // All inputs are up-to-date
-                                    if (inputFailures.isNotEmpty()) {
-                                        // Aggregate the failures for reporting
-                                        val curValueTimestamp = values[keyedValueId]?.getTimestamp()
-                                        if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
-                                            val newFailure = combineFailures(inputFailures)
+                            }
+                            maximumInputTimestampAcrossAllKeys =
+                                Math.max(maximumInputTimestampAcrossAllKeys, maximumInputTimestamp)
+                            allInputFailuresAcrossAllKeys.addAll(inputFailures)
+                            val keyedValueId = ValueId.Keyed(nodeName, key)
+                            if (!anyInputNotUpToDate) {
+                                // All inputs are up-to-date
+                                if (inputFailures.isNotEmpty()) {
+                                    // Aggregate the failures for reporting
+                                    val curValueTimestamp = values[keyedValueId]?.getTimestamp()
+                                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                                        val newFailure = combineFailures(inputFailures)
 
-                                            val onCatch = node.onCatch
-                                            if (onCatch != null) {
-                                                nextSteps.add(
-                                                    TrickleStep(
-                                                        keyedValueId,
-                                                        maximumInputTimestamp,
-                                                        instanceId,
-                                                        { onCatch(newFailure) })
-                                                )
-                                                anyKeyedValueNotUpToDate = true
-//                                                if (node.name.name == "keyed3") {
-//                                                    println("Not up-to-date 2: $keyedValueId")
-//                                                }
-                                            } else {
-                                                setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
-                                                //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
-                                                timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
-                                                updateLatestConsistentTimestamp(keyedValueId)
-                                            }
-                                        } else if (curValueTimestamp > maximumInputTimestamp) {
-                                            error("This should never happen")
-                                        } else {
-                                            timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
-                                            updateLatestConsistentTimestamp(keyedValueId)
-                                        }
-                                    } else {
-                                        val curValueTimestamp = values[keyedValueId]?.getTimestamp()
-                                        if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
-                                            // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
-
-                                            val operation = node.operation as (Any?, List<*>) -> Any?
+                                        val onCatch = node.onCatch
+                                        if (onCatch != null) {
                                             nextSteps.add(
                                                 TrickleStep(
                                                     keyedValueId,
                                                     maximumInputTimestamp,
                                                     instanceId,
-                                                    { operation(key, inputValues) })
+                                                    { onCatch(newFailure) })
                                             )
                                             anyKeyedValueNotUpToDate = true
+//                                                if (node.name.name == "keyed3") {
+//                                                    println("Not up-to-date 2: $keyedValueId")
+//                                                }
+                                        } else {
+                                            setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
+                                            //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
+                                            timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                            updateLatestConsistentTimestamp(keyedValueId)
+                                        }
+                                    } else if (curValueTimestamp > maximumInputTimestamp) {
+                                        error("This should never happen")
+                                    } else {
+                                        timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
+                                        updateLatestConsistentTimestamp(keyedValueId)
+                                    }
+                                } else {
+                                    val curValueTimestamp = values[keyedValueId]?.getTimestamp()
+                                    if (curValueTimestamp == null || curValueTimestamp < maximumInputTimestamp) {
+                                        // We should compute this (pass in the maximumInputTimestamp and the appropriate input values)
+
+                                        val operation = node.operation as (Any?, List<*>) -> Any?
+                                        nextSteps.add(
+                                            TrickleStep(
+                                                keyedValueId,
+                                                maximumInputTimestamp,
+                                                instanceId,
+                                                { operation(key, inputValues) })
+                                        )
+                                        anyKeyedValueNotUpToDate = true
 //                                            if (node.name.name == "keyed3") {
 //                                                println("Not up-to-date 3: $keyedValueId")
 //                                            }
-                                        } else if (curValueTimestamp > maximumInputTimestamp) {
-                                            error("This should never happen")
-                                        } else {
-                                            // Report this as being up-to-date for future things
-                                            timeStampIfUpToDate[keyedValueId] = curValueTimestamp
-                                            updateLatestConsistentTimestamp(keyedValueId)
-                                        }
+                                    } else if (curValueTimestamp > maximumInputTimestamp) {
+                                        error("This should never happen")
+                                    } else {
+                                        // Report this as being up-to-date for future things
+                                        timeStampIfUpToDate[keyedValueId] = curValueTimestamp
+                                        updateLatestConsistentTimestamp(keyedValueId)
                                     }
                                 }
                             }
+//                            }
 //                            TODO()
                         }
                         // TODO: Remove values for non-up-to-date keys
