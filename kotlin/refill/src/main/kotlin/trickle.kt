@@ -189,7 +189,7 @@ interface TrickleInputReceiver {
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
-    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long
+//    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long
 }
 
 sealed class TrickleInputChange {
@@ -198,7 +198,7 @@ sealed class TrickleInputChange {
     data class SetKeys<T>(override val nodeName: KeyListNodeName<T>, val value: List<T>): TrickleInputChange()
     data class AddKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
     data class RemoveKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
-    data class SetKeyed<K, T>(override val nodeName: KeyedNodeName<K, T>, val key: K, val value: T): TrickleInputChange()
+//    data class SetKeyed<K, T>(override val nodeName: KeyedNodeName<K, T>, val key: K, val value: T): TrickleInputChange()
 }
 
 interface TrickleRawInstance {
@@ -207,7 +207,7 @@ interface TrickleRawInstance {
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
-    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long
+//    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long
     fun getNextSteps(): List<TrickleStep>
     fun completeSynchronously()
     fun reportResult(result: TrickleStepResult)
@@ -291,7 +291,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
             is TrickleInputChange.SetKeys<*> -> applySetKeysChange(change, newTimestamp)
             is TrickleInputChange.AddKey<*> -> applyAddKeyChange(change, newTimestamp)
             is TrickleInputChange.RemoveKey<*> -> applyRemoveKeyChange(change, newTimestamp)
-            is TrickleInputChange.SetKeyed<*, *> -> applySetKeyedChange(change, newTimestamp)
+//            is TrickleInputChange.SetKeyed<*, *> -> applySetKeyedChange(change, newTimestamp)
         }
     }
 
@@ -338,17 +338,17 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                 }
                 null
             }
-            is TrickleInputChange.SetKeyed<*, *> -> {
-                val node = definition.keyedNodes[change.nodeName]
-                // TODO: Write tests for these error cases
-                if (node == null) {
-                    throw IllegalArgumentException("Unrecognized node name ${change.nodeName}")
-                }
-                if (node.operation != null) {
-                    throw IllegalArgumentException("Cannot directly modify the value of a non-input node ${change.nodeName}")
-                }
-                null
-            }
+//            is TrickleInputChange.SetKeyed<*, *> -> {
+//                val node = definition.keyedNodes[change.nodeName]
+//                // TODO: Write tests for these error cases
+//                if (node == null) {
+//                    throw IllegalArgumentException("Unrecognized node name ${change.nodeName}")
+//                }
+//                if (node.operation != null) {
+//                    throw IllegalArgumentException("Cannot directly modify the value of a non-input node ${change.nodeName}")
+//                }
+//                null
+//            }
         }
     }
 
@@ -538,57 +538,57 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
     }
 
-    @Synchronized
-    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
-        val node = definition.keyedNodes[nodeName]
-        // TODO: Write tests for these error cases
-        if (node == null) {
-            throw IllegalArgumentException("Unrecognized node name $nodeName")
-        }
-        if (node.operation != null) {
-            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
-        }
+//    @Synchronized
+//    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
+//        val node = definition.keyedNodes[nodeName]
+//        // TODO: Write tests for these error cases
+//        if (node == null) {
+//            throw IllegalArgumentException("Unrecognized node name $nodeName")
+//        }
+//        if (node.operation != null) {
+//            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
+//        }
+//
+//        // If the key doesn't exist, ignore this
+//        val keyListValueId = ValueId.FullKeyList(node.keySourceName)
+//        val keyListValueHolder = values[keyListValueId]!!
+//
+//        if (keyListValueHolder.getValue() == null) {
+//            error("Internal error: The key list should be an input and therefore should already have a value holder")
+//        } else if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+//            // Ignore this input
+//            return curTimestamp
+//        }
+//
+//        val keyedValueId = ValueId.Keyed(nodeName, key)
+//
+//        curTimestamp++
+//        setValue(keyedValueId, curTimestamp, value, null)
+//        return curTimestamp
+//    }
 
-        // If the key doesn't exist, ignore this
-        val keyListValueId = ValueId.FullKeyList(node.keySourceName)
-        val keyListValueHolder = values[keyListValueId]!!
-
-        if (keyListValueHolder.getValue() == null) {
-            error("Internal error: The key list should be an input and therefore should already have a value holder")
-        } else if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
-            // Ignore this input
-            return curTimestamp
-        }
-
-        val keyedValueId = ValueId.Keyed(nodeName, key)
-
-        curTimestamp++
-        setValue(keyedValueId, curTimestamp, value, null)
-        return curTimestamp
-    }
-
-    @Synchronized
-    private fun <K, T> applySetKeyedChange(change: TrickleInputChange.SetKeyed<K, T>, newTimestamp: Long): Boolean {
-        val (nodeName, key, value) = change
-        val node = definition.keyedNodes[nodeName]!!
-
-        // If the key doesn't exist, ignore this
-        val keyListValueId = ValueId.FullKeyList(node.keySourceName)
-        val keyListValueHolder = values[keyListValueId]!!
-
-        if (keyListValueHolder.getValue() == null) {
-            error("Internal error: The key list should be an input and therefore should already have a value holder")
-        } else if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
-            // Ignore this input
-            return false
-        }
-
-        val keyedValueId = ValueId.Keyed(nodeName, key)
-
-        // TODO: Maybe don't register a change in some cases if the new value is the same or value-equals
-        setValue(keyedValueId, newTimestamp, value, null)
-        return true
-    }
+//    @Synchronized
+//    private fun <K, T> applySetKeyedChange(change: TrickleInputChange.SetKeyed<K, T>, newTimestamp: Long): Boolean {
+//        val (nodeName, key, value) = change
+//        val node = definition.keyedNodes[nodeName]!!
+//
+//        // If the key doesn't exist, ignore this
+//        val keyListValueId = ValueId.FullKeyList(node.keySourceName)
+//        val keyListValueHolder = values[keyListValueId]!!
+//
+//        if (keyListValueHolder.getValue() == null) {
+//            error("Internal error: The key list should be an input and therefore should already have a value holder")
+//        } else if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+//            // Ignore this input
+//            return false
+//        }
+//
+//        val keyedValueId = ValueId.Keyed(nodeName, key)
+//
+//        // TODO: Maybe don't register a change in some cases if the new value is the same or value-equals
+//        setValue(keyedValueId, newTimestamp, value, null)
+//        return true
+//    }
 
     /*
     Go through each node in topological order
@@ -1433,16 +1433,16 @@ internal class TrickleKeyedNode<K, T>(
     val name: KeyedNodeName<K, T>,
     val keySourceName: KeyListNodeName<K>,
     val inputs: List<TrickleInput<*>>,
-    val operation: ((K, List<*>) -> T)?,
+    val operation: (K, List<*>) -> T,
     val onCatch: ((TrickleFailure) -> T)?
 ) {
-    init {
-        if (operation == null) {
-            error("Keyed input nodes are not allowed")
-        }
-        if (operation == null && inputs.isNotEmpty()) {
-            error("Internal error: When operation is null (input node), inputs should be empty")
-        }
-    }
+//    init {
+//        if (operation == null) {
+//            error("Keyed input nodes are not allowed")
+//        }
+//        if (operation == null && inputs.isNotEmpty()) {
+//            error("Internal error: When operation is null (input node), inputs should be empty")
+//        }
+//    }
 }
 

@@ -150,7 +150,7 @@ class TrickleFuzzTests {
                 is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.AddKey(operation.name, operation.key))
                 is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.RemoveKey(operation.name, operation.key))
                 is FuzzOperation.SetKeyList -> curGroup.add(TrickleInputChange.SetKeys(operation.name, operation.value))
-                is FuzzOperation.SetKeyed -> curGroup.add(TrickleInputChange.SetKeyed(operation.name, operation.key, operation.value))
+//                is FuzzOperation.SetKeyed -> curGroup.add(TrickleInputChange.SetKeyed(operation.name, operation.key, operation.value))
                 is FuzzOperation.SetMultiple -> curGroup.addAll(operation.changes)
                 is FuzzOperation.CheckBasic -> {
                     flushCurGroup()
@@ -190,9 +190,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        instance.setKeyedInput(op.name, op.key, op.value)
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        instance.setKeyedInput(op.name, op.key, op.value)
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
                     }
@@ -237,10 +237,10 @@ class TrickleFuzzTests {
                         instance.setInput(op.name, op.value)
                         instance.completeSynchronously()
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        instance.setKeyedInput(op.name, op.key, op.value)
-                        instance.completeSynchronously()
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+////                        instance.setKeyedInput(op.name, op.key, op.value)
+//                        instance.completeSynchronously()
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
                         instance.completeSynchronously()
@@ -280,9 +280,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        instance.setKeyedInput(op.name, op.key, op.value)
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        instance.setKeyedInput(op.name, op.key, op.value)
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
                     }
@@ -325,9 +325,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        instance.setKeyedInput(op.name, op.key, op.value)
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        instance.setKeyedInput(op.name, op.key, op.value)
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
                     }
@@ -373,9 +373,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         timestamps.add(instance.setInput(op.name, op.value))
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         timestamps.add(instance.setInputs(op.changes))
                     }
@@ -425,9 +425,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         timestamps.add(instance.setInput(op.name, op.value))
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         timestamps.add(instance.setInputs(op.changes))
                     }
@@ -473,9 +473,9 @@ class TrickleFuzzTests {
                     is FuzzOperation.SetKeyList -> {
                         timestamp = instance.setInput(op.name, op.value)
                     }
-                    is FuzzOperation.SetKeyed -> {
-                        timestamp = instance.setKeyedInput(op.name, op.key, op.value)
-                    }
+//                    is FuzzOperation.SetKeyed -> {
+//                        timestamp = instance.setKeyedInput(op.name, op.key, op.value)
+//                    }
                     is FuzzOperation.SetMultiple -> {
                         timestamp = instance.setInputs(op.changes)
                     }
@@ -525,7 +525,7 @@ sealed class FuzzOperation {
     data class AddKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
     data class RemoveKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
     data class SetKeyList(val name: KeyListNodeName<Int>, val value: List<Int>) : FuzzOperation()
-    data class SetKeyed(val name: KeyedNodeName<Int, Int>, val key: Int, val value: Int) : FuzzOperation()
+//    data class SetKeyed(val name: KeyedNodeName<Int, Int>, val key: Int, val value: Int) : FuzzOperation()
     data class SetMultiple(val changes: List<TrickleInputChange>): FuzzOperation()
     data class CheckBasic(val name: NodeName<Int>, val outcome: NodeOutcome<Int>) : FuzzOperation()
     data class CheckKeyList(val name: KeyListNodeName<Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
@@ -612,7 +612,7 @@ fun toOperation(change: TrickleInputChange): FuzzOperation {
         is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
         is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
         is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-        is TrickleInputChange.SetKeyed<*, *> -> FuzzOperation.SetKeyed(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
+//        is TrickleInputChange.SetKeyed<*, *> -> FuzzOperation.SetKeyed(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
     }
 }
 
@@ -656,30 +656,30 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
                 return TrickleInputChange.SetKeys(nodeName, newList)
             }
         }
-        is KeyedNodeName<*, *> -> {
-            val nodeName = inputName as KeyedNodeName<Int, Int>
-            val keySourceName = definition.keyedNodes.getValue(nodeName).keySourceName
-            val curKeyListOutcome = rawInstance.getNodeOutcome(keySourceName)
-            val curKeyList = when (curKeyListOutcome) {
-                is NodeOutcome.NotYetComputed -> listOf(0)
-                is NodeOutcome.Computed -> curKeyListOutcome.value as List<Int>
-                is NodeOutcome.Failure -> listOf(-1)
-                is NodeOutcome.NoSuchKey -> listOf(2)
-            }
-            // Look at the _ to find a thing to set
-            val keyedRoll = random.nextDouble()
-            val key = if (keyedRoll < 0.05) {
-                // Use a random key value
-                random.nextInt(100)
-            } else {
-                // Look up an existing key
-                curKeyList.getAtRandom(random, { 1 })
-            }
-
-            val valueToSet = random.nextInt(100)
-            rawInstance.setKeyedInput(nodeName, key, valueToSet)
-            return TrickleInputChange.SetKeyed(nodeName, key, valueToSet)
-        }
+//        is KeyedNodeName<*, *> -> {
+//            val nodeName = inputName as KeyedNodeName<Int, Int>
+//            val keySourceName = definition.keyedNodes.getValue(nodeName).keySourceName
+//            val curKeyListOutcome = rawInstance.getNodeOutcome(keySourceName)
+//            val curKeyList = when (curKeyListOutcome) {
+//                is NodeOutcome.NotYetComputed -> listOf(0)
+//                is NodeOutcome.Computed -> curKeyListOutcome.value as List<Int>
+//                is NodeOutcome.Failure -> listOf(-1)
+//                is NodeOutcome.NoSuchKey -> listOf(2)
+//            }
+//            // Look at the _ to find a thing to set
+//            val keyedRoll = random.nextDouble()
+//            val key = if (keyedRoll < 0.05) {
+//                // Use a random key value
+//                random.nextInt(100)
+//            } else {
+//                // Look up an existing key
+//                curKeyList.getAtRandom(random, { 1 })
+//            }
+//
+//            val valueToSet = random.nextInt(100)
+//            rawInstance.setKeyedInput(nodeName, key, valueToSet)
+//            return TrickleInputChange.SetKeyed(nodeName, key, valueToSet)
+//        }
         else -> error("Unexpected situation")
     }
 }

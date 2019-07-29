@@ -275,7 +275,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                 is TrickleInputChange.SetKeys<*> -> setInput(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
                 is TrickleInputChange.AddKey<*> -> addKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
                 is TrickleInputChange.RemoveKey<*> -> removeKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-                is TrickleInputChange.SetKeyed<*, *> -> setKeyedInput(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
+//                is TrickleInputChange.SetKeyed<*, *> -> setKeyedInput(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
             }
         }
     }

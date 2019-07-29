@@ -60,17 +60,17 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         return result
     }
 
-    @Synchronized
-    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
-        records.add("Calling setKeyedInput")
-        records.add("  nodeName: $nodeName")
-        records.add("  key: $key")
-        records.add("  value: $value")
-        val result = delegate.setKeyedInput(nodeName, key, value)
-        records.add("  result: $result")
-        records.add("  list4: ${delegate.getList4Value()}")
-        return result
-    }
+//    @Synchronized
+//    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
+//        records.add("Calling setKeyedInput")
+//        records.add("  nodeName: $nodeName")
+//        records.add("  key: $key")
+//        records.add("  value: $value")
+//        val result = delegate.setKeyedInput(nodeName, key, value)
+//        records.add("  result: $result")
+//        records.add("  list4: ${delegate.getList4Value()}")
+//        return result
+//    }
 
     @Synchronized
     override fun getNextSteps(): List<TrickleStep> {

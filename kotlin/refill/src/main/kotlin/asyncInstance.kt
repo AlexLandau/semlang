@@ -204,8 +204,8 @@ At some point, we may want to improve how this handles for single-threaded execu
             is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
             is TrickleInputChange.AddKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
             is TrickleInputChange.RemoveKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-            is TrickleInputChange.SetKeyed<*, *> -> listOf(ValueId.Keyed(input.nodeName, input.key),
-                    ValueId.FullKeyedList(input.nodeName))
+//            is TrickleInputChange.SetKeyed<*, *> -> listOf(ValueId.Keyed(input.nodeName, input.key),
+//                    ValueId.FullKeyedList(input.nodeName))
         }
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
@@ -288,9 +288,9 @@ At some point, we may want to improve how this handles for single-threaded execu
         return setInputs(listOf(TrickleInputChange.RemoveKey(nodeName, key)))
     }
 
-    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, key, value)))
-    }
+//    fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): TrickleAsyncTimestamp {
+//        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, key, value)))
+//    }
 
     // TODO: Add a variant that waits a limited amount of time
     // TODO: We actually want to accept a variable number of these timestamps
