@@ -162,7 +162,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // all the ones we're waiting on
         for ((valueId, barrier) in timestampBarriers.getAll()) {
             val curTimestamp = instance.getLatestTimestampWithValue(valueId)
-            println("Checking barrier for value ID $valueId; our actual timestamp is $curTimestamp")
+//            println("Checking barrier for value ID $valueId; our actual timestamp is $curTimestamp")
             if (curTimestamp >= barrier.minTimestampWanted) {
                 barrier.latch.countDown()
                 timestampBarriers.remove(valueId, barrier)
@@ -216,11 +216,11 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
-            println("Running execute job for $step")
+//            println("Running execute job for $step")
             val result = step.execute()
 
             instance.reportResult(result)
-            println("Reported result for $step")
+//            println("Reported result for $step")
 
             // Unblock things waiting on this result at this timestamp
             unblockWaitingTimestampBarriers(result.valueId, result.timestamp)

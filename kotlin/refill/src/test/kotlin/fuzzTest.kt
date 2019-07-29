@@ -36,7 +36,7 @@ class TrickleFuzzTests {
 //                checkRawInstance1(definition.instantiateRaw(), script.operations)
 //                checkRawInstance2(definition.instantiateRaw(), script.operations)
 //                checkSyncInstance(definition.instantiateSync(), script.operations)
-                println(" *** Running test *** ")
+//                println(" *** Running test *** ")
 //                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstance1b(definition, script.operations)
 //                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
@@ -82,6 +82,7 @@ class TrickleFuzzTests {
 //                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
 
                             // TODO: Maybe multiple rounds of this?
+                            // TODO: Document this as a principle of the design
                             val inputsReorderedOperations = reorderInputs(script.operations, Random(0L))
                             try {
                                 checkReferenceInstance(ReferenceInstance(definition), inputsReorderedOperations)
@@ -447,7 +448,7 @@ class TrickleFuzzTests {
                 throw RuntimeException("Failed on operation #$opIndex: #$op\n\nRecording: ${recordingRawInstance.getRecording().joinToString("\n")}", t)
             }
         }
-        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
+//        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
     }
 
     private fun checkAsyncInstance2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
@@ -779,21 +780,21 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val keySource = existingKeyListNodes.getAtRandom(random, { error("This shouldn't be empty") })
 
         // We put input generation here instead of with the other inputs because it relied on key lists already existing.
-        val makeInput = if (keySource.name.name.contains("Input")) {
-            random.nextDouble() < 0.5
-        } else {
-            // The test is slightly hacky, but keyed inputs can only have input key lists as their key sources
-            false
-        }
-        val name = KeyedNodeName<Int, Int>(if (makeInput) "keyedInput$i" else "keyed$i")
+//        val makeInput = if (keySource.name.name.contains("Input")) {
+//            random.nextDouble() < 0.5
+//        } else {
+//            // The test is slightly hacky, but keyed inputs can only have input key lists as their key sources
+//            false
+//        }
+        val name = KeyedNodeName<Int, Int>("keyed$i")
 
-        if (makeInput) {
-            val node = builder.createKeyedInputNode(name, keySource)
-            existingNodes.add(name)
-            existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
-            unkeyedInputs.add(node.fullOutput())
-            return
-        }
+//        if (makeInput) {
+//            val node = builder.createKeyedInputNode(name, keySource)
+//            existingNodes.add(name)
+//            existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
+//            unkeyedInputs.add(node.fullOutput())
+//            return
+//        }
 
         val possibleInputs = ArrayList<TrickleInput<*>>()
         possibleInputs.addAll(unkeyedInputs)
