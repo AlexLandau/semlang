@@ -1291,6 +1291,20 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
             value.getLatestConsistentTimestamp()
         }
     }
+
+    fun getList4Value(): String {
+        for (keyName in definition.keyedNodes.keys) {
+            if (keyName.name == "keyed3") {
+                return values[ValueId.Keyed(keyName, 73)]?.toString() ?: ""
+            }
+        }
+//        for (keyName in definition.keyListNodes.keys) {
+//            if (keyName.name == "list4") {
+//                return values[ValueId.FullKeyList(keyName)]?.toString() ?: ""
+//            }
+//        }
+        return ""
+    }
 }
 
 sealed class NodeOutcome<T> {

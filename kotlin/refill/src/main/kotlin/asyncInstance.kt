@@ -125,6 +125,7 @@ At some point, we may want to improve how this handles for single-threaded execu
     private fun runManagement() {
         // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
 
+        println("[MGR] Starting management job...")
         // TODO:
         val inputsToAdd = ArrayList<TimestampedInput>()
         inputsQueue.drainTo(inputsToAdd)
@@ -174,6 +175,7 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (!alreadyEnqueuedSteps.contains(step)) {
                 val future = executor.submit(getExecuteJob(step))
                 enqueuedJobTasks[step] = future
+                println("[MGR] Submitted task ${step}")
             }
         }
         // TODO: What if something is getting removed? I guess the easy way is just to have management do the removal
@@ -185,6 +187,11 @@ At some point, we may want to improve how this handles for single-threaded execu
                 enqueuedJobTasks.remove(step)
             }
         }
+
+        println("[MGR] Next steps: ${nextSteps}")
+        println("[MGR] Enqueued tasks: ${enqueuedJobTasks.keys}")
+
+        println("[MGR] Done with management job")
 
         // TODO: This needs to make runnables for those steps and pass them to the executor (done)
     }
@@ -216,14 +223,24 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
+            println("[EXC] Running task ${step}")
 //            println("Running execute job for $step")
-            val result = step.execute()
+            try {
+                val result = step.execute()
 
-            instance.reportResult(result)
+                instance.reportResult(result)
+                println("[EXC] Reported result for task ${step}")
+                unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
+                println("[EXC] Unblocked barriers for task ${step}")
+
+            } catch (t: Throwable) {
+                println("*********** execution threw ************* ${t.message}")
+            }
+
+
 //            println("Reported result for $step")
 
             // Unblock things waiting on this result at this timestamp
-            unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
             /*
             TODO: Design flaw here...
             There are certain cases (e.g. failure outcomes where something upstream threw) where timestamps update during
@@ -235,7 +252,10 @@ At some point, we may want to improve how this handles for single-threaded execu
             // TODO: Support listeners, by either invoking them here or enqueueing new runnables for them
 
             // Trigger the management job in case new steps are available
+//            println("[EXC] Finished an execute job, enqueueing management")
             enqueueManagementJob()
+            println("[EXC] Enqueued MGR after ${step}")
+
         }
     }
 
@@ -291,6 +311,7 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     private fun waitForTimestamp(initialValueId: ValueId, minTimestamps: Collection<TrickleAsyncTimestamp>, timeToWait: Long, timeUnits: TimeUnit) {
+//        Thread.sleep(100)
         val millisToWait = timeUnits.toMillis(timeToWait)
         val startTime = System.currentTimeMillis()
 

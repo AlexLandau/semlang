@@ -12,6 +12,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  changes: $changes")
         val result = delegate.setInputs(changes)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -22,6 +23,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  value: $value")
         val result = delegate.setInput(nodeName, value)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -32,6 +34,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  list: $list")
         val result = delegate.setInput(nodeName, list)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -42,6 +45,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  key: $key")
         val result = delegate.addKeyInput(nodeName, key)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -52,6 +56,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  key: $key")
         val result = delegate.removeKeyInput(nodeName, key)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -63,6 +68,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  value: $value")
         val result = delegate.setKeyedInput(nodeName, key, value)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -71,6 +77,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("Calling getNextSteps")
         val result = delegate.getNextSteps()
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -86,6 +93,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("Calling reportResult")
         records.add("  result (arg): $result")
         delegate.reportResult(result)
+        records.add("  list4: ${delegate.getList4Value()}")
     }
 
     @Synchronized
@@ -94,6 +102,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeValue(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -103,6 +112,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeValue(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -113,6 +123,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  key: $key")
         val result = delegate.getNodeValue(nodeName, key)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -122,6 +133,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeValue(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -131,6 +143,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeOutcome(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -140,6 +153,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeOutcome(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -150,6 +164,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  key: $key")
         val result = delegate.getNodeOutcome(nodeName, key)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -159,6 +174,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeOutcome(nodeName)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -168,6 +184,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  valueId: $valueId")
         val result = delegate.getLastUpdateTimestamp(valueId)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 
@@ -177,6 +194,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
         records.add("  valueId: $valueId")
         val result = delegate.getLatestTimestampWithValue(valueId)
         records.add("  result: $result")
+        records.add("  list4: ${delegate.getList4Value()}")
         return result
     }
 

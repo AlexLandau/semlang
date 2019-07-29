@@ -401,8 +401,8 @@ class TrickleFuzzTests {
 
     private fun checkAsyncInstance1b(definition: TrickleDefinition, operations: List<FuzzOperation>) {
         val recordingRawInstance = RecordingRawInstance(definition.instantiateRaw())
-//        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
-        val instance = definition.instantiateAsync(Executors.newFixedThreadPool(4))
+        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
+//        val instance = definition.instantiateAsync(Executors.newFixedThreadPool(4))
 
         // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
         // thread and the queue preserves order so that the timestamps end up "later". It may be better to be able to
@@ -448,7 +448,7 @@ class TrickleFuzzTests {
                 throw RuntimeException("Failed on operation #$opIndex: #$op\n\nRecording: ${recordingRawInstance.getRecording().joinToString("\n")}", t)
             }
         }
-//        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
+        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
     }
 
     private fun checkAsyncInstance2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
@@ -786,6 +786,8 @@ private class FuzzedDefinitionBuilder(seed: Int) {
 //            // The test is slightly hacky, but keyed inputs can only have input key lists as their key sources
 //            false
 //        }
+        // TODO: Remove this once async issue is resolved
+        random.nextDouble();
         val name = KeyedNodeName<Int, Int>("keyed$i")
 
 //        if (makeInput) {

@@ -1394,7 +1394,34 @@ class TrickleTests {
         instance.getOutcome(E, 1, TimeUnit.SECONDS)
     }
 
+    @Test
+    fun testKeyUpdatesUpdateKeyedTimestamps() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1))
+        val (step1) = instance.getNextSteps()
+        assertEquals(ValueId.Keyed(B_KEYED, 1), step1.valueId)
+//        assertEquals(ValueId.Keyed(B_KEYED, 2), step2.valueId)
+//        assertEquals(ValueId.Keyed(B_KEYED, 3), step3.valueId)
+        val result1 = step1.execute()
+        instance.reportResult(result1)
+        assertEquals(0, instance.getNextSteps().size)
+        instance.setInput(A_KEYS, listOf())
+        instance.setInput(A_KEYS, listOf(1))
+        val (newStep) = instance.getNextSteps()
+        // These timestamps should not be the same
+        assertNotEquals(step1.timestamp, newStep.timestamp)
+
+    }
+
     // TODO: I think this case may be related to the issue where C_KEYED will calculate values when A is undefined if B_KEYS is empty
+    // TODO: On further investigation, we seem to be counting TrickleStep(Keyed(nodeName=keyed3, key=73), 3) (in the original fuzz test formulation)
+    // as a "next step" even after the result has been submitted
     @Test
     fun testAnotherAsyncRegression() {
         val builder = TrickleDefinitionBuilder()
