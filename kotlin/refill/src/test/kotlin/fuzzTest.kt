@@ -73,13 +73,24 @@ class TrickleFuzzTests {
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
                             // TODO: Add tests with other executor types, in particular a single-threaded executor
-                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
-                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             // TODO: Add these to the single-test runner
-                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
-                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
-                            checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
-                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+
+                            // TODO: Maybe multiple rounds of this?
+                            val inputsReorderedOperations = reorderInputs(script.operations, Random(0L))
+                            try {
+                                checkReferenceInstance(ReferenceInstance(definition), inputsReorderedOperations)
+                                checkRawInstance1(definition.instantiateRaw(), inputsReorderedOperations)
+                                checkRawInstance2(definition.instantiateRaw(), inputsReorderedOperations)
+                                checkSyncInstance(definition.instantiateSync(), inputsReorderedOperations)
+                            } catch (t: Throwable) {
+                                throw RuntimeException("Reordered operations script: \n${inputsReorderedOperations.withIndex().joinToString("\n")}", t)
+                            }
                         } catch (t: Throwable) {
                             throw RuntimeException(
                                 "Operations script: \n${script.operations.withIndex().joinToString("\n")}",
@@ -97,6 +108,69 @@ class TrickleFuzzTests {
                 throw RuntimeException("Definition:\n" + definition.toMultiLineString(), t)
             }
         }
+    }
+
+    private fun reorderInputs(script: List<FuzzOperation>, random: Random): List<FuzzOperation> {
+        val reordered = ArrayList<FuzzOperation>()
+
+        val curGroup = ArrayList<TrickleInputChange>()
+        fun flushCurGroup() {
+            if (curGroup.isEmpty()) {
+                return
+            }
+            // We want to preserve the order within each NodeName, but shuffle things otherwise
+            val namesOnlyOrdering = curGroup.map { it.nodeName }
+            val perNameOrdering = curGroup.groupBy { it.nodeName }
+            // Issue: This doesn't hold for keyed inputs (another problem!) where we ignore them if they're set
+            // before the corresponding key is added, which is different from if they're set afterwards
+            // Should I get rid of keyed inputs in favor of key lists having optional "payloads"?
+            val newNamesOrdering = namesOnlyOrdering.shuffled(random)
+            val perNameIterators = perNameOrdering.mapValues { (_, list) -> list.iterator() }
+            val newChangeOrdering = ArrayList<TrickleInputChange>()
+            for (name in newNamesOrdering) {
+                newChangeOrdering.add(perNameIterators.getValue(name).next())
+            }
+
+            if (random.nextBoolean()) {
+                // Add as separate inputs
+                for (change in newChangeOrdering) {
+                    reordered.add(toOperation(change))
+                }
+            } else {
+                // Add as a single input
+                reordered.add(FuzzOperation.SetMultiple(newChangeOrdering))
+            }
+
+            curGroup.clear()
+        }
+        for (operation in script) {
+            when (operation) {
+                is FuzzOperation.SetBasic -> curGroup.add(TrickleInputChange.SetBasic(operation.name, operation.value))
+                is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.AddKey(operation.name, operation.key))
+                is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.RemoveKey(operation.name, operation.key))
+                is FuzzOperation.SetKeyList -> curGroup.add(TrickleInputChange.SetKeys(operation.name, operation.value))
+                is FuzzOperation.SetKeyed -> curGroup.add(TrickleInputChange.SetKeyed(operation.name, operation.key, operation.value))
+                is FuzzOperation.SetMultiple -> curGroup.addAll(operation.changes)
+                is FuzzOperation.CheckBasic -> {
+                    flushCurGroup()
+                    reordered.add(operation)
+                }
+                is FuzzOperation.CheckKeyList -> {
+                    flushCurGroup()
+                    reordered.add(operation)
+                }
+                is FuzzOperation.CheckKeyedList -> {
+                    flushCurGroup()
+                    reordered.add(operation)
+                }
+                is FuzzOperation.CheckKeyedValue -> {
+                    flushCurGroup()
+                    reordered.add(operation)
+                }
+            }
+        }
+        flushCurGroup()
+        return reordered
     }
 
     private fun checkReferenceInstance(instance: ReferenceInstance, operations: List<FuzzOperation>) {
@@ -326,7 +400,8 @@ class TrickleFuzzTests {
 
     private fun checkAsyncInstance1b(definition: TrickleDefinition, operations: List<FuzzOperation>) {
         val recordingRawInstance = RecordingRawInstance(definition.instantiateRaw())
-        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
+//        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
+        val instance = definition.instantiateAsync(Executors.newFixedThreadPool(4))
 
         // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
         // thread and the queue preserves order so that the timestamps end up "later". It may be better to be able to

@@ -193,11 +193,12 @@ interface TrickleInputReceiver {
 }
 
 sealed class TrickleInputChange {
-    data class SetBasic<T>(val nodeName: NodeName<T>, val value: T): TrickleInputChange()
-    data class SetKeys<T>(val nodeName: KeyListNodeName<T>, val value: List<T>): TrickleInputChange()
-    data class AddKey<T>(val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
-    data class RemoveKey<T>(val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
-    data class SetKeyed<K, T>(val nodeName: KeyedNodeName<K, T>, val key: K, val value: T): TrickleInputChange()
+    abstract val nodeName: GenericNodeName
+    data class SetBasic<T>(override val nodeName: NodeName<T>, val value: T): TrickleInputChange()
+    data class SetKeys<T>(override val nodeName: KeyListNodeName<T>, val value: List<T>): TrickleInputChange()
+    data class AddKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
+    data class RemoveKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
+    data class SetKeyed<K, T>(override val nodeName: KeyedNodeName<K, T>, val key: K, val value: T): TrickleInputChange()
 }
 
 interface TrickleRawInstance {
