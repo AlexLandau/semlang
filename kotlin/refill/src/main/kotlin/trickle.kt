@@ -708,9 +708,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                 is KeyListNodeName<*> -> {
                     val node = definition.keyListNodes[nodeName]!!
                     val nodeValueId = ValueId.FullKeyList(nodeName)
-//                    if (node.name.name == "list4") {
-//                        println("Running on list4")
-//                    }
                     // TODO: We can store things differently to make this more efficient
                     val keyValueIds = values.keys.filter { it is ValueId.KeyListKey && it.nodeName == nodeName }
                     if (node.operation == null) {
@@ -736,9 +733,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                             val timeStampMaybe = timeStampIfUpToDate[unkeyedInputValueId]
                             if (timeStampMaybe == null) {
                                 anyInputNotUpToDate = true
-//                                if (node.name.name == "list4") {
-//                                    println("Input not up-to-date: $unkeyedInputValueId")
-//                                }
                             } else {
                                 maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
                                 val contents = values[unkeyedInputValueId]!!
@@ -755,9 +749,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 }
                             }
                         }
-//                        if (node.name.name == "list4") {
-//                            println("anyInputNotUpToDate: $anyInputNotUpToDate")
-//                        }
                         if (!anyInputNotUpToDate) {
                             // All inputs are up-to-date
                             if (inputFailures.isNotEmpty()) {
@@ -796,25 +787,16 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                             instanceId,
                                             { operation(inputValues) })
                                     )
-//                                    if (node.name.name == "list4") {
-//                                        println("Asking for a TrickleStep for list4 at timestamp $maximumInputTimestamp")
-//                                    }
                                 } else if (curValueTimestamp > maximumInputTimestamp) {
                                     error("This should never happen")
                                 } else {
                                     // Report this as being up-to-date for future things
                                     timeStampIfUpToDate[nodeValueId] = curValueTimestamp
                                     updateLatestConsistentTimestamp(nodeValueId)
-//                                    if (node.name.name == "list4") {
-//                                        println("Set the timestamp for $nodeValueId to $curTimestamp")
-//                                    }
                                 }
                             }
                         }
                     }
-//                    if (node.name.name == "list4") {
-//                        println("Done running on list4")
-//                    }
                 }
                 is KeyedNodeName<*, *> -> {
                     val node = definition.keyedNodes[nodeName]!!
@@ -864,9 +846,7 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
 //                            } else {
 
                             var anyInputNotUpToDate = false
-//                            var maximumInputTimestamp = -1L
                             var maximumInputTimestamp = values.getValue(ValueId.KeyListKey(keySourceName, key)).getTimestamp()
-//                            println("Maximum timestamp from key timestamp: $maximumInputTimestamp")
                             val inputValues = ArrayList<Any?>()
                             val inputFailures = ArrayList<TrickleFailure>()
                             for (input in node.inputs) {
@@ -875,9 +855,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                 if (timeStampMaybe == null) {
                                     anyInputNotUpToDate = true
                                     anyKeyedValueNotUpToDate = true
-//                                        if (node.name.name == "keyed3") {
-//                                            println("Not up-to-date 1: $unkeyedInputValueId")
-//                                        }
                                 } else {
                                     maximumInputTimestamp = Math.max(maximumInputTimestamp, timeStampMaybe)
                                     val contents = values[unkeyedInputValueId]!!
@@ -916,9 +893,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                                     { onCatch(newFailure) })
                                             )
                                             anyKeyedValueNotUpToDate = true
-//                                                if (node.name.name == "keyed3") {
-//                                                    println("Not up-to-date 2: $keyedValueId")
-//                                                }
                                         } else {
                                             setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
                                             //                                values[ValueId.Nonkeyed(nodeName)]!!.setFailure(maximumInputTimestamp, newFailure)
@@ -945,9 +919,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                                                 { operation(key, inputValues) })
                                         )
                                         anyKeyedValueNotUpToDate = true
-//                                            if (node.name.name == "keyed3") {
-//                                                println("Not up-to-date 3: $keyedValueId")
-//                                            }
                                     } else if (curValueTimestamp > maximumInputTimestamp) {
                                         error("This should never happen")
                                     } else {
@@ -962,9 +933,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
                         }
                         // TODO: Remove values for non-up-to-date keys
 
-//                        if (node.name.name == "keyed3") {
-//                            println("keyed3: anyKeyedValueNotUpToDate: $anyKeyedValueNotUpToDate")
-//                        }
                         // If every key value is up-to-date, but the full keyed list is not, update the keyed list and prune old values
                         if (!anyKeyedValueNotUpToDate) {
                             // All keyed values are up-to-date; update the full list
@@ -1205,12 +1173,10 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         }
         val value = values[ValueId.Keyed(nodeName, key)]
         if (value == null) {
-//            println("The value holder for the ValueId is null")
             return NodeOutcome.NotYetComputed.get()
         }
         val failure = value.getFailure()
         if (failure != null) {
-//            println("There is a failure in the value holder")
             return NodeOutcome.Failure(failure)
         }
         return NodeOutcome.Computed(value.getValue() as V)
@@ -1292,20 +1258,6 @@ class TrickleInstance internal constructor(val definition: TrickleDefinition): T
         } else {
             value.getLatestConsistentTimestamp()
         }
-    }
-
-    fun getList4Value(): String {
-        for (keyName in definition.keyedNodes.keys) {
-            if (keyName.name == "keyed3") {
-                return values[ValueId.Keyed(keyName, 73)]?.toString() ?: ""
-            }
-        }
-//        for (keyName in definition.keyListNodes.keys) {
-//            if (keyName.name == "list4") {
-//                return values[ValueId.FullKeyList(keyName)]?.toString() ?: ""
-//            }
-//        }
-        return ""
     }
 }
 

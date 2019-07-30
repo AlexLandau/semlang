@@ -32,14 +32,14 @@ class TrickleFuzzTests {
             }
 
             try {
-//                checkReferenceInstance(ReferenceInstance(definition), script.operations)
-//                checkRawInstance1(definition.instantiateRaw(), script.operations)
-//                checkRawInstance2(definition.instantiateRaw(), script.operations)
-//                checkSyncInstance(definition.instantiateSync(), script.operations)
+                checkReferenceInstance(ReferenceInstance(definition), script.operations)
+                checkRawInstance1(definition.instantiateRaw(), script.operations)
+                checkRawInstance2(definition.instantiateRaw(), script.operations)
+                checkSyncInstance(definition.instantiateSync(), script.operations)
 //                println(" *** Running test *** ")
-//                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
-                checkAsyncInstance1b(definition, script.operations)
-//                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+//                checkAsyncInstance1b(definition, script.operations)
+                checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
             } catch (t: Throwable) {
                 System.out.flush()
                 throw RuntimeException(
@@ -73,13 +73,13 @@ class TrickleFuzzTests {
                             checkRawInstance2(definition.instantiateRaw(), script.operations)
                             checkSyncInstance(definition.instantiateSync(), script.operations)
                             // TODO: Add tests with other executor types, in particular a single-threaded executor
-//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
-//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             // TODO: Add these to the single-test runner
-//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
-//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
-//                            checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
-//                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                            checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
 
                             // TODO: Maybe multiple rounds of this?
                             // TODO: Document this as a principle of the design
@@ -357,99 +357,48 @@ class TrickleFuzzTests {
         // submit a set or list of timestamps and require that it be after all of them.
         // TODO: Revive the "single-timestamp" type as well
 //        var lastTimestamp: TrickleAsyncTimestamp? = null
-        val timestamps = ArrayList<TrickleAsyncTimestamp>()
-        for ((opIndex, op) in operations.withIndex()) {
-            try {
-                val unused: Any = when (op) {
-                    is FuzzOperation.SetBasic -> {
-                        timestamps.add(instance.setInput(op.name, op.value))
+        try {
+            val timestamps = ArrayList<TrickleAsyncTimestamp>()
+            for ((opIndex, op) in operations.withIndex()) {
+                try {
+                    val unused: Any = when (op) {
+                        is FuzzOperation.SetBasic -> {
+                            timestamps.add(instance.setInput(op.name, op.value))
+                        }
+                        is FuzzOperation.AddKey -> {
+                            timestamps.add(instance.addKeyInput(op.name, op.key))
+                        }
+                        is FuzzOperation.RemoveKey -> {
+                            timestamps.add(instance.removeKeyInput(op.name, op.key))
+                        }
+                        is FuzzOperation.SetKeyList -> {
+                            timestamps.add(instance.setInput(op.name, op.value))
+                        }
+                        is FuzzOperation.SetMultiple -> {
+                            timestamps.add(instance.setInputs(op.changes))
+                        }
+                        is FuzzOperation.CheckBasic -> {
+                            assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                        }
+                        is FuzzOperation.CheckKeyList -> {
+                            assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                        }
+                        is FuzzOperation.CheckKeyedList -> {
+                            assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                        }
+                        is FuzzOperation.CheckKeyedValue -> {
+                            assertEquals(op.outcome, instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
+                        }
                     }
-                    is FuzzOperation.AddKey -> {
-                        timestamps.add(instance.addKeyInput(op.name, op.key))
-                    }
-                    is FuzzOperation.RemoveKey -> {
-                        timestamps.add(instance.removeKeyInput(op.name, op.key))
-                    }
-                    is FuzzOperation.SetKeyList -> {
-                        timestamps.add(instance.setInput(op.name, op.value))
-                    }
-//                    is FuzzOperation.SetKeyed -> {
-//                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
-//                    }
-                    is FuzzOperation.SetMultiple -> {
-                        timestamps.add(instance.setInputs(op.changes))
-                    }
-                    is FuzzOperation.CheckBasic -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyedList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyedValue -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
+                } catch (t: Throwable) {
+                    throw RuntimeException("Failed on operation #$opIndex: #$op", t)
                 }
-            } catch (t: Throwable) {
-                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
+        } finally {
+            instance.shutdown()
         }
     }
 
-
-    private fun checkAsyncInstance1b(definition: TrickleDefinition, operations: List<FuzzOperation>) {
-        val recordingRawInstance = RecordingRawInstance(definition.instantiateRaw())
-        val instance = TrickleAsyncInstance(recordingRawInstance, Executors.newFixedThreadPool(4))
-//        val instance = definition.instantiateAsync(Executors.newFixedThreadPool(4))
-
-        // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
-        // thread and the queue preserves order so that the timestamps end up "later". It may be better to be able to
-        // submit a set or list of timestamps and require that it be after all of them.
-        // TODO: Revive the "single-timestamp" type as well
-//        var lastTimestamp: TrickleAsyncTimestamp? = null
-        val timestamps = ArrayList<TrickleAsyncTimestamp>()
-        for ((opIndex, op) in operations.withIndex()) {
-            try {
-                val unused: Any = when (op) {
-                    is FuzzOperation.SetBasic -> {
-                        timestamps.add(instance.setInput(op.name, op.value))
-                    }
-                    is FuzzOperation.AddKey -> {
-                        timestamps.add(instance.addKeyInput(op.name, op.key))
-                    }
-                    is FuzzOperation.RemoveKey -> {
-                        timestamps.add(instance.removeKeyInput(op.name, op.key))
-                    }
-                    is FuzzOperation.SetKeyList -> {
-                        timestamps.add(instance.setInput(op.name, op.value))
-                    }
-//                    is FuzzOperation.SetKeyed -> {
-//                        timestamps.add(instance.setKeyedInput(op.name, op.key, op.value))
-//                    }
-                    is FuzzOperation.SetMultiple -> {
-                        timestamps.add(instance.setInputs(op.changes))
-                    }
-                    is FuzzOperation.CheckBasic -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyedList -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                    is FuzzOperation.CheckKeyedValue -> {
-                        assertEquals(op.outcome, instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, *timestamps.toTypedArray()))
-                    }
-                }
-            } catch (t: Throwable) {
-                throw RuntimeException("Failed on operation #$opIndex: #$op\n\nRecording: ${recordingRawInstance.getRecording().joinToString("\n")}", t)
-            }
-        }
-//        System.out.println("Recording: ${recordingRawInstance.getRecording().joinToString("\n")}")
-    }
 
     private fun checkAsyncInstance2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
         // TODO: I think this approach just barely works because we're submitting everything to the queue from the same
@@ -457,64 +406,68 @@ class TrickleFuzzTests {
         // submit a set or list of timestamps and require that it be after all of them.
         // TODO: Revive the "single-timestamp" type as well
 //        var lastTimestamp: TrickleAsyncTimestamp? = null
-        var timestamp: TrickleAsyncTimestamp? = null
-        for ((opIndex, op) in operations.withIndex()) {
-            try {
-                val unused: Any = when (op) {
-                    is FuzzOperation.SetBasic -> {
-                        timestamp = instance.setInput(op.name, op.value)
-                    }
-                    is FuzzOperation.AddKey -> {
-                        timestamp = instance.addKeyInput(op.name, op.key)
-                    }
-                    is FuzzOperation.RemoveKey -> {
-                        timestamp = instance.removeKeyInput(op.name, op.key)
-                    }
-                    is FuzzOperation.SetKeyList -> {
-                        timestamp = instance.setInput(op.name, op.value)
-                    }
+        try {
+            var timestamp: TrickleAsyncTimestamp? = null
+            for ((opIndex, op) in operations.withIndex()) {
+                try {
+                    val unused: Any = when (op) {
+                        is FuzzOperation.SetBasic -> {
+                            timestamp = instance.setInput(op.name, op.value)
+                        }
+                        is FuzzOperation.AddKey -> {
+                            timestamp = instance.addKeyInput(op.name, op.key)
+                        }
+                        is FuzzOperation.RemoveKey -> {
+                            timestamp = instance.removeKeyInput(op.name, op.key)
+                        }
+                        is FuzzOperation.SetKeyList -> {
+                            timestamp = instance.setInput(op.name, op.value)
+                        }
 //                    is FuzzOperation.SetKeyed -> {
 //                        timestamp = instance.setKeyedInput(op.name, op.key, op.value)
 //                    }
-                    is FuzzOperation.SetMultiple -> {
-                        timestamp = instance.setInputs(op.changes)
-                    }
-                    is FuzzOperation.CheckBasic -> {
-                        val outcome = if (timestamp == null) {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
-                        } else {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                        is FuzzOperation.SetMultiple -> {
+                            timestamp = instance.setInputs(op.changes)
                         }
-                        assertEquals(op.outcome, outcome)
-                    }
-                    is FuzzOperation.CheckKeyList -> {
-                        val outcome = if (timestamp == null) {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
-                        } else {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                        is FuzzOperation.CheckBasic -> {
+                            val outcome = if (timestamp == null) {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
+                            } else {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                            }
+                            assertEquals(op.outcome, outcome)
                         }
-                        assertEquals(op.outcome, outcome)
-                    }
-                    is FuzzOperation.CheckKeyedList -> {
-                        val outcome = if (timestamp == null) {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
-                        } else {
-                            instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                        is FuzzOperation.CheckKeyList -> {
+                            val outcome = if (timestamp == null) {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
+                            } else {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                            }
+                            assertEquals(op.outcome, outcome)
                         }
-                        assertEquals(op.outcome, outcome)
-                    }
-                    is FuzzOperation.CheckKeyedValue -> {
-                        val outcome = if (timestamp == null) {
-                            instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS)
-                        } else {
-                            instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, timestamp)
+                        is FuzzOperation.CheckKeyedList -> {
+                            val outcome = if (timestamp == null) {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS)
+                            } else {
+                                instance.getOutcome(op.name, 10L, TimeUnit.SECONDS, timestamp)
+                            }
+                            assertEquals(op.outcome, outcome)
                         }
-                        assertEquals(op.outcome, outcome)
+                        is FuzzOperation.CheckKeyedValue -> {
+                            val outcome = if (timestamp == null) {
+                                instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS)
+                            } else {
+                                instance.getOutcome(op.name, op.key, 10L, TimeUnit.SECONDS, timestamp)
+                            }
+                            assertEquals(op.outcome, outcome)
+                        }
                     }
+                } catch (t: Throwable) {
+                    throw RuntimeException("Failed on operation #$opIndex: #$op", t)
                 }
-            } catch (t: Throwable) {
-                throw RuntimeException("Failed on operation #$opIndex: #$op", t)
             }
+        } finally {
+            instance.shutdown()
         }
     }
 

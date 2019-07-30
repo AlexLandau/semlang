@@ -125,11 +125,9 @@ At some point, we may want to improve how this handles for single-threaded execu
     private fun runManagement() {
         // TODO: This needs to take things from the queue, pass them to the instance, and track their timestamps
 
-        println("[MGR] Starting management job...")
         // TODO:
         val inputsToAdd = ArrayList<TimestampedInput>()
         inputsQueue.drainTo(inputsToAdd)
-//        print("Inputs: (" + inputsToAdd + ")\n")
         // TODO: Try just doing separate timestamps for the separate groups
 
         val newRawTimestamp = instance.setInputs(inputsToAdd.map { it.inputs }.flatten())
@@ -163,7 +161,6 @@ At some point, we may want to improve how this handles for single-threaded execu
         // all the ones we're waiting on
         for ((valueId, barrier) in timestampBarriers.getAll()) {
             val curTimestamp = instance.getLatestTimestampWithValue(valueId)
-//            println("Checking barrier for value ID $valueId; our actual timestamp is $curTimestamp")
             if (curTimestamp >= barrier.minTimestampWanted) {
                 barrier.latch.countDown()
                 timestampBarriers.remove(valueId, barrier)
@@ -175,7 +172,6 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (!alreadyEnqueuedSteps.contains(step)) {
                 val future = executor.submit(getExecuteJob(step))
                 enqueuedJobTasks[step] = future
-                println("[MGR] Submitted task ${step}")
             }
         }
         // TODO: What if something is getting removed? I guess the easy way is just to have management do the removal
@@ -187,11 +183,6 @@ At some point, we may want to improve how this handles for single-threaded execu
                 enqueuedJobTasks.remove(step)
             }
         }
-
-        println("[MGR] Next steps: ${nextSteps}")
-        println("[MGR] Enqueued tasks: ${enqueuedJobTasks.keys}")
-
-        println("[MGR] Done with management job")
 
         // TODO: This needs to make runnables for those steps and pass them to the executor (done)
     }
@@ -223,22 +214,10 @@ At some point, we may want to improve how this handles for single-threaded execu
 
     private fun getExecuteJob(step: TrickleStep): Runnable {
         return Runnable {
-            println("[EXC] Running task ${step}")
-//            println("Running execute job for $step")
-            try {
-                val result = step.execute()
+            val result = step.execute()
 
-                instance.reportResult(result)
-                println("[EXC] Reported result for task ${step}")
-                unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
-                println("[EXC] Unblocked barriers for task ${step}")
-
-            } catch (t: Throwable) {
-                println("*********** execution threw ************* ${t.message}")
-            }
-
-
-//            println("Reported result for $step")
+            instance.reportResult(result)
+            unblockWaitingTimestampBarriers(result.valueId, result.timestamp)
 
             // Unblock things waiting on this result at this timestamp
             /*
@@ -252,10 +231,7 @@ At some point, we may want to improve how this handles for single-threaded execu
             // TODO: Support listeners, by either invoking them here or enqueueing new runnables for them
 
             // Trigger the management job in case new steps are available
-//            println("[EXC] Finished an execute job, enqueueing management")
             enqueueManagementJob()
-            println("[EXC] Enqueued MGR after ${step}")
-
         }
     }
 
@@ -389,7 +365,6 @@ At some point, we may want to improve how this handles for single-threaded execu
          */
 
         if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
-            print("Latest timestamp $rawMinTimestamp is not sufficient, will set up barrier\n")
             // TODO: Do something to wait longer until the new min timestamp is satisfied
             // This wants to be a map where the keys are ValueIds, so when execute tasks finish they look for these barriers and update them
             // However, we also want the values to be per-getOutcome and not shared for simplicity, right? So a multimap, but an actual
@@ -401,16 +376,12 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (instance.getLatestTimestampWithValue(valueId) < rawMinTimestamp) {
                 // General case, we need to wait on the barrier
                 // TODO: Do we need to handle interruption here?
-                print("Waiting on barrier for $valueId, timestamp $rawMinTimestamp\n")
                 val gotLatch = timestampBarrier.latch.await(millisToWait - (System.currentTimeMillis() - startTime), TimeUnit.MILLISECONDS)
-                print("Awoke from barrier\n")
-                print(rawMinTimestamp)
                 if (!gotLatch) {
                     throw TimeoutException()
                 }
             } else {
                 // Rare case, don't bother waiting
-                print("Not waiting on barrier\n")
                 timestampBarriers.remove(valueId, timestampBarrier)
             }
         }
@@ -458,6 +429,11 @@ At some point, we may want to improve how this handles for single-threaded execu
 //    fun <T> addListener(name: NodeName<T>, listener: RefillListener<T>) {
 //        TODO()
 //    }
+
+    fun shutdown() {
+        // TODO: Any reason to do a soft shutdown instead?
+        executor.shutdownNow()
+    }
 }
 
 //interface RefillListener<T> {

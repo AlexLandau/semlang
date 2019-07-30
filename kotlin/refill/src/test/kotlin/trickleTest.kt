@@ -1196,16 +1196,20 @@ class TrickleTests {
         val executor = Executors.newCachedThreadPool()
         val instance = builder.build().instantiateAsync(executor)
 
-        val timestamp1 = instance.setInput(A, 1)
-        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(C, timestamp1))
-        assertEquals(NodeOutcome.Computed(4), instance.getOutcome(D, timestamp1))
-        val timestamp2 = instance.setInput(A, 2)
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(A, timestamp2))
-        assertEquals(NodeOutcome.Computed(3), instance.getOutcome(B, timestamp2))
-        assertEquals(NodeOutcome.Computed(4), instance.getOutcome(C, timestamp2))
-        assertEquals(NodeOutcome.Computed(12), instance.getOutcome(D, timestamp2))
+        try {
+            val timestamp1 = instance.setInput(A, 1)
+            assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(C, timestamp1))
+            assertEquals(NodeOutcome.Computed(4), instance.getOutcome(D, timestamp1))
+            val timestamp2 = instance.setInput(A, 2)
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(A, timestamp2))
+            assertEquals(NodeOutcome.Computed(3), instance.getOutcome(B, timestamp2))
+            assertEquals(NodeOutcome.Computed(4), instance.getOutcome(C, timestamp2))
+            assertEquals(NodeOutcome.Computed(12), instance.getOutcome(D, timestamp2))
+        } finally {
+            instance.shutdown()
+        }
     }
 
 
@@ -1220,12 +1224,16 @@ class TrickleTests {
         val executor = Executors.newCachedThreadPool()
         val instance = builder.build().instantiateAsync(executor)
 
-        val timestamp1 = instance.setInput(A, 1)
-        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
-        val timestamp2 = instance.setInput(C, 1)
-        assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, 2, TimeUnit.SECONDS, timestamp2))
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 2, TimeUnit.SECONDS, timestamp2))
+        try {
+            val timestamp1 = instance.setInput(A, 1)
+            assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, timestamp1))
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, timestamp1))
+            val timestamp2 = instance.setInput(C, 1)
+            assertEquals(NodeOutcome.Computed(1), instance.getOutcome(A, 2, TimeUnit.SECONDS, timestamp2))
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 2, TimeUnit.SECONDS, timestamp2))
+        } finally {
+            instance.shutdown()
+        }
     }
 
     @Test
@@ -1238,8 +1246,12 @@ class TrickleTests {
         val executor = Executors.newCachedThreadPool()
         val instance = builder.build().instantiateAsync(executor)
 
-        val timestamp1 = instance.setInput(A, 1)
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 1, TimeUnit.SECONDS, timestamp1))
+        try {
+            val timestamp1 = instance.setInput(A, 1)
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 1, TimeUnit.SECONDS, timestamp1))
+        } finally {
+            instance.shutdown()
+        }
     }
 
     @Test(expected = TimeoutException::class)
@@ -1252,8 +1264,12 @@ class TrickleTests {
         val executor = Executors.newCachedThreadPool()
         val instance = builder.build().instantiateAsync(executor)
 
-        val timestamp1 = instance.setInput(A, 1)
-        assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 100, TimeUnit.MILLISECONDS, timestamp1))
+        try {
+            val timestamp1 = instance.setInput(A, 1)
+            assertEquals(NodeOutcome.Computed(2), instance.getOutcome(B, 100, TimeUnit.MILLISECONDS, timestamp1))
+        } finally {
+            instance.shutdown()
+        }
     }
 
 //    @Test
@@ -1281,8 +1297,12 @@ class TrickleTests {
 
         val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
 
-        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(A, 1, TimeUnit.SECONDS))
-        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(B, 1, TimeUnit.SECONDS))
+        try {
+            assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(A, 1, TimeUnit.SECONDS))
+            assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(B, 1, TimeUnit.SECONDS))
+        } finally {
+            instance.shutdown()
+        }
     }
 
 
@@ -1390,8 +1410,12 @@ class TrickleTests {
 
         val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
 
-        // TODO: This should be something other than a TimeoutException
-        instance.getOutcome(E, 1, TimeUnit.SECONDS)
+        try {
+            // TODO: This should be something other than a TimeoutException
+            instance.getOutcome(E, 1, TimeUnit.SECONDS)
+        } finally {
+            instance.shutdown()
+        }
     }
 
     @Test
@@ -1416,80 +1440,6 @@ class TrickleTests {
         val (newStep) = instance.getNextSteps()
         // These timestamps should not be the same
         assertNotEquals(step1.timestamp, newStep.timestamp)
-
-    }
-
-    // TODO: I think this case may be related to the issue where C_KEYED will calculate values when A is undefined if B_KEYS is empty
-    // TODO: On further investigation, we seem to be counting TrickleStep(Keyed(nodeName=keyed3, key=73), 3) (in the original fuzz test formulation)
-    // as a "next step" even after the result has been submitted
-    @Test
-    fun testAnotherAsyncRegression() {
-        val builder = TrickleDefinitionBuilder()
-
-//        Basic   basicInput1
-//        KeyList listInput2
-//        Keyed   keyed3<listInput2>(basicInput1)
-//        KeyList list4(keyed3 (full list), listInput2)
-
-
-        val a = builder.createInputNode(A)
-        val bKeys = builder.createKeyListInputNode(B_KEYS)
-        val cKeyed = builder.createKeyedNode(C_KEYED, bKeys, a, { x, y -> x + y })
-        val dKeys = builder.createKeyListNode(D_KEYS, cKeyed.fullOutput(), bKeys.listOutput(), { xList, y -> xList.map { it + y.sum() }})
-
-        val instance = builder.build().instantiateAsync(Executors.newFixedThreadPool(2))
-
-
-//        IndexedValue(index=0, value=CheckKeyedList(name=keyed5, outcome=Computed(value=[])))
-//        IndexedValue(index=1, value=CheckKeyList(name=list4, outcome=Computed(value=[94, 96, 92, 101, 95])))
-        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getOutcome(D_KEYS, 10, TimeUnit.SECONDS))
-//        IndexedValue(index=2, value=CheckKeyList(name=listInput2, outcome=Computed(value=[])))
-        assertEquals(NodeOutcome.Computed(listOf<Int>()), instance.getOutcome(B_KEYS, 10, TimeUnit.SECONDS))
-//        IndexedValue(index=3, value=SetBasic(name=basicInput1, value=14))
-        var timestamp = instance.setInput(A, 14)
-//        IndexedValue(index=4, value=CheckBasic(name=basic7, outcome=Computed(value=45)))
-//        IndexedValue(index=5, value=CheckBasic(name=basicInput1, outcome=Computed(value=14)))
-        assertEquals(NodeOutcome.Computed(14), instance.getOutcome(A, 10, TimeUnit.SECONDS, timestamp))
-//        IndexedValue(index=6, value=SetMultiple(changes=[RemoveKey(nodeName=listInput2, key=2), SetBasic(nodeName=basicInput6, value=53), RemoveKey(nodeName=listInput2, key=2), SetKeys(nodeName=listInput2, value=[]), SetKeys(nodeName=listInput2, value=[76, 71, 74, 73, 70, 72, 75, 68, 69])]))
-        timestamp = instance.setInputs(listOf(
-                TrickleInputChange.RemoveKey(B_KEYS, 2),
-                TrickleInputChange.RemoveKey(B_KEYS, 2),
-                TrickleInputChange.SetKeys(B_KEYS, listOf()),
-                TrickleInputChange.SetKeys(B_KEYS, listOf(76, 71, 74, 73, 70, 72, 75, 68, 69))
-        ))
-//        IndexedValue(index=7, value=CheckKeyList(name=listInput2, outcome=Computed(value=[76, 71, 74, 73, 70, 72, 75, 68, 69])))
-        assertEquals(NodeOutcome.Computed(listOf(76, 71, 74, 73, 70, 72, 75, 68, 69)), instance.getOutcome(B_KEYS, 10, TimeUnit.SECONDS, timestamp))
-//        IndexedValue(index=8, value=CheckBasic(name=basicInput1, outcome=Computed(value=14)))
-        assertEquals(NodeOutcome.Computed(14), instance.getOutcome(A, 10, TimeUnit.SECONDS, timestamp))
-//        IndexedValue(index=9, value=CheckBasic(name=basicInput6, outcome=Computed(value=53)))
-//        IndexedValue(index=10, value=CheckKeyedList(name=keyed3, outcome=Computed(value=[1498, 1493, 1496, 1495, 1492, 1494, 1497, 1490, 1491])))
-        assertEquals(NodeOutcome.Computed(listOf(90, 85, 88, 87, 84, 86, 89, 82, 83)), instance.getOutcome(C_KEYED, 10, TimeUnit.SECONDS, timestamp))
-//        IndexedValue(index=11, value=CheckBasic(name=basic7, outcome=Computed(value=-1826027621)))
-//        IndexedValue(index=12, value=SetMultiple(changes=[SetBasic(nodeName=basicInput6, value=35), RemoveKey(nodeName=listInput2, key=8)]))
-        instance.removeKeyInput(B_KEYS, 8)
-//        IndexedValue(index=13, value=SetMultiple(changes=[SetBasic(nodeName=basicInput1, value=93), SetBasic(nodeName=basicInput1, value=92)]))
-        instance.setInputs(listOf(
-                TrickleInputChange.SetBasic(A, 93),
-                TrickleInputChange.SetBasic(A, 92)
-        ))
-//        IndexedValue(index=14, value=SetMultiple(changes=[SetBasic(nodeName=basicInput1, value=35), SetBasic(nodeName=basicInput6, value=86), SetKeys(nodeName=listInput2, value=[70, 65, 71, 73, 67, 69, 72, 68]), SetBasic(nodeName=basicInput1, value=22), SetBasic(nodeName=basicInput1, value=18)]))
-        timestamp = instance.setInputs(listOf(
-                TrickleInputChange.SetBasic(A, 35),
-                TrickleInputChange.SetKeys(B_KEYS, listOf(70, 65, 71, 73, 67, 69, 72, 68)),
-                TrickleInputChange.SetBasic(A, 22),
-                TrickleInputChange.SetBasic(A, 18)
-        ))
-//        IndexedValue(index=15, value=CheckKeyList(name=listInput2, outcome=Computed(value=[70, 65, 71, 73, 67, 69, 72, 68])))
-        assertEquals(NodeOutcome.Computed(listOf(70, 65, 71, 73, 67, 69, 72, 68)), instance.getOutcome(B_KEYS, 10, TimeUnit.SECONDS, timestamp))
-//        IndexedValue(index=16, value=SetKeyList(name=listInput2, value=[21, 16, 22, 24, 18, 20, 23, 19]))
-        instance.setInput(B_KEYS, listOf(21, 16, 22, 24, 18, 20, 23, 19))
-//        IndexedValue(index=17, value=SetMultiple(changes=[RemoveKey(nodeName=listInput2, key=9), SetKeys(nodeName=listInput2, value=[74, 76, 70, 73])]))
-        timestamp = instance.setInputs(listOf(
-                TrickleInputChange.RemoveKey(B_KEYS, 9),
-                TrickleInputChange.SetKeys(B_KEYS, listOf(74, 76, 70, 73))
-        ))
-//        IndexedValue(index=18, value=CheckKeyList(name=list4, outcome=Computed(value=[96, 94])))
-        assertEquals(NodeOutcome.Computed(listOf(385, 387, 381, 384)), instance.getOutcome(D_KEYS, 10, TimeUnit.SECONDS, timestamp))
 
     }
 }
