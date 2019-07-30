@@ -265,3 +265,38 @@ sealed class TrickleInput<T> {
         }
     }
 }
+
+internal class TrickleNode<T> internal constructor(
+        val name: NodeName<T>,
+        val inputs: List<TrickleInput<*>>,
+        val operation: ((List<*>) -> T)?,
+        val onCatch: ((TrickleFailure) -> T)?
+) {
+    init {
+        if (operation == null && inputs.isNotEmpty()) {
+            error("Internal error: When operation is null (input node), inputs should be empty")
+        }
+    }
+}
+
+internal class TrickleKeyListNode<T>(
+        val name: KeyListNodeName<T>,
+        val inputs: List<TrickleInput<*>>,
+        val operation: ((List<*>) -> List<T>)?,
+        val onCatch: ((TrickleFailure) -> List<T>)?
+) {
+    init {
+        if (operation == null && inputs.isNotEmpty()) {
+            error("Internal error: When operation is null (input node), inputs should be empty")
+        }
+    }
+}
+
+internal class TrickleKeyedNode<K, T>(
+        val name: KeyedNodeName<K, T>,
+        val keySourceName: KeyListNodeName<K>,
+        val inputs: List<TrickleInput<*>>,
+        val operation: (K, List<*>) -> T,
+        val onCatch: ((TrickleFailure) -> T)?
+)
+
