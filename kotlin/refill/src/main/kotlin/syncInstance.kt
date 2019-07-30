@@ -27,10 +27,6 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         return instance.removeKeyInput(nodeName, key)
     }
 
-//    override fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): Long {
-//        return instance.setKeyedInput(nodeName, key, value)
-//    }
-
     private fun <T> doComputationsFor(nodeName: NodeName<T>) {
         val relevantValuesPred = instance.definition.getRelevantValuesPredicate(ValueId.Nonkeyed(nodeName))
         computeRelevantValues(relevantValuesPred)

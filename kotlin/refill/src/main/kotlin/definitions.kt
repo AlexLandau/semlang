@@ -71,7 +71,6 @@ class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<Nod
         }
 
         return Predicate {
-            //            true
             relevantValues.contains(it) || (it is ValueId.Keyed && keyedNamesWithAllKeysRelevant.contains(it.nodeName))
         }
     }
@@ -106,12 +105,9 @@ class TrickleDefinition internal constructor(internal val nonkeyedNodes: Map<Nod
                     sb.append(nodeName)
                     sb.append("<")
                     sb.append(node.keySourceName)
-                    sb.append(">")
-                    if (node.operation != null) {
-                        sb.append("(")
-                        sb.append(node.inputs.map { it.toString() }.joinToString(", "))
-                        sb.append(")")
-                    }
+                    sb.append(">(")
+                    sb.append(node.inputs.map { it.toString() }.joinToString(", "))
+                    sb.append(")")
                 }
             }
             sb.append("\n")
@@ -200,18 +196,6 @@ class TrickleDefinitionBuilder {
         return TrickleBuiltKeyListNode(name, builderId)
     }
 
-//    fun <K, T> createKeyedInputNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>): TrickleBuiltKeyedNode<K, T> {
-//        checkNameNotUsed(name.name)
-//
-//        if (keyListNodes[keySource.name]!!.operation != null) {
-//            error("Keyed input nodes can only use input key lists as their key sources, but ${keySource.name} is not an input.")
-//        }
-//
-//        val node = TrickleKeyedNode(name, keySource.name, listOf(), null, null)
-//        keyedNodes[name] = node
-//        topologicalOrdering.add(name)
-//        return TrickleBuiltKeyedNode(name, builderId)
-//    }
     fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
     }
