@@ -164,37 +164,6 @@ class TrickleTests {
         assertEquals(1122, instance.getNodeValue(E))
     }
 
-    @Test
-    fun testCannotShareNodesBetweenBuilders() {
-        val builder1 = TrickleDefinitionBuilder()
-        val builder2 = TrickleDefinitionBuilder()
-
-        val aNode1 = builder1.createInputNode(A)
-        assertThrows(IllegalArgumentException::class.java) {
-            val bNode2 = builder2.createNode(B, aNode1, { it + 1 })
-        }
-    }
-
-    @Test
-    fun testCannotShareResultsBetweenInstances() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val definition = builder.build()
-        val instance1 = definition.instantiateRaw()
-        val instance2 = definition.instantiateRaw()
-
-        instance1.setInput(A, 3)
-        val step = instance1.getNextSteps().single()
-        val result = step.execute()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance2.reportResult(result)
-        }
-    }
-
     fun testCanGetStepsWithInputsUndefined() {
         val builder = TrickleDefinitionBuilder()
 
@@ -224,118 +193,6 @@ class TrickleTests {
         instance.completeSynchronously()
         assertEquals(NodeOutcome.Computed(2), instance.getNodeOutcome(B))
         assertEquals(inputsMissingOutcome(ValueId.Nonkeyed(C)), instance.getNodeOutcome(C))
-    }
-
-    @Test
-    fun testCannotSetUnrecognizedNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.setInput(C, 2)
-        }
-    }
-
-    @Test
-    fun testCannotSetUnrecognizedKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.setInput(C_KEYS, listOf(1, 2, 3))
-        }
-    }
-
-    @Test
-    fun testCannotAddToUnrecognizedKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.addKeyInput(C_KEYS, 1)
-        }
-    }
-
-    @Test
-    fun testCannotRemoveFromUnrecognizedKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.removeKeyInput(C_KEYS, 1)
-        }
-    }
-
-    @Test
-    fun testCannotSetNonInputNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createNode(B, aNode, { it + 1 })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.setInput(B, 2)
-        }
-    }
-
-    @Test
-    fun testCannotSetNonInputKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.setInput(B_KEYS, listOf(1, 2, 3))
-        }
-    }
-
-    @Test
-    fun testCannotAddToNonInputKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.addKeyInput(B_KEYS, 1)
-        }
-    }
-
-    @Test
-    fun testCannotRemoveFromNonInputKeyListNode() {
-        val builder = TrickleDefinitionBuilder()
-
-        val aNode = builder.createInputNode(A)
-        val bNode = builder.createKeyListNode(B_KEYS, aNode, { (1..it).toList() })
-
-        val instance = builder.build().instantiateRaw()
-
-        assertThrows(IllegalArgumentException::class.java) {
-            instance.removeKeyInput(B_KEYS, 1)
-        }
     }
 
     @Test
@@ -1005,46 +862,6 @@ class TrickleTests {
     }
 
     @Test
-    fun testAsyncUnusedName1() {
-        val builder = TrickleDefinitionBuilder()
-
-        val a = builder.createInputNode(A)
-
-        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
-
-        try {
-            // TODO: This should be something other than a TimeoutException
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.getOutcome(B, 1, TimeUnit.SECONDS)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.getOutcome(B_KEYS, 1, TimeUnit.SECONDS)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.getOutcome(B_KEYED, 1, TimeUnit.SECONDS)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.getOutcome(B_KEYED, 7, 1, TimeUnit.SECONDS)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.setInput(B, 7)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.setInput(B_KEYS, listOf(7))
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.addKeyInput(B_KEYS, 1)
-            }
-            assertThrows(IllegalArgumentException::class.java) {
-                instance.removeKeyInput(B_KEYS, 7)
-            }
-
-        } finally {
-            instance.shutdown()
-        }
-    }
-
-    @Test
     fun testKeyUpdatesUpdateKeyedTimestamps() {
         val builder = TrickleDefinitionBuilder()
 
@@ -1065,16 +882,4 @@ class TrickleTests {
         // These timestamps should not be the same
         assertNotEquals(step1.timestamp, newStep.timestamp)
     }
-}
-
-fun assertThrows(exceptionClass: Class<out Throwable>, action: () -> Unit) {
-    try {
-        action()
-    } catch (t: Throwable) {
-        if (t.javaClass == exceptionClass) {
-            return
-        }
-        throw AssertionError("Expected a thrown ${exceptionClass.name}, but was a ${t.javaClass}", t)
-    }
-    throw AssertionError("Expected this code to throw a ${exceptionClass.name}, but it did not throw anything")
 }
