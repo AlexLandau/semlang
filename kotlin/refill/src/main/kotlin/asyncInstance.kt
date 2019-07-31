@@ -235,6 +235,13 @@ At some point, we may want to improve how this handles for single-threaded execu
 
 
     fun setInputs(changes: List<TrickleInputChange>): TrickleAsyncTimestamp {
+        for (change in changes) {
+            if (!(change.nodeName is NodeName<*> && instance.definition.nonkeyedNodes.containsKey(change.nodeName as NodeName<*>))
+                    && !(change.nodeName is KeyListNodeName<*> && instance.definition.keyListNodes.containsKey(change.nodeName as KeyListNodeName<*>))
+                    && !(change.nodeName is KeyedNodeName<*, *> && instance.definition.keyedNodes.containsKey(change.nodeName as KeyedNodeName<*, *>))) {
+                throw IllegalArgumentException("Unrecognized node name ${change.nodeName}")
+            }
+        }
         val timestamp = TrickleAsyncTimestamp()
         asyncToRawTimestampMap[timestamp] = CompletableFuture()
         inputsQueue.put(TimestampedInput(changes, timestamp))
@@ -265,12 +272,18 @@ At some point, we may want to improve how this handles for single-threaded execu
     // TODO: Add a variant that waits a limited amount of time
     // TODO: We actually want to accept a variable number of these timestamps
     fun <T> getOutcome(name: NodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        if (!instance.definition.nonkeyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.Nonkeyed(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
     fun <T> getOutcome(name: NodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        if (!instance.definition.nonkeyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.Nonkeyed(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
@@ -381,36 +394,54 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <T> getOutcome(name: KeyListNodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyListNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
     fun <T> getOutcome(name: KeyListNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyListNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
 
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.FullKeyedList(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.FullKeyedList(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
 
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        if (!instance.definition.keyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.Keyed(name, key), minTimestamps.asList())
 
         return instance.getNodeOutcome(name, key)
     }
 
     fun <K, T> getOutcome(name: KeyedNodeName<K, T>, key: K, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<T> {
+        if (!instance.definition.keyedNodes.containsKey(name)) {
+            throw IllegalArgumentException("Unrecognized node name $name")
+        }
         waitForTimestamp(ValueId.Keyed(name, key), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name, key)

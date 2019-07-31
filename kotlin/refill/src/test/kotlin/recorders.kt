@@ -3,6 +3,8 @@ package net.semlang.refill
 import java.util.ArrayList
 
 internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawInstance {
+    override val definition: TrickleDefinition
+        get() = delegate.definition
     // It would be nice to record these as actual objects, but that would take some effort
     val records = ArrayList<String>()
 

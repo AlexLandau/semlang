@@ -163,7 +163,7 @@ class ErrorHandlingTests {
     }
 
     @Test
-    fun testAsyncUnusedName1() {
+    fun testPassingUnusedNamesToAsyncInstance() {
         val builder = TrickleDefinitionBuilder()
 
         val a = builder.createInputNode(A)
@@ -171,7 +171,6 @@ class ErrorHandlingTests {
         val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
 
         try {
-            // TODO: This should be something other than a TimeoutException
             assertThrows(IllegalArgumentException::class.java) {
                 instance.getOutcome(B, 1, TimeUnit.SECONDS)
             }

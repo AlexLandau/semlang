@@ -202,6 +202,7 @@ sealed class TrickleInputChange {
 }
 
 interface TrickleRawInstance {
+    val definition: TrickleDefinition
     fun setInputs(changes: List<TrickleInputChange>): Long
     fun <T> setInput(nodeName: NodeName<T>, value: T): Long
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long
@@ -225,7 +226,7 @@ interface TrickleRawInstance {
 
 // TODO: Synchronize stuff
 // TODO: Add methods to ask for a given result, but only after a given timestamp (block until available?)
-class TrickleInstance internal constructor(val definition: TrickleDefinition): TrickleRawInstance {
+class TrickleInstance internal constructor(override val definition: TrickleDefinition): TrickleRawInstance {
     // Used to ensure all results we receive originated from this instance
     class Id internal constructor()
     private val instanceId = Id()
