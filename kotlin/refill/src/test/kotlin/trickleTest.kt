@@ -1,5 +1,6 @@
 package net.semlang.refill
 
+import org.awaitility.Awaitility.await
 import org.junit.Assert.*
 import org.junit.Ignore
 import org.junit.Test
@@ -9,6 +10,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
 // as the input to a basic or key list node)
@@ -882,4 +885,38 @@ class TrickleTests {
         // These timestamps should not be the same
         assertNotEquals(step1.timestamp, newStep.timestamp)
     }
+
+    @Test
+    fun testAsyncListeners1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val b = builder.createNode(B, a, {it + 1})
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        try {
+            instance.setInput(A, 3)
+            val listenedBValue = AtomicReference<TrickleEvent<Int>>()
+            // Try adding the listener after the input is already set
+            instance.addBasicListener(B, TrickleEventListener { event ->
+                listenedBValue.set(event)
+            })
+            await().untilAsserted {
+                val event = listenedBValue.get()
+                assertTrue(event is TrickleEvent.Computed)
+                assertEquals(4, (event as TrickleEvent.Computed).value)
+            }
+            // Now try a change after the listener was added
+            instance.setInput(A, 10)
+            await().untilAsserted {
+                val event = listenedBValue.get()
+                assertTrue(event is TrickleEvent.Computed)
+                assertEquals(11, (event as TrickleEvent.Computed).value)
+            }
+        } finally {
+            instance.shutdown()
+        }
+    }
+
 }

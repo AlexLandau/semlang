@@ -232,6 +232,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     private val instanceId = Id()
 
     private val values = LinkedHashMap<ValueId, TimestampedValue>()
+    private var valueListener: ((TrickleEvent<*>) -> Unit)? = null
 
     private var curTimestamp = 0L
 
@@ -260,6 +261,19 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             values[valueId] = valueHolder
         }
         valueHolder.set(newTimestamp, newValue, newFailure)
+        if (valueListener != null) {
+            val event: TrickleEvent<Any?> = if (newFailure == null) {
+                TrickleEvent.Computed(valueId, newValue, newTimestamp)
+            } else {
+                TrickleEvent.Failure(valueId, newFailure, newTimestamp)
+            }
+            valueListener!!(event)
+        }
+    }
+
+    @Synchronized
+    fun setValueListener(listener: ((TrickleEvent<*>) -> Unit)?) {
+        this.valueListener = listener
     }
 
     @Synchronized
@@ -391,7 +405,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
                 setValue(keyValueId, curTimestamp, false, null)
             }
-            pruneKeyedInputsForRemovedKeys(nodeName, removals)
+            pruneKeyedInputsForRemovedKeys(nodeName, removals, curTimestamp)
 
         }
         return curTimestamp
@@ -420,7 +434,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
                 setValue(keyValueId, newTimestamp, false, null)
             }
-            pruneKeyedInputsForRemovedKeys(nodeName, removals)
+            pruneKeyedInputsForRemovedKeys(nodeName, removals, newTimestamp)
 
             return true
         }
@@ -484,7 +498,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             val keyValueId = ValueId.KeyListKey(nodeName, key)
             setValue(keyValueId, curTimestamp, false, null)
 
-            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key))
+            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key), curTimestamp)
         }
         return curTimestamp
     }
@@ -501,7 +515,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             val keyValueId = ValueId.KeyListKey(nodeName, key)
             setValue(keyValueId, newTimestamp, false, null)
 
-            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key))
+            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key), newTimestamp)
 
             return true
         }
@@ -509,7 +523,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     }
 
     @Synchronized
-    private fun <T> pruneKeyedInputsForRemovedKeys(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>) {
+    private fun <T> pruneKeyedInputsForRemovedKeys(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>, timestamp: Long) {
         // Prune values for keys that no longer exist in the key list
         // These will now return "NoSuchKey"
         for (valueId in values.keys.toList()) {
@@ -520,6 +534,10 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 val keySourceName = definition.keyedNodes.getValue(keyedNodeName).keySourceName
                 if (keySourceName == nodeName) {
                     values.remove(valueId)
+                    if (valueListener != null) {
+                        val event = TrickleEvent.KeyRemoved<Any?>(valueId, timestamp)
+                        valueListener!!(event)
+                    }
                 }
             }
         }
@@ -1181,6 +1199,15 @@ sealed class NodeOutcome<T> {
     }
     data class Computed<T>(val value: T): NodeOutcome<T>()
     data class Failure<T>(val failure: TrickleFailure): NodeOutcome<T>()
+}
+
+// For use with listeners
+sealed class TrickleEvent<T> {
+    abstract val valueId: ValueId
+    abstract val timestamp: Long
+    data class Computed<T>(override val valueId: ValueId, val value: T, override val timestamp: Long): TrickleEvent<T>()
+    data class Failure<T>(override val valueId: ValueId, val failure: TrickleFailure, override val timestamp: Long): TrickleEvent<T>()
+    data class KeyRemoved<T>(override val valueId: ValueId.Keyed, override val timestamp: Long): TrickleEvent<T>()
 }
 
 class TrickleStep internal constructor(

@@ -1,17 +1,21 @@
 package net.semlang.refill
 
+import org.awaitility.Awaitility.await
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.function.Supplier
 import kotlin.collections.ArrayList
 
 class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(528, 2)
+        runSpecificTest(0, 2)
         System.out.flush()
     }
 
@@ -34,10 +38,13 @@ class TrickleFuzzTests {
                 checkSyncInstance(definition.instantiateSync(), script.operations)
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
             } catch (t: Throwable) {
                 System.out.flush()
                 throw RuntimeException(
@@ -72,10 +79,13 @@ class TrickleFuzzTests {
                             checkSyncInstance(definition.instantiateSync(), script.operations)
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                            checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
 
                             // TODO: Maybe multiple rounds of this?
                             // TODO: Document this as a principle of the design
@@ -447,6 +457,76 @@ class TrickleFuzzTests {
         }
     }
 
+    private fun checkAsyncInstanceWithListeners(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
+        val listenedEvents = ConcurrentHashMap<ValueId, TrickleEvent<*>>()
+//        val listenedPerKeyValues = ConcurrentHashMap<ValueId, Any?>()
+        try {
+            for ((opIndex, op) in operations.withIndex()) {
+                try {
+                    val unused: Any = when (op) {
+                        is FuzzOperation.SetBasic -> instance.setInput(op.name, op.value)
+                        is FuzzOperation.AddKey -> instance.addKeyInput(op.name, op.key)
+                        is FuzzOperation.RemoveKey -> instance.removeKeyInput(op.name, op.key)
+                        is FuzzOperation.SetKeyList -> instance.setInput(op.name, op.value)
+                        is FuzzOperation.SetMultiple -> instance.setInputs(op.changes)
+                        is FuzzOperation.CheckBasic -> {
+                            // TODO: Have another version where all the listeners are made ahead of time
+                            instance.addBasicListener(op.name, TrickleEventListener { event ->
+                                listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                                    if (event2.timestamp > event1.timestamp) {
+                                        event2
+                                    } else {
+                                        event1
+                                    }
+                                })
+                            })
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.Nonkeyed(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
+                        }
+                        is FuzzOperation.CheckKeyList -> {
+//                            instance.addKeyListListener(op.name, KeyListNodeListener { name, outcome, timestamp ->
+//                                listenedValues[name] = outcome
+//                            })
+//                            await().untilAsserted {
+//                                assertEquals(op.outcome, listenedValues[op.name])
+//                            }
+                        }
+                        is FuzzOperation.CheckKeyedList -> {
+//                            instance.addKeyedListListener(op.name, FullKeyedListListener { name, outcome, timestamp ->
+//                                listenedValues[name] = outcome
+//                            })
+//                            await().untilAsserted {
+//                                assertEquals(op.outcome, listenedValues[op.name])
+//                            }
+                        }
+                        is FuzzOperation.CheckKeyedValue -> {
+//                            instance.addPerKeyListener(op.name, KeyedValueListener { name, key, outcome, timestamp ->
+//                                listenedPerKeyValues[ValueId.Keyed(name, key)] = outcome
+//                            })
+//                            await().untilAsserted {
+//                                assertEquals(op.outcome, listenedPerKeyValues[ValueId.Keyed(op.name, op.key)])
+//                            }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    throw RuntimeException("Failed on operation #$opIndex: #$op", t)
+                }
+            }
+        } finally {
+            instance.shutdown()
+        }
+    }
 }
 
 sealed class FuzzOperation {

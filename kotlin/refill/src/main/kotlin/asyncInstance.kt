@@ -43,7 +43,7 @@ class TrickleAsyncTimestamp
 
 data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
 
-class TrickleAsyncInstance(private val instance: TrickleRawInstance, private val executor: ExecutorService) {
+class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
     // Use with care; note the use of synchronizedMap.
     // Keys should be added by the instantiator of the async timestamp.
     // Keys will be removed by garbage collection only.
@@ -79,7 +79,58 @@ class TrickleAsyncInstance(private val instance: TrickleRawInstance, private val
     // Unguarded; operations are synchronized
     private val timestampBarriers = TimestampBarrierMultimap()
 
+    // Listeners
+    // TODO: Guard
+    private val basicListeners = HashMap<NodeName<*>, ArrayList<TrickleEventListener<*>>>()
+    private val keyListListeners = HashMap<KeyListNodeName<*>, ArrayList<TrickleEventListener<*>>>()
+    private val fullKeyedListListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
+    private val keyedValueListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
+
     init {
+        instance.setValueListener { event ->
+            val valueId = event.valueId
+            when (valueId) {
+                is ValueId.Nonkeyed -> {
+                    synchronized(basicListeners) {
+                        for (listener in basicListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
+                            executor.submit {
+                                (listener as TrickleEventListener<Any?>).receive(event as TrickleEvent<Any?>)
+                            }
+                        }
+                    }
+                }
+                is ValueId.FullKeyList -> {
+                    synchronized(keyListListeners) {
+                        for (listener in keyListListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
+                            executor.submit {
+                                (listener as TrickleEventListener<Any?>).receive(event as TrickleEvent<Any?>)
+                            }
+                        }
+                    }
+                }
+                is ValueId.KeyListKey -> {
+                    // Do nothing
+                }
+                is ValueId.Keyed -> {
+                    synchronized(keyedValueListeners) {
+                        for (listener in keyedValueListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
+                            executor.submit {
+                                (listener as TrickleEventListener<Any?>).receive(event as TrickleEvent<Any?>)
+                            }
+                        }
+                    }
+                }
+                is ValueId.FullKeyedList -> {
+                    synchronized(fullKeyedListListeners) {
+                        for (listener in fullKeyedListListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
+                            executor.submit {
+                                (listener as TrickleEventListener<Any?>).receive(event as TrickleEvent<Any?>)
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Run initial management before users can start asking for values
         getManagementJob().run()
     }
@@ -225,8 +276,6 @@ At some point, we may want to improve how this handles for single-threaded execu
             One approach is to just iterate through the listeners in the management thread after we run getNextSteps()
             and look at the relevant ValueIds
              */
-
-            // TODO: Support listeners, by either invoking them here or enqueueing new runnables for them
 
             // Trigger the management job in case new steps are available
             enqueueManagementJob()
@@ -450,9 +499,79 @@ At some point, we may want to improve how this handles for single-threaded execu
     // TODO: Add some way to unsubscribe (?)
     // TODO: How do we make sure listeners run in order when that's important? Is that something the instance promises
     // to account for when calling listeners, or do we just pass timestamps and make the user take care of it?
-//    fun <T> addListener(name: NodeName<T>, listener: RefillListener<T>) {
-//        TODO()
-//    }
+    fun <T> addBasicListener(name: NodeName<T>, listener: TrickleEventListener<T>) {
+        synchronized(basicListeners) {
+            basicListeners.getOrPut(name, { ArrayList() }).add(listener)
+        }
+        // Also do the initial output with the current value
+        executor.submit {
+            val valueId = ValueId.Nonkeyed(name)
+            val outcome = getOutcome(name)
+            when (outcome) {
+                is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                is NodeOutcome.NoSuchKey -> TODO()
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+            }
+        }
+    }
+    fun <T> addKeyListListener(name: KeyListNodeName<T>, listener: TrickleEventListener<List<T>>) {
+        synchronized(keyListListeners) {
+            keyListListeners.getOrPut(name, { ArrayList() }).add(listener)
+        }
+        // Also do the initial output with the current value
+        executor.submit {
+            val valueId = ValueId.FullKeyList(name)
+            val outcome = getOutcome(name)
+            when (outcome) {
+                is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                is NodeOutcome.NoSuchKey -> TODO()
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+            }
+        }
+    }
+    fun <K, T> addKeyedListListener(name: KeyedNodeName<K, T>, listener: TrickleEventListener<List<T>>) {
+        synchronized(fullKeyedListListeners) {
+            fullKeyedListListeners.getOrPut(name, { ArrayList() }).add(listener)
+        }
+        // Also do the initial output with the current value
+        executor.submit {
+            val valueId = ValueId.FullKeyedList(name)
+            val outcome = getOutcome(name)
+            when (outcome) {
+                is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                is NodeOutcome.NoSuchKey -> TODO()
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+            }
+        }
+    }
+    fun <K, T> addPerKeyListener(name: KeyedNodeName<K, T>, listener: TrickleEventListener<T>) {
+        synchronized(keyedValueListeners) {
+            keyedValueListeners.getOrPut(name, { ArrayList() }).add(listener)
+        }
+        // Also do the initial outputs with the current values
+        executor.submit {
+            val keySourceName = instance.definition.keyedNodes[name]!!.keySourceName
+            val keyListOutcome = getOutcome(keySourceName)
+            if (keyListOutcome is NodeOutcome.Computed) {
+                for (key in keyListOutcome.value) {
+                    executor.submit {
+//                        listener.receive(name, key as K, getOutcome(name, key), -1L)
+                        val valueId = ValueId.Keyed(name, key as K)
+                        val outcome = getOutcome(name, key)
+                        when (outcome) {
+                            is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                            is NodeOutcome.NoSuchKey -> TODO()
+                            is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
+                            is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fun shutdown() {
         // TODO: Any reason to do a soft shutdown instead?
@@ -460,9 +579,6 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 }
 
-//interface RefillListener<T> {
-//    fun nodeEvaluated(outcome: NodeOutcome<T>)
-//}
 
 // Note: This should explicitly *not* implement hashCode/equals
 class TimestampBarrier(val minTimestampWanted: Long) {
