@@ -506,7 +506,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial output with the current value
         executor.submit {
             val valueId = ValueId.Nonkeyed(name)
-            val outcome = getOutcome(name)
+            val outcome = getOutcome(name, 0, TimeUnit.MILLISECONDS) // Don't block
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
@@ -522,7 +522,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial output with the current value
         executor.submit {
             val valueId = ValueId.FullKeyList(name)
-            val outcome = getOutcome(name)
+            val outcome = getOutcome(name, 0, TimeUnit.MILLISECONDS) // Don't block
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
@@ -538,7 +538,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial output with the current value
         executor.submit {
             val valueId = ValueId.FullKeyedList(name)
-            val outcome = getOutcome(name)
+            val outcome = getOutcome(name, 0, TimeUnit.MILLISECONDS) // Don't block
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
@@ -554,13 +554,13 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial outputs with the current values
         executor.submit {
             val keySourceName = instance.definition.keyedNodes[name]!!.keySourceName
-            val keyListOutcome = getOutcome(keySourceName)
+            val keyListOutcome = getOutcome(keySourceName, 0, TimeUnit.MILLISECONDS) // Don't block
             if (keyListOutcome is NodeOutcome.Computed) {
                 for (key in keyListOutcome.value) {
                     executor.submit {
 //                        listener.receive(name, key as K, getOutcome(name, key), -1L)
                         val valueId = ValueId.Keyed(name, key as K)
-                        val outcome = getOutcome(name, key)
+                        val outcome = getOutcome(name, key, 0, TimeUnit.MILLISECONDS) // Don't block
                         when (outcome) {
                             is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                             is NodeOutcome.NoSuchKey -> TODO()

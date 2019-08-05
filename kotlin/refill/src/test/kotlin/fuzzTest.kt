@@ -15,7 +15,7 @@ class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(0, 2)
+        runSpecificTest(1, 0)
         System.out.flush()
     }
 
