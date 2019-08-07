@@ -16,7 +16,7 @@ class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(0, 4)
+        runSpecificTest(481, 8)
         System.out.flush()
     }
 
@@ -151,8 +151,8 @@ class TrickleFuzzTests {
         for (operation in script) {
             val unused: Any = when (operation) {
                 is FuzzOperation.SetBasic -> curGroup.add(TrickleInputChange.SetBasic(operation.name, operation.value))
-                is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, setOf(operation.key), setOf()))
-                is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, setOf(), setOf(operation.key)))
+                is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, listOf(operation.key), listOf()))
+                is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, listOf(), listOf(operation.key)))
                 is FuzzOperation.SetKeyList -> curGroup.add(TrickleInputChange.SetKeys(operation.name, operation.value))
                 is FuzzOperation.EditKeys -> curGroup.add(TrickleInputChange.EditKeys(operation.name, operation.keysAdded, operation.keysRemoved))
                 is FuzzOperation.SetMultiple -> curGroup.addAll(operation.changes)
@@ -560,15 +560,7 @@ sealed class FuzzOperation {
     data class SetBasic(val name: NodeName<Int>, val value: Int) : FuzzOperation()
     data class AddKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
     data class RemoveKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
-    data class EditKeys(val name: KeyListNodeName<Int>, val keysAdded: Set<Int>, val keysRemoved: Set<Int>) : FuzzOperation() {
-        init {
-            for (key in keysRemoved) {
-                if (keysAdded.contains(key)) {
-                    error("Shouldn't both add and remove key $key")
-                }
-            }
-        }
-    }
+    data class EditKeys(val name: KeyListNodeName<Int>, val keysAdded: List<Int>, val keysRemoved: List<Int>) : FuzzOperation()
     data class SetKeyList(val name: KeyListNodeName<Int>, val value: List<Int>) : FuzzOperation()
     data class SetMultiple(val changes: List<TrickleInputChange>): FuzzOperation()
     data class CheckBasic(val name: NodeName<Int>, val outcome: NodeOutcome<Int>) : FuzzOperation()
@@ -657,8 +649,8 @@ fun toOperation(change: TrickleInputChange): FuzzOperation {
 //        is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
 //        is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
         is TrickleInputChange.EditKeys<*> -> FuzzOperation.EditKeys(change.nodeName as KeyListNodeName<Int>,
-            change.keysAdded as Set<Int>,
-            change.keysRemoved as Set<Int>
+            change.keysAdded as List<Int>,
+            change.keysRemoved as List<Int>
         )
     }
 }
@@ -680,7 +672,7 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
             if (keyListRoll < 0.3) {
                 val valueToAdd = random.nextInt(100)
                 rawInstance.addKeyInput(nodeName, valueToAdd)
-                return TrickleInputChange.EditKeys(nodeName, setOf(valueToAdd), setOf())
+                return TrickleInputChange.EditKeys(nodeName, listOf(valueToAdd), listOf())
             } else if (keyListRoll < 0.55) {
                 // Pick an existing key to delete
                 val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
@@ -691,12 +683,12 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
                     is NodeOutcome.NoSuchKey -> 3
                 }
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
-                return TrickleInputChange.EditKeys(nodeName, setOf(), setOf(valueToRemove))
+                return TrickleInputChange.EditKeys(nodeName, listOf(), listOf(valueToRemove))
             } else if (keyListRoll < 0.6) {
                 // Pick a random key to maybe delete if it's there
                 val valueToRemove = random.nextInt(100)
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
-                return TrickleInputChange.EditKeys(nodeName, setOf(), setOf(valueToRemove))
+                return TrickleInputChange.EditKeys(nodeName, listOf(), listOf(valueToRemove))
             } else {
                 val newList = createRandomListProducingFunction(random)(listOf(random.nextInt(100)))
                 rawInstance.setInput(nodeName, newList)

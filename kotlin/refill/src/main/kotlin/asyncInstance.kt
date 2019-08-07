@@ -320,14 +320,14 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, setOf(key), setOf())))
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(key), listOf())))
     }
 
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, setOf(), setOf(key))))
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(), listOf(key))))
     }
 
-    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: Set<T>, keysRemoved: Set<T>): TrickleAsyncTimestamp {
+    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)))
     }
 

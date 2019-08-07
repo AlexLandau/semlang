@@ -225,14 +225,8 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         recomputeState()
     }
 
-    fun editKeys(name: KeyListNodeName<Int>, keysAdded: Set<Int>, keysRemoved: Set<Int>) {
-        // TODO: Should we define away this error case or not?
-        for (key in keysRemoved) {
-            if (keysAdded.contains(key)) {
-                error("Can't accept keys as both added and removed")
-            }
-        }
-        keyListInputs[name] = keyListInputs[name]!!.addAll(keysAdded).removeAll(keysRemoved)
+    fun editKeys(name: KeyListNodeName<Int>, keysAdded: List<Int>, keysRemoved: List<Int>) {
+        keyListInputs[name] = keyListInputs[name]!!.removeAll(keysRemoved).addAll(keysAdded)
         recomputeState()
     }
 
@@ -248,7 +242,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                 is TrickleInputChange.SetKeys<*> -> setInput(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
 //                is TrickleInputChange.AddKey<*> -> addKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
 //                is TrickleInputChange.RemoveKey<*> -> removeKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-                is TrickleInputChange.EditKeys<*> -> editKeys(change.nodeName as KeyListNodeName<Int>, change.keysAdded as Set<Int>, change.keysRemoved as Set<Int>)
+                is TrickleInputChange.EditKeys<*> -> editKeys(change.nodeName as KeyListNodeName<Int>, change.keysAdded as List<Int>, change.keysRemoved as List<Int>)
              }
         }
     }

@@ -27,7 +27,7 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         return instance.removeKeyInput(nodeName, key)
     }
 
-    override fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: Set<T>, keysRemoved: Set<T>): Long {
+    override fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): Long {
         return instance.editKeys(nodeName, keysAdded, keysRemoved)
     }
 

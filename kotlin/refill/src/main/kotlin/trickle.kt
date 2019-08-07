@@ -210,7 +210,7 @@ interface TrickleInputReceiver {
     fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long
-    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: Set<T>, keysRemoved: Set<T>): Long
+    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): Long
 }
 
 sealed class TrickleInputChange {
@@ -220,17 +220,8 @@ sealed class TrickleInputChange {
 //    data class AddKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
 //    data class RemoveKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
     // TODO: Add to fuzz testing
-    data class EditKeys<T>(override val nodeName: KeyListNodeName<T>, val keysAdded: Set<T>, val keysRemoved: Set<T>): TrickleInputChange() {
-        init {
-            if (keysAdded.isNotEmpty() && keysRemoved.isNotEmpty()) {
-                for (key in keysRemoved) {
-                    if (keysAdded.contains(key)) {
-                        throw IllegalArgumentException("A TrickleInputChange.EditKeys should not add and remove the same key, but $key was in both collections")
-                    }
-                }
-            }
-        }
-    }
+    // Note: Removals happen before additions. If a key is in both lists, it will be removed and then readded to the list (thus ending up in a different position).
+    data class EditKeys<T>(override val nodeName: KeyListNodeName<T>, val keysAdded: List<T>, val keysRemoved: List<T>): TrickleInputChange()
 }
 
 interface TrickleRawInstance {
@@ -332,93 +323,6 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             curTimestamp = prospectiveNewTimestamp
         }
         return curTimestamp
-    }
-
-    private fun coalesceChanges(changes: List<TrickleInputChange>): List<TrickleInputChange> {
-        val changePerNode = LinkedHashMap<GenericNodeName, TrickleInputChange>()
-
-        for (curChange in changes) {
-            val existingChange = changePerNode[curChange.nodeName]
-            if (existingChange == null) {
-                changePerNode[curChange.nodeName] = curChange
-            } else {
-                val modifiedChange: TrickleInputChange = when (curChange) {
-                    is TrickleInputChange.SetBasic<*> -> {
-                        // New change overwrites the old
-                        curChange
-                    }
-                    is TrickleInputChange.SetKeys<*> -> {
-                        // New change overwrites the old
-                        curChange
-                    }
-//                    is TrickleInputChange.AddKey<*> -> {
-//                        val nodeName = curChange.nodeName as KeyListNodeName<Any?>
-//                        when (existingChange) {
-//                            is TrickleInputChange.SetBasic<*> -> error("This shouldn't happen")
-//                            is TrickleInputChange.SetKeys<*> -> {
-//                                val keys = KeyList.copyOf(existingChange.value)
-//                                keys.add(curChange.key)
-//                                TrickleInputChange.SetKeys(nodeName, keys.asList())
-//                            }
-//                            is TrickleInputChange.AddKey<*> -> {
-//                                TrickleInputChange.EditKeys(nodeName, setOf(existingChange.key, curChange.key), setOf())
-//                            }
-//                            is TrickleInputChange.RemoveKey<*> -> {
-//                                if (curChange.key == existingChange.key) {
-//                                    TrickleInputChange.EditKeys(nodeName, setOf(), setOf())
-//                                } else {
-//                                    TrickleInputChange.EditKeys(nodeName, setOf(curChange.key), setOf(existingChange.key))
-//                                }
-//                            }
-//                            is TrickleInputChange.EditKeys<*> -> {
-//                                TrickleInputChange.EditKeys(nodeName, existingChange.keysAdded + curChange.key, existingChange.keysRemoved - curChange.key)
-//                            }
-//                        }
-//                    }
-//                    is TrickleInputChange.RemoveKey<*> -> {
-//                        val nodeName = curChange.nodeName as KeyListNodeName<Any?>
-//                        when (existingChange) {
-//                            is TrickleInputChange.SetBasic<*> -> error("This shouldn't happen")
-//                            is TrickleInputChange.SetKeys<*> -> {
-//                                val keys = KeyList.copyOf(existingChange.value)
-//                                keys.remove(curChange.key)
-//                                TrickleInputChange.SetKeys(nodeName, keys.asList())
-//                            }
-//                            is TrickleInputChange.AddKey<*> -> {
-//                                if (curChange.key == existingChange.key) {
-//                                    TrickleInputChange.EditKeys(nodeName, setOf(), setOf())
-//                                } else {
-//                                    TrickleInputChange.EditKeys(nodeName, setOf(existingChange.key), setOf(curChange.key))
-//                                }
-//                            }
-//                            is TrickleInputChange.RemoveKey<*> -> {
-//
-//                            }
-//                            is TrickleInputChange.EditKeys<*> -> TODO()
-//                        }
-//                    }
-                    is TrickleInputChange.EditKeys<*> -> {
-                        val nodeName = curChange.nodeName as KeyListNodeName<Any?>
-                        when (existingChange) {
-                            is TrickleInputChange.SetBasic<*> -> error("Refill internal error")
-                            is TrickleInputChange.SetKeys<*> -> {
-                                var keys = KeyList.copyOf(existingChange.value)
-                                keys = keys.removeAll(curChange.keysRemoved)
-                                keys = keys.addAll(curChange.keysAdded)
-                                TrickleInputChange.SetKeys(nodeName, keys.asList())
-                            }
-                            is TrickleInputChange.EditKeys<*> -> {
-                                val keysRemoved = (existingChange.keysRemoved - curChange.keysAdded) + curChange.keysRemoved
-                                val keysAdded = (existingChange.keysAdded - curChange.keysRemoved) + curChange.keysAdded
-                                TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)
-                            }
-                        }
-                    }
-                }
-                changePerNode[curChange.nodeName] = modifiedChange
-            }
-        }
-        return changePerNode.values.toList()
     }
 
     /**
@@ -604,23 +508,29 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         val listValueId = ValueId.FullKeyList(nodeName)
         val oldList = values[listValueId]!!.getValue() as KeyList<T>
 
-        val keysAdded = keysToAdd.filter { !oldList.contains(it) }
-        val keysRemoved = keysToRemove.filter { oldList.contains(it) }
+        val newList = oldList.removeAll(keysToRemove).addAll(keysToAdd)
+//        val keysAdded = keysToAdd.filter { !oldList.contains(it) }
+//        val keysRemoved = keysToRemove.filter { oldList.contains(it) }
 
-        val anyChangeMade = keysAdded.isNotEmpty() || keysRemoved.isNotEmpty()
-        if (anyChangeMade) {
-            val newList = oldList.removeAll(keysRemoved).addAll(keysAdded)
+//        val anyChangeMade = keysAdded.isNotEmpty() || keysRemoved.isNotEmpty()
+        if (oldList != newList) {
             setValue(listValueId, newTimestamp, newList, null)
 
-            for (keyRemoved in keysRemoved) {
-                val keyValueId = ValueId.KeyListKey(nodeName, keyRemoved)
-                setValue(keyValueId, newTimestamp, false, null)
+            val actuallyRemoved = HashSet<T>()
+            for (key in keysToRemove) {
+                if (oldList.contains(key) && !newList.contains(key)) {
+                    val keyValueId = ValueId.KeyListKey(nodeName, key)
+                    setValue(keyValueId, newTimestamp, false, null)
+                    actuallyRemoved.add(key)
+                }
             }
-            for (keyAdded in keysAdded) {
-                val keyValueId = ValueId.KeyListKey(nodeName, keyAdded)
-                setValue(keyValueId, newTimestamp, true, null)
+            for (key in keysToAdd) {
+                if (!oldList.contains(key) && newList.contains(key)) {
+                    val keyValueId = ValueId.KeyListKey(nodeName, key)
+                    setValue(keyValueId, newTimestamp, true, null)
+                }
             }
-            pruneKeyedInputsForRemovedKeys(nodeName, keysRemoved.toSet(), newTimestamp)
+            pruneKeyedInputsForRemovedKeys(nodeName, actuallyRemoved, newTimestamp)
             return true
         }
         return false
@@ -652,7 +562,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
     // TODO: Should these APIs use lists instead of sets?
     @Synchronized
-    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysToAdd: Set<T>, keysToRemove: Set<T>): Long {
+    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysToAdd: List<T>, keysToRemove: List<T>): Long {
 //        val node = definition.keyListNodes[nodeName]
 //        if (node == null) {
 //            throw IllegalArgumentException("Unrecognized node name $nodeName")
@@ -1440,3 +1350,48 @@ data class TrickleStepResult internal constructor(
 
 // TODO: Add a method for turning this into a single Exception with a reasonable human-friendly summary
 data class TrickleFailure(val errors: Map<ValueId, Throwable>, val missingInputs: Set<ValueId>)
+
+// TODO: Fix error case when a key should be removed and then re-added
+private fun coalesceChanges(changes: List<TrickleInputChange>): List<TrickleInputChange> {
+    val changePerNode = LinkedHashMap<GenericNodeName, TrickleInputChange>()
+
+    for (curChange in changes) {
+        val existingChange = changePerNode[curChange.nodeName]
+        if (existingChange == null) {
+            changePerNode[curChange.nodeName] = curChange
+        } else {
+            val modifiedChange: TrickleInputChange = when (curChange) {
+                is TrickleInputChange.SetBasic<*> -> {
+                    // New change overwrites the old
+                    curChange
+                }
+                is TrickleInputChange.SetKeys<*> -> {
+                    // New change overwrites the old
+                    curChange
+                }
+                is TrickleInputChange.EditKeys<*> -> {
+                    val nodeName = curChange.nodeName as KeyListNodeName<Any?>
+                    when (existingChange) {
+                        is TrickleInputChange.SetBasic<*> -> error("Refill internal error")
+                        is TrickleInputChange.SetKeys<*> -> {
+                            var keys = KeyList.copyOf(existingChange.value)
+                            keys = keys.removeAll(curChange.keysRemoved)
+                            keys = keys.addAll(curChange.keysAdded)
+                            TrickleInputChange.SetKeys(nodeName, keys.asList())
+                        }
+                        is TrickleInputChange.EditKeys<*> -> {
+                            val keysRemoved = existingChange.keysRemoved + curChange.keysRemoved
+                            val keysAdded = (existingChange.keysAdded - curChange.keysRemoved) + curChange.keysAdded
+                            TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)
+                        }
+                    }
+                }
+            }
+            changePerNode[curChange.nodeName] = modifiedChange
+        }
+    }
+//    println("Coalesce changes result:")
+//    println("  Input:  $changes")
+//    println("  Output: ${changePerNode.values.toList()}")
+    return changePerNode.values.toList()
+}
