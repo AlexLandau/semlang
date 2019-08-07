@@ -6,6 +6,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -920,4 +921,35 @@ class TrickleTests {
         }
     }
 
+    @Test
+    fun testListenerNotInvokedForNonfinalValuesInInputs() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+
+        val instance = builder.build().instantiateRaw()
+
+        val saw2 = AtomicBoolean(false)
+        val saw3Latch = CountDownLatch(1)
+
+        instance.setValueListener { event ->
+            if (event is TrickleEvent.Computed) {
+                if (event.value == 2) {
+                    saw2.set(true)
+                } else if (event.value == 3) {
+                    saw3Latch.countDown()
+                }
+            }
+        }
+
+        instance.setInputs(listOf(
+            TrickleInputChange.SetBasic(A, 2),
+            TrickleInputChange.SetBasic(A, 3)
+        ))
+
+        val foundSuccessfully = saw3Latch.await(10, TimeUnit.SECONDS)
+        assertTrue(foundSuccessfully)
+
+        assertFalse("Should not have seen the intermediate value of the input", saw2.get())
+    }
 }

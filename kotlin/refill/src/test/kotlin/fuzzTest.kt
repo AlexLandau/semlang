@@ -1,5 +1,6 @@
 package net.semlang.refill
 
+import org.awaitility.Awaitility
 import org.awaitility.Awaitility.await
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -15,7 +16,7 @@ class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(1, 0)
+        runSpecificTest(0, 4)
         System.out.flush()
     }
 
@@ -148,11 +149,12 @@ class TrickleFuzzTests {
             curGroup.clear()
         }
         for (operation in script) {
-            when (operation) {
+            val unused: Any = when (operation) {
                 is FuzzOperation.SetBasic -> curGroup.add(TrickleInputChange.SetBasic(operation.name, operation.value))
-                is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.AddKey(operation.name, operation.key))
-                is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.RemoveKey(operation.name, operation.key))
+                is FuzzOperation.AddKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, setOf(operation.key), setOf()))
+                is FuzzOperation.RemoveKey -> curGroup.add(TrickleInputChange.EditKeys(operation.name, setOf(), setOf(operation.key)))
                 is FuzzOperation.SetKeyList -> curGroup.add(TrickleInputChange.SetKeys(operation.name, operation.value))
+                is FuzzOperation.EditKeys -> curGroup.add(TrickleInputChange.EditKeys(operation.name, operation.keysAdded, operation.keysRemoved))
                 is FuzzOperation.SetMultiple -> curGroup.addAll(operation.changes)
                 is FuzzOperation.CheckBasic -> {
                     flushCurGroup()
@@ -191,6 +193,9 @@ class TrickleFuzzTests {
                     }
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.EditKeys -> {
+                        instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
                     }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
@@ -236,6 +241,10 @@ class TrickleFuzzTests {
                         instance.setInput(op.name, op.value)
                         instance.completeSynchronously()
                     }
+                    is FuzzOperation.EditKeys -> {
+                        instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
+                        instance.completeSynchronously()
+                    }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
                         instance.completeSynchronously()
@@ -274,6 +283,9 @@ class TrickleFuzzTests {
                     }
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.EditKeys -> {
+                        instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
                     }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
@@ -316,6 +328,9 @@ class TrickleFuzzTests {
                     }
                     is FuzzOperation.SetKeyList -> {
                         instance.setInput(op.name, op.value)
+                    }
+                    is FuzzOperation.EditKeys -> {
+                        instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
                     }
                     is FuzzOperation.SetMultiple -> {
                         instance.setInputs(op.changes)
@@ -362,6 +377,9 @@ class TrickleFuzzTests {
                         }
                         is FuzzOperation.SetKeyList -> {
                             timestamps.add(instance.setInput(op.name, op.value))
+                        }
+                        is FuzzOperation.EditKeys -> {
+                            timestamps.add(instance.editKeys(op.name, op.keysAdded, op.keysRemoved))
                         }
                         is FuzzOperation.SetMultiple -> {
                             timestamps.add(instance.setInputs(op.changes))
@@ -412,6 +430,9 @@ class TrickleFuzzTests {
                         is FuzzOperation.SetKeyList -> {
                             timestamp = instance.setInput(op.name, op.value)
                         }
+                        is FuzzOperation.EditKeys -> {
+                            timestamp = instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
+                        }
                         is FuzzOperation.SetMultiple -> {
                             timestamp = instance.setInputs(op.changes)
                         }
@@ -460,6 +481,8 @@ class TrickleFuzzTests {
     private fun checkAsyncInstanceWithListeners(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
         val listenedEvents = ConcurrentHashMap<ValueId, TrickleEvent<*>>()
 //        val listenedPerKeyValues = ConcurrentHashMap<ValueId, Any?>()
+        Awaitility.setDefaultPollDelay(0, TimeUnit.MILLISECONDS)
+        Awaitility.setDefaultPollInterval(10, TimeUnit.MILLISECONDS)
         try {
             for ((opIndex, op) in operations.withIndex()) {
                 try {
@@ -468,12 +491,16 @@ class TrickleFuzzTests {
                         is FuzzOperation.AddKey -> instance.addKeyInput(op.name, op.key)
                         is FuzzOperation.RemoveKey -> instance.removeKeyInput(op.name, op.key)
                         is FuzzOperation.SetKeyList -> instance.setInput(op.name, op.value)
+                        is FuzzOperation.EditKeys -> instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
                         is FuzzOperation.SetMultiple -> instance.setInputs(op.changes)
                         is FuzzOperation.CheckBasic -> {
                             // TODO: Have another version where all the listeners are made ahead of time
                             instance.addBasicListener(op.name, TrickleEventListener { event ->
+//                                println("Receiving event for ${op.name} with value $event")
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
-                                    if (event2.timestamp > event1.timestamp) {
+                                    // TODO: This is getting multiple values per timestamp. Why???
+                                    // TODO: The >= is pretty awkward, but I think this is only relevant for inputs
+                                    if (event2.timestamp >= event1.timestamp) {
                                         event2
                                     } else {
                                         event1
@@ -533,6 +560,15 @@ sealed class FuzzOperation {
     data class SetBasic(val name: NodeName<Int>, val value: Int) : FuzzOperation()
     data class AddKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
     data class RemoveKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
+    data class EditKeys(val name: KeyListNodeName<Int>, val keysAdded: Set<Int>, val keysRemoved: Set<Int>) : FuzzOperation() {
+        init {
+            for (key in keysRemoved) {
+                if (keysAdded.contains(key)) {
+                    error("Shouldn't both add and remove key $key")
+                }
+            }
+        }
+    }
     data class SetKeyList(val name: KeyListNodeName<Int>, val value: List<Int>) : FuzzOperation()
     data class SetMultiple(val changes: List<TrickleInputChange>): FuzzOperation()
     data class CheckBasic(val name: NodeName<Int>, val outcome: NodeOutcome<Int>) : FuzzOperation()
@@ -618,8 +654,12 @@ fun toOperation(change: TrickleInputChange): FuzzOperation {
     return when (change) {
         is TrickleInputChange.SetBasic<*> -> FuzzOperation.SetBasic(change.nodeName as NodeName<Int>, change.value as Int)
         is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
-        is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-        is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
+//        is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
+//        is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
+        is TrickleInputChange.EditKeys<*> -> FuzzOperation.EditKeys(change.nodeName as KeyListNodeName<Int>,
+            change.keysAdded as Set<Int>,
+            change.keysRemoved as Set<Int>
+        )
     }
 }
 
@@ -640,7 +680,7 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
             if (keyListRoll < 0.3) {
                 val valueToAdd = random.nextInt(100)
                 rawInstance.addKeyInput(nodeName, valueToAdd)
-                return TrickleInputChange.AddKey(nodeName, valueToAdd)
+                return TrickleInputChange.EditKeys(nodeName, setOf(valueToAdd), setOf())
             } else if (keyListRoll < 0.55) {
                 // Pick an existing key to delete
                 val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
@@ -651,12 +691,12 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
                     is NodeOutcome.NoSuchKey -> 3
                 }
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
-                return TrickleInputChange.RemoveKey(nodeName, valueToRemove)
+                return TrickleInputChange.EditKeys(nodeName, setOf(), setOf(valueToRemove))
             } else if (keyListRoll < 0.6) {
                 // Pick a random key to maybe delete if it's there
                 val valueToRemove = random.nextInt(100)
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
-                return TrickleInputChange.RemoveKey(nodeName, valueToRemove)
+                return TrickleInputChange.EditKeys(nodeName, setOf(), setOf(valueToRemove))
             } else {
                 val newList = createRandomListProducingFunction(random)(listOf(random.nextInt(100)))
                 rawInstance.setInput(nodeName, newList)

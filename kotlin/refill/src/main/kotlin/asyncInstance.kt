@@ -181,9 +181,13 @@ At some point, we may want to improve how this handles for single-threaded execu
         inputsQueue.drainTo(inputsToAdd)
         // TODO: Try just doing separate timestamps for the separate groups
 
-        val newRawTimestamp = instance.setInputs(inputsToAdd.map { it.inputs }.flatten())
-        for (asyncTimestamp in inputsToAdd.map { it.timestamp }) {
-            asyncToRawTimestampMap[asyncTimestamp]!!.complete(newRawTimestamp)
+        // Note: We do this instead of flattening into a single set of inputs to deal with some issues around event
+        // timestamps that could otherwise make the listener approach less reliable
+        val inputRawTimestamps = ArrayList<Long>()
+        for (input in inputsToAdd) {
+            val newRawTimestamp = instance.setInputs(input.inputs)
+            asyncToRawTimestampMap[input.timestamp]!!.complete(newRawTimestamp)
+            inputRawTimestamps.add(newRawTimestamp)
         }
 
 
@@ -204,8 +208,12 @@ At some point, we may want to improve how this handles for single-threaded execu
         // the TrickleFailure that says it's absent but expected. That in turn uses a FullKeyedList ValueId (for some
         // reason I forget at the moment) that can get triggered for the given timestamp by an unrelated input.
         // Also, querying your instance for an input value is not a great look to begin with.
-        for (input in inputsToAdd.map { it.inputs }.flatten()) {
-            updateInputTimestampBarrier(input, newRawTimestamp)
+        for ((inputList, rawTimestamp) in inputsToAdd.zip(inputRawTimestamps)) {
+//            for (input in inputsToAdd.map { it.inputs }.flatten()) {
+            for (input in inputList.inputs) {
+                updateInputTimestampBarrier(input, rawTimestamp)
+//            }
+            }
         }
 
         // In some cases, getNextSteps() will cause the timestamps for certain ValueIds to advance, so we need to check
@@ -244,8 +252,9 @@ At some point, we may want to improve how this handles for single-threaded execu
             is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
             // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
             is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-            is TrickleInputChange.AddKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-            is TrickleInputChange.RemoveKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+//            is TrickleInputChange.AddKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+//            is TrickleInputChange.RemoveKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+            is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
         }
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
@@ -311,11 +320,15 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.AddKey(nodeName, key)))
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, setOf(key), setOf())))
     }
 
     fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.RemoveKey(nodeName, key)))
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, setOf(), setOf(key))))
+    }
+
+    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: Set<T>, keysRemoved: Set<T>): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)))
     }
 
     // TODO: Add a variant that waits a limited amount of time
