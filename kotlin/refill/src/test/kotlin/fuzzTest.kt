@@ -3,6 +3,7 @@ package net.semlang.refill
 import org.awaitility.Awaitility
 import org.awaitility.Awaitility.await
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +15,9 @@ class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(0, 0)
+        for (i in 0..100) {
+            runSpecificTest(14, 7)
+        }
         System.out.flush()
     }
 
@@ -478,7 +481,6 @@ class TrickleFuzzTests {
 
     private fun checkAsyncInstanceWithListeners(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
         val listenedEvents = ConcurrentHashMap<ValueId, TrickleEvent<*>>()
-//        val listenedPerKeyValues = ConcurrentHashMap<ValueId, Any?>()
         Awaitility.setDefaultPollDelay(0, TimeUnit.MILLISECONDS)
         Awaitility.setDefaultPollInterval(10, TimeUnit.MILLISECONDS)
         try {
@@ -542,20 +544,56 @@ class TrickleFuzzTests {
                             }
                         }
                         is FuzzOperation.CheckKeyedList -> {
-//                            instance.addKeyedListListener(op.name, FullKeyedListListener { name, outcome, timestamp ->
-//                                listenedValues[name] = outcome
-//                            })
-//                            await().untilAsserted {
-//                                assertEquals(op.outcome, listenedValues[op.name])
-//                            }
+                            // TODO: Have another version where all the listeners are made ahead of time
+                            instance.addKeyedListListener(op.name, TrickleEventListener { event ->
+                                listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                                    if (event2.timestamp > event1.timestamp) {
+                                        event2
+                                    } else {
+                                        event1
+                                    }
+                                })
+                            })
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.FullKeyedList(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
                         }
                         is FuzzOperation.CheckKeyedValue -> {
-//                            instance.addPerKeyListener(op.name, KeyedValueListener { name, key, outcome, timestamp ->
-//                                listenedPerKeyValues[ValueId.Keyed(name, key)] = outcome
-//                            })
-//                            await().untilAsserted {
-//                                assertEquals(op.outcome, listenedPerKeyValues[ValueId.Keyed(op.name, op.key)])
-//                            }
+                            // TODO: Have another version where all the listeners are made ahead of time
+                            instance.addPerKeyListener(op.name, TrickleEventListener { event ->
+                                listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                                    if (event2.timestamp > event1.timestamp) {
+                                        event2
+                                    } else {
+                                        event1
+                                    }
+                                })
+                            })
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.Keyed(op.name, op.key)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> {
+                                        assertTrue(event == null || event is TrickleEvent.KeyRemoved)
+                                    }
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (t: Throwable) {

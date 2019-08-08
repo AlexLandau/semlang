@@ -1,5 +1,6 @@
 package net.semlang.refill
 
+import java.lang.Exception
 import java.util.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -504,7 +505,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial output with the current value
         executor.submit {
             val valueId = ValueId.Nonkeyed(name)
-            val outcome = getOutcome(name, 0, TimeUnit.MILLISECONDS) // Don't block
+            val outcome = instance.getNodeOutcome(name) // Don't block
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
@@ -552,17 +553,30 @@ At some point, we may want to improve how this handles for single-threaded execu
         // Also do the initial outputs with the current values
         executor.submit {
             val keySourceName = instance.definition.keyedNodes[name]!!.keySourceName
-            val keyListOutcome = getOutcome(keySourceName, 0, TimeUnit.MILLISECONDS) // Don't block
-            if (keyListOutcome is NodeOutcome.Computed) {
-                for (key in keyListOutcome.value) {
-                    executor.submit {
+            // Get the current values of the keys and the keyed values as a single operation on the raw instance
+            synchronized(instance) {
+                val keyListOutcome = instance.getNodeOutcome(keySourceName)
+                if (keyListOutcome is NodeOutcome.Computed) {
+                    for (key in keyListOutcome.value) {
                         val valueId = ValueId.Keyed(name, key as K)
-                        val outcome = getOutcome(name, key, 0, TimeUnit.MILLISECONDS) // Don't block
+                        val outcome = instance.getNodeOutcome(name, key)
                         when (outcome) {
                             is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                             is NodeOutcome.NoSuchKey -> TODO()
-                            is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
-                            is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+                            is NodeOutcome.Computed -> listener.receive(
+                                TrickleEvent.Computed(
+                                    valueId,
+                                    outcome.value,
+                                    -1L
+                                )
+                            )
+                            is NodeOutcome.Failure -> listener.receive(
+                                TrickleEvent.Failure(
+                                    valueId,
+                                    outcome.failure,
+                                    -1L
+                                )
+                            )
                         }
                     }
                 }
