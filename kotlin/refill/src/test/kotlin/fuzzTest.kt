@@ -3,20 +3,18 @@ package net.semlang.refill
 import org.awaitility.Awaitility
 import org.awaitility.Awaitility.await
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.function.Supplier
 import kotlin.collections.ArrayList
 
 class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-        runSpecificTest(481, 8)
+        runSpecificTest(0, 0)
         System.out.flush()
     }
 
@@ -646,8 +644,6 @@ fun toOperation(change: TrickleInputChange): FuzzOperation {
     return when (change) {
         is TrickleInputChange.SetBasic<*> -> FuzzOperation.SetBasic(change.nodeName as NodeName<Int>, change.value as Int)
         is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
-//        is TrickleInputChange.AddKey<*> -> FuzzOperation.AddKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-//        is TrickleInputChange.RemoveKey<*> -> FuzzOperation.RemoveKey(change.nodeName as KeyListNodeName<Int>, change.key as Int)
         is TrickleInputChange.EditKeys<*> -> FuzzOperation.EditKeys(change.nodeName as KeyListNodeName<Int>,
             change.keysAdded as List<Int>,
             change.keysRemoved as List<Int>
@@ -669,11 +665,11 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
         is KeyListNodeName<*> -> {
             val nodeName = inputName as KeyListNodeName<Int>
             val keyListRoll = random.nextDouble()
-            if (keyListRoll < 0.3) {
+            if (keyListRoll < 0.2) {
                 val valueToAdd = random.nextInt(100)
                 rawInstance.addKeyInput(nodeName, valueToAdd)
                 return TrickleInputChange.EditKeys(nodeName, listOf(valueToAdd), listOf())
-            } else if (keyListRoll < 0.55) {
+            } else if (keyListRoll < 0.35) {
                 // Pick an existing key to delete
                 val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
                 val valueToRemove = when (existingListOutcome) {
@@ -684,11 +680,25 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
                 }
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
                 return TrickleInputChange.EditKeys(nodeName, listOf(), listOf(valueToRemove))
-            } else if (keyListRoll < 0.6) {
+            } else if (keyListRoll < 0.4) {
                 // Pick a random key to maybe delete if it's there
                 val valueToRemove = random.nextInt(100)
                 rawInstance.removeKeyInput(nodeName, valueToRemove)
                 return TrickleInputChange.EditKeys(nodeName, listOf(), listOf(valueToRemove))
+            } else if (keyListRoll < 0.7) {
+                // Add some keys, remove some keys
+                val existingListOutcome = rawInstance.getNodeOutcome(nodeName)
+                val numToAdd = random.nextInt(8)
+                val valuesToAdd = (0 until numToAdd).map { random.nextInt(100) }
+                val numToRemove = random.nextInt(5)
+                val valuesToRemove = when (existingListOutcome) {
+                    is NodeOutcome.NotYetComputed -> listOf(0)
+                    is NodeOutcome.Computed -> (0 until numToRemove).map { existingListOutcome.value.getAtRandom(random, { 2 }) }
+                    is NodeOutcome.Failure -> listOf(1)
+                    is NodeOutcome.NoSuchKey -> listOf(3)
+                }
+                rawInstance.editKeys(nodeName, valuesToAdd, valuesToRemove)
+                return TrickleInputChange.EditKeys(nodeName, valuesToAdd, valuesToRemove)
             } else {
                 val newList = createRandomListProducingFunction(random)(listOf(random.nextInt(100)))
                 rawInstance.setInput(nodeName, newList)

@@ -190,17 +190,6 @@ At some point, we may want to improve how this handles for single-threaded execu
             inputRawTimestamps.add(newRawTimestamp)
         }
 
-
-        // Alternative where we just do separate timestamps for separate groups:
-//        for (inputToAdd in inputsToAdd) {
-//            val newRawTimestamp = instance.setInputs(inputToAdd.inputs)
-//            asyncToRawTimestampMap[inputToAdd.timestamp]!!.complete(newRawTimestamp)
-//            for (input in inputToAdd.inputs) {
-//                updateInputTimestampBarrier(input, newRawTimestamp)
-//            }
-//        }
-
-
         val nextSteps = instance.getNextSteps()
 
         // Note: It may be unintuitive that we have to wait until after getNextSteps() to unlock these, but when we're
@@ -209,10 +198,8 @@ At some point, we may want to improve how this handles for single-threaded execu
         // reason I forget at the moment) that can get triggered for the given timestamp by an unrelated input.
         // Also, querying your instance for an input value is not a great look to begin with.
         for ((inputList, rawTimestamp) in inputsToAdd.zip(inputRawTimestamps)) {
-//            for (input in inputsToAdd.map { it.inputs }.flatten()) {
             for (input in inputList.inputs) {
                 updateInputTimestampBarrier(input, rawTimestamp)
-//            }
             }
         }
 
@@ -252,8 +239,6 @@ At some point, we may want to improve how this handles for single-threaded execu
             is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
             // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
             is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-//            is TrickleInputChange.AddKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-//            is TrickleInputChange.RemoveKey<*> -> listOf(ValueId.FullKeyList(input.nodeName))
             is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
         }
         for (valueId in valueIds) {
@@ -571,7 +556,6 @@ At some point, we may want to improve how this handles for single-threaded execu
             if (keyListOutcome is NodeOutcome.Computed) {
                 for (key in keyListOutcome.value) {
                     executor.submit {
-//                        listener.receive(name, key as K, getOutcome(name, key), -1L)
                         val valueId = ValueId.Keyed(name, key as K)
                         val outcome = getOutcome(name, key, 0, TimeUnit.MILLISECONDS) // Don't block
                         when (outcome) {

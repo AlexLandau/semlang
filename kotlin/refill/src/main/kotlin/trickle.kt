@@ -15,11 +15,6 @@ import java.util.function.Predicate
 // TODO: Should catch methods also catch errors in the same node, vs. upstream nodes? Should outputs of parent nodes
 // be added to their inputs?
 
-// TODO: APIs for asynchronous use, with listeners and/or "wait for the version of this that is up-to-date as of this timestamp"
-
-// TODO: Currently this hangs on to references of keyed values associated with keys that have been removed; finding a way
-// to avoid that would be good
-
 // TODO: Add the ability to skip computations based on the equality of certain inputs (and other inputs remaining at the timestamp
 // they were last time)
 
@@ -27,9 +22,6 @@ import java.util.function.Predicate
 // (Say e.g. one keylist represents directories, a composed keylist could represent a list of files within each of those
 // directories; and then as opposed to a flat keylist of all files, this would allow per-file computations that could then
 // be filtered back into a per-directory view before being brought back to a global list.)
-
-// TODO: Add the ability to make multiple input changes with a single timestamp, e.g. adding both a key and a keyed input
-// based on that key
 
 // TODO: Probably out of scope, but I think we could get typings on the input setters if code were either generated from
 // a spec or based on an annotation processor
@@ -100,12 +92,22 @@ internal class KeyList<T> private constructor(val list: List<T>, val set: Set<T>
     }
 
     // TODO: This could be much more efficient
-    fun addAll(keys: Iterable<T>): KeyList<T> {
-        var theList = this
-        for (key in keys) {
-            theList = theList.add(key)
+    fun addAll(keys: Collection<T>): KeyList<T> {
+        if (keys.all { set.contains(it) }) {
+            return this
         }
-        return theList
+
+        val listCopy = ArrayList<T>(list.size + keys.size)
+        listCopy.addAll(list)
+        val setCopy = HashSet<T>(set.size + keys.size)
+        setCopy.addAll(list)
+        for (key in keys) {
+            if (!setCopy.contains(key)) {
+                listCopy.add(key)
+                setCopy.add(key)
+            }
+        }
+        return KeyList(listCopy, setCopy)
     }
 
     fun remove(key: T): KeyList<T> {
@@ -124,13 +126,21 @@ internal class KeyList<T> private constructor(val list: List<T>, val set: Set<T>
         return KeyList(listCopy, setCopy)
     }
 
-    // TODO: This could be much more efficient
-    fun removeAll(keys: Iterable<T>): KeyList<T> {
-        var theList = this
-        for (key in keys) {
-            theList = theList.remove(key)
+    fun removeAll(keys: Collection<T>): KeyList<T> {
+        if (!keys.any { set.contains(it) }) {
+            return this
         }
-        return theList
+        val keysSet = keys as? Set<T> ?: keys.toSet()
+
+        val listCopy = ArrayList<T>()
+        val setCopy = HashSet<T>()
+        for (element in list) {
+            if (!keysSet.contains(element)) {
+                listCopy.add(element)
+                setCopy.add(element)
+            }
+        }
+        return KeyList(listCopy, setCopy)
     }
 
     // Used to expose to users; TODO: but maybe we should also expose Set.contains somehow? Return a Collection or an immutable KeyList (vs. internal MutableKeyList)?
@@ -217,8 +227,6 @@ sealed class TrickleInputChange {
     abstract val nodeName: GenericNodeName
     data class SetBasic<T>(override val nodeName: NodeName<T>, val value: T): TrickleInputChange()
     data class SetKeys<T>(override val nodeName: KeyListNodeName<T>, val value: List<T>): TrickleInputChange()
-//    data class AddKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
-//    data class RemoveKey<T>(override val nodeName: KeyListNodeName<T>, val key: T): TrickleInputChange()
     // TODO: Add to fuzz testing
     // Note: Removals happen before additions. If a key is in both lists, it will be removed and then readded to the list (thus ending up in a different position).
     data class EditKeys<T>(override val nodeName: KeyListNodeName<T>, val keysAdded: List<T>, val keysRemoved: List<T>): TrickleInputChange()
@@ -334,8 +342,6 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         return when (change) {
             is TrickleInputChange.SetBasic<*> -> applySetBasicChange(change, newTimestamp)
             is TrickleInputChange.SetKeys<*> -> applySetKeysChange(change, newTimestamp)
-//            is TrickleInputChange.AddKey<*> -> applyAddKeyChange(change, newTimestamp)
-//            is TrickleInputChange.RemoveKey<*> -> applyRemoveKeyChange(change, newTimestamp)
             is TrickleInputChange.EditKeys<*> -> applyEditKeysChange(change, newTimestamp)
         }
     }
@@ -486,22 +492,6 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         return curTimestamp
     }
 
-//    @Synchronized
-//    private fun <T> applyAddKeyChange(change: TrickleInputChange.AddKey<T>, newTimestamp: Long): Boolean {
-//        val (nodeName, key) = change
-//        val listValueId = ValueId.FullKeyList(nodeName)
-//        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-//        if (!oldList.contains(key)) {
-//            val newList = oldList.add(key)
-//            setValue(listValueId, newTimestamp, newList, null)
-//
-//            val keyValueId = ValueId.KeyListKey(nodeName, key)
-//            setValue(keyValueId, newTimestamp, true, null)
-//            return true
-//        }
-//        return false
-//    }
-
     @Synchronized
     private fun <T> applyEditKeysChange(change: TrickleInputChange.EditKeys<T>, newTimestamp: Long): Boolean {
         val (nodeName, keysToAdd, keysToRemove) = change
@@ -509,10 +499,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         val oldList = values[listValueId]!!.getValue() as KeyList<T>
 
         val newList = oldList.removeAll(keysToRemove).addAll(keysToAdd)
-//        val keysAdded = keysToAdd.filter { !oldList.contains(it) }
-//        val keysRemoved = keysToRemove.filter { oldList.contains(it) }
 
-//        val anyChangeMade = keysAdded.isNotEmpty() || keysRemoved.isNotEmpty()
         if (oldList != newList) {
             setValue(listValueId, newTimestamp, newList, null)
 
@@ -560,52 +547,10 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         return curTimestamp
     }
 
-    // TODO: Should these APIs use lists instead of sets?
     @Synchronized
     fun <T> editKeys(nodeName: KeyListNodeName<T>, keysToAdd: List<T>, keysToRemove: List<T>): Long {
-//        val node = definition.keyListNodes[nodeName]
-//        if (node == null) {
-//            throw IllegalArgumentException("Unrecognized node name $nodeName")
-//        }
-//        if (node.operation != null) {
-//            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
-//        }
-
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysToAdd, keysToRemove)))
-
-//        val listValueId = ValueId.FullKeyList(nodeName)
-//        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-//        if (oldList.contains(key)) {
-//            curTimestamp++
-//            val newList = oldList.remove(key)
-//            setValue(listValueId, curTimestamp, newList, null)
-//
-//            val keyValueId = ValueId.KeyListKey(nodeName, key)
-//            setValue(keyValueId, curTimestamp, false, null)
-//
-//            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key), curTimestamp)
-//        }
-//        return curTimestamp
     }
-
-//    @Synchronized
-//    private fun <T> applyRemoveKeyChange(change: TrickleInputChange.RemoveKey<T>, newTimestamp: Long): Boolean {
-//        val (nodeName, key) = change
-//        val listValueId = ValueId.FullKeyList(nodeName)
-//        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-//        if (oldList.contains(key)) {
-//            val newList = oldList.remove(key)
-//            setValue(listValueId, newTimestamp, newList, null)
-//
-//            val keyValueId = ValueId.KeyListKey(nodeName, key)
-//            setValue(keyValueId, newTimestamp, false, null)
-//
-//            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key), newTimestamp)
-//
-//            return true
-//        }
-//        return false
-//    }
 
     @Synchronized
     private fun <T> pruneKeyedInputsForRemovedKeys(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>, timestamp: Long) {
@@ -1351,7 +1296,8 @@ data class TrickleStepResult internal constructor(
 // TODO: Add a method for turning this into a single Exception with a reasonable human-friendly summary
 data class TrickleFailure(val errors: Map<ValueId, Throwable>, val missingInputs: Set<ValueId>)
 
-// TODO: Fix error case when a key should be removed and then re-added
+// General idea: For any possible state the input nodes could be in, the input and output set of changes should result
+// in the same end state, with the difference that the output set of changes contains only one entry per input node
 private fun coalesceChanges(changes: List<TrickleInputChange>): List<TrickleInputChange> {
     val changePerNode = LinkedHashMap<GenericNodeName, TrickleInputChange>()
 
