@@ -293,10 +293,14 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         }
         valueHolder.set(newTimestamp, newValue, newFailure)
         if (valueListener != null) {
-            val event: TrickleEvent<Any?> = if (newFailure == null) {
-                TrickleEvent.Computed(valueId, newValue, newTimestamp)
+            val event: TrickleEvent<*> = if (newFailure == null) {
+                if (valueId is ValueId.FullKeyList) {
+                    TrickleEvent.Computed(valueId, (newValue as KeyList<Any?>).asList(), newTimestamp)
+                } else {
+                    TrickleEvent.Computed(valueId, newValue, newTimestamp)
+                }
             } else {
-                TrickleEvent.Failure(valueId, newFailure, newTimestamp)
+                TrickleEvent.Failure<Any?>(valueId, newFailure, newTimestamp)
             }
             valueListener!!(event)
         }
@@ -1092,10 +1096,6 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         val failure = value.getFailure()
         if (failure != null) {
             return NodeOutcome.Failure(failure)
-        }
-        var computedValue = value.getValue()
-        if (computedValue is KeyList<*>) {
-            computedValue = computedValue.asList()
         }
         return NodeOutcome.Computed((value.getValue() as KeyList<T>).asList())
     }

@@ -494,11 +494,8 @@ class TrickleFuzzTests {
                         is FuzzOperation.CheckBasic -> {
                             // TODO: Have another version where all the listeners are made ahead of time
                             instance.addBasicListener(op.name, TrickleEventListener { event ->
-//                                println("Receiving event for ${op.name} with value $event")
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
-                                    // TODO: This is getting multiple values per timestamp. Why???
-                                    // TODO: The >= is pretty awkward, but I think this is only relevant for inputs
-                                    if (event2.timestamp >= event1.timestamp) {
+                                    if (event2.timestamp > event1.timestamp) {
                                         event2
                                     } else {
                                         event1
@@ -520,12 +517,29 @@ class TrickleFuzzTests {
                             }
                         }
                         is FuzzOperation.CheckKeyList -> {
-//                            instance.addKeyListListener(op.name, KeyListNodeListener { name, outcome, timestamp ->
-//                                listenedValues[name] = outcome
-//                            })
-//                            await().untilAsserted {
-//                                assertEquals(op.outcome, listenedValues[op.name])
-//                            }
+                            // TODO: Have another version where all the listeners are made ahead of time
+                            instance.addKeyListListener(op.name, TrickleEventListener { event ->
+                                listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                                    if (event2.timestamp > event1.timestamp) {
+                                        event2
+                                    } else {
+                                        event1
+                                    }
+                                })
+                            })
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.FullKeyList(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
                         }
                         is FuzzOperation.CheckKeyedList -> {
 //                            instance.addKeyedListListener(op.name, FullKeyedListListener { name, outcome, timestamp ->
