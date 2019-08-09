@@ -1022,6 +1022,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                     val keyValueId = ValueId.KeyListKey(valueId.nodeName, removal)
                     setValue(keyValueId, timestamp, false, failure)
                 }
+                pruneKeyedInputsForRemovedKeys(valueId.nodeName as KeyListNodeName<Any?>, removals, timestamp)
             }
         }
     }
@@ -1113,6 +1114,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             return NodeOutcome.NotYetComputed.get()
         }
         if (!(keyListValueHolder.getValue() as KeyList<K>).contains(key)) {
+            // TODO: We may not need to check the key list directly at this point... (?)
             return NodeOutcome.NoSuchKey.get()
         }
         val value = values[ValueId.Keyed(nodeName, key)]
@@ -1142,6 +1144,10 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             return NodeOutcome.Failure(failure)
         }
         return NodeOutcome.Computed(value.getValue() as List<V>)
+    }
+
+    internal fun getValueDirectlyForTesting(valueId: ValueId): Any? {
+        return values[valueId]?.getValue()
     }
 
     @Synchronized

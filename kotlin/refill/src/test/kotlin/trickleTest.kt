@@ -952,4 +952,57 @@ class TrickleTests {
 
         assertFalse("Should not have seen the intermediate value of the input", saw2.get())
     }
+
+    @Test
+    fun testKeyedValuesGetRemovedWhenInputKeysRemovedViaSetting() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(B_KEYED, 3))
+        instance.setInput(A_KEYS, listOf(1, 2))
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.Keyed(B_KEYED, 3)))
+    }
+
+    @Test
+    fun testKeyedValuesGetRemovedWhenInputKeysRemovedViaEditing() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(B_KEYED, 3))
+        instance.editKeys(A_KEYS, listOf(), listOf(3))
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.Keyed(B_KEYED, 3)))
+    }
+
+
+    @Test
+    fun testKeyedValuesGetRemovedWhenNonInputKeysRemoved() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val bKeys = builder.createKeyListNode(B_KEYS, a, { (1..it).toList() })
+        val cKeyed = builder.createKeyedNode(C_KEYED, bKeys, { it + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A, 3)
+        instance.completeSynchronously()
+        assertEquals(4, instance.getNodeValue(C_KEYED, 3))
+        instance.setInput(A, 2)
+        // Recompute the keys
+        instance.completeSynchronously()
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.Keyed(C_KEYED, 3)))
+    }
+
 }
