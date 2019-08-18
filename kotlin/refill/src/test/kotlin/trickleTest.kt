@@ -4,15 +4,11 @@ import org.awaitility.Awaitility.await
 import org.junit.Assert.*
 import org.junit.Ignore
 import org.junit.Test
-import java.lang.IllegalArgumentException
-import java.lang.IllegalStateException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
@@ -331,7 +327,7 @@ class TrickleTests {
 
         val aKeys = builder.createKeyListInputNode(A_KEYS)
         // Note: This is not a realistic example; summing over a set (vs. a list) is usually not useful
-        val bNode = builder.createNode(B, aKeys.listOutput(), { ints -> ints.sum() })
+        val bNode = builder.createNode(B, aKeys.keysOutput(), { ints -> ints.sum() })
 
         val instance = builder.build().instantiateRaw()
 
@@ -709,7 +705,7 @@ class TrickleTests {
         val builder = TrickleDefinitionBuilder()
 
         val exception = RuntimeException("error creating list")
-        val failure = TrickleFailure(mapOf(ValueId.FullKeyList(A_KEYS) to exception), setOf())
+        val failure = TrickleFailure(mapOf(ValueId.FullKeyMap(A_KEYS) to exception), setOf())
 
         val aKeys = builder.createKeyListNode(A_KEYS, listOf(), { throw exception }, null)
         val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })

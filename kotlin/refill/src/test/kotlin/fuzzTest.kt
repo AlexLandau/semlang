@@ -530,7 +530,7 @@ class TrickleFuzzTests {
                                 })
                             })
                             await().untilAsserted {
-                                val event = listenedEvents[ValueId.FullKeyList(op.name)]
+                                val event = listenedEvents[ValueId.FullKeyMap(op.name)]
                                 when (op.outcome) {
                                     is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                                     is NodeOutcome.NoSuchKey -> TODO()
@@ -608,13 +608,13 @@ class TrickleFuzzTests {
 
 sealed class FuzzOperation {
     data class SetBasic(val name: NodeName<Int>, val value: Int) : FuzzOperation()
-    data class AddKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
-    data class RemoveKey(val name: KeyListNodeName<Int>, val key: Int) : FuzzOperation()
-    data class EditKeys(val name: KeyListNodeName<Int>, val keysAdded: List<Int>, val keysRemoved: List<Int>) : FuzzOperation()
-    data class SetKeyList(val name: KeyListNodeName<Int>, val value: List<Int>) : FuzzOperation()
+    data class AddKey(val name: KeyMapNodeName<Int>, val key: Int) : FuzzOperation()
+    data class RemoveKey(val name: KeyMapNodeName<Int>, val key: Int) : FuzzOperation()
+    data class EditKeys(val name: KeyMapNodeName<Int>, val keysAdded: List<Int>, val keysRemoved: List<Int>) : FuzzOperation()
+    data class SetKeyList(val name: KeyMapNodeName<Int>, val value: List<Int>) : FuzzOperation()
     data class SetMultiple(val changes: List<TrickleInputChange>): FuzzOperation()
     data class CheckBasic(val name: NodeName<Int>, val outcome: NodeOutcome<Int>) : FuzzOperation()
-    data class CheckKeyList(val name: KeyListNodeName<Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
+    data class CheckKeyList(val name: KeyMapNodeName<Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
     data class CheckKeyedList(val name: KeyedNodeName<Int, Int>, val outcome: NodeOutcome<List<Int>>) : FuzzOperation()
     data class CheckKeyedValue(val name: KeyedNodeName<Int, Int>, val key: Int, val outcome: NodeOutcome<Int>) : FuzzOperation()
 }
@@ -660,8 +660,8 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
                 val outcome = rawInstance.getNodeOutcome(nodeName)
                 return FuzzOperation.CheckBasic(nodeName, outcome)
             }
-            is KeyListNodeName<*> -> {
-                val nodeName = randomNode as KeyListNodeName<Int>
+            is KeyMapNodeName<*> -> {
+                val nodeName = randomNode as KeyMapNodeName<Int>
                 val outcome = rawInstance.getNodeOutcome(nodeName)
                 return FuzzOperation.CheckKeyList(nodeName, outcome)
             }
@@ -695,8 +695,8 @@ private fun getRandomOperation(rawInstance: TrickleInstance, definition: Trickle
 fun toOperation(change: TrickleInputChange): FuzzOperation {
     return when (change) {
         is TrickleInputChange.SetBasic<*> -> FuzzOperation.SetBasic(change.nodeName as NodeName<Int>, change.value as Int)
-        is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
-        is TrickleInputChange.EditKeys<*> -> FuzzOperation.EditKeys(change.nodeName as KeyListNodeName<Int>,
+        is TrickleInputChange.SetKeys<*> -> FuzzOperation.SetKeyList(change.nodeName as KeyMapNodeName<Int>, change.value as List<Int>)
+        is TrickleInputChange.EditKeys<*> -> FuzzOperation.EditKeys(change.nodeName as KeyMapNodeName<Int>,
             change.keysAdded as List<Int>,
             change.keysRemoved as List<Int>
         )
@@ -714,8 +714,8 @@ private fun getRandomInputChange(definition: TrickleDefinition, random: Random, 
             rawInstance.setInput(nodeName, valueToSet)
             return TrickleInputChange.SetBasic(nodeName, valueToSet)
         }
-        is KeyListNodeName<*> -> {
-            val nodeName = inputName as KeyListNodeName<Int>
+        is KeyMapNodeName<*> -> {
+            val nodeName = inputName as KeyMapNodeName<Int>
             val keyListRoll = random.nextDouble()
             if (keyListRoll < 0.2) {
                 val valueToAdd = random.nextInt(100)
@@ -767,7 +767,7 @@ private fun getAllInputNodes(definition: TrickleDefinition): List<GenericNodeNam
     for (nodeName in definition.topologicalOrdering) {
         val operation = when (nodeName) {
             is NodeName<*> -> definition.nonkeyedNodes.getValue(nodeName).operation
-            is KeyListNodeName<*> -> definition.keyListNodes.getValue(nodeName).operation
+            is KeyMapNodeName<*> -> definition.keyMapNodes.getValue(nodeName).operation
             is KeyedNodeName<*, *> -> definition.keyedNodes.getValue(nodeName).operation
         }
         if (operation == null) {
@@ -788,7 +788,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
     val builder = TrickleDefinitionBuilder()
     val existingNodes = ArrayList<GenericNodeName>()
     val existingKeyListNodes = ArrayList<TrickleBuiltKeyListNode<Int>>()
-    val existingKeyedNodes = HashMap<KeyListNodeName<*>, ArrayList<TrickleInput<*>>>()
+    val existingKeyedNodes = HashMap<KeyMapNodeName<*>, ArrayList<TrickleInput<*>>>()
 
     val unkeyedInputs = ArrayList<TrickleInput<*>>()
 
@@ -836,7 +836,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
     }
 
     private fun makeKeyListNode(i: Int) {
-        val name = KeyListNodeName<Int>("list$i")
+        val name = KeyMapNodeName<Int>("list$i")
 
         // Decide how many inputs to have (between one and two)
         val maxInputs = Math.min(unkeyedInputs.size, 2)
@@ -884,7 +884,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
             existingNodes.add(name)
             unkeyedInputs.add(node)
         } else {
-            val name = KeyListNodeName<Int>("listInput$i")
+            val name = KeyMapNodeName<Int>("listInput$i")
             val node = builder.createKeyListInputNode(name)
             existingNodes.add(name)
             existingKeyListNodes.add(node)

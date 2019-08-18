@@ -15,19 +15,19 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         return instance.setInput(nodeName, value)
     }
 
-    override fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long {
-        return instance.setInput(nodeName, list)
+    override fun <K, V> setInput(nodeName: KeyMapNodeName<K, V>, map: Map<K, V>): Long {
+        return instance.setInput(nodeName, map)
     }
 
-    override fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        return instance.addKeyInput(nodeName, key)
+    override fun <K, V> addKeyInput(nodeName: KeyMapNodeName<K, V>, key: K, value: V): Long {
+        return instance.addKeyInput(nodeName, key, value)
     }
 
-    override fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+    override fun <K, V> removeKeyInput(nodeName: KeyMapNodeName<K, V>, key: K): Long {
         return instance.removeKeyInput(nodeName, key)
     }
 
-    override fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): Long {
+    override fun <K, V> editKeys(nodeName: KeyMapNodeName<K, V>, keysAdded: Map<K, V>, keysRemoved: List<K>): Long {
         return instance.editKeys(nodeName, keysAdded, keysRemoved)
     }
 
@@ -36,8 +36,8 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         computeRelevantValues(relevantValuesPred)
     }
 
-    private fun <T> doComputationsFor(nodeName: KeyListNodeName<T>) {
-        val relevantValuesPred = instance.definition.getRelevantValuesPredicate(ValueId.FullKeyList(nodeName))
+    private fun <K, V> doComputationsFor(nodeName: KeyMapNodeName<K, V>) {
+        val relevantValuesPred = instance.definition.getRelevantValuesPredicate(ValueId.FullKeyMap(nodeName))
         computeRelevantValues(relevantValuesPred)
     }
 
@@ -69,7 +69,7 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         return instance.getNodeValue(nodeName)
     }
 
-    fun <T> getValue(nodeName: KeyListNodeName<T>): List<T> {
+    fun <K, V> getValue(nodeName: KeyMapNodeName<K, V>): Map<K, V> {
         doComputationsFor(nodeName)
         return instance.getNodeValue(nodeName)
     }
@@ -89,7 +89,7 @@ class TrickleSyncInstance(private val instance: TrickleInstance): TrickleInputRe
         return instance.getNodeOutcome(nodeName)
     }
 
-    fun <T> getOutcome(nodeName: KeyListNodeName<T>): NodeOutcome<List<T>> {
+    fun <K, V> getOutcome(nodeName: KeyMapNodeName<K, V>): NodeOutcome<Map<K, V>> {
         doComputationsFor(nodeName)
         return instance.getNodeOutcome(nodeName)
     }

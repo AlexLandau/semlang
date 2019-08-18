@@ -531,7 +531,7 @@ fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleReposito
 
 internal val CONFIG_TEXT = NodeName<String>("configText")
 internal val PARSED_CONFIG = NodeName<ModuleInfoParsingResult.Success>("parsedConfig")
-internal val SOURCE_FILE_URLS = KeyListNodeName<String>("sourceFileUrls")
+internal val SOURCE_FILE_URLS = KeyMapNodeName<String>("sourceFileUrls")
 internal val SOURCE_TEXTS = KeyedNodeName<String, String>("sourceTexts")
 internal val IRS = KeyedNodeName<String, Dialect.IR>("irs")
 internal val TYPE_SUMMARIES = KeyedNodeName<String, TypesSummary>("typeSummaries")

@@ -12,16 +12,16 @@ import java.util.LinkedHashSet
 // TODO: Catching errors in nodes is not implemented in the fuzz tests and thus not implemented here
 internal class ReferenceInstance(private val definition: TrickleDefinition) {
     private val basicInputs = HashMap<NodeName<Int>, Int?>()
-    private val keyListInputs = HashMap<KeyListNodeName<Int>, KeyList<Int>>()
+    private val keyListInputs = HashMap<KeyMapNodeName<Int>, KeyList<Int>>()
     private val keyedInputs = HashMap<KeyedNodeName<Int, Int>, HashMap<Int, Int>>()
     private val basicOutputs = HashMap<NodeName<Int>, ValueOrFailure<Int>>()
-    private val keyListOutputs = HashMap<KeyListNodeName<Int>, ValueOrFailure<KeyList<Int>>>()
+    private val keyListOutputs = HashMap<KeyMapNodeName<Int>, ValueOrFailure<KeyList<Int>>>()
     private val keyedOutputs = HashMap<KeyedNodeName<Int, Int>, HashMap<Int, ValueOrFailure<Int>>>()
 
     init {
-        for (keyListNode in definition.keyListNodes.values) {
+        for (keyListNode in definition.keyMapNodes.values) {
             if (keyListNode.operation == null) {
-                keyListInputs[keyListNode.name as KeyListNodeName<Int>] = KeyList.empty()
+                keyListInputs[keyListNode.name as KeyMapNodeName<Int>] = KeyList.empty()
             }
         }
         for (keyedNode in definition.keyedNodes.values) {
@@ -55,14 +55,14 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                         }
                     }
                 }
-                is KeyListNodeName<*> -> {
-                    nodeName as KeyListNodeName<Int>
+                is KeyMapNodeName<*> -> {
+                    nodeName as KeyMapNodeName<Int>
                     if (isInput(nodeName)) {
                         // Do nothing
                     } else {
                         // Compute and store new value
-                        val node = definition.keyListNodes[nodeName]!!
-                        val inputResults = getInputValuesOrCombinedFailure(definition.keyListNodes[nodeName]!!.inputs, null)
+                        val node = definition.keyMapNodes[nodeName]!!
+                        val inputResults = getInputValuesOrCombinedFailure(definition.keyMapNodes[nodeName]!!.inputs, null)
                         when (inputResults) {
                             is ValueOrFailure.Value -> {
                                 val newValue = node.operation!!(inputResults.value) as List<Int>
@@ -83,7 +83,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
                         keyedOutputs[nodeName] = HashMap()
                     }
                     val node = definition.keyedNodes[nodeName]!!
-                    val curKeyListOutcome = getNodeOutcome(node.keySourceName as KeyListNodeName<Int>)
+                    val curKeyListOutcome = getNodeOutcome(node.keySourceName as KeyMapNodeName<Int>)
                     when (curKeyListOutcome) {
                         is NodeOutcome.NotYetComputed -> TODO()
                         is NodeOutcome.NoSuchKey -> TODO()
@@ -215,22 +215,22 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         recomputeState()
     }
 
-    fun addKeyInput(name: KeyListNodeName<Int>, key: Int) {
+    fun addKeyInput(name: KeyMapNodeName<Int>, key: Int) {
         keyListInputs[name] = keyListInputs[name]!!.add(key)
         recomputeState()
     }
 
-    fun removeKeyInput(name: KeyListNodeName<Int>, key: Int) {
+    fun removeKeyInput(name: KeyMapNodeName<Int>, key: Int) {
         keyListInputs[name] = keyListInputs[name]!!.remove(key)
         recomputeState()
     }
 
-    fun editKeys(name: KeyListNodeName<Int>, keysAdded: List<Int>, keysRemoved: List<Int>) {
+    fun editKeys(name: KeyMapNodeName<Int>, keysAdded: List<Int>, keysRemoved: List<Int>) {
         keyListInputs[name] = keyListInputs[name]!!.removeAll(keysRemoved).addAll(keysAdded)
         recomputeState()
     }
 
-    fun setInput(name: KeyListNodeName<Int>, value: List<Int>) {
+    fun setInput(name: KeyMapNodeName<Int>, value: List<Int>) {
         keyListInputs[name] = KeyList.copyOf(value)
         recomputeState()
     }
@@ -239,10 +239,10 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         for (change in changes) {
             when (change) {
                 is TrickleInputChange.SetBasic<*> -> setInput(change.nodeName as NodeName<Int>, change.value as Int)
-                is TrickleInputChange.SetKeys<*> -> setInput(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
-//                is TrickleInputChange.AddKey<*> -> addKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-//                is TrickleInputChange.RemoveKey<*> -> removeKeyInput(change.nodeName as KeyListNodeName<Int>, change.key as Int)
-                is TrickleInputChange.EditKeys<*> -> editKeys(change.nodeName as KeyListNodeName<Int>, change.keysAdded as List<Int>, change.keysRemoved as List<Int>)
+                is TrickleInputChange.SetKeys<*> -> setInput(change.nodeName as KeyMapNodeName<Int>, change.value as List<Int>)
+//                is TrickleInputChange.AddKey<*> -> addKeyInput(change.nodeName as KeyMapNodeName<Int>, change.key as Int)
+//                is TrickleInputChange.RemoveKey<*> -> removeKeyInput(change.nodeName as KeyMapNodeName<Int>, change.key as Int)
+                is TrickleInputChange.EditKeys<*> -> editKeys(change.nodeName as KeyMapNodeName<Int>, change.keysAdded as List<Int>, change.keysRemoved as List<Int>)
              }
         }
     }
@@ -265,7 +265,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         }
     }
 
-    fun getNodeOutcome(name: KeyListNodeName<Int>): NodeOutcome<List<Int>> {
+    fun getNodeOutcome(name: KeyMapNodeName<Int>): NodeOutcome<List<Int>> {
         if (isInput(name)) {
             return NodeOutcome.Computed(keyListInputs[name]!!.list)
         } else {
@@ -284,7 +284,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
     }
 
     fun getNodeOutcome(name: KeyedNodeName<Int, Int>): NodeOutcome<List<Int>> {
-        val keySourceName = definition.keyedNodes[name]!!.keySourceName as KeyListNodeName<Int>
+        val keySourceName = definition.keyedNodes[name]!!.keySourceName as KeyMapNodeName<Int>
         when (val keyListOutcome = getNodeOutcome(keySourceName)) {
             is NodeOutcome.NotYetComputed -> {
                 return NodeOutcome.NotYetComputed.get()
@@ -323,7 +323,7 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
     }
 
     fun getNodeOutcome(name: KeyedNodeName<Int, Int>, key: Int): NodeOutcome<Int> {
-        val keySourceName = definition.keyedNodes[name]!!.keySourceName as KeyListNodeName<Int>
+        val keySourceName = definition.keyedNodes[name]!!.keySourceName as KeyMapNodeName<Int>
         when (val keyListOutcome = getNodeOutcome(keySourceName)) {
             is NodeOutcome.NotYetComputed -> {
                 return NodeOutcome.NotYetComputed.get()
@@ -361,8 +361,8 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         return definition.nonkeyedNodes[name]!!.operation == null
     }
 
-    private fun isInput(name: KeyListNodeName<*>): Boolean {
-        return definition.keyListNodes[name]!!.operation == null
+    private fun isInput(name: KeyMapNodeName<*>): Boolean {
+        return definition.keyMapNodes[name]!!.operation == null
     }
 }
 

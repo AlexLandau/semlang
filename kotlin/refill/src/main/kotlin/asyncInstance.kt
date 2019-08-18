@@ -1,6 +1,5 @@
 package net.semlang.refill
 
-import java.lang.Exception
 import java.util.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -83,7 +82,7 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
     // Listeners
     // TODO: Guard
     private val basicListeners = HashMap<NodeName<*>, ArrayList<TrickleEventListener<*>>>()
-    private val keyListListeners = HashMap<KeyListNodeName<*>, ArrayList<TrickleEventListener<*>>>()
+    private val keyListListeners = HashMap<KeyMapNodeName<*>, ArrayList<TrickleEventListener<*>>>()
     private val fullKeyedListListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
     private val keyedValueListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
 
@@ -100,7 +99,7 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
                         }
                     }
                 }
-                is ValueId.FullKeyList -> {
+                is ValueId.FullKeyMap -> {
                     synchronized(keyListListeners) {
                         for (listener in keyListListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
                             executor.submit {
@@ -109,7 +108,7 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
                         }
                     }
                 }
-                is ValueId.KeyListKey -> {
+                is ValueId.KeyMapKey -> {
                     // Do nothing
                 }
                 is ValueId.Keyed -> {
@@ -238,9 +237,9 @@ At some point, we may want to improve how this handles for single-threaded execu
         // TODO: Is this done elsewhere? Should this be a utility method on TIC?
         val valueIds = when (input) {
             is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
-            // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
-            is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-            is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
+            // TODO: Can/should we also update ValueId.KeyMapKey values? SetKeys doesn't list keys that would get removed...
+            is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyMap(input.nodeName))
+            is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyMap(input.nodeName))
         }
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
@@ -281,7 +280,7 @@ At some point, we may want to improve how this handles for single-threaded execu
     fun setInputs(changes: List<TrickleInputChange>): TrickleAsyncTimestamp {
         for (change in changes) {
             if (!(change.nodeName is NodeName<*> && instance.definition.nonkeyedNodes.containsKey(change.nodeName as NodeName<*>))
-                    && !(change.nodeName is KeyListNodeName<*> && instance.definition.keyListNodes.containsKey(change.nodeName as KeyListNodeName<*>))
+                    && !(change.nodeName is KeyMapNodeName<*> && instance.definition.keyMapNodes.containsKey(change.nodeName as KeyMapNodeName<*>))
                     && !(change.nodeName is KeyedNodeName<*, *> && instance.definition.keyedNodes.containsKey(change.nodeName as KeyedNodeName<*, *>))) {
                 throw IllegalArgumentException("Unrecognized node name ${change.nodeName}")
             }
@@ -301,19 +300,19 @@ At some point, we may want to improve how this handles for single-threaded execu
         return setInputs(listOf(TrickleInputChange.SetBasic(nodeName, value)))
     }
 
-    fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): TrickleAsyncTimestamp {
+    fun <T> setInput(nodeName: KeyMapNodeName<T>, list: List<T>): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.SetKeys(nodeName, list)))
     }
 
-    fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
+    fun <T> addKeyInput(nodeName: KeyMapNodeName<T>, key: T): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(key), listOf())))
     }
 
-    fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): TrickleAsyncTimestamp {
+    fun <T> removeKeyInput(nodeName: KeyMapNodeName<T>, key: T): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(), listOf(key))))
     }
 
-    fun <T> editKeys(nodeName: KeyListNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): TrickleAsyncTimestamp {
+    fun <T> editKeys(nodeName: KeyMapNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)))
     }
 
@@ -356,8 +355,8 @@ At some point, we may want to improve how this handles for single-threaded execu
         // TODO: Problem here!!! Real problem here. Apparently.
         val valueId = when (initialValueId) {
             is ValueId.Nonkeyed -> initialValueId
-            is ValueId.FullKeyList -> initialValueId
-            is ValueId.KeyListKey -> ValueId.FullKeyList(initialValueId.nodeName)
+            is ValueId.FullKeyMap -> initialValueId
+            is ValueId.KeyMapKey -> ValueId.FullKeyMap(initialValueId.nodeName)
             is ValueId.Keyed -> ValueId.FullKeyedList(initialValueId.nodeName)
             is ValueId.FullKeyedList -> initialValueId
         }
@@ -441,20 +440,20 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
-        if (!instance.definition.keyListNodes.containsKey(name)) {
+    fun <T> getOutcome(name: KeyMapNodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyMapNodes.containsKey(name)) {
             throw IllegalArgumentException("Unrecognized node name $name")
         }
-        waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList())
+        waitForTimestamp(ValueId.FullKeyMap(name), minTimestamps.asList())
 
         return instance.getNodeOutcome(name)
     }
 
-    fun <T> getOutcome(name: KeyListNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
-        if (!instance.definition.keyListNodes.containsKey(name)) {
+    fun <T> getOutcome(name: KeyMapNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+        if (!instance.definition.keyMapNodes.containsKey(name)) {
             throw IllegalArgumentException("Unrecognized node name $name")
         }
-        waitForTimestamp(ValueId.FullKeyList(name), minTimestamps.asList(), timeToWait, timeUnits)
+        waitForTimestamp(ValueId.FullKeyMap(name), minTimestamps.asList(), timeToWait, timeUnits)
 
         return instance.getNodeOutcome(name)
     }
@@ -514,13 +513,13 @@ At some point, we may want to improve how this handles for single-threaded execu
             }
         }
     }
-    fun <T> addKeyListListener(name: KeyListNodeName<T>, listener: TrickleEventListener<List<T>>) {
+    fun <T> addKeyListListener(name: KeyMapNodeName<T>, listener: TrickleEventListener<List<T>>) {
         synchronized(keyListListeners) {
             keyListListeners.getOrPut(name, { ArrayList() }).add(listener)
         }
         // Also do the initial output with the current value
         executor.submit {
-            val valueId = ValueId.FullKeyList(name)
+            val valueId = ValueId.FullKeyMap(name)
             val outcome = getOutcome(name, 0, TimeUnit.MILLISECONDS) // Don't block
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }

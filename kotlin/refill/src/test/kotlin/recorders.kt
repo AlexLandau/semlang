@@ -28,7 +28,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
     }
 
     @Synchronized
-    override fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long {
+    override fun <T> setInput(nodeName: KeyMapNodeName<T>, list: List<T>): Long {
         records.add("Calling setInput")
         records.add("  nodeName: $nodeName")
         records.add("  list: $list")
@@ -38,7 +38,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
     }
 
     @Synchronized
-    override fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+    override fun <T> addKeyInput(nodeName: KeyMapNodeName<T>, key: T): Long {
         records.add("Calling addKeyInput")
         records.add("  nodeName: $nodeName")
         records.add("  key: $key")
@@ -48,7 +48,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
     }
 
     @Synchronized
-    override fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
+    override fun <T> removeKeyInput(nodeName: KeyMapNodeName<T>, key: T): Long {
         records.add("Calling removeKeyInput")
         records.add("  nodeName: $nodeName")
         records.add("  key: $key")
@@ -89,7 +89,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
     }
 
     @Synchronized
-    override fun <T> getNodeValue(nodeName: KeyListNodeName<T>): List<T> {
+    override fun <T> getNodeValue(nodeName: KeyMapNodeName<T>): List<T> {
         records.add("Calling getNodeValue")
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeValue(nodeName)
@@ -126,7 +126,7 @@ internal class RecordingRawInstance(val delegate: TrickleInstance): TrickleRawIn
     }
 
     @Synchronized
-    override fun <T> getNodeOutcome(nodeName: KeyListNodeName<T>): NodeOutcome<List<T>> {
+    override fun <T> getNodeOutcome(nodeName: KeyMapNodeName<T>): NodeOutcome<List<T>> {
         records.add("Calling getNodeOutcome")
         records.add("  nodeName: $nodeName")
         val result = delegate.getNodeOutcome(nodeName)

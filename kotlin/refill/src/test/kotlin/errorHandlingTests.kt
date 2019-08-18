@@ -14,8 +14,8 @@ class ErrorHandlingTests {
     private val B = NodeName<Int>("b")
     private val C = NodeName<Int>("c")
 
-    private val B_KEYS = KeyListNodeName<Int>("bKeys")
-    private val C_KEYS = KeyListNodeName<Int>("cKeys")
+    private val B_KEYS = KeyMapNodeName<Int>("bKeys")
+    private val C_KEYS = KeyMapNodeName<Int>("cKeys")
 
     private val B_KEYED = KeyedNodeName<Int, Int>("bKeyed")
 
