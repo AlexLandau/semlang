@@ -1005,4 +1005,48 @@ class TrickleTests {
         assertEquals(null, instance.getValueDirectlyForTesting(ValueId.Keyed(C_KEYED, 3)))
     }
 
+    @Test
+    fun testGettingSingleKeyValues() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+
+        val instance = builder.build().instantiateRaw()
+
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        assertEquals(true, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.setInput(A_KEYS, listOf(2, 3))
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+    }
+
+    @Test
+    fun testGettingSingleKeyValues2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+
+        val instance = builder.build().instantiateRaw()
+
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        assertEquals(true, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.removeKeyInput(A_KEYS, 1)
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+    }
+
+    @Test
+    fun testGettingSingleKeyValues3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+
+        val instance = builder.build().instantiateRaw()
+
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        assertEquals(true, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+        instance.editKeys(A_KEYS, listOf(), listOf(1))
+        assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
+    }
 }

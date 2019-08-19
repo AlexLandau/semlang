@@ -410,38 +410,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
     @Synchronized
     override fun <T> setInput(nodeName: KeyListNodeName<T>, list: List<T>): Long {
-        val node = definition.keyListNodes[nodeName]
-        if (node == null) {
-            throw IllegalArgumentException("Unrecognized node name $nodeName")
-        }
-        if (node.operation != null) {
-            throw IllegalArgumentException("Cannot directly set the value of a non-input node $nodeName")
-        }
-        val listValueId = ValueId.FullKeyList(nodeName)
-        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-        val newList = KeyList.copyOf(list)
-
-        if (oldList.list != newList.list) {
-            curTimestamp++
-            setValue(listValueId, curTimestamp, newList, null)
-
-            val additions = HashSet(newList.set)
-            additions.removeAll(oldList.set)
-            val removals = HashSet(oldList.set)
-            removals.removeAll(newList.set)
-
-            for (addition in additions) {
-                val keyValueId = ValueId.KeyListKey(nodeName, addition)
-                setValue(keyValueId, curTimestamp, true, null)
-            }
-            for (removal in removals) {
-                val keyValueId = ValueId.KeyListKey(nodeName, removal)
-                setValue(keyValueId, curTimestamp, false, null)
-            }
-            pruneKeyedInputsForRemovedKeys(nodeName, removals, curTimestamp)
-
-        }
-        return curTimestamp
+        return setInputs(listOf(TrickleInputChange.SetKeys(nodeName, list)))
     }
 
     @Synchronized
@@ -465,7 +434,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             }
             for (removal in removals) {
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
-                setValue(keyValueId, newTimestamp, false, null)
+                values.remove(keyValueId)
             }
             pruneKeyedInputsForRemovedKeys(nodeName, removals, newTimestamp)
 
@@ -476,24 +445,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
     @Synchronized
     override fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        val node = definition.keyListNodes[nodeName]
-        if (node == null) {
-            throw IllegalArgumentException("Unrecognized node name $nodeName")
-        }
-        if (node.operation != null) {
-            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
-        }
-        val listValueId = ValueId.FullKeyList(nodeName)
-        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-        if (!oldList.contains(key)) {
-            curTimestamp++
-            val newList = oldList.add(key)
-            setValue(listValueId, curTimestamp, newList, null)
-
-            val keyValueId = ValueId.KeyListKey(nodeName, key)
-            setValue(keyValueId, curTimestamp, true, null)
-        }
-        return curTimestamp
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(key), listOf())))
     }
 
     @Synchronized
@@ -511,7 +463,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
             for (key in keysToRemove) {
                 if (oldList.contains(key) && !newList.contains(key)) {
                     val keyValueId = ValueId.KeyListKey(nodeName, key)
-                    setValue(keyValueId, newTimestamp, false, null)
+                    values.remove(keyValueId)
                     actuallyRemoved.add(key)
                 }
             }
@@ -529,26 +481,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
     @Synchronized
     override fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        val node = definition.keyListNodes[nodeName]
-        if (node == null) {
-            throw IllegalArgumentException("Unrecognized node name $nodeName")
-        }
-        if (node.operation != null) {
-            throw IllegalArgumentException("Cannot directly modify the value of a non-input node $nodeName")
-        }
-        val listValueId = ValueId.FullKeyList(nodeName)
-        val oldList = values[listValueId]!!.getValue() as KeyList<T>
-        if (oldList.contains(key)) {
-            curTimestamp++
-            val newList = oldList.remove(key)
-            setValue(listValueId, curTimestamp, newList, null)
-
-            val keyValueId = ValueId.KeyListKey(nodeName, key)
-            setValue(keyValueId, curTimestamp, false, null)
-
-            pruneKeyedInputsForRemovedKeys(nodeName, setOf(key), curTimestamp)
-        }
-        return curTimestamp
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(), listOf(key))))
     }
 
     @Synchronized
