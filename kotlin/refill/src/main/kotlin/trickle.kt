@@ -36,12 +36,12 @@ class NodeName<T>(val name: String): GenericNodeName() {
         return name
     }
 }
-sealed class KeyMapNodeName<K, P>(val name: String): GenericNodeName() {
+open class KeyMapNodeName<K, P> internal constructor(val name: String): GenericNodeName() {
     override fun toString(): String {
         return name
     }
 }
-//class KeyListNodeName<K>(name: String): KeyMapNodeName<K, Void>(name)
+class KeyListNodeName<K>(name: String): KeyMapNodeName<K, Void>(name)
 class KeyedNodeName<K, T>(val name: String): GenericNodeName() {
     override fun toString(): String {
         return name
@@ -437,11 +437,11 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
             for (entry in modifiedEntries) {
                 val keyValueId = ValueId.KeyMapKey(nodeName, entry.key)
-                setValue(keyValueId, newTimestamp, KeyPayload(entry.value), null)
+                setValue(keyValueId, newTimestamp, entry.value, null)
             }
             // TODO: Instead, can we just remove the values when this happens? Would make this easier
             for (removal in removals) {
-                val keyValueId = ValueId.KeyListKey(nodeName, removal)
+                val keyValueId = ValueId.KeyMapKey(nodeName, removal)
                 values.remove(keyValueId)
             }
             pruneKeyedInputsForRemovedKeys(nodeName, removals, newTimestamp)
@@ -452,8 +452,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     }
 
     @Synchronized
-    override fun <T> addKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(key), listOf())))
+    override fun <K, V> addKeyInput(nodeName: KeyMapNodeName<K, V>, key: K, value: V): Long {
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, mapOf(key to value), listOf())))
     }
 
     @Synchronized
@@ -465,25 +465,27 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     private fun <K, V> applyEditKeysChange(change: TrickleInputChange.EditKeys<K, V>, newTimestamp: Long): Boolean {
         val (nodeName, keysToAdd, keysToRemove) = change
         val listValueId = ValueId.FullKeyMap(nodeName)
-        val oldList = values[listValueId]!!.getValue() as KeyList<T>
+        val oldMap = values[listValueId]!!.getValue() as Map<K, V>
 
-        val newList = oldList.removeAll(keysToRemove).addAll(keysToAdd)
+        val newMap = oldMap.toMutableMap()
+        newMap.removeAll(keysToRemove)
+        newMap.putAll(keysToAdd)
 
-        if (oldList != newList) {
-            setValue(listValueId, newTimestamp, newList, null)
+        if (!oldMap.equalsIncludingOrder(newMap)) {
+            setValue(listValueId, newTimestamp, newMap, null)
 
-            val actuallyRemoved = HashSet<T>()
+            val actuallyRemoved = HashSet<K>()
             for (key in keysToRemove) {
-                if (oldList.contains(key) && !newList.contains(key)) {
-                    val keyValueId = ValueId.KeyListKey(nodeName, key)
+                if (oldMap.contains(key) && !newMap.contains(key)) {
+                    val keyValueId = ValueId.KeyMapKey(nodeName, key)
                     values.remove(keyValueId)
                     actuallyRemoved.add(key)
                 }
             }
-            for (key in keysToAdd) {
-                if (!oldList.contains(key) && newList.contains(key)) {
+            for ((key, newValue) in keysToAdd) {
+                if (newMap.contains(key) && (!oldMap.contains(key) || (oldMap[key] != newValue))) {
                     val keyValueId = ValueId.KeyMapKey(nodeName, key)
-                    setValue(keyValueId, newTimestamp, true, null)
+                    setValue(keyValueId, newTimestamp, newValue, null)
                 }
             }
             pruneKeyedInputsForRemovedKeys(nodeName, actuallyRemoved, newTimestamp)
@@ -493,8 +495,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     }
 
     @Synchronized
-    override fun <T> removeKeyInput(nodeName: KeyListNodeName<T>, key: T): Long {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(), listOf(key))))
+    override fun <K, V> removeKeyInput(nodeName: KeyMapNodeName<K, V>, key: K): Long {
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, mapOf(), listOf(key))))
     }
 
     @Synchronized
@@ -1039,7 +1041,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         if (failure != null) {
             return NodeOutcome.Failure(failure)
         }
-        return NodeOutcome.Computed((value.getValue() as KeyList<T>).asList())
+        return NodeOutcome.Computed(value.getValue() as Map<K, V>)
     }
 
     @Synchronized
@@ -1267,10 +1269,10 @@ private fun coalesceChanges(changes: List<TrickleInputChange>): List<TrickleInpu
                     when (existingChange) {
                         is TrickleInputChange.SetBasic<*> -> error("Refill internal error")
                         is TrickleInputChange.SetKeys<*, *> -> {
-                            var keys = KeyList.copyOf(existingChange.value)
-                            keys = keys.removeAll(curChange.keysRemoved)
-                            keys = keys.addAll(curChange.keysAdded)
-                            TrickleInputChange.SetKeys(nodeName, keys.asList())
+                            var newMap = (existingChange.value as Map<Any?, Any?>).toMutableMap()
+                            newMap.removeAll(curChange.keysRemoved)
+                            newMap.putAll(curChange.keysAdded)
+                            TrickleInputChange.SetKeys(nodeName, newMap)
                         }
                         is TrickleInputChange.EditKeys<*, *> -> {
                             val keysRemoved = existingChange.keysRemoved + curChange.keysRemoved
@@ -1293,5 +1295,8 @@ private fun coalesceChanges(changes: List<TrickleInputChange>): List<TrickleInpu
 internal fun <K, V> Map<K, V>.equalsIncludingOrder(other: Map<K, V>): Boolean {
     return this.keys.toList().equals(other.keys.toList()) && this.equals(other)
 }
-
-private data class KeyPayload<T>(val payload: T)
+internal fun <K, V> MutableMap<K, V>.removeAll(keys: Iterable<K>) {
+    for (key in keys) {
+        this.remove(key)
+    }
+}

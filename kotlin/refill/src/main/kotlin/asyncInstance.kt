@@ -82,7 +82,7 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
     // Listeners
     // TODO: Guard
     private val basicListeners = HashMap<NodeName<*>, ArrayList<TrickleEventListener<*>>>()
-    private val keyListListeners = HashMap<KeyMapNodeName<*>, ArrayList<TrickleEventListener<*>>>()
+    private val keyMapListeners = HashMap<KeyMapNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
     private val fullKeyedListListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
     private val keyedValueListeners = HashMap<KeyedNodeName<*, *>, ArrayList<TrickleEventListener<*>>>()
 
@@ -100,8 +100,8 @@ class TrickleAsyncInstance(private val instance: TrickleInstance, private val ex
                     }
                 }
                 is ValueId.FullKeyMap -> {
-                    synchronized(keyListListeners) {
-                        for (listener in keyListListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
+                    synchronized(keyMapListeners) {
+                        for (listener in keyMapListeners[valueId.nodeName] ?: listOf<TrickleEventListener<*>>()) {
                             executor.submit {
                                 (listener as TrickleEventListener<Any?>).receive(event as TrickleEvent<Any?>)
                             }
@@ -238,8 +238,8 @@ At some point, we may want to improve how this handles for single-threaded execu
         val valueIds = when (input) {
             is TrickleInputChange.SetBasic<*> -> listOf(ValueId.Nonkeyed(input.nodeName))
             // TODO: Can/should we also update ValueId.KeyMapKey values? SetKeys doesn't list keys that would get removed...
-            is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyMap(input.nodeName))
-            is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyMap(input.nodeName))
+            is TrickleInputChange.SetKeys<*, *> -> listOf(ValueId.FullKeyMap(input.nodeName))
+            is TrickleInputChange.EditKeys<*, *> -> listOf(ValueId.FullKeyMap(input.nodeName))
         }
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
@@ -280,7 +280,7 @@ At some point, we may want to improve how this handles for single-threaded execu
     fun setInputs(changes: List<TrickleInputChange>): TrickleAsyncTimestamp {
         for (change in changes) {
             if (!(change.nodeName is NodeName<*> && instance.definition.nonkeyedNodes.containsKey(change.nodeName as NodeName<*>))
-                    && !(change.nodeName is KeyMapNodeName<*> && instance.definition.keyMapNodes.containsKey(change.nodeName as KeyMapNodeName<*>))
+                    && !(change.nodeName is KeyMapNodeName<*, *> && instance.definition.keyMapNodes.containsKey(change.nodeName as KeyMapNodeName<*, *>))
                     && !(change.nodeName is KeyedNodeName<*, *> && instance.definition.keyedNodes.containsKey(change.nodeName as KeyedNodeName<*, *>))) {
                 throw IllegalArgumentException("Unrecognized node name ${change.nodeName}")
             }
@@ -300,19 +300,19 @@ At some point, we may want to improve how this handles for single-threaded execu
         return setInputs(listOf(TrickleInputChange.SetBasic(nodeName, value)))
     }
 
-    fun <T> setInput(nodeName: KeyMapNodeName<T>, list: List<T>): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.SetKeys(nodeName, list)))
+    fun <K, V> setInput(nodeName: KeyMapNodeName<K, V>, map: Map<K, V>): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.SetKeys(nodeName, map)))
     }
 
-    fun <T> addKeyInput(nodeName: KeyMapNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(key), listOf())))
+    fun <K, V> addKeyInput(nodeName: KeyMapNodeName<K, V>, key: K, value: V): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, mapOf(key to value), listOf())))
     }
 
-    fun <T> removeKeyInput(nodeName: KeyMapNodeName<T>, key: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, listOf(), listOf(key))))
+    fun <K, V> removeKeyInput(nodeName: KeyMapNodeName<K, V>, key: K): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, mapOf(), listOf(key))))
     }
 
-    fun <T> editKeys(nodeName: KeyMapNodeName<T>, keysAdded: List<T>, keysRemoved: List<T>): TrickleAsyncTimestamp {
+    fun <K, V> editKeys(nodeName: KeyMapNodeName<K, V>, keysAdded: Map<K, V>, keysRemoved: List<K>): TrickleAsyncTimestamp {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysAdded, keysRemoved)))
     }
 
@@ -440,7 +440,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         }
     }
 
-    fun <T> getOutcome(name: KeyMapNodeName<T>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+    fun <K, V> getOutcome(name: KeyMapNodeName<K, V>, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<Map<K, V>> {
         if (!instance.definition.keyMapNodes.containsKey(name)) {
             throw IllegalArgumentException("Unrecognized node name $name")
         }
@@ -449,7 +449,7 @@ At some point, we may want to improve how this handles for single-threaded execu
         return instance.getNodeOutcome(name)
     }
 
-    fun <T> getOutcome(name: KeyMapNodeName<T>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<List<T>> {
+    fun <K, V> getOutcome(name: KeyMapNodeName<K, V>, timeToWait: Long, timeUnits: TimeUnit, vararg minTimestamps: TrickleAsyncTimestamp): NodeOutcome<Map<K, V>> {
         if (!instance.definition.keyMapNodes.containsKey(name)) {
             throw IllegalArgumentException("Unrecognized node name $name")
         }
@@ -513,9 +513,9 @@ At some point, we may want to improve how this handles for single-threaded execu
             }
         }
     }
-    fun <T> addKeyListListener(name: KeyMapNodeName<T>, listener: TrickleEventListener<List<T>>) {
-        synchronized(keyListListeners) {
-            keyListListeners.getOrPut(name, { ArrayList() }).add(listener)
+    fun <K, V> addKeyListListener(name: KeyMapNodeName<K, V>, listener: TrickleEventListener<Map<K, V>>) {
+        synchronized(keyMapListeners) {
+            keyMapListeners.getOrPut(name, { ArrayList() }).add(listener)
         }
         // Also do the initial output with the current value
         executor.submit {
