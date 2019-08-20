@@ -199,6 +199,18 @@ class TrickleDefinitionBuilder {
         return TrickleBuiltKeyListNode(name, builderId)
     }
 
+    fun <K, T> createKeyedInputNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>): TrickleBuiltKeyedNode<K, T> {
+        checkNameNotUsed(name.name)
+
+        if (keyListNodes[keySource.name]!!.operation != null) {
+            error("Keyed input nodes can only use input key lists as their key sources, but ${keySource.name} is not an input.")
+        }
+
+        val node = TrickleKeyedNode(name, keySource.name, listOf(), null, null)
+        keyedNodes[name] = node
+        topologicalOrdering.add(name)
+        return TrickleBuiltKeyedNode(name, builderId)
+    }
     fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T): TrickleBuiltKeyedNode<K, T> {
         return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
     }
@@ -299,7 +311,13 @@ internal class TrickleKeyedNode<K, T>(
         val name: KeyedNodeName<K, T>,
         val keySourceName: KeyListNodeName<K>,
         val inputs: List<TrickleInput<*>>,
-        val operation: (K, List<*>) -> T,
+        val operation: ((K, List<*>) -> T)?,
         val onCatch: ((TrickleFailure) -> T)?
-)
+) {
+    init {
+        if (operation == null && inputs.isNotEmpty()) {
+            error("Internal error: When operation is null (input node), inputs should be empty")
+        }
+    }
+}
 

@@ -480,6 +480,55 @@ class TrickleTests {
     }
 
     @Test
+    fun testKeyedInputNode1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.addKeyInput(A_KEYS, 1)
+        instance.addKeyInput(A_KEYS, 2)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.setKeyedInput(B_KEYED, 1, 6)
+        instance.setKeyedInput(B_KEYED, 2, 4)
+        instance.setKeyedInput(B_KEYED, 3, 5)
+        instance.completeSynchronously()
+        assertEquals(6, instance.getNodeValue(B_KEYED, 1))
+        assertEquals(4, instance.getNodeValue(B_KEYED, 2))
+        assertEquals(5, instance.getNodeValue(B_KEYED, 3))
+        assertEquals(listOf(6, 4, 5), instance.getNodeValue(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedInputNode2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+        val cKeyed = builder.createKeyedNode(C_KEYED, aKeys, bKeyed.keyedOutput(), { key, b -> key * b })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.addKeyInput(A_KEYS, 1)
+        instance.addKeyInput(A_KEYS, 2)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.setKeyedInput(B_KEYED, 1, 6)
+        instance.setKeyedInput(B_KEYED, 2, 4)
+        instance.setKeyedInput(B_KEYED, 3, 5)
+        instance.completeSynchronously()
+        assertEquals(6, instance.getNodeValue(C_KEYED, 1))
+        assertEquals(8, instance.getNodeValue(C_KEYED, 2))
+        assertEquals(15, instance.getNodeValue(C_KEYED, 3))
+        assertEquals(listOf(6, 8, 15), instance.getNodeValue(C_KEYED))
+        instance.setKeyedInput(B_KEYED, 1, 3)
+        instance.completeSynchronously()
+        assertEquals(3, instance.getNodeValue(C_KEYED, 1))
+        assertEquals(listOf(3, 8, 15), instance.getNodeValue(C_KEYED))
+    }
+
+    @Test
     fun testKeyedValuesNotRecomputedWhenKeyOrderChanges() {
         val builder = TrickleDefinitionBuilder()
 
@@ -705,6 +754,257 @@ class TrickleTests {
     }
 
     @Test
+    fun testNodeGetsHungUpByKeyedInputNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+        val c = builder.createNode(C, bKeyed.fullOutput(), { it.sum() + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        assertEquals(1, instance.getNodeValue(C))
+        instance.addKeyInput(A_KEYS, 1)
+        instance.setKeyedInput(B_KEYED, 1, 30)
+        instance.completeSynchronously()
+        assertEquals(31, instance.getNodeValue(C))
+        instance.addKeyInput(A_KEYS, 2)
+        instance.setKeyedInput(B_KEYED, 2, 60)
+        instance.addKeyInput(A_KEYS, 3)
+        instance.completeSynchronously()
+        // TODO: Also not good! If the addition of <2, 60> had been registered, the value would be 91, not 31.
+//        assertEquals(31, instance.getNodeValue(C))
+        // This would be preferable:
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(C))
+    }
+
+    @Test
+    fun testSettingKeyedInputBeforeKeyExists1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        // This should be ignored since that key doesn't exist currently
+        instance.setKeyedInput(B_KEYED, 2, 10)
+        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 2)), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
+    }
+
+    @Test
+    fun testSettingKeyedInputBeforeKeyExists2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        // This should be ignored since that key doesn't exist currently
+        instance.setKeyedInput(B_KEYED, 2, 10)
+//        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 2)), instance.getNodeOutcome(B_KEYED, 2))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)), instance.getNodeOutcome(B_KEYED))
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun testCannotUseNonInputKeyListAsKeyedInputSource() {
+        val builder = TrickleDefinitionBuilder()
+
+        val a = builder.createInputNode(A)
+        val bKeys = builder.createKeyListNode(B_KEYS, a, { (0..it).toList() })
+        val cKeyed = builder.createKeyedInputNode(C_KEYED, bKeys)
+    }
+
+    @Test
+    fun testKeyedInputsGiveOutOfDateKeyedOutputsWhenKeysChange1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, bKeys)
+        val eKeyed = builder.createKeyedNode(E_KEYED, bKeys, dKeyed.keyedOutput(), { k, e1 -> k + e1 })
+        // TODO: Does it ever make sense for a keyed node to take its key source as an input? Are there problems that causes?
+        // It must be accepting the full key list as the input here...
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(B_KEYS, listOf(1, 2)) // op 3
+        instance.setKeyedInput(D_KEYED, 1, 10) // op 4
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 2)), instance.getNodeOutcome(E_KEYED))
+
+        instance.setKeyedInput(D_KEYED, 2, 20)
+        instance.completeSynchronously()
+        instance.addKeyInput(B_KEYS, 3)
+        instance.completeSynchronously()
+
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 3)), instance.getNodeOutcome(E_KEYED)) // op 8
+    }
+
+    @Test
+    fun testKeyedInputsGiveOutOfDateKeyedOutputsWhenKeysChange2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val bKeys = builder.createKeyListInputNode(B_KEYS)
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, bKeys)
+        val eKeyed = builder.createKeyedNode(E_KEYED, bKeys, dKeyed.keyedOutput(), { k, e1 -> k + e1 })
+        // TODO: Does it ever make sense for a keyed node to take its key source as an input? Are there problems that causes?
+        // It must be accepting the full key list as the input here...
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(B_KEYS, listOf(1, 2)) // op 3
+        instance.setKeyedInput(D_KEYED, 1, 10) // op 4
+        instance.completeSynchronously()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 2)), instance.getNodeOutcome(E_KEYED))
+
+        instance.setKeyedInput(D_KEYED, 2, 20)
+        instance.addKeyInput(B_KEYS, 3)
+        instance.completeSynchronously()
+
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(D_KEYED, 3)), instance.getNodeOutcome(E_KEYED)) // op 8
+    }
+
+    @Test
+    fun testSyncKeyedInputsBug() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateSync()
+
+        instance.setInput(A_KEYS, listOf(5, 10, 6))
+        instance.setKeyedInput(B_KEYED, 5, 10)
+        assertEquals(NodeOutcome.Computed(10), instance.getOutcome(B_KEYED, 5))
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 10), ValueId.Keyed(B_KEYED, 6)), instance.getOutcome(B_KEYED))
+    }
+
+    @Test
+    fun testRawKeyedInputsBug() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(5, 10, 6))
+        instance.setKeyedInput(B_KEYED, 5, 10)
+        instance.getNextSteps()
+        instance.getNextSteps()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 10), ValueId.Keyed(B_KEYED, 6)), instance.getNodeOutcome(B_KEYED))
+    }
+
+    @Test
+    fun testKeyedInputsRemovedAfterKeyRemoved1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.getNodeOutcome(A_KEYS)
+        instance.addKeyInput(A_KEYS, 0)
+        instance.setKeyedInput(B_KEYED, 0, 57)
+        instance.removeKeyInput(A_KEYS, 0)
+        instance.completeSynchronously()
+        instance.setInput(A_KEYS, listOf(0, 1))
+        instance.setKeyedInput(B_KEYED, 1, 58)
+        instance.getNextSteps()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
+    }
+
+    @Test
+    fun testKeyedInputsRemovedAfterKeyRemoved2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.getNodeOutcome(A_KEYS)
+        instance.addKeyInput(A_KEYS, 0)
+        instance.setKeyedInput(B_KEYED, 0, 57)
+        instance.removeKeyInput(A_KEYS, 0)
+        instance.setInput(A_KEYS, listOf(0, 1))
+        instance.setKeyedInput(B_KEYED, 1, 58)
+        instance.getNextSteps()
+        assertEquals(inputsMissingOutcome(ValueId.Keyed(B_KEYED, 0)), instance.getNodeOutcome(B_KEYED, 0))
+    }
+
+    @Test
+    fun testKeyedValuesClearedWhenInputListsInvalidated1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createInputNode(B)
+        val c = builder.createNode(C, b, { it + 1 })
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, aKeys)
+        val eKeys = builder.createKeyListNode(E_KEYS, c, dKeyed.fullOutput(), { cVal, dList -> dList.map { it + cVal } })
+        val fKeyed = builder.createKeyedNode(F_KEYED, eKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        instance.setInput(B, 6)
+        instance.completeSynchronously()
+        instance.addKeyInput(A_KEYS, 23)
+        instance.completeSynchronously()
+
+        instance.addKeyInput(A_KEYS, 29)
+        instance.setKeyedInput(D_KEYED, 29, 20)
+        instance.setKeyedInput(D_KEYED, 23, 31)
+        instance.completeSynchronously()
+
+        instance.setInput(A_KEYS, listOf(0))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(F_KEYED, 38))
+    }
+
+
+    @Test
+    fun testKeyedValuesClearedWhenInputListsInvalidated2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val b = builder.createInputNode(B)
+        val c = builder.createNode(C, b, { it + 1 })
+        val dKeyed = builder.createKeyedInputNode(D_KEYED, aKeys)
+        val eKeys = builder.createKeyListNode(E_KEYS, c, dKeyed.fullOutput(), { cVal, dList -> dList.map { it + cVal } })
+        val fKeyed = builder.createKeyedNode(F_KEYED, eKeys, { it * 2 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.completeSynchronously()
+        instance.setInput(B, 6)
+        instance.completeSynchronously()
+        instance.addKeyInput(A_KEYS, 23)
+        instance.completeSynchronously()
+
+        instance.addKeyInput(A_KEYS, 29)
+        instance.setKeyedInput(D_KEYED, 29, 20)
+        instance.setKeyedInput(D_KEYED, 23, 31)
+//        instance.completeSynchronously()
+
+        instance.setInput(A_KEYS, listOf(0))
+        instance.completeSynchronously()
+        assertEquals(NodeOutcome.NotYetComputed.get<Int>(), instance.getNodeOutcome(F_KEYED, 38))
+    }
+
+    @Test
     fun testErrorPropagationPastKeyedNodeOfKeyListFailure() {
         val builder = TrickleDefinitionBuilder()
 
@@ -850,6 +1150,22 @@ class TrickleTests {
     }
 
     @Test
+    fun testAsyncNoSuchKey() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val syncInstance = builder.build().instantiateSync()
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), syncInstance.getOutcome(B_KEYED, 1))
+
+        val executor = Executors.newCachedThreadPool()
+        val instance = builder.build().instantiateAsync(executor)
+
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+    }
+
+    @Test
     fun testAsyncMissingInputBasic() {
         val builder = TrickleDefinitionBuilder()
 
@@ -886,6 +1202,57 @@ class TrickleTests {
         val (newStep) = instance.getNextSteps()
         // These timestamps should not be the same
         assertNotEquals(step1.timestamp, newStep.timestamp)
+    }
+
+    @Test
+    fun testAsyncMissingKeyedInput1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        assertEquals(NodeOutcome.NoSuchKey.get<Int>(), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+//        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Nonkeyed(A)))), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun testAsyncMissingKeyedInput2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        val ts = instance.addKeyInput(A_KEYS, 1)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1)))), instance.getOutcome(B_KEYED, 1, 1, TimeUnit.SECONDS, ts))
+    }
+
+    @Test
+    fun testAsyncMissingKeyedInput3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        instance.removeKeyInput(A_KEYS, 77)
+        instance.setKeyedInput(B_KEYED, 1, 37)
+        instance.setKeyedInput(B_KEYED, 1, 25)
+        instance.setKeyedInput(B_KEYED, 1, 30)
+        instance.setInput(A_KEYS, listOf(14, 6, 4, 13, 11, 8))
+        instance.addKeyInput(A_KEYS, 18)
+        var timestamp = instance.setKeyedInput(B_KEYED, 13, 26)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 4)))), instance.getOutcome(B_KEYED, 4, 5, TimeUnit.SECONDS, timestamp))
+        instance.setInput(A_KEYS, listOf(104, 98, 101))
+        instance.addKeyInput(A_KEYS, 34)
+        instance.setKeyedInput(B_KEYED, 98, 84)
+        instance.setKeyedInput(B_KEYED, 98, 53)
+        timestamp = instance.removeKeyInput(A_KEYS, 101)
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 34)))), instance.getOutcome(B_KEYED, 34, timestamp))
     }
 
     @Test
