@@ -1416,4 +1416,19 @@ class TrickleTests {
         instance.editKeys(A_KEYS, listOf(), listOf(1))
         assertEquals(null, instance.getValueDirectlyForTesting(ValueId.KeyListKey(A_KEYS, 1)))
     }
+
+    @Test
+    fun testErrorFromKeyedInputsListOutput() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A_KEYS, listOf(1, 2, 3))
+        // This propagates the error
+        instance.getNextSteps()
+        assertEquals(NodeOutcome.Failure<List<Int>>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)))), instance.getNodeOutcome(B_KEYED))
+    }
 }
