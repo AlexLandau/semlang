@@ -275,13 +275,20 @@ internal class ReferenceInstance(private val definition: TrickleDefinition) {
         recomputeState()
     }
 
+    fun setKeyedInputs(name: KeyedNodeName<Int, Int>, map: Map<Int, Int>) {
+        for ((key, value) in map) {
+            keyedInputs[name]!!.put(key, value)
+        }
+        recomputeState()
+    }
+
     fun setInputs(changes: List<TrickleInputChange>) {
         for (change in changes) {
             when (change) {
                 is TrickleInputChange.SetBasic<*> -> setInput(change.nodeName as NodeName<Int>, change.value as Int)
                 is TrickleInputChange.SetKeys<*> -> setInput(change.nodeName as KeyListNodeName<Int>, change.value as List<Int>)
                 is TrickleInputChange.EditKeys<*> -> editKeys(change.nodeName as KeyListNodeName<Int>, change.keysAdded as List<Int>, change.keysRemoved as List<Int>)
-                is TrickleInputChange.SetKeyed<*, *> -> setKeyedInput(change.nodeName as KeyedNodeName<Int, Int>, change.key as Int, change.value as Int)
+                is TrickleInputChange.SetKeyed<*, *> -> setKeyedInputs(change.nodeName as KeyedNodeName<Int, Int>, change.map as Map<Int, Int>)
             }
         }
     }

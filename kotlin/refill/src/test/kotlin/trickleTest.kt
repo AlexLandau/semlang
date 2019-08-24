@@ -1431,4 +1431,76 @@ class TrickleTests {
         instance.getNextSteps()
         assertEquals(NodeOutcome.Failure<List<Int>>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1), ValueId.Keyed(B_KEYED, 2), ValueId.Keyed(B_KEYED, 3)))), instance.getNodeOutcome(B_KEYED))
     }
+
+    @Test
+    fun testSettingKeyedInputSimultaneouslyWithKeyAddition1() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInputs(listOf(
+            TrickleInputChange.SetKeys(A_KEYS, listOf(1)),
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(1 to 10))
+        ))
+        assertEquals(NodeOutcome.Computed(10), instance.getNodeOutcome(B_KEYED, 1))
+    }
+
+    // Note the reversed order compared with the previous test
+    @Test
+    fun testSettingKeyedInputSimultaneouslyWithKeyAddition2() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInputs(listOf(
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(1 to 10)),
+            TrickleInputChange.SetKeys(A_KEYS, listOf(1))
+        ))
+        instance.getNextSteps()
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1)))), instance.getNodeOutcome(B_KEYED, 1))
+    }
+
+    // Coalescing shouldn't mess this up
+    @Test
+    fun testSettingKeyedInputSimultaneouslyWithKeyAddition3() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInputs(listOf(
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(2 to 20)),
+            TrickleInputChange.SetKeys(A_KEYS, listOf(1)),
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(1 to 10))
+        ))
+        instance.getNextSteps()
+        assertEquals(NodeOutcome.Computed(10), instance.getNodeOutcome(B_KEYED, 1))
+    }
+
+    // Coalescing shouldn't mess this up
+    @Test
+    fun testSettingKeyedInputSimultaneouslyWithKeyAddition4() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedInputNode(B_KEYED, aKeys)
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInputs(listOf(
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(1 to 10)),
+            TrickleInputChange.SetKeys(A_KEYS, listOf(1)),
+            TrickleInputChange.SetKeyed(B_KEYED, mapOf(2 to 20))
+        ))
+        instance.getNextSteps()
+        assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1)))), instance.getNodeOutcome(B_KEYED, 1))
+    }
 }

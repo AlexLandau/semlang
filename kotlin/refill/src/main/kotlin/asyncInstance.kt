@@ -241,8 +241,8 @@ At some point, we may want to improve how this handles for single-threaded execu
             // TODO: Can/should we also update ValueId.KeyListKey values? SetKeys doesn't list keys that would get removed...
             is TrickleInputChange.SetKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
             is TrickleInputChange.EditKeys<*> -> listOf(ValueId.FullKeyList(input.nodeName))
-            is TrickleInputChange.SetKeyed<*, *> -> listOf(ValueId.Keyed(input.nodeName, input.key),
-                    ValueId.FullKeyedList(input.nodeName))
+            is TrickleInputChange.SetKeyed<*, *> -> input.map.keys.map { ValueId.Keyed(input.nodeName, it) } +
+                    listOf(ValueId.FullKeyedList(input.nodeName))
         }
         for (valueId in valueIds) {
             unblockWaitingTimestampBarriers(valueId, newTimestamp)
@@ -320,7 +320,11 @@ At some point, we may want to improve how this handles for single-threaded execu
     }
 
     fun <K, T> setKeyedInput(nodeName: KeyedNodeName<K, T>, key: K, value: T): TrickleAsyncTimestamp {
-        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, key, value)))
+        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, mapOf(key to value))))
+    }
+
+    fun <K, T> setKeyedInputs(nodeName: KeyedNodeName<K, T>, map: Map<K, T>): TrickleAsyncTimestamp {
+        return setInputs(listOf(TrickleInputChange.SetKeyed(nodeName, map)))
     }
 
     // TODO: Add a variant that waits a limited amount of time
