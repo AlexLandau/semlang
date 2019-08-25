@@ -6,10 +6,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -1502,5 +1499,71 @@ class TrickleTests {
         ))
         instance.getNextSteps()
         assertEquals(NodeOutcome.Failure<Int>(TrickleFailure(mapOf(), setOf(ValueId.Keyed(B_KEYED, 1)))), instance.getNodeOutcome(B_KEYED, 1))
+    }
+
+    @Test
+    fun testRemovingAndReaddingKeyGivesDifferentKeyedEventTimestamps() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        try {
+            val initialComputationEvent = CompletableFuture<TrickleEvent<Int>>()
+            val removalEvent = CompletableFuture<TrickleEvent<Int>>()
+            val recomputedEvent = CompletableFuture<TrickleEvent<Int>>()
+            instance.addPerKeyListener(B_KEYED, TrickleEventListener<Int> { event: TrickleEvent<Int> ->
+                if ((event.valueId as? ValueId.Keyed)?.key?.equals(1) == true) {
+                    if (!initialComputationEvent.isDone()) {
+                        initialComputationEvent.complete(event)
+                    } else if (!removalEvent.isDone()) {
+                        removalEvent.complete(event)
+                    } else if (!recomputedEvent.isDone()) {
+                        recomputedEvent.complete(event)
+                    } else {
+                        error("More events than expected: $event")
+                    }
+                }
+            })
+            instance.setInput(A_KEYS, listOf(1, 2, 3))
+            val event1 = initialComputationEvent.get(10, TimeUnit.SECONDS)
+            assertTrue(event1 is TrickleEvent.Computed && event1.value == 2)
+            instance.setInputs(listOf(
+                TrickleInputChange.SetKeys(A_KEYS, listOf(2, 3)),
+                TrickleInputChange.SetKeys(A_KEYS, listOf(1, 2))
+            ))
+            val event2 = removalEvent.get(10, TimeUnit.SECONDS)
+            assertTrue(event2 is TrickleEvent.KeyRemoved)
+            val event3 = recomputedEvent.get(10, TimeUnit.SECONDS)
+            assertTrue(event3 is TrickleEvent.Computed && event3.value == 2)
+            assertTrue(event1.timestamp < event2.timestamp)
+            assertTrue(event2.timestamp < event3.timestamp)
+        } finally {
+            instance.shutdown()
+        }
+    }
+
+    @Test
+    fun testRemovingAndReaddingKeyWorksWithAsyncGetters() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateAsync(Executors.newCachedThreadPool())
+
+        try {
+            instance.setInput(A_KEYS, listOf(1, 2, 3))
+            val timestamp = instance.setInputs(listOf(
+                TrickleInputChange.SetKeys(A_KEYS, listOf(2, 3)),
+                TrickleInputChange.SetKeys(A_KEYS, listOf(1, 2))
+            ))
+            val outcome = instance.getOutcome(B_KEYED, 1, 10, TimeUnit.SECONDS, timestamp)
+            assertEquals(NodeOutcome.Computed(2), outcome)
+        } finally {
+            instance.shutdown()
+        }
     }
 }

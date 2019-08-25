@@ -44,6 +44,7 @@ class TrickleAsyncTimestamp
 
 data class TimestampedInput(val inputs: List<TrickleInputChange>, val timestamp: TrickleAsyncTimestamp)
 
+// TODO: Should we add a finalizer on this to shut down the executor when the instance itself gets GCed?
 class TrickleAsyncInstance(private val instance: TrickleInstance, private val executor: ExecutorService) {
     // Use with care; note the use of synchronizedMap.
     // Keys should be added by the instantiator of the async timestamp.
@@ -519,8 +520,8 @@ At some point, we may want to improve how this handles for single-threaded execu
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
-                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
-                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed.of(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure.of(valueId, outcome.failure, -1L))
             }
         }
     }
@@ -535,8 +536,8 @@ At some point, we may want to improve how this handles for single-threaded execu
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
-                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
-                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed.of(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure.of(valueId, outcome.failure, -1L))
             }
         }
     }
@@ -551,8 +552,8 @@ At some point, we may want to improve how this handles for single-threaded execu
             when (outcome) {
                 is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                 is NodeOutcome.NoSuchKey -> TODO()
-                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed(valueId, outcome.value, -1L))
-                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure(valueId, outcome.failure, -1L))
+                is NodeOutcome.Computed -> listener.receive(TrickleEvent.Computed.of(valueId, outcome.value, -1L))
+                is NodeOutcome.Failure -> listener.receive(TrickleEvent.Failure.of(valueId, outcome.failure, -1L))
             }
         }
     }
@@ -574,14 +575,14 @@ At some point, we may want to improve how this handles for single-threaded execu
                             is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
                             is NodeOutcome.NoSuchKey -> TODO()
                             is NodeOutcome.Computed -> listener.receive(
-                                TrickleEvent.Computed(
+                                TrickleEvent.Computed.of(
                                     valueId,
                                     outcome.value,
                                     -1L
                                 )
                             )
                             is NodeOutcome.Failure -> listener.receive(
-                                TrickleEvent.Failure(
+                                TrickleEvent.Failure.of(
                                     valueId,
                                     outcome.failure,
                                     -1L

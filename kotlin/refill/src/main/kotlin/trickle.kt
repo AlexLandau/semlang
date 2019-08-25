@@ -305,12 +305,12 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
         if (valueListener != null) {
             val event: TrickleEvent<*> = if (newFailure == null) {
                 if (valueId is ValueId.FullKeyList) {
-                    TrickleEvent.Computed(valueId, (newValue as KeyList<Any?>).asList(), newTimestamp)
+                    TrickleEvent.Computed.of(valueId, (newValue as KeyList<Any?>).asList(), newTimestamp)
                 } else {
-                    TrickleEvent.Computed(valueId, newValue, newTimestamp)
+                    TrickleEvent.Computed.of(valueId, newValue, newTimestamp)
                 }
             } else {
-                TrickleEvent.Failure<Any?>(valueId, newFailure, newTimestamp)
+                TrickleEvent.Failure.of<Any?>(valueId, newFailure, newTimestamp)
             }
             valueListener!!(event)
         }
@@ -435,7 +435,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     private fun <T> applySetBasicChange(change: TrickleInputChange.SetBasic<T>, newTimestamp: Long): Map<ValueId, TrickleEvent<*>> {
         val valueId = ValueId.Nonkeyed(change.nodeName)
         setValueSuppressingListener(valueId, newTimestamp, change.value, null)
-        return mapOf(valueId to TrickleEvent.Computed(valueId, change.value, newTimestamp))
+        return mapOf(valueId to TrickleEvent.Computed.of(valueId, change.value, newTimestamp))
     }
 
     @Synchronized
@@ -466,10 +466,9 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 val keyValueId = ValueId.KeyListKey(nodeName, removal)
                 values.remove(keyValueId)
             }
-            // TODO: This still needs attention
-            pruneKeyedInputsForRemovedKeys(nodeName, removals, newTimestamp)
+            val pruneEvents = pruneKeyedInputsForRemovedKeysSuppressingListener(nodeName, removals, newTimestamp)
 
-            return mapOf(listValueId to TrickleEvent.Computed(listValueId, newList.asList(), newTimestamp))
+            return mapOf(listValueId to TrickleEvent.Computed.of(listValueId, newList.asList(), newTimestamp)) + pruneEvents
         }
         return mapOf()
     }
@@ -504,8 +503,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                     setValueSuppressingListener(keyValueId, newTimestamp, true, null)
                 }
             }
-            pruneKeyedInputsForRemovedKeys(nodeName, actuallyRemoved, newTimestamp)
-            return mapOf(listValueId to TrickleEvent.Computed(listValueId, newList.asList(), newTimestamp))
+            val pruneEvents = pruneKeyedInputsForRemovedKeysSuppressingListener(nodeName, actuallyRemoved, newTimestamp)
+            return mapOf(listValueId to TrickleEvent.Computed.of(listValueId, newList.asList(), newTimestamp)) + pruneEvents
         }
         return mapOf()
     }
@@ -518,6 +517,27 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
     @Synchronized
     fun <T> editKeys(nodeName: KeyListNodeName<T>, keysToAdd: List<T>, keysToRemove: List<T>): Long {
         return setInputs(listOf(TrickleInputChange.EditKeys(nodeName, keysToAdd, keysToRemove)))
+    }
+
+    // TODO: Reconcile with the other/refactor
+    @Synchronized
+    private fun <T> pruneKeyedInputsForRemovedKeysSuppressingListener(nodeName: KeyListNodeName<T>, keysRemoved: Set<T>, timestamp: Long): Map<ValueId, TrickleEvent<*>> {
+        val events = HashMap<ValueId, TrickleEvent<*>>()
+        // Prune values for keys that no longer exist in the key list
+        // These will now return "NoSuchKey"
+        for (valueId in values.keys.toList()) {
+            if (valueId is ValueId.Keyed && keysRemoved.contains(valueId.key)) {
+                // Check that the key is correct
+                // TODO: We can store or memoize things so this is easier to determine...
+                val keyedNodeName = valueId.nodeName
+                val keySourceName = definition.keyedNodes.getValue(keyedNodeName).keySourceName
+                if (keySourceName == nodeName) {
+                    values.remove(valueId)
+                    events.put(valueId, TrickleEvent.KeyRemoved.of<Any?>(valueId, timestamp))
+                }
+            }
+        }
+        return events
     }
 
     @Synchronized
@@ -533,7 +553,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 if (keySourceName == nodeName) {
                     values.remove(valueId)
                     if (valueListener != null) {
-                        val event = TrickleEvent.KeyRemoved<Any?>(valueId, timestamp)
+                        val event = TrickleEvent.KeyRemoved.of<Any?>(valueId, timestamp)
                         valueListener!!(event)
                     }
                 }
@@ -602,7 +622,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                 // TODO: Maybe don't register a change in some cases if the new value is the same or value-equals
                 setValueSuppressingListener(keyedValueId, newTimestamp, value, null)
 
-                events.put(keyedValueId, TrickleEvent.Computed(keyedValueId, value, newTimestamp))
+                events.put(keyedValueId, TrickleEvent.Computed.of(keyedValueId, value, newTimestamp))
             }
         }
         return events
@@ -1294,12 +1314,40 @@ sealed class NodeOutcome<T> {
 }
 
 // For use with listeners
+/*
+ * Note: The weird timestamp manipulation covers the following case:
+ * - We have input keylist node A and non-input keyed node B sourced by A
+ * - A change gets applied to A that removes and re-adds a key (i.e. an EditKeys with the key in both the removes and adds list)
+ * - One event will get triggered for the key getting removed from B, and one from it being recomputed; the trickle instance will
+ *   give these both the same timestamp, so we differentiate the timestamps at the event level by giving KeyRemoved events lower
+ *   timestamps than Computed or Failure events
+ *
+ * TODO: Shift this timestamp change to inside the instance so these can just be instantiated normally again
+ */
 sealed class TrickleEvent<T> {
     abstract val valueId: ValueId
     abstract val timestamp: Long
-    data class Computed<T>(override val valueId: ValueId, val value: T, override val timestamp: Long): TrickleEvent<T>()
-    data class Failure<T>(override val valueId: ValueId, val failure: TrickleFailure, override val timestamp: Long): TrickleEvent<T>()
-    data class KeyRemoved<T>(override val valueId: ValueId.Keyed, override val timestamp: Long): TrickleEvent<T>()
+    data class Computed<T> private constructor(override val valueId: ValueId, val value: T, override val timestamp: Long): TrickleEvent<T>() {
+        companion object {
+            fun <T> of(valueId: ValueId, value: T, timestamp: Long): Computed<T> {
+                return Computed(valueId, value, timestamp*2 + 1)
+            }
+        }
+    }
+    data class Failure<T> private constructor(override val valueId: ValueId, val failure: TrickleFailure, override val timestamp: Long): TrickleEvent<T>() {
+        companion object {
+            fun <T> of(valueId: ValueId, failure: TrickleFailure, timestamp: Long): Failure<T> {
+                return Failure(valueId, failure, timestamp*2 + 1)
+            }
+        }
+    }
+    data class KeyRemoved<T> private constructor(override val valueId: ValueId.Keyed, override val timestamp: Long): TrickleEvent<T>() {
+        companion object {
+            fun <T> of(valueId: ValueId.Keyed, timestamp: Long): KeyRemoved<T> {
+                return KeyRemoved(valueId, timestamp*2)
+            }
+        }
+    }
 }
 
 class TrickleStep internal constructor(

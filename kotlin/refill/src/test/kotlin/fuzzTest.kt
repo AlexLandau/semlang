@@ -15,9 +15,9 @@ class TrickleFuzzTests {
 
     @Test
     fun specificTest1() {
-//        for (i in 0..100) {
+        for (i in 0..100) {
             runSpecificTest(208, 3)
-//        }
+        }
         System.out.flush()
     }
 
@@ -537,7 +537,6 @@ class TrickleFuzzTests {
                         is FuzzOperation.CheckBasic -> {
                             // TODO: Have another version where all the listeners are made ahead of time
                             instance.addBasicListener(op.name, TrickleEventListener { event ->
-                                println("event: $event")
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
@@ -616,6 +615,9 @@ class TrickleFuzzTests {
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
+                                    } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                        // Note that receiving the same event (with the same timestamp) twice is expected sometimes.
+                                        error("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
                                     } else {
                                         event1
                                     }
