@@ -480,19 +480,23 @@ fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String
 fun parseModuleDirectoryUsingTrickle(directory: File, repository: ModuleRepository): ModuleDirectoryParsingResult {
     val configFile = File(directory, "module.conf")
     val definition = getFilesParsingDefinition()
-    val instance = definition.instantiateRaw()
+    val instance = definition.instantiateSync()
 
     instance.setInput(CONFIG_TEXT, configFile.readText())
 
     for (file in directory.listFiles()) {
-        instance.addKeyInput(SOURCE_FILE_URLS, file.absolutePath)
-        instance.setKeyedInput(SOURCE_TEXTS, file.absolutePath, file.readText())
+        instance.setInputs(listOf(
+            // TODO: AddKey constructor would be nice here, or some kind of builder construct
+            TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(file.absolutePath), listOf()),
+            // TODO: Ditto for a singleton set-keyed constructor
+            TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(file.absolutePath to file.readText()))
+        ))
     }
 
-    instance.completeSynchronously()
+//    instance.completeSynchronously()
 
     // TODO: Also handle the case where we get an error in config parsing
-    return instance.getNodeValue(MODULE_PARSING_RESULT)
+    return instance.getValue(MODULE_PARSING_RESULT)
 
 //    val parsedConfig = parseConfigFile(configFile)
 //    return when (parsedConfig) {
