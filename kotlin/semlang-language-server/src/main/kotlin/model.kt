@@ -93,15 +93,6 @@ sealed class DocumentSource {
     data class FileSystem(val lastModifiedTime: FileTime): DocumentSource()
 }
 
-/**
- * This is going to be really inefficient/potentially not very responsive, but I want the "real" implementation to live in
- * parseDir eventually...
- */
-class NaiveSourcesFolderModel(private val folderURI: URI,
-                              private val languageClientProvider: LanguageClientProvider) {
-
-}
-
 /*
  * This will contain our notion of what the current source files are for a given module and manage accepting updates
  * and triggering rebuilds that produce diagnostics.
@@ -301,47 +292,6 @@ class SourcesFolderModel(private val folderUri: URI,
                 }
             }
 
-//            val moduleInfo = this.moduleInfo
-//            if (moduleInfo == null) {
-//                // Treat each file as its own module
-//                parsingResultsByDocumentName.forEach { fileName, parsingResult ->
-//                    val fakeModuleName = ModuleName("non-module", fileName.split(".")[0])
-//                    val validationResult = validate(parsingResult, fakeModuleName, CURRENT_NATIVE_MODULE_VERSION, listOf())
-//
-//                    val diagnostics = collectDiagnostics(validationResult.getAllIssues(), listOf(getDocumentUriForFileName(fileName)))
-//
-//                    val client = languageClientProvider.getLanguageClient()
-//                    diagnostics.forEach { uri, diagnosticsList ->
-//                        // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
-//                        // if nothing has changed
-//                        val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
-//                        client.publishDiagnostics(diagnosticsParams)
-//                    }
-//                }
-//            } else {
-//                // We have a single module with a valid config
-//                val combinedParsingResult = combineParsingResults(parsingResultsByDocumentName.values)
-//                // TODO: We need dependencies here
-//                val repository = getDefaultLocalRepository()
-//                // TODO: These might want to be more fine-grained tasks? Part of the model, etc.?
-//                // TODO: Also catch and deal with errors here
-//                val loadedDependencies = moduleInfo.dependencies.map {
-//                    val uniqueId = repository.getModuleUniqueId(it, File(folderUri))
-//                    repository.loadModule(uniqueId)
-//                }
-//                val validationResult = validate(combinedParsingResult, moduleInfo.name, CURRENT_NATIVE_MODULE_VERSION, loadedDependencies)
-//
-//                val documentUris = (parsingResultsByDocumentName.keys).toList().map(this::getDocumentUriForFileName)
-//                val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
-//
-//                val client = languageClientProvider.getLanguageClient()
-//                diagnostics.forEach { uri, diagnosticsList ->
-//                    // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
-//                    // if nothing has changed
-//                    val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
-//                    client.publishDiagnostics(diagnosticsParams)
-//                }
-//            }
         }
     }
 
