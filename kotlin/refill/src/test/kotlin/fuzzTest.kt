@@ -16,7 +16,7 @@ class TrickleFuzzTests {
     @Test
     fun specificTest1() {
         for (i in 0..100) {
-            runSpecificTest(208, 3)
+            runSpecificTest(121, 0)
         }
         System.out.flush()
     }

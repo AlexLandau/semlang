@@ -1065,6 +1065,18 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
 
     @Synchronized
     private fun reportKeyedResult(valueId: ValueId.Keyed, timestamp: Long, result: Any?, error: Throwable?) {
+        // If the key doesn't still exist, ignore the result (don't store, don't trigger listeners)
+        val keySourceName = definition.keyedNodes[valueId.nodeName]!!.keySourceName
+        val keyListHolder = values[ValueId.FullKeyList(keySourceName)]
+        if (keyListHolder == null) {
+            return
+        }
+        val keyExists = (keyListHolder.getValue() as KeyList<Any?>).contains(valueId.key)
+
+        if (!keyExists) {
+            return
+        }
+
         val valueHolder = values[valueId]
         if (valueHolder == null || timestamp > valueHolder.getTimestamp()) {
             val failure = error?.let { TrickleFailure(mapOf(valueId to it), setOf()) }

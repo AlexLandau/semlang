@@ -1566,4 +1566,29 @@ class TrickleTests {
             instance.shutdown()
         }
     }
+
+    @Test
+    fun testReceivingObsoleteComputedKeyEventDoesntTriggerListener() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aKeys = builder.createKeyListInputNode(A_KEYS)
+        val bKeyed = builder.createKeyedNode(B_KEYED, aKeys, { it + 1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        var sawComputedResult = false
+        instance.setValueListener { event ->
+            if (event is TrickleEvent.Computed<*> && event.valueId == ValueId.Keyed(B_KEYED, 1)) {
+                sawComputedResult = true
+            }
+        }
+
+        instance.setInput(A_KEYS, listOf(1))
+        val computeBStep = instance.getNextSteps().single()
+        assertEquals(ValueId.Keyed(B_KEYED, 1), computeBStep.valueId)
+        instance.setInput(A_KEYS, listOf())
+        instance.reportResult(computeBStep.execute())
+        assertNull(instance.getValueDirectlyForTesting(ValueId.Keyed(B_KEYED, 1)))
+        assertFalse(sawComputedResult)
+    }
 }
