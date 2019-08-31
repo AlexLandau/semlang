@@ -41,12 +41,15 @@ class TrickleFuzzTests {
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                 checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                 checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                 checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                 checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
 
 
                 // TODO: Maybe multiple rounds of this?
@@ -95,12 +98,15 @@ class TrickleFuzzTests {
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
+                            checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newFixedThreadPool(4)), script.operations)
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                             checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
+                            checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newFixedThreadPool(2)), script.operations)
                             checkAsyncInstance1(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                             checkAsyncInstance2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
                             checkAsyncInstanceWithListeners(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
+                            checkAsyncInstanceWithListeners2(definition.instantiateAsync(Executors.newSingleThreadExecutor()), script.operations)
 
                             // TODO: Maybe multiple rounds of this?
                             // TODO: Document this as a principle of the design
@@ -520,6 +526,7 @@ class TrickleFuzzTests {
     }
 
     private fun checkAsyncInstanceWithListeners(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
+        val collectedErrors = Collections.synchronizedList(ArrayList<Exception>())
         val listenedEvents = ConcurrentHashMap<ValueId, TrickleEvent<*>>()
         Awaitility.setDefaultPollDelay(0, TimeUnit.MILLISECONDS)
         Awaitility.setDefaultPollInterval(10, TimeUnit.MILLISECONDS)
@@ -535,11 +542,16 @@ class TrickleFuzzTests {
                         is FuzzOperation.SetKeyed -> instance.setKeyedInputs(op.name, op.map)
                         is FuzzOperation.SetMultiple -> instance.setInputs(op.changes)
                         is FuzzOperation.CheckBasic -> {
-                            // TODO: Have another version where all the listeners are made ahead of time
+                            // TODO: Only add one listener per name
                             instance.addBasicListener(op.name, TrickleEventListener { event ->
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
+                                    } else if (event2.timestamp == event1.timestamp && event1.timestamp >= 0 && event2 != event1) {
+                                        // Note that receiving the same event (with the same timestamp) twice is expected sometimes.
+                                        val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                        collectedErrors.add(e)
+                                        throw e
                                     } else {
                                         event1
                                     }
@@ -560,11 +572,16 @@ class TrickleFuzzTests {
                             }
                         }
                         is FuzzOperation.CheckKeyList -> {
-                            // TODO: Have another version where all the listeners are made ahead of time
+                            // TODO: Only add one listener per name
                             instance.addKeyListListener(op.name, TrickleEventListener { event ->
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
+                                    } else if (event2.timestamp == event1.timestamp && event1.timestamp >= 0 && event2 != event1) {
+                                        // Note that receiving the same event (with the same timestamp) twice is expected sometimes.
+                                        val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                        collectedErrors.add(e)
+                                        throw e
                                     } else {
                                         event1
                                     }
@@ -585,11 +602,16 @@ class TrickleFuzzTests {
                             }
                         }
                         is FuzzOperation.CheckKeyedList -> {
-                            // TODO: Have another version where all the listeners are made ahead of time
+                            // TODO: Only add one listener per name
                             instance.addKeyedListListener(op.name, TrickleEventListener { event ->
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
+                                    } else if (event2.timestamp == event1.timestamp && event1.timestamp >= 0 && event2 != event1) {
+                                        // Note that receiving the same event (with the same timestamp) twice is expected sometimes.
+                                        val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                        collectedErrors.add(e)
+                                        throw e
                                     } else {
                                         event1
                                     }
@@ -610,14 +632,16 @@ class TrickleFuzzTests {
                             }
                         }
                         is FuzzOperation.CheckKeyedValue -> {
-                            // TODO: Have another version where all the listeners are made ahead of time
+                            // TODO: Only add one listener per name
                             instance.addPerKeyListener(op.name, TrickleEventListener { event ->
                                 listenedEvents.merge(event.valueId, event, { event1, event2 ->
                                     if (event2.timestamp > event1.timestamp) {
                                         event2
-                                    } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                    } else if (event2.timestamp == event1.timestamp && event1.timestamp >= 0 && event2 != event1) {
                                         // Note that receiving the same event (with the same timestamp) twice is expected sometimes.
-                                        error("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                        val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                        collectedErrors.add(e)
+                                        throw e
                                     } else {
                                         event1
                                     }
@@ -646,6 +670,188 @@ class TrickleFuzzTests {
             }
         } finally {
             instance.shutdown()
+        }
+        if (collectedErrors.isNotEmpty()) {
+            val exception = IllegalStateException("Duplicate-event errors were found")
+            for (e in collectedErrors) {
+                exception.addSuppressed(e)
+            }
+            throw exception
+        }
+    }
+
+    private fun checkAsyncInstanceWithListeners2(instance: TrickleAsyncInstance, operations: List<FuzzOperation>) {
+        val collectedErrors = Collections.synchronizedList(ArrayList<Exception>())
+        val listenedEvents = ConcurrentHashMap<ValueId, TrickleEvent<*>>()
+        Awaitility.setDefaultPollDelay(0, TimeUnit.MILLISECONDS)
+        Awaitility.setDefaultPollInterval(10, TimeUnit.MILLISECONDS)
+
+        val listenedValueIds = operations.flatMap { op -> when (op) {
+            is FuzzOperation.SetBasic -> listOf()
+            is FuzzOperation.AddKey -> listOf()
+            is FuzzOperation.RemoveKey -> listOf()
+            is FuzzOperation.EditKeys -> listOf()
+            is FuzzOperation.SetKeyList -> listOf()
+            is FuzzOperation.SetKeyed -> listOf()
+            is FuzzOperation.SetMultiple -> listOf()
+            is FuzzOperation.CheckBasic -> listOf(ValueId.Nonkeyed(op.name))
+            is FuzzOperation.CheckKeyList -> listOf(ValueId.FullKeyList(op.name))
+            is FuzzOperation.CheckKeyedList -> listOf(ValueId.FullKeyedList(op.name))
+            is FuzzOperation.CheckKeyedValue -> listOf(ValueId.Keyed(op.name, "fake key")) // we only want one listener per node
+        } }.toSet()
+        for (valueId in listenedValueIds) {
+            val unused = when (valueId) {
+                is ValueId.Nonkeyed -> {
+                    instance.addBasicListener(valueId.nodeName, TrickleEventListener { event ->
+                        listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                            if (event2.timestamp > event1.timestamp) {
+                                event2
+                            } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                collectedErrors.add(e)
+                                throw e
+                            } else {
+                                event1
+                            }
+                        })
+                    })
+                }
+                is ValueId.FullKeyList -> {
+                    instance.addKeyListListener(valueId.nodeName, TrickleEventListener { event ->
+                        listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                            if (event2.timestamp > event1.timestamp) {
+                                event2
+                            } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                collectedErrors.add(e)
+                                throw e
+                            } else {
+                                event1
+                            }
+                        })
+                    })
+                }
+                is ValueId.KeyListKey -> TODO()
+                is ValueId.Keyed -> {
+                    instance.addPerKeyListener(valueId.nodeName, TrickleEventListener { event ->
+                        listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                            if (event2.timestamp > event1.timestamp) {
+                                event2
+                            } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                collectedErrors.add(e)
+                                throw e
+                            } else {
+                                event1
+                            }
+                        })
+                    })
+                }
+                is ValueId.FullKeyedList -> {
+                    instance.addKeyedListListener(valueId.nodeName, TrickleEventListener { event ->
+                        listenedEvents.merge(event.valueId, event, { event1, event2 ->
+                            if (event2.timestamp > event1.timestamp) {
+                                event2
+                            } else if (event2.timestamp == event1.timestamp && event2 != event1) {
+                                val e = IllegalStateException("Should not be receiving two different events for the same timestamp; events were $event1 and $event2")
+                                collectedErrors.add(e)
+                                throw e
+                            } else {
+                                event1
+                            }
+                        })
+                    })
+                }
+            }
+        }
+
+        try {
+            for ((opIndex, op) in operations.withIndex()) {
+                try {
+                    val unused: Any = when (op) {
+                        is FuzzOperation.SetBasic -> instance.setInput(op.name, op.value)
+                        is FuzzOperation.AddKey -> instance.addKeyInput(op.name, op.key)
+                        is FuzzOperation.RemoveKey -> instance.removeKeyInput(op.name, op.key)
+                        is FuzzOperation.SetKeyList -> instance.setInput(op.name, op.value)
+                        is FuzzOperation.EditKeys -> instance.editKeys(op.name, op.keysAdded, op.keysRemoved)
+                        is FuzzOperation.SetKeyed -> instance.setKeyedInputs(op.name, op.map)
+                        is FuzzOperation.SetMultiple -> instance.setInputs(op.changes)
+                        is FuzzOperation.CheckBasic -> {
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.Nonkeyed(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
+                        }
+                        is FuzzOperation.CheckKeyList -> {
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.FullKeyList(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
+                        }
+                        is FuzzOperation.CheckKeyedList -> {
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.FullKeyedList(op.name)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> TODO()
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
+                        }
+                        is FuzzOperation.CheckKeyedValue -> {
+                            await().untilAsserted {
+                                val event = listenedEvents[ValueId.Keyed(op.name, op.key)]
+                                when (op.outcome) {
+                                    is NodeOutcome.NotYetComputed -> { /* Do nothing */ }
+                                    is NodeOutcome.NoSuchKey -> {
+                                        assertTrue(event == null || event is TrickleEvent.KeyRemoved)
+                                    }
+                                    is NodeOutcome.Computed -> {
+                                        assertEquals(op.outcome.value, (event as? TrickleEvent.Computed)?.value)
+                                    }
+                                    is NodeOutcome.Failure -> {
+                                        assertEquals(op.outcome.failure, (event as? TrickleEvent.Failure)?.failure)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    throw RuntimeException("Failed on operation #$opIndex: #$op", t)
+                }
+            }
+        } finally {
+            instance.shutdown()
+        }
+        if (collectedErrors.isNotEmpty()) {
+            val exception = IllegalStateException("Duplicate-event errors were found")
+            for (e in collectedErrors) {
+                exception.addSuppressed(e)
+            }
+            throw exception
         }
     }
 }
