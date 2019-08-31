@@ -1281,15 +1281,15 @@ sealed class NodeOutcome<T> {
             fun <T> get(): NotYetComputed<T> {
                 return INSTANCE as NotYetComputed<T>
             }
-            override fun toString(): String {
-                return "NotYetComputed"
-            }
-            override fun equals(other: Any?): Boolean {
-                return other is NotYetComputed<*>
-            }
-            override fun hashCode(): Int {
-                return 309803249
-            }
+        }
+        override fun toString(): String {
+            return "NotYetComputed"
+        }
+        override fun equals(other: Any?): Boolean {
+            return other is NotYetComputed<*>
+        }
+        override fun hashCode(): Int {
+            return 309803249
         }
     }
     class NoSuchKey<T> private constructor(): NodeOutcome<T>() {
@@ -1298,15 +1298,15 @@ sealed class NodeOutcome<T> {
             fun <T> get(): NoSuchKey<T> {
                 return INSTANCE as NoSuchKey<T>
             }
-            override fun toString(): String {
-                return "NoSuchKey"
-            }
-            override fun equals(other: Any?): Boolean {
-                return other is NoSuchKey<*>
-            }
-            override fun hashCode(): Int {
-                return 892753869
-            }
+        }
+        override fun toString(): String {
+            return "NoSuchKey"
+        }
+        override fun equals(other: Any?): Boolean {
+            return other is NoSuchKey<*>
+        }
+        override fun hashCode(): Int {
+            return 892753869
         }
     }
     data class Computed<T>(val value: T): NodeOutcome<T>()
