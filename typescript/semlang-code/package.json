@@ -32,7 +32,7 @@
                 "extensions": [
                     ".sem",
                     ".sem1",
-                    ".sem0"
+                    ".sem2"
                 ],
                 "configuration": "./language-configuration.json"
             }

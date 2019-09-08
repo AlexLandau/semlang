@@ -4,12 +4,11 @@ import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
 import net.semlang.api.parser.Issue
 import net.semlang.api.parser.IssueLevel
-import net.semlang.modules.getDefaultLocalRepository
-import net.semlang.modules.parseAndValidateModuleDirectory
-import net.semlang.modules.parseModuleDirectory
+import net.semlang.modules.*
 import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
+import net.semlang.refill.*
 import net.semlang.validator.validate
 import org.eclipse.lsp4j.*
 import java.io.File
@@ -40,13 +39,14 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
         if (existingModel != null) {
             existingModel.openDocument(uri, text)
         } else {
-            val newModel = SourcesFolderModel(containingFolder, languageClientProvider)
+            val newModel = RefillSourcesFolderModel(containingFolder, languageClientProvider)
             foldersToModelsMap.put(containingFolder, newModel)
             newModel.openDocument(uri, text)
         }
     }
 
     fun documentWasUpdated(uri: String, text: String) {
+        System.err.println("Handling documentWasUpdated for document with URI $uri")
         val uriObject = URI(uri)
         val containingFolder = uriObject.resolve(".")
 
@@ -93,6 +93,178 @@ sealed class DocumentSource {
     data class FileSystem(val lastModifiedTime: FileTime): DocumentSource()
 }
 
+interface SourcesFolderModel {
+    fun openDocument(uri: String, text: String)
+    fun updateDocument(uri: String, text: String)
+    fun closeDocument(uri: String)
+}
+
+// TODO: Additional things this needs to do:
+// 1. Scan the folder periodically to find new files (previous one did it every 10 seconds) (done)
+// 2. Manage the module.conf (done)
+// 3. When we get the parsing results, send them to the language client (done, maybe)
+// TODO: How is this going to scan the folder periodically?
+// TODO: We need to track which files we are getting from the language client vs. which we get from
+class RefillSourcesFolderModel(private val folderUri: URI,
+                               private val languageClientProvider: LanguageClientProvider): SourcesFolderModel {
+    // TODO: Not sure about the choice of executor here...
+    private val executor = Executors.newFixedThreadPool(4)
+    private val instance = getFilesParsingDefinition(Paths.get(folderUri).toFile(), getDefaultLocalRepository()).instantiateAsync(executor)
+
+    @Volatile var folderState = SourcesFolderState(mapOf(), mapOf())
+
+    init {
+        instance.addBasicListener(MODULE_VALIDATION_RESULT, TrickleEventListener { event ->
+            System.err.println("The listener was triggered")
+            if (event is TrickleEvent.Computed) {
+                try {
+                    System.err.println("a")
+                    val validationResult = event.value
+
+                    System.err.println("b")
+                    val documentUris =
+                        ((folderState.openFiles.keys + folderState.otherFiles.keys).toList() - "module.conf").map(this::getDocumentUriForFileName)
+                    System.err.println("c")
+                    val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
+                    System.err.println("Sending diagnostics: $diagnostics")
+
+                    val client = languageClientProvider.getLanguageClient()
+                    diagnostics.forEach { uri, diagnosticsList ->
+                        // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
+                        // if nothing has changed
+                        val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
+                        client.publishDiagnostics(diagnosticsParams)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            } else {
+                System.err.println("(debug) Trickle event: $event")
+                /*
+                (debug) Trickle event: Failure(valueId=Nonkeyed(nodeName=moduleValidationResul t), failure=TrickleFailure(errors={Nonkeyed(nodeName=moduleValidationResul t)=java.lang.IllegalStateException: Validation error, position not recorded: In function Integer.toString, resolved a function with ID Nat but could not find the signature}, missingInputs=[]), timestamp=51)
+                 */
+            }
+        })
+        System.err.println("Added listener, about to do other stuff")
+        Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(fun() {
+            executor.submit(getScanFolderRunnable())
+        }, 0, 10, TimeUnit.SECONDS)
+    }
+
+    private fun getDocumentUriForFileName(fileName: String): String {
+        val documentUri = folderUri.resolve(fileName)
+        return documentUri.toASCIIString()
+    }
+
+    fun getNameFromUri(uri: String): String {
+        return Paths.get(URI(uri)).toFile().name
+    }
+
+    @Synchronized
+    override fun openDocument(uri: String, text: String) {
+        val name = getNameFromUri(uri)
+        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text), otherFiles = folderState.otherFiles - name)
+        if (name == "module.conf") {
+            instance.setInput(CONFIG_TEXT, text)
+        } else {
+            instance.setInputs(
+                listOf(
+                    TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(name), listOf()),
+                    TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(name to text))
+                )
+            )
+        }
+    }
+
+    @Synchronized
+    override fun updateDocument(uri: String, text: String) {
+        val name = getNameFromUri(uri)
+        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text))
+        if (name == "module.conf") {
+            instance.setInput(CONFIG_TEXT, text)
+        } else {
+            instance.setKeyedInput(SOURCE_TEXTS, name, text)
+        }
+    }
+
+    @Synchronized
+    override fun closeDocument(uri: String) {
+        val filePath = Paths.get(URI(uri))
+        val name = filePath.toFile().name
+
+        val newOtherFilesState = folderState.otherFiles.toMutableMap()
+        if (isRelevantFilename(name) && Files.isRegularFile(filePath)) {
+            val lastModifiedTime = getLastModifiedTime(filePath)
+            val fileText = filePath.toFile().readText()
+            val fileState = FileOnDiskState(fileText, lastModifiedTime)
+            newOtherFilesState.put(name, fileState)
+
+            if (name == "module.conf") {
+                instance.setInput(CONFIG_TEXT, fileText)
+            } else {
+                instance.setKeyedInput(SOURCE_TEXTS, name, fileText)
+            }
+        } else {
+            if (name == "module.conf") {
+                // TODO: ???
+                instance.setInput(CONFIG_TEXT, "")
+            } else {
+                instance.removeKeyInput(SOURCE_FILE_URLS, name)
+            }
+        }
+
+        folderState = folderState.copy(openFiles = folderState.openFiles - name, otherFiles = newOtherFilesState)
+    }
+
+    fun getScanFolderRunnable(): () -> Unit {
+        return fun() {
+            if (!folderUri.scheme.equals("file", true)) {
+                error("Non-file path: $folderUri")
+            }
+            val folderPath = Paths.get(folderUri)
+            System.err.println("Folder path we're checking: $folderPath")
+            if (!Files.isDirectory(folderPath)) {
+                System.err.println("Looks like $folderPath isn't a directory")
+                this.folderState = SourcesFolderState(mapOf(), mapOf())
+                return
+            }
+            // TODO: The synchronization story here is pretty coarse-grained
+            synchronized(this) {
+                val openFilesState = this.folderState.openFiles
+                val oldOtherFilesState = this.folderState.otherFiles
+                val newOtherFilesState = HashMap<String, FileOnDiskState>()
+                Files.list(folderPath).forEach { filePath ->
+                    val fileName = filePath.toFile().name
+                    if (isRelevantFilename(fileName)) {
+                        // Don't load it if it's open in the client
+                        if (!openFilesState.containsKey(fileName)) {
+                            // Is it newer than the existing version we know about?
+                            val lastModifiedTime: FileTime = getLastModifiedTime(filePath)
+
+                            val oldFileState = oldOtherFilesState[fileName]
+                            if (oldFileState == null || oldFileState.lastModifiedTime < lastModifiedTime) {
+                                val loadedText = filePath.toFile().readText()
+                                newOtherFilesState[fileName] = FileOnDiskState(loadedText, lastModifiedTime)
+                                if (fileName == "module.conf") {
+                                    instance.setInput(CONFIG_TEXT, loadedText)
+                                } else {
+                                    instance.setInputs(listOf(
+                                        TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(fileName), listOf()),
+                                        TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(fileName to loadedText))
+                                    ))
+                                }
+                            } else {
+                                newOtherFilesState[fileName] = oldFileState
+                            }
+                        }
+                    }
+                }
+                this.folderState = SourcesFolderState(openFilesState, newOtherFilesState)
+            }
+        }
+    }
+}
+
 /*
  * This will contain our notion of what the current source files are for a given module and manage accepting updates
  * and triggering rebuilds that produce diagnostics.
@@ -100,8 +272,8 @@ sealed class DocumentSource {
  * Note that this only handles a single directory (either a module or a directory of unrelated bare source files,
  * depending on whether a valid module.conf is present).
  */
-class SourcesFolderModel(private val folderUri: URI,
-                         private val languageClientProvider: LanguageClientProvider) {
+class OldSourcesFolderModel(private val folderUri: URI,
+                         private val languageClientProvider: LanguageClientProvider): SourcesFolderModel {
     @Volatile private var folderState = SourcesFolderState(mapOf(), mapOf())
 
     private val sourcesUsedForParsingResults = HashMap<String, DocumentSource>()
@@ -337,11 +509,7 @@ class SourcesFolderModel(private val folderUri: URI,
         }
     }
 
-    private fun isRelevantFilename(fileName: String): Boolean {
-        return fileName == "module.conf" || fileName.endsWith(".sem")
-    }
-
-    fun openDocument(uri: String, text: String) {
+    override fun openDocument(uri: String, text: String) {
         workQueue.add(getOpenDocumentTask(uri, text))
     }
 
@@ -363,7 +531,7 @@ class SourcesFolderModel(private val folderUri: URI,
         }
     }
 
-    fun updateDocument(uri: String, text: String) {
+    override fun updateDocument(uri: String, text: String) {
         workQueue.add(getUpdateDocumentTask(uri, text))
     }
 
@@ -382,7 +550,7 @@ class SourcesFolderModel(private val folderUri: URI,
         }
     }
 
-    fun closeDocument(uri: String) {
+    override fun closeDocument(uri: String) {
         workQueue.add(getCloseDocumentTask(uri))
     }
 
@@ -407,45 +575,50 @@ class SourcesFolderModel(private val folderUri: URI,
             this.folderState = SourcesFolderState(newOpenFilesState, newOtherFilesState)
         }
     }
+}
 
-    private fun collectDiagnostics(issues: List<Issue>, documentUris: List<String>): Map<String, List<Diagnostic>> {
-        val diagnosticsByUri = HashMap<String, ArrayList<Diagnostic>>()
-        for (documentUri in documentUris) {
-            diagnosticsByUri.put(documentUri, ArrayList<Diagnostic>())
-        }
-        for (issue in issues) {
-            val range = toLsp4jRange(issue.location)
-            val severity = toLsp4jSeverity(issue.level)
-            val diagnostic = Diagnostic(range, issue.message, severity, "semlang validator")
-            // TODO: Temporary workaround...
-            val documentUri = issue.location!!.documentUri
-            System.err.println("documentUri: " + documentUri)
-            diagnosticsByUri[documentUri]!!.add(diagnostic)
-        }
-        return diagnosticsByUri
+private fun collectDiagnostics(issues: List<Issue>, documentUris: List<String>): Map<String, List<Diagnostic>> {
+    val diagnosticsByUri = HashMap<String, ArrayList<Diagnostic>>()
+    for (documentUri in documentUris) {
+        diagnosticsByUri.put(documentUri, ArrayList<Diagnostic>())
     }
+    diagnosticsByUri["unknownDocument"] = ArrayList<Diagnostic>()
+    for (issue in issues) {
+        val range = toLsp4jRange(issue.location)
+        val severity = toLsp4jSeverity(issue.level)
+        val diagnostic = Diagnostic(range, issue.message, severity, "semlang validator")
+        // TODO: Temporary workaround...
+        val documentUri = issue.location?.documentUri ?: "unknownDocument"
+        System.err.println("documentUri: " + documentUri)
+        diagnosticsByUri[documentUri]!!.add(diagnostic)
+    }
+    return diagnosticsByUri
+}
 
-    private fun toLsp4jSeverity(level: IssueLevel): DiagnosticSeverity {
-        return when (level) {
-            IssueLevel.WARNING -> DiagnosticSeverity.Warning
-            IssueLevel.ERROR -> DiagnosticSeverity.Error
-        }
-    }
-
-    private fun toLsp4jRange(location: net.semlang.api.parser.Location?): Range {
-        if (location == null) {
-            return Range(Position(0, 0), Position(0, 1))
-        } else {
-            return Range(toLsp4jPosition(location.range.start), toLsp4jPosition(location.range.end))
-        }
-    }
-
-    private fun toLsp4jPosition(position: net.semlang.api.parser.Position): Position {
-        return Position(position.lineNumber - 1, position.column)
-    }
+private fun isRelevantFilename(fileName: String): Boolean {
+    return fileName == "module.conf" || determineDialect(fileName) != null
 }
 
 private fun getLastModifiedTime(filePath: Path): FileTime {
     val lastModifiedTime: FileTime = Files.getAttribute(filePath, "lastModifiedTime") as FileTime
     return lastModifiedTime
+}
+
+private fun toLsp4jSeverity(level: IssueLevel): DiagnosticSeverity {
+    return when (level) {
+        IssueLevel.WARNING -> DiagnosticSeverity.Warning
+        IssueLevel.ERROR -> DiagnosticSeverity.Error
+    }
+}
+
+private fun toLsp4jRange(location: net.semlang.api.parser.Location?): Range {
+    if (location == null) {
+        return Range(Position(0, 0), Position(0, 1))
+    } else {
+        return Range(toLsp4jPosition(location.range.start), toLsp4jPosition(location.range.end))
+    }
+}
+
+private fun toLsp4jPosition(position: net.semlang.api.parser.Position): Position {
+    return Position(position.lineNumber - 1, position.column)
 }

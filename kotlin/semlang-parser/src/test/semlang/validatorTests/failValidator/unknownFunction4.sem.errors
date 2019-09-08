@@ -1,0 +1,5 @@
+
+function myFunction(): () -> Integer {
+  Namespace.someBadFunctionName|()
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Function Namespace.someBadFunctionName not found
+}

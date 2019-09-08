@@ -454,7 +454,8 @@ private class Validator(
         val functionRef = expression.functionRef
         val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
         if (resolvedFunctionInfo == null) {
-            fail("In function $containingFunctionId, resolved a function with ID $functionRef but could not find the signature")
+            errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
+            return null
         }
         val functionInfo = resolvedFunctionInfo.info
 
