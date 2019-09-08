@@ -77,11 +77,11 @@ class TrickleFuzzTests {
 
     @Test
     fun runFuzzTests() {
-        for (definitionSeed in 0..999) {
+        for (definitionSeed in 0..99) {
             val definition = getFuzzedDefinition(definitionSeed)
 
             try {
-                for (operationsSeed in 0..9) {
+                for (operationsSeed in 0..4) {
                     try {
                         val descriptionBeforeGen = definition.toMultiLineString()
                         val script = getOperationsScript(definition, operationsSeed)
