@@ -101,8 +101,12 @@ interface SourcesFolderModel {
     fun closeDocument(uri: String)
 }
 
+// TODO: This has a bug where when opening a module folder (i.e. just one source file is open), it's first treated as
+// individual files (and results for that are shown) before it's converted to a module-based model; we should delay
+// until the first file scan happens
 class ModuleOrFilesFolderModel(private val folderUri: URI,
                                private val languageClientProvider: LanguageClientProvider): SourcesFolderModel {
+    // TODO: Not sure about the choice of executor here...
     private val executor = Executors.newFixedThreadPool(4)
 
     // TODO: I think I'm using volatile wrong here
@@ -258,7 +262,6 @@ interface InternalFolderModel {
 class ModuleFolderModel(private val folderUri: URI,
                         private val languageClientProvider: LanguageClientProvider,
                         private val executor: ExecutorService): InternalFolderModel {
-    // TODO: Not sure about the choice of executor here...
     private val instance = getFilesParsingDefinition(Paths.get(folderUri).toFile(), getDefaultLocalRepository()).instantiateAsync(executor)
 
     init {
@@ -271,8 +274,10 @@ class ModuleFolderModel(private val folderUri: URI,
 
 //                    System.err.println("b")
                     val allIssues = validationResult.getAllIssues()
-                    // TODO: This is not really correct... it would be nice to have a list in the ValidationResult indicating all the document URIs involved regardless of whether they had errors
-                    val documentUris = allIssues.mapNotNull { it.location?.documentUri }.toSet().toList()
+                    // TODO: This could be made slightly more precise by connecting this to the output in the Refill logic
+                    val filenames = instance.getOutcome(SOURCE_FILE_URLS) // Note: This does actually contain names, not URLs
+                    val documentUris = (filenames as NodeOutcome.Computed<List<String>>).value.map(this::getDocumentUriForFileName)
+//                    val documentUris = allIssues.mapNotNull { it.location?.documentUri }.toSet().toList()
 //                    val documentUris =
 //                        ((folderState.openFiles.keys + folderState.otherFiles.keys).toList() - "module.conf").map(this::getDocumentUriForFileName)
 //                    System.err.println("c")
@@ -298,10 +303,10 @@ class ModuleFolderModel(private val folderUri: URI,
         })
     }
 
-//    private fun getDocumentUriForFileName(fileName: String): String {
-//        val documentUri = folderUri.resolve(fileName)
-//        return documentUri.toASCIIString()
-//    }
+    private fun getDocumentUriForFileName(fileName: String): String {
+        val documentUri = folderUri.resolve(fileName)
+        return documentUri.toASCIIString()
+    }
 
     @Synchronized
     override fun setText(filename: String, text: String) {
