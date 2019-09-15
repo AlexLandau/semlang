@@ -9,6 +9,7 @@ import net.semlang.parser.ModuleInfoParsingResult
 import net.semlang.parser.parseConfigFileString
 import net.semlang.parser.*
 import net.semlang.refill.*
+import net.semlang.validator.parseAndValidateString
 import net.semlang.validator.validate
 import org.eclipse.lsp4j.*
 import java.io.File
@@ -17,9 +18,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
-import java.util.concurrent.Executors
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicLong
+import javax.annotation.concurrent.GuardedBy
+import kotlin.system.exitProcess
 
 // TODO: When client-side file updates work, do all file management/watching through the client. Until then, we'll need
 // something more manual.
@@ -39,7 +41,7 @@ class AllModulesModel(private val languageClientProvider: LanguageClientProvider
         if (existingModel != null) {
             existingModel.openDocument(uri, text)
         } else {
-            val newModel = RefillSourcesFolderModel(containingFolder, languageClientProvider)
+            val newModel = ModuleOrFilesFolderModel(containingFolder, languageClientProvider)
             foldersToModelsMap.put(containingFolder, newModel)
             newModel.openDocument(uri, text)
         }
@@ -99,34 +101,183 @@ interface SourcesFolderModel {
     fun closeDocument(uri: String)
 }
 
+class ModuleOrFilesFolderModel(private val folderUri: URI,
+                               private val languageClientProvider: LanguageClientProvider): SourcesFolderModel {
+    private val executor = Executors.newFixedThreadPool(4)
+
+    // TODO: I think I'm using volatile wrong here
+    @Volatile var folderState = SourcesFolderState(mapOf(), mapOf())
+    @GuardedBy("this")
+    var curDelegate: InternalFolderModel? = null
+
+    init {
+        Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(fun() {
+            executor.submit(getScanFolderRunnable())
+        }, 0, 10, TimeUnit.SECONDS)
+    }
+
+//    private fun getDocumentUriForFileName(fileName: String): String {
+//        val documentUri = folderUri.resolve(fileName)
+//        return documentUri.toASCIIString()
+//    }
+
+    @Synchronized
+    private fun switchDelegateIfNeeded() {
+        System.err.println("Keys 1: " + folderState.openFiles.keys)
+        System.err.println("Keys 2: " + folderState.otherFiles.keys)
+        if (folderState.openFiles.containsKey("module.conf") || folderState.otherFiles.containsKey("module.conf")) {
+            System.err.println("Want ModuleFolderModel")
+            if (curDelegate !is ModuleFolderModel) {
+                curDelegate = ModuleFolderModel(folderUri, languageClientProvider, executor)
+                for ((name, text) in folderState.openFiles) {
+                    curDelegate!!.setText(name, text)
+                }
+                for ((name, state) in folderState.otherFiles) {
+                    curDelegate!!.setText(name, state.text)
+                }
+            }
+        } else {
+            System.err.println("Want IndividualFilesFolderModel")
+            if (curDelegate !is IndividualFilesFolderModel) {
+                curDelegate = IndividualFilesFolderModel(folderUri, languageClientProvider, executor)
+                for ((name, text) in folderState.openFiles) {
+                    curDelegate!!.setText(name, text)
+                }
+                for ((name, state) in folderState.otherFiles) {
+                    curDelegate!!.setText(name, state.text)
+                }
+            }
+        }
+    }
+
+    fun getNameFromUri(uri: String): String {
+        return Paths.get(URI(uri)).toFile().name
+    }
+
+    @Synchronized
+    override fun openDocument(uri: String, text: String) {
+        val name = getNameFromUri(uri)
+        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text), otherFiles = folderState.otherFiles - name)
+        switchDelegateIfNeeded()
+        curDelegate?.setText(name, text)
+    }
+
+    @Synchronized
+    override fun updateDocument(uri: String, text: String) {
+        val name = getNameFromUri(uri)
+        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text))
+        switchDelegateIfNeeded()
+        curDelegate?.setText(name, text)
+    }
+
+    @Synchronized
+    override fun closeDocument(uri: String) {
+        val filePath = Paths.get(URI(uri))
+        val name = filePath.toFile().name
+
+        val newOtherFilesState = folderState.otherFiles.toMutableMap()
+        if (isRelevantFilename(name) && Files.isRegularFile(filePath)) {
+            val lastModifiedTime = getLastModifiedTime(filePath)
+            val fileText = filePath.toFile().readText()
+            val fileState = FileOnDiskState(fileText, lastModifiedTime)
+            newOtherFilesState.put(name, fileState)
+        }
+
+        folderState = folderState.copy(openFiles = folderState.openFiles - name, otherFiles = newOtherFilesState)
+
+        switchDelegateIfNeeded()
+        if (folderState.otherFiles.containsKey(name)) {
+            curDelegate?.setText(name, folderState.otherFiles[name]!!.text)
+        } else {
+            curDelegate?.closeDocument(name)
+        }
+    }
+
+    private fun getScanFolderRunnable(): () -> Unit {
+        return fun() {
+            try {
+                if (!folderUri.scheme.equals("file", true)) {
+                    error("Non-file path: $folderUri")
+                }
+                val folderPath = Paths.get(folderUri)
+                System.err.println("Folder path we're checking: $folderPath")
+                if (!Files.isDirectory(folderPath)) {
+                    System.err.println("Looks like $folderPath isn't a directory")
+                    this.folderState = SourcesFolderState(mapOf(), mapOf())
+                    return
+                }
+                // TODO: The synchronization story here is pretty coarse-grained
+                System.err.println("209")
+                synchronized(this) {
+                    System.err.println("211")
+                    val openFilesState = this.folderState.openFiles
+                    val oldOtherFilesState = this.folderState.otherFiles
+                    val newOtherFilesState = HashMap<String, FileOnDiskState>()
+                    Files.list(folderPath).forEach { filePath ->
+                        val fileName = filePath.toFile().name
+                        if (isRelevantFilename(fileName)) {
+                            // Don't load it if it's open in the client
+                            if (!openFilesState.containsKey(fileName)) {
+                                // Is it newer than the existing version we know about?
+                                val lastModifiedTime: FileTime = getLastModifiedTime(filePath)
+
+                                val oldFileState = oldOtherFilesState[fileName]
+                                if (oldFileState == null || oldFileState.lastModifiedTime < lastModifiedTime) {
+                                    val loadedText = filePath.toFile().readText()
+                                    newOtherFilesState[fileName] = FileOnDiskState(loadedText, lastModifiedTime)
+                                    curDelegate?.setText(fileName, loadedText)
+                                } else {
+                                    newOtherFilesState[fileName] = oldFileState
+                                }
+                            }
+                        }
+                    }
+                    this.folderState = SourcesFolderState(openFilesState, newOtherFilesState)
+                    System.err.println("About to check delegates from the scan folder runnable")
+                    switchDelegateIfNeeded()
+                }
+            } catch (e: Exception) {
+                // This just gets swallowed otherwise...
+                e.printStackTrace()
+            }
+        }
+    }
+}
+
+interface InternalFolderModel {
+    fun setText(filename: String, text: String)
+    fun closeDocument(filename: String)
+}
+
 // TODO: Additional things this needs to do:
 // 1. Scan the folder periodically to find new files (previous one did it every 10 seconds) (done)
 // 2. Manage the module.conf (done)
 // 3. When we get the parsing results, send them to the language client (done, maybe)
 // TODO: How is this going to scan the folder periodically?
 // TODO: We need to track which files we are getting from the language client vs. which we get from
-class RefillSourcesFolderModel(private val folderUri: URI,
-                               private val languageClientProvider: LanguageClientProvider): SourcesFolderModel {
+class ModuleFolderModel(private val folderUri: URI,
+                        private val languageClientProvider: LanguageClientProvider,
+                        private val executor: ExecutorService): InternalFolderModel {
     // TODO: Not sure about the choice of executor here...
-    private val executor = Executors.newFixedThreadPool(4)
     private val instance = getFilesParsingDefinition(Paths.get(folderUri).toFile(), getDefaultLocalRepository()).instantiateAsync(executor)
-
-    @Volatile var folderState = SourcesFolderState(mapOf(), mapOf())
 
     init {
         instance.addBasicListener(MODULE_VALIDATION_RESULT, TrickleEventListener { event ->
             System.err.println("The listener was triggered")
             if (event is TrickleEvent.Computed) {
                 try {
-                    System.err.println("a")
+//                    System.err.println("a")
                     val validationResult = event.value
 
-                    System.err.println("b")
-                    val documentUris =
-                        ((folderState.openFiles.keys + folderState.otherFiles.keys).toList() - "module.conf").map(this::getDocumentUriForFileName)
-                    System.err.println("c")
-                    val diagnostics = collectDiagnostics(validationResult.getAllIssues(), documentUris)
-                    System.err.println("Sending diagnostics: $diagnostics")
+//                    System.err.println("b")
+                    val allIssues = validationResult.getAllIssues()
+                    // TODO: This is not really correct... it would be nice to have a list in the ValidationResult indicating all the document URIs involved regardless of whether they had errors
+                    val documentUris = allIssues.mapNotNull { it.location?.documentUri }.toSet().toList()
+//                    val documentUris =
+//                        ((folderState.openFiles.keys + folderState.otherFiles.keys).toList() - "module.conf").map(this::getDocumentUriForFileName)
+//                    System.err.println("c")
+                    val diagnostics = collectDiagnostics(allIssues, documentUris)
+//                    System.err.println("Sending diagnostics: $diagnostics")
 
                     val client = languageClientProvider.getLanguageClient()
                     diagnostics.forEach { uri, diagnosticsList ->
@@ -145,121 +296,101 @@ class RefillSourcesFolderModel(private val folderUri: URI,
                  */
             }
         })
-        System.err.println("Added listener, about to do other stuff")
-        Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(fun() {
-            executor.submit(getScanFolderRunnable())
-        }, 0, 10, TimeUnit.SECONDS)
     }
 
-    private fun getDocumentUriForFileName(fileName: String): String {
-        val documentUri = folderUri.resolve(fileName)
-        return documentUri.toASCIIString()
-    }
-
-    fun getNameFromUri(uri: String): String {
-        return Paths.get(URI(uri)).toFile().name
-    }
+//    private fun getDocumentUriForFileName(fileName: String): String {
+//        val documentUri = folderUri.resolve(fileName)
+//        return documentUri.toASCIIString()
+//    }
 
     @Synchronized
-    override fun openDocument(uri: String, text: String) {
-        val name = getNameFromUri(uri)
-        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text), otherFiles = folderState.otherFiles - name)
-        if (name == "module.conf") {
+    override fun setText(filename: String, text: String) {
+        System.err.println("Running ModuleFolderModel.setText")
+        if (filename == "module.conf") {
             instance.setInput(CONFIG_TEXT, text)
         } else {
             instance.setInputs(
                 listOf(
-                    TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(name), listOf()),
-                    TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(name to text))
+                    TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(filename), listOf()),
+                    TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(filename to text))
                 )
             )
         }
     }
 
     @Synchronized
-    override fun updateDocument(uri: String, text: String) {
-        val name = getNameFromUri(uri)
-        folderState = folderState.copy(openFiles = folderState.openFiles + mapOf(name to text))
-        if (name == "module.conf") {
-            instance.setInput(CONFIG_TEXT, text)
+    override fun closeDocument(filename: String) {
+        System.err.println("Running ModuleFolderModel.closeDocument")
+        if (filename == "module.conf") {
+            error("If the module.conf is removed, we should be switching to a non-module folder model, not reporting it here")
         } else {
-            instance.setKeyedInput(SOURCE_TEXTS, name, text)
+            instance.removeKeyInput(SOURCE_FILE_URLS, filename)
         }
     }
+}
 
-    @Synchronized
-    override fun closeDocument(uri: String) {
-        val filePath = Paths.get(URI(uri))
-        val name = filePath.toFile().name
+// TODO: This needs to handle dialects
+class IndividualFilesFolderModel(private val folderUri: URI,
+                                 private val languageClientProvider: LanguageClientProvider,
+                                 private val executor: ExecutorService): InternalFolderModel {
+    private val timestamper = AtomicLong(1L)
+    private val latestResultTimestamps = ConcurrentHashMap<String, Long>()
 
-        val newOtherFilesState = folderState.otherFiles.toMutableMap()
-        if (isRelevantFilename(name) && Files.isRegularFile(filePath)) {
-            val lastModifiedTime = getLastModifiedTime(filePath)
-            val fileText = filePath.toFile().readText()
-            val fileState = FileOnDiskState(fileText, lastModifiedTime)
-            newOtherFilesState.put(name, fileState)
-
-            if (name == "module.conf") {
-                instance.setInput(CONFIG_TEXT, fileText)
-            } else {
-                instance.setKeyedInput(SOURCE_TEXTS, name, fileText)
-            }
-        } else {
-            if (name == "module.conf") {
-                // TODO: ???
-                instance.setInput(CONFIG_TEXT, "")
-            } else {
-                instance.removeKeyInput(SOURCE_FILE_URLS, name)
-            }
-        }
-
-        folderState = folderState.copy(openFiles = folderState.openFiles - name, otherFiles = newOtherFilesState)
+    private fun getDocumentUriForFileName(fileName: String): String {
+        val documentUri = folderUri.resolve(fileName)
+        return documentUri.toASCIIString()
     }
 
-    fun getScanFolderRunnable(): () -> Unit {
-        return fun() {
-            if (!folderUri.scheme.equals("file", true)) {
-                error("Non-file path: $folderUri")
-            }
-            val folderPath = Paths.get(folderUri)
-            System.err.println("Folder path we're checking: $folderPath")
-            if (!Files.isDirectory(folderPath)) {
-                System.err.println("Looks like $folderPath isn't a directory")
-                this.folderState = SourcesFolderState(mapOf(), mapOf())
-                return
-            }
-            // TODO: The synchronization story here is pretty coarse-grained
+    override fun setText(filename: String, text: String) {
+        System.err.println("Running IndividualFilesFolderModel.setText")
+        if (filename == "module.conf") {
+            // Ignore this case; we'll be switching to the other model type shortly
+            return
+        }
+        val documentUri = getDocumentUriForFileName(filename)
+        // TODO: Could have bad characters to replace...
+        val fakeModuleName = ModuleName("non-module", filename.split(".")[0])
+        val timestamp = timestamper.getAndIncrement()
+        executor.submit {
+            val validationResult = parseAndValidateString(text, documentUri, fakeModuleName, CURRENT_NATIVE_MODULE_VERSION)
+            val allIssues = validationResult.getAllIssues()
+
+            val diagnostics = collectDiagnostics(allIssues, listOf(documentUri))
+//            System.err.println("Sending diagnostics: $diagnostics")
+
+            val client = languageClientProvider.getLanguageClient()
+
+            // Check if we should actually send the diagnostics
+            // TODO: It would be better if this synchronized per-name
             synchronized(this) {
-                val openFilesState = this.folderState.openFiles
-                val oldOtherFilesState = this.folderState.otherFiles
-                val newOtherFilesState = HashMap<String, FileOnDiskState>()
-                Files.list(folderPath).forEach { filePath ->
-                    val fileName = filePath.toFile().name
-                    if (isRelevantFilename(fileName)) {
-                        // Don't load it if it's open in the client
-                        if (!openFilesState.containsKey(fileName)) {
-                            // Is it newer than the existing version we know about?
-                            val lastModifiedTime: FileTime = getLastModifiedTime(filePath)
-
-                            val oldFileState = oldOtherFilesState[fileName]
-                            if (oldFileState == null || oldFileState.lastModifiedTime < lastModifiedTime) {
-                                val loadedText = filePath.toFile().readText()
-                                newOtherFilesState[fileName] = FileOnDiskState(loadedText, lastModifiedTime)
-                                if (fileName == "module.conf") {
-                                    instance.setInput(CONFIG_TEXT, loadedText)
-                                } else {
-                                    instance.setInputs(listOf(
-                                        TrickleInputChange.EditKeys(SOURCE_FILE_URLS, listOf(fileName), listOf()),
-                                        TrickleInputChange.SetKeyed(SOURCE_TEXTS, mapOf(fileName to loadedText))
-                                    ))
-                                }
-                            } else {
-                                newOtherFilesState[fileName] = oldFileState
-                            }
-                        }
+                val existingTimestamp = latestResultTimestamps[filename] ?: 0L
+                if (timestamp > existingTimestamp) {
+                    latestResultTimestamps[filename] = timestamp
+                    diagnostics.forEach { uri, diagnosticsList ->
+                        // TODO: Maintain a list of the last set of diagnostics per document, avoid re-sending
+                        // if nothing has changed
+                        val diagnosticsParams = PublishDiagnosticsParams(uri, diagnosticsList)
+                        client.publishDiagnostics(diagnosticsParams)
                     }
                 }
-                this.folderState = SourcesFolderState(openFilesState, newOtherFilesState)
+            }
+        }
+    }
+
+    override fun closeDocument(filename: String) {
+        System.err.println("Running IndividualFilesFolderModel.closeDocument")
+        // TODO: Anything to do here? Publish an empty list of diagnostics?
+        val documentUri = getDocumentUriForFileName(filename)
+        val timestamp = timestamper.getAndIncrement()
+        executor.submit {
+            synchronized(this) {
+                val existingTimestamp = latestResultTimestamps[filename] ?: 0L
+                if (timestamp > existingTimestamp) {
+                    latestResultTimestamps[filename] = timestamp
+                    val client = languageClientProvider.getLanguageClient()
+                    val diagnosticsParams = PublishDiagnosticsParams(documentUri, listOf())
+                    client.publishDiagnostics(diagnosticsParams)
+                }
             }
         }
     }
@@ -589,7 +720,7 @@ private fun collectDiagnostics(issues: List<Issue>, documentUris: List<String>):
         val diagnostic = Diagnostic(range, issue.message, severity, "semlang validator")
         // TODO: Temporary workaround...
         val documentUri = issue.location?.documentUri ?: "unknownDocument"
-        System.err.println("documentUri: " + documentUri)
+//        System.err.println("documentUri: " + documentUri)
         diagnosticsByUri[documentUri]!!.add(diagnostic)
     }
     return diagnosticsByUri
