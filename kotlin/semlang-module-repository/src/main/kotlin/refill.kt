@@ -84,6 +84,9 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
     }, { error ->
         // TODO: We can do better than this (probably)
         System.err.println("Upstream errors: $error")
+        for (e in error.errors.values) {
+            e.printStackTrace()
+        }
         ModuleDirectoryParsingResult.Failure(listOf(), listOf())
     })
 
