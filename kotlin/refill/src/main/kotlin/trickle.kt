@@ -11,8 +11,7 @@ import java.util.*
  * There's already a Java library named Trickle, so the name is going to change.
  */
 
-// TODO: Should catch methods also catch errors in the same node, vs. upstream nodes? Should outputs of parent nodes
-// be added to their inputs?
+// TODO: For onCatch methods, should outputs of parent nodes be added to their inputs?
 
 // TODO: Add the ability to skip computations based on the equality of certain inputs (and other inputs remaining at the timestamp
 // they were last time)
@@ -705,7 +704,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                     val onCatch = node.onCatch
                                     if (onCatch != null) {
                                         nextSteps.add(
-                                            TrickleStep(nodeValueId, maximumInputTimestamp, instanceId, { onCatch(newFailure) })
+                                            TrickleStep(nodeValueId, maximumInputTimestamp, instanceId, { onCatch(newFailure) }, null)
                                         )
                                     } else {
                                         setValue(nodeValueId, maximumInputTimestamp, null, newFailure)
@@ -729,7 +728,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                             nodeValueId,
                                             maximumInputTimestamp,
                                             instanceId,
-                                            { operation(inputValues) })
+                                            { operation(inputValues) },
+                                            node.onCatch)
                                     )
                                 } else if (curValueTimestamp > maximumInputTimestamp) {
                                     error("This should never happen")
@@ -797,7 +797,7 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                     val onCatch = node.onCatch
                                     if (onCatch != null) {
                                         nextSteps.add(
-                                            TrickleStep(nodeValueId, maximumInputTimestamp, instanceId, { onCatch(newFailure) })
+                                            TrickleStep(nodeValueId, maximumInputTimestamp, instanceId, { onCatch(newFailure) }, null)
                                         )
                                     } else {
                                         setValue(nodeValueId, maximumInputTimestamp, null, newFailure)
@@ -821,7 +821,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                             nodeValueId,
                                             maximumInputTimestamp,
                                             instanceId,
-                                            { operation(inputValues) })
+                                            { operation(inputValues) },
+                                            node.onCatch)
                                     )
                                 } else if (curValueTimestamp > maximumInputTimestamp) {
                                     error("This should never happen")
@@ -923,7 +924,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                                         keyedValueId,
                                                         maximumInputTimestamp,
                                                         instanceId,
-                                                        { onCatch(newFailure) })
+                                                        { onCatch(newFailure) },
+                                                        null)
                                                 )
                                                 anyKeyedValueNotUpToDate = true
                                             } else {
@@ -948,7 +950,8 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                                     keyedValueId,
                                                     maximumInputTimestamp,
                                                     instanceId,
-                                                    { operation(key, inputValues) })
+                                                    { operation(key, inputValues) },
+                                                    node.onCatch)
                                             )
                                             anyKeyedValueNotUpToDate = true
                                         } else if (curValueTimestamp > maximumInputTimestamp) {
@@ -1366,7 +1369,8 @@ class TrickleStep internal constructor(
     val valueId: ValueId,
     val timestamp: Long,
     val instanceId: TrickleInstance.Id,
-    val operation: () -> Any?
+    val operation: () -> Any?,
+    val onCatch: ((TrickleFailure) -> Any?)?
 ) {
     fun execute(): TrickleStepResult {
         try {
@@ -1375,6 +1379,15 @@ class TrickleStep internal constructor(
         } catch (t: Throwable) {
             if (t is InterruptedException) {
                 Thread.currentThread().interrupt()
+            }
+            if (onCatch != null) {
+                try {
+                    val result = onCatch!!(TrickleFailure(mapOf(valueId to t), setOf()))
+                    return TrickleStepResult(valueId, timestamp, instanceId, result, null)
+                } catch (t2: Throwable) {
+                    t.addSuppressed(t2)
+                    return TrickleStepResult(valueId, timestamp, instanceId, null, t)
+                }
             }
             return TrickleStepResult(valueId, timestamp, instanceId, null, t)
         }

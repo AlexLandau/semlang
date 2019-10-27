@@ -4,12 +4,9 @@ import org.awaitility.Awaitility.await
 import org.junit.Assert.*
 import org.junit.Ignore
 import org.junit.Test
-import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 // TODO: Test that getting keyedInput() fails at some point if the key lists involved aren't the same (or when used
@@ -261,6 +258,27 @@ class TrickleTests {
                         mapOf(ValueId.Nonkeyed(C) to exception),
                         setOf(ValueId.Nonkeyed(B)))),
                 outcome)
+    }
+
+    @Test
+    fun testCatchExceptionInNode() {
+        val builder = TrickleDefinitionBuilder()
+
+        val aNode = builder.createInputNode(A)
+        val bNode = builder.createNode(B, aNode, { throw RuntimeException("custom exception message") }, { failures -> -1 })
+        val cNode = builder.createNode(C, bNode, { it * 3 }, { failures -> -1 })
+
+        val instance = builder.build().instantiateRaw()
+
+        instance.setInput(A, 1)
+        instance.completeSynchronously()
+        val bOutcome = instance.getNodeOutcome(B)
+        if (bOutcome !is NodeOutcome.Computed) {
+            fail()
+        } else {
+            assertEquals(-1, bOutcome.value)
+        }
+        assertEquals(-3, instance.getNodeValue(C))
     }
 
     // TODO: Should a catch block also apply to the node's own computation? Also, what if the node fails itself?
