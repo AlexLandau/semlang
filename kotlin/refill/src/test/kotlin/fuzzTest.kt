@@ -1121,7 +1121,7 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val inputs = unkeyedInputs.randomSubset(random, numInputs)
 
         val fn = createRandomListProducingFunction(random)
-        val onCatch = null
+        val onCatch = null // TODO: Create throwing methods and onCatch methods
 
         val node = builder.createKeyListNode(name, inputs, fn, onCatch)
         existingNodes.add(name)
@@ -1162,8 +1162,9 @@ private class FuzzedDefinitionBuilder(seed: Int) {
         val fn = { key: Int, list: List<*> ->
             listOnlyFn(list + key)
         }
+        val onCatch = null // TODO: Create throwing methods and onCatch methods
 
-        val node = builder.createKeyedNode(name, keySource, inputs, fn)
+        val node = builder.createKeyedNode(name, keySource, inputs, fn, onCatch)
         existingNodes.add(name)
         existingKeyedNodes[keySource.name]!!.add(node.keyedOutput())
         unkeyedInputs.add(node.fullOutput())

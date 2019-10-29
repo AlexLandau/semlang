@@ -907,7 +907,6 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                 }
                                 maximumInputTimestampAcrossAllKeys =
                                     Math.max(maximumInputTimestampAcrossAllKeys, maximumInputTimestamp)
-                                allInputFailuresAcrossAllKeys.addAll(inputFailures)
                                 val keyedValueId = ValueId.Keyed(nodeName, key)
                                 if (!anyInputNotUpToDate) {
                                     // All inputs are up-to-date
@@ -932,12 +931,19 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                                 setValue(keyedValueId, maximumInputTimestamp, null, newFailure)
                                                 timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
                                                 updateLatestConsistentTimestamp(keyedValueId)
+                                                allInputFailuresAcrossAllKeys.addAll(inputFailures)
                                             }
                                         } else if (curValueTimestamp > maximumInputTimestamp) {
                                             error("This should never happen")
                                         } else {
                                             timeStampIfUpToDate[keyedValueId] = maximumInputTimestamp
                                             updateLatestConsistentTimestamp(keyedValueId)
+                                            // Note: I am very doubtful that I got the following logic just right...
+                                            if (node.onCatch == null || values[keyedValueId]!!.getFailure() != null) {
+                                                allInputFailuresAcrossAllKeys.addAll(inputFailures)
+                                            } else if (values[keyedValueId]!!.getFailure() != null) {
+                                                allInputFailuresAcrossAllKeys.add(values[keyedValueId]!!.getFailure()!!)
+                                            }
                                         }
                                     } else {
                                         val curValueTimestamp = values[keyedValueId]?.getTimestamp()
@@ -978,10 +984,22 @@ class TrickleInstance internal constructor(override val definition: TrickleDefin
                                 updateLatestConsistentTimestamp(fullListValueId)
                             } else {
                                 val newList = ArrayList<Any?>()
+                                val failures = ArrayList<TrickleFailure>()
                                 for (key in keyList.list) {
-                                    newList.add(values[ValueId.Keyed(nodeName, key)]!!.getValue())
+                                    val value = values[ValueId.Keyed(nodeName, key)]!!
+                                    val failure = value.getFailure()
+                                    if (failure != null) {
+                                        failures.add(failure)
+                                    } else {
+                                        newList.add(value.getValue())
+                                    }
                                 }
-                                setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, newList, null)
+                                if (failures.isEmpty()) {
+                                    setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, newList, null)
+                                } else {
+                                    val combinedFailure = combineFailures(failures)
+                                    setValue(fullListValueId, maximumInputTimestampAcrossAllKeys, null, combinedFailure)
+                                }
                                 timeStampIfUpToDate[fullListValueId] = maximumInputTimestampAcrossAllKeys
                                 updateLatestConsistentTimestamp(fullListValueId)
                             }

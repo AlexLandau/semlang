@@ -211,22 +211,21 @@ class TrickleDefinitionBuilder {
         topologicalOrdering.add(name)
         return TrickleBuiltKeyedNode(name, builderId)
     }
-    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T): TrickleBuiltKeyedNode<K, T> {
-        return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) })
+    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, fn: (K) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(), { key, list -> fn(key) }, onCatch)
     }
-    fun <K, T, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T): TrickleBuiltKeyedNode<K, T> {
-        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) })
+    fun <K, T, I1> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, fn: (K, I1) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(input1), { key, list -> fn(key, list[0] as I1) }, onCatch)
     }
-    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T): TrickleBuiltKeyedNode<K, T> {
-        return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) })
+    fun <T, K, I1, I2> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, fn: (K, I1, I2) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(input1, input2), { key, list -> fn(key, list[0] as I1, list[1] as I2) }, onCatch)
     }
-    fun <T, K, I1, I2, I3> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, input3: TrickleInput<I3>, fn: (K, I1, I2, I3) -> T): TrickleBuiltKeyedNode<K, T> {
-        return createKeyedNode(name, keySource, listOf(input1, input2, input3), { key, list -> fn(key, list[0] as I1, list[1] as I2, list[2] as I3) })
+    fun <T, K, I1, I2, I3> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, input1: TrickleInput<I1>, input2: TrickleInput<I2>, input3: TrickleInput<I3>, fn: (K, I1, I2, I3) -> T, onCatch: ((TrickleFailure) -> T)? = null): TrickleBuiltKeyedNode<K, T> {
+        return createKeyedNode(name, keySource, listOf(input1, input2, input3), { key, list -> fn(key, list[0] as I1, list[1] as I2, list[2] as I3) }, onCatch)
     }
-    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T): TrickleBuiltKeyedNode<K, T> {
+    fun <K, T> createKeyedNode(name: KeyedNodeName<K, T>, keySource: TrickleBuiltKeyListNode<K>, inputs: List<TrickleInput<*>>, fn: (K, List<*>) -> T, onCatch: ((TrickleFailure) -> T)?): TrickleBuiltKeyedNode<K, T> {
         checkNameNotUsed(name.name)
-        // TODO: Support onCatch in keyed nodes
-        val node = TrickleKeyedNode(name, keySource.name, inputs, fn, null)
+        val node = TrickleKeyedNode(name, keySource.name, inputs, fn, onCatch)
         keyedNodes[name] = node
         topologicalOrdering.add(name)
         return TrickleBuiltKeyedNode(name, builderId)
