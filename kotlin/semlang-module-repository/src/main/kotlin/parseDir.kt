@@ -77,15 +77,20 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             val sem2Result = fromIR(ir)
             return when (sem2Result) {
                 is net.semlang.sem2.parser.ParsingResult.Success -> {
-                    val sem1Context = translateSem2ContextToSem1(sem2Result.context, allTypesSummary)
-                    ParsingResult.Success(sem1Context)
+                    translateSem2ContextToSem1(sem2Result.context, allTypesSummary)
                 }
                 is net.semlang.sem2.parser.ParsingResult.Failure -> {
-                    val sem1PartialContext = translateSem2ContextToSem1(sem2Result.partialContext, allTypesSummary)
-                    ParsingResult.Failure(
-                        sem2Result.errors,
-                        sem1PartialContext
-                    )
+                    val sem2PartialTranslation = translateSem2ContextToSem1(sem2Result.partialContext, allTypesSummary)
+                    when (sem2PartialTranslation) {
+                        is ParsingResult.Success -> ParsingResult.Failure(
+                            sem2Result.errors,
+                            sem2PartialTranslation.context
+                        )
+                        is ParsingResult.Failure -> ParsingResult.Failure(
+                            sem2Result.errors + sem2PartialTranslation.errors,
+                            sem2PartialTranslation.partialContext
+                        )
+                    }
                 }
             }
         }

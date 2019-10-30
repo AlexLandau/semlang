@@ -1,10 +1,8 @@
 package net.semlang.modules
 
-import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
-import net.semlang.api.ModuleNonUniqueId
-import net.semlang.api.ModuleUniqueId
-import net.semlang.api.ValidatedModule
+import net.semlang.api.*
 import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
 import net.semlang.parser.*
 import net.semlang.refill.*
 import net.semlang.validator.*
@@ -35,13 +33,11 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
 
     val irs = builder.createKeyedNode(IRS, sourceFileUrls, sourceTexts.keyedOutput(), { filePath: String, sourceText: String ->
         // Do something, make the IR
-        System.err.println("Regenerating IR for $filePath")
         val dialect = determineDialect(filePath)!!
         dialect.parseToIR(filePath, sourceText)
     })
     val typeSummaries = builder.createKeyedNode(TYPE_SUMMARIES, sourceFileUrls, irs.keyedOutput(), parsedConfig, { filePath, ir, config ->
         // Do something, make the type summary
-        System.err.println("Regenerating type summary for $filePath")
         val dialect = determineDialect(filePath)!!
         val moduleName = config.info.name
         val upstreamModules = listOf<ValidatedModule>() // TODO: support
@@ -49,7 +45,6 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
     })
 
     val typeInfoNode = builder.createNode(TYPE_INFO, typeSummaries.fullOutput(), parsedConfig, { summaries, config ->
-        System.err.println("Regenerating all type info")
         val moduleName = config.info.name
         val upstreamModules = listOf<ValidatedModule>() // TODO: support
         val allTypesSummary = combineTypesSummaries(summaries)
@@ -61,18 +56,23 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
     })
 
     val parsingResultsNode = builder.createKeyedNode(PARSING_RESULTS, sourceFileUrls, irs.keyedOutput(), typeInfoNode, { filePath, ir, typeInfo ->
-        System.err.println("Regenerating parsing result for $filePath")
-        val dialect = determineDialect(filePath)!!
-        dialect.parseWithTypeInfo(ir, typeInfo)
+        try {
+            val dialect = determineDialect(filePath)!!
+            dialect.parseWithTypeInfo(ir, typeInfo)
+        } catch (e: RuntimeException) {
+            e.printStackTrace()
+            val message = "Parsing threw an exception: ${e.stackTrace.contentToString()}"
+            val error = Issue(message, null, IssueLevel.ERROR)
+
+            ParsingResult.Failure(listOf(error), RawContext(listOf(), listOf(), listOf()))
+        }
     })
 
     val combinedParsingResultNode = builder.createNode(COMBINED_PARSING_RESULT, parsingResultsNode.fullOutput(), { parsingResults ->
-        System.err.println("Regenerating combined parsing results")
         combineParsingResults(parsingResults)
     })
 
     val moduleParsingResultNode = builder.createNode(MODULE_PARSING_RESULT, parsedConfig, combinedParsingResultNode, { config, combinedParsingResult ->
-        System.err.println("Regenerating module parsing result")
         when (combinedParsingResult) {
             is ParsingResult.Success -> {
                 ModuleDirectoryParsingResult.Success(UnvalidatedModule(config.info, combinedParsingResult.context))
@@ -91,7 +91,6 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
     })
 
     val moduleValidationResultNode = builder.createNode(MODULE_VALIDATION_RESULT, moduleParsingResultNode, { parsingResult ->
-        System.err.println("Regenerating module validation result")
         when (parsingResult) {
             is ModuleDirectoryParsingResult.Success -> {
                 val module = parsingResult.module

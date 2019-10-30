@@ -114,9 +114,11 @@ class ModuleOrFilesFolderModel(private val folderUri: URI,
     var curDelegate: InternalFolderModel? = null
 
     init {
+        // Scan the folder first, to make sure we don't use the wrong model if openDocument() is called right away...
+        getScanFolderRunnable()()
         Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(fun() {
             executor.submit(getScanFolderRunnable())
-        }, 0, 10, TimeUnit.SECONDS)
+        }, 10, 10, TimeUnit.SECONDS)
     }
 
 //    private fun getDocumentUriForFileName(fileName: String): String {

@@ -4,7 +4,10 @@ import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.api.Annotation
 import net.semlang.api.UnvalidatedMember
+import net.semlang.api.parser.Issue
+import net.semlang.api.parser.IssueLevel
 import net.semlang.api.parser.Location
+import net.semlang.parser.ParsingResult
 import net.semlang.sem2.api.*
 import net.semlang.sem2.api.EntityId
 import net.semlang.sem2.api.EntityRef
@@ -16,13 +19,12 @@ import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypeParameterInferenceSources
 import java.util.*
 
-// TODO: Do we need to support error reporting instead of failing?
 // TODO: Maybe get rid of this first one?
-fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
+fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): ParsingResult {
     val typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
     return Sem2ToSem1Translator(context, typeInfo, options).translate()
 }
-fun translateSem2ContextToSem1(context: S2Context, typeInfo: TypesInfo, options: Sem2ToSem1Options = Sem2ToSem1Options()): RawContext {
+fun translateSem2ContextToSem1(context: S2Context, typeInfo: TypesInfo, options: Sem2ToSem1Options = Sem2ToSem1Options()): ParsingResult {
     return Sem2ToSem1Translator(context, typeInfo, options).translate()
 }
 
@@ -53,25 +55,37 @@ private data class NamespacePartExpression(val names: List<String>): TypedExpres
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
 private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val options: Sem2ToSem1Options) {
+    val errors = ArrayList<Issue>()
 
-    fun translate(): RawContext {
-        val functions = context.functions.map(::translate)
-        val structs = context.structs.map(::translate)
-        val unions = context.unions.map(::translate)
-        return RawContext(functions, structs, unions)
+    fun translate(): ParsingResult {
+        val functions = context.functions.mapNotNull(::translate)
+        val structs = context.structs.mapNotNull(::translate)
+        val unions = context.unions.mapNotNull(::translate)
+        val context = RawContext(functions, structs, unions)
+        return if (errors.isEmpty()) {
+            ParsingResult.Success(context)
+        } else {
+            ParsingResult.Failure(errors, context)
+        }
     }
 
-    private fun translate(function: S2Function): Function {
-        return Function(
-                id = translate(function.id),
-                typeParameters = function.typeParameters.map(::translate),
-                arguments = function.arguments.map(::translate),
-                returnType = translate(function.returnType),
-                block = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap()).block,
-                annotations = function.annotations.map(::translate),
-                idLocation = function.idLocation,
-                returnTypeLocation = function.returnTypeLocation
-        )
+    private fun translate(function: S2Function): Function? {
+        try {
+            return Function(
+                    id = translate(function.id),
+                    typeParameters = function.typeParameters.map(::translate),
+                    arguments = function.arguments.map(::translate),
+                    returnType = translate(function.returnType),
+                    block = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap()).block,
+                    annotations = function.annotations.map(::translate),
+                    idLocation = function.idLocation,
+                    returnTypeLocation = function.returnTypeLocation
+            )
+        } catch (e: Exception) {
+            // TODO: Location of the entire thing might be better? And/or support locatable exceptions
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), function.idLocation, IssueLevel.ERROR))
+            return null
+        }
     }
 
     private fun translate(annotation: S2Annotation): Annotation {
@@ -662,25 +676,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         }
     }
 
-    private fun translate(struct: S2Struct): UnvalidatedStruct {
-        return UnvalidatedStruct(
-                id = translate(struct.id),
-                typeParameters = struct.typeParameters.map(::translate),
-                members = struct.members.map(::translate),
-                requires = struct.requires?.let { translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block },
-                annotations = struct.annotations.map(::translate),
-                idLocation = struct.idLocation
-        )
+    private fun translate(struct: S2Struct): UnvalidatedStruct? {
+        try {
+            return UnvalidatedStruct(
+                    id = translate(struct.id),
+                    typeParameters = struct.typeParameters.map(::translate),
+                    members = struct.members.map(::translate),
+                    requires = struct.requires?.let { translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block },
+                    annotations = struct.annotations.map(::translate),
+                    idLocation = struct.idLocation
+            )
+        } catch (e: Exception) {
+            // TODO: Location of the entire thing might be better? And/or support locatable exceptions
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), struct.idLocation, IssueLevel.ERROR))
+            return null
+        }
     }
 
-    private fun translate(union: S2Union): UnvalidatedUnion {
-        return UnvalidatedUnion(
+    private fun translate(union: S2Union): UnvalidatedUnion? {
+        try {
+            return UnvalidatedUnion(
                 id = translate(union.id),
                 typeParameters = union.typeParameters.map(::translate),
                 options = union.options.map(::translate),
                 annotations = union.annotations.map(::translate),
                 idLocation = union.idLocation
-        )
+            )
+        } catch (e: Exception) {
+            // TODO: Location of the entire thing might be better? And/or support locatable exceptions
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), union.idLocation, IssueLevel.ERROR))
+            return null
+        }
     }
 }
 
