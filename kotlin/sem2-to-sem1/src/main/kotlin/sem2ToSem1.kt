@@ -226,7 +226,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         chosenParameters = listOf()
                     }
 
-                    val functionBinding = Expression.NamedFunctionBinding(functionRef, bindings, chosenParameters)
+                    val functionBinding = Expression.NamedFunctionBinding(
+                        functionRef,
+                        bindings,
+                        chosenParameters,
+                        location = expression.location,
+                        functionRefLocation = expression.location)
                     RealExpression(functionBinding, typeInfo?.type)
                 }
             }
@@ -371,7 +376,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                             functionRef = functionExpression.functionRef,
                             arguments = combinedArguments,
                             chosenParameters = combinedChosenParameters,
-                            location = expression.location
+                            location = expression.location,
+                            functionRefLocation = expression.expression.location
                     ), returnType)
                 } else {
                     RealExpression(Expression.ExpressionFunctionCall(

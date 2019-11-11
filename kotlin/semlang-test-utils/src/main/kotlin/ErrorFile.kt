@@ -60,6 +60,9 @@ fun removeTrailingEmptyLines(lines: ArrayList<String>) {
 fun writeErrorFileText(errorFile: ErrorFile): String {
     val sb = StringBuilder()
     val errorsByLine = errorFile.errors.groupBy {
+        if (it.location == null) {
+            error("Had an error with no associated location: $it")
+        }
         // Positions use 1-indexed line numbers; switch to 0-indexed here
         it.location!!.range.start.lineNumber - 1
     }

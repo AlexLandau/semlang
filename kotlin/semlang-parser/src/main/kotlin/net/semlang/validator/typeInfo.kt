@@ -11,28 +11,34 @@ import java.util.*
 
 class TypesSummary(
     val localTypes: Map<EntityId, TypeInfo>,
-    val localFunctions: Map<EntityId, FunctionInfo>
+    val localFunctions: Map<EntityId, FunctionInfo>,
+    val duplicateTypeIds: Set<EntityId>,
+    val duplicateFunctionIds: Set<EntityId>
 )
 
 // TODO: Test the case where different files have overlapping entity IDs, which we'd need to catch here and handle more nicely
 fun combineTypesSummaries(summaries: Collection<TypesSummary>): TypesSummary {
     val allTypes = HashMap<EntityId, TypeInfo>()
     val allFunctions = HashMap<EntityId, FunctionInfo>()
+    val duplicateTypeIds = HashSet<EntityId>()
+    val duplicateFunctionIds = HashSet<EntityId>()
     for (summary in summaries) {
         for ((id, type) in summary.localTypes) {
             if (allTypes.containsKey(id)) {
-                error("Duplicate type $id")
+                duplicateTypeIds.add(id)
+            } else {
+                allTypes[id] = type
             }
-            allTypes[id] = type
         }
         for ((id, fn) in summary.localFunctions) {
             if (allFunctions.containsKey(id)) {
-                error("Duplicate function $id")
+                duplicateFunctionIds.add(id)
+            } else {
+                allFunctions[id] = fn
             }
-            allFunctions[id] = fn
         }
     }
-    return TypesSummary(allTypes, allFunctions)
+    return TypesSummary(allTypes, allFunctions, duplicateTypeIds, duplicateFunctionIds)
 }
 
 class TypesInfo(
@@ -182,7 +188,7 @@ private class TypesSummaryCollector(
             }
         }
 
-        return TypesSummary(uniqueLocalTypes, uniqueLocalFunctions)
+        return TypesSummary(uniqueLocalTypes, uniqueLocalFunctions, duplicateLocalTypeIds, duplicateLocalFunctionIds)
     }
 
     private fun addLocalUnions() {
@@ -307,7 +313,7 @@ private class TypesSummaryToInfoConverter(
         }
 
         val duplicateLocalFunctionIds = HashSet<EntityId>()
-        val uniqueLocalFunctions = java.util.HashMap<EntityId, ResolvedFunctionInfo>()
+        val uniqueLocalFunctions = HashMap<EntityId, ResolvedFunctionInfo>()
         for ((id, functionInfoList) in localFunctionsMultimap.entries) {
             if (functionInfoList.size > 1) {
                 for (functionInfo in functionInfoList) {

@@ -1,0 +1,4 @@
+function foo(): () -> Boolean {
+  bar|()
+  ~~~ Function bar not found
+}

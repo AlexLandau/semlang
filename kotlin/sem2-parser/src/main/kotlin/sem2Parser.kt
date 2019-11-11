@@ -445,7 +445,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.ID() != null) {
-                return S2Expression.RawId(expression.text)
+                return S2Expression.RawId(expression.text, locationOf(expression))
             }
 
             throw LocationAwareParsingException("Couldn't parse expression '${expression.text}'", locationOf(expression))
