@@ -5,7 +5,6 @@ import net.semlang.api.ModuleName
 import net.semlang.internal.test.ErrorFile
 import net.semlang.internal.test.loadErrorFile
 import net.semlang.internal.test.writeErrorFileText
-import net.semlang.sem2.api.S2Context
 import net.semlang.sem2.parser.ParsingResult
 import net.semlang.sem2.parser.parseString
 import net.semlang.validator.ValidationResult
@@ -37,7 +36,6 @@ class ParsingErrorTest(private val file: File) {
         }
 
         val errorFile = loadErrorFile(file)
-//        val parsingResult = parseString(errorFile.getText(), file.absolutePath)
         val parsingResult = parseString(errorFile.getText(), file.absolutePath)
         if (parsingResult is ParsingResult.Failure) {
             throw AssertionError("File ${file.absolutePath} should have passed parsing and failed validation, but it failed parsing instead, with errors: ${parsingResult.errors}")
