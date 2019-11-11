@@ -300,6 +300,12 @@ class ModuleFolderModel(private val folderUri: URI,
                 }
             } else {
                 System.err.println("(debug) Trickle event: $event")
+                if (event is TrickleEvent.Failure) {
+                    for ((valueId, throwable) in event.failure.errors) {
+                        System.err.println("For $valueId:")
+                        throwable.printStackTrace()
+                    }
+                }
                 /*
                 (debug) Trickle event: Failure(valueId=Nonkeyed(nodeName=moduleValidationResul t), failure=TrickleFailure(errors={Nonkeyed(nodeName=moduleValidationResul t)=java.lang.IllegalStateException: Validation error, position not recorded: In function Integer.toString, resolved a function with ID Nat but could not find the signature}, missingInputs=[]), timestamp=51)
                  */

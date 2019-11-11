@@ -347,17 +347,61 @@ private class Validator(
 
     // TODO: Remove containingFunctionId argument when no longer needed
     private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
-        return when (expression) {
-            is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
-            is Expression.IfThen -> validateIfThenExpression(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.Follow -> validateFollowExpression(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.Literal -> validateLiteralExpression(expression, typeParametersInScope)
-            is Expression.ListLiteral -> validateListLiteralExpression(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(expression, variableTypes, typeParametersInScope, containingFunctionId)
-            is Expression.InlineFunction -> validateInlineFunction(expression, variableTypes, typeParametersInScope, containingFunctionId)
+        try {
+            return when (expression) {
+                is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
+                is Expression.IfThen -> validateIfThenExpression(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.Follow -> validateFollowExpression(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.Literal -> validateLiteralExpression(expression, typeParametersInScope)
+                is Expression.ListLiteral -> validateListLiteralExpression(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+                is Expression.InlineFunction -> validateInlineFunction(
+                    expression,
+                    variableTypes,
+                    typeParametersInScope,
+                    containingFunctionId
+                )
+            }
+        } catch (e: RuntimeException) {
+            throw RuntimeException("Error when validating expression $expression", e)
         }
     }
 

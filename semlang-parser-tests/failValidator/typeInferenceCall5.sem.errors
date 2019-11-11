@@ -1,0 +1,7 @@
+function buildList(): List<Integer> {
+  // ListBuilder.build expects to infer a type parameter from its ListBuilder<T> arg; handle the case where the type
+  // has no parameters (error message in this case could be improved to instead indicate that Void is not a valid
+  // argument type)
+  ListBuilder.build(Void())
+  ~~~~~~~~~~~~~~~~~~~~~~~~~ Not enough type parameters were supplied for function call/binding for ListBuilder.build
+}

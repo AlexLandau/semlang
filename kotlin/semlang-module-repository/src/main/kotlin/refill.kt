@@ -47,6 +47,7 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
     val typeInfoNode = builder.createNode(TYPE_INFO, typeSummaries.fullOutput(), parsedConfig, { summaries, config ->
         val moduleName = config.info.name
         val upstreamModules = listOf<ValidatedModule>() // TODO: support
+        // TODO: This can result in errors (when there are duplicate types); handle and report those errors
         val allTypesSummary = combineTypesSummaries(summaries)
         // TODO: Actually support upstream modules
         val moduleId = ModuleUniqueId(moduleName, "")

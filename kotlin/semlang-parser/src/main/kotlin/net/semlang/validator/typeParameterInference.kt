@@ -46,7 +46,7 @@ internal sealed class TypeParameterInferenceSource {
     data class NamedTypeParameter(val containingSource: TypeParameterInferenceSource, val index: Int): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.NamedType ?: return null).parameters[index]
+            return (currentType as? Type.NamedType ?: return null).parameters.getOrNull(index)
         }
     }
 }

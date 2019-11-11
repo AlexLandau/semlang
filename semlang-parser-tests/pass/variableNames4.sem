@@ -1,0 +1,4 @@
+function myStuff.myFunction(): Integer {
+  let m: Integer = Integer."2"
+  m
+}
