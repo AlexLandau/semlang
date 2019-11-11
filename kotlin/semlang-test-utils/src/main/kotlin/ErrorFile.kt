@@ -1,4 +1,4 @@
-package net.semlang.parser.test
+package net.semlang.internal.test
 
 import net.semlang.api.parser.*
 import java.io.File
