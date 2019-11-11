@@ -629,6 +629,9 @@ private class Validator(
         }
 
         val providedChoices = expression.chosenParameters.map { validateType(it, typeParametersInScope) }
+        if (providedChoices.contains(null)) {
+            return null
+        }
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
@@ -661,6 +664,9 @@ private class Validator(
         val functionInfo = resolvedFunctionInfo.info
 
         val providedChoices = expression.chosenParameters.map { validateType(it, typeParametersInScope) }
+        if (providedChoices.contains(null)) {
+            return null
+        }
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {

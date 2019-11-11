@@ -2,6 +2,9 @@ package net.semlang.parser.test
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.ModuleName
+import net.semlang.internal.test.ErrorFile
+import net.semlang.internal.test.loadErrorFile
+import net.semlang.internal.test.writeErrorFileText
 import net.semlang.parser.ParsingResult
 import net.semlang.parser.parseString
 import net.semlang.validator.ValidationResult
@@ -19,7 +22,7 @@ private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
  */
 fun main(args: Array<String>) {
     var filesCount = 0
-    val failValidatorDir = File("src/test/semlang/validatorTests/failValidator")
+    val failValidatorDir = File("../../semlang-parser-tests/failValidator")
     for (file in failValidatorDir.listFiles()) {
         if (!file.name.endsWith(".errors")) {
             System.out.println("Skipping non-.errors file $file")

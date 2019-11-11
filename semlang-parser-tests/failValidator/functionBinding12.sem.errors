@@ -1,0 +1,7 @@
+function myStuff.myFunction(): Integer {
+  let builderMaker = ListBuilder<_>|()
+  // Rebinding with a type parameter of an unknown type
+  let intListBuilderMaker = builderMaker<Inntegeer>|()
+                                         ~~~~~~~~~ Unresolved type reference: Inntegeer
+  Integer."1"
+}
