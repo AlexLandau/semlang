@@ -393,7 +393,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 val subexpression = parseExpression(expression.expression(0))
                 val name = expression.ID().text
 
-                return S2Expression.DotAccess(subexpression, name)
+                return S2Expression.DotAccess(subexpression, name, locationOf(expression))
             }
 
             if (expression.PLUS() != null) {

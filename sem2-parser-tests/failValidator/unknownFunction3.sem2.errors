@@ -1,0 +1,4 @@
+function foo(): Boolean {
+  bar.baz()
+  ~~~~~~~ Function bar.baz not found
+}
