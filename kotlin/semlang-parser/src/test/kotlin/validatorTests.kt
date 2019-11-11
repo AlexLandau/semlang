@@ -80,7 +80,7 @@ class ParserNegativeTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("src/test/semlang/validatorTests/failParser")
+            val folder = File("../../semlang-parser-tests/failParser")
             return folder.listFiles().map { file ->
                 arrayOf(file as Any?)
             }
@@ -104,7 +104,7 @@ class ValidatorNegativeTests(private val file: File) {
         @Parameterized.Parameters(name = "{0}")
         @JvmStatic
         fun data(): Collection<Array<Any?>> {
-            val folder = File("src/test/semlang/validatorTests/failValidator")
+            val folder = File("../../semlang-parser-tests/failValidator")
             return folder.listFiles().map { file ->
                 arrayOf(file as Any?)
             }

@@ -15,4 +15,4 @@ task regenerateFailValidatorTests(type: JavaExec) {
 
 tasks.test.inputs.dir('../../semlang-corpus/src/main/semlang')
 tasks.test.inputs.dir('../../semlang-module-test-cases')
-tasks.test.inputs.dir('src/test/semlang')
+tasks.test.inputs.dir('../../semlang-parser-tests')

@@ -43,7 +43,7 @@ fun getSemlangNativeCorpusFiles(): Collection<Array<Any?>> {
  * These files can be compiled by themselves and may or may not contain @Test annotations.
  */
 fun getAllStandaloneCompilableFiles(): Collection<Array<Any?>> {
-    val compilerTestsFolder = File("../semlang-parser/src/test/semlang/validatorTests/pass")
+    val compilerTestsFolder = File("../../semlang-parser-tests/pass")
     val corpusFolder = File("../../semlang-corpus/src/main/semlang")
     val allFiles = compilerTestsFolder.listFiles() + corpusFolder.listFiles()
     return allFiles.map { file ->
@@ -56,7 +56,7 @@ fun getAllStandaloneCompilableFiles(): Collection<Array<Any?>> {
  * Second argument: List of ValidatedModules to be used as libraries
  */
 fun getCompilableFilesWithAssociatedLibraries(): Collection<Array<Any?>> {
-    val compilerTestsFolder = File("../semlang-parser/src/test/semlang/validatorTests/pass")
+    val compilerTestsFolder = File("../../semlang-parser-tests/pass")
     val corpusFolder = File("../../semlang-corpus/src/main/semlang")
     val standardLibraryCorpusFolder = File("../../semlang-library-corpus/src/main/semlang")
 
