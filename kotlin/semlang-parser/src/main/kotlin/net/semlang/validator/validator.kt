@@ -831,13 +831,24 @@ private class Validator(
 
         val listType = Type.List(chosenParameter)
 
-        val contents = expression.contents.map { item ->
-            validateExpression(item, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
-        }
-        for (item in contents) {
-            if (item.type != chosenParameter) {
-                error("Put an expression $item of type ${item.type} in a list literal of type ${listType}")
+        var itemErrorFound = false
+        val contents = ArrayList<TypedExpression>()
+        for (itemExpression in expression.contents) {
+            val validated = validateExpression(itemExpression, variableTypes, typeParametersInScope, containingFunctionId)
+            if (validated == null) {
+                itemErrorFound = true
+            } else {
+                if (validated.type != chosenParameter) {
+                    errors.add(Issue("Expression type ${validated.type} does not match the list item type $chosenParameter", itemExpression.location, IssueLevel.ERROR))
+                    itemErrorFound = true
+                } else {
+                    contents.add(validated)
+                }
             }
+        }
+
+        if (itemErrorFound) {
+            return null
         }
 
         return TypedExpression.ListLiteral(listType, AliasType.NotAliased, contents, chosenParameter)

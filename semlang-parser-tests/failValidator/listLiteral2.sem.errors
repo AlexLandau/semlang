@@ -1,0 +1,6 @@
+function foo(): List<Integer> {
+  // Both expressions' errors show up
+  [String."foo", Integer."notAnInt"]<Integer>
+   ~~~~~~~~~~~~ Expression type semlang:lang:0:String does not match the list item type Integer
+                 ~~~~~~~~~~~~~~~~~~ Invalid literal value 'notAnInt' for type 'Integer'
+}
