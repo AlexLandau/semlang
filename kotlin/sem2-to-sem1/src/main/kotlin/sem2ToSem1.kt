@@ -17,6 +17,8 @@ import net.semlang.transforms.invalidate
 import net.semlang.validator.TypeInfo
 import net.semlang.validator.TypesInfo
 import net.semlang.validator.getTypeParameterInferenceSources
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.util.*
 
 // TODO: Maybe get rid of this first one?
@@ -83,7 +85,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             )
         } catch (e: Exception) {
             // TODO: Location of the entire thing might be better? And/or support locatable exceptions
-            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), function.idLocation, IssueLevel.ERROR))
+            val exceptionStringWriter = StringWriter()
+            e.printStackTrace(PrintWriter(exceptionStringWriter))
+            val exceptionString = exceptionStringWriter.toString()
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation:\n$exceptionString", function.idLocation, IssueLevel.ERROR))
             return null
         }
     }
@@ -247,7 +252,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val type = varTypes[name] // Expect this to be null if it's a namespace, not a variable
 
                 if (type != null) {
-                    RealExpression(Expression.Variable(name), type)
+                    RealExpression(Expression.Variable(name, expression.location), type)
                 } else {
                     NamespacePartExpression(listOf(name))
                 }
@@ -694,7 +699,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             )
         } catch (e: Exception) {
             // TODO: Location of the entire thing might be better? And/or support locatable exceptions
-            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), struct.idLocation, IssueLevel.ERROR))
+            val exceptionStringWriter = StringWriter()
+            e.printStackTrace(PrintWriter(exceptionStringWriter))
+            val exceptionString = exceptionStringWriter.toString()
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation:\n$exceptionString", struct.idLocation, IssueLevel.ERROR))
             return null
         }
     }
@@ -710,7 +718,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             )
         } catch (e: Exception) {
             // TODO: Location of the entire thing might be better? And/or support locatable exceptions
-            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation: " + e.stackTrace.contentToString(), union.idLocation, IssueLevel.ERROR))
+            val exceptionStringWriter = StringWriter()
+            e.printStackTrace(PrintWriter(exceptionStringWriter))
+            val exceptionString = exceptionStringWriter.toString()
+            errors.add(Issue("Uncaught exception in sem2-to-sem1 translation:\n$exceptionString", union.idLocation, IssueLevel.ERROR))
             return null
         }
     }
@@ -833,6 +844,10 @@ private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
             if (binding != null) {
                 results.add(binding)
             } else {
+                if (!fillingsItr.hasNext()) {
+                    // There's some error, which should show up as a validation error post-translation; just return an insufficient number of bindings
+                    return results
+                }
                 results.add(fillingsItr.next())
             }
         }

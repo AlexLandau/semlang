@@ -1,0 +1,5 @@
+function concatenate(n1: Natural, n2: Natural): List<Natural> {
+  // This shouldn't fail prematurely on not finding enough type parameters for the function call
+  List.concatenate(n1, n2)
+  ~~~~~~~~~~~~~~~~ The function List.concatenate expects 1 arguments (with types [List<List<T>>]), but 2 were given
+}

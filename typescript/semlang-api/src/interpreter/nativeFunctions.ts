@@ -156,8 +156,14 @@ export const NativeFunctions: { [functionName: string]: Function } = {
     "List.appendFront": (context: InterpreterContext, list: SemObject.List, newElem: SemObject): SemObject.List => {
         return listObject([newElem].concat(list.contents));
     },
-    "List.concatenate": (context: InterpreterContext, left: SemObject.List, right: SemObject.List): SemObject.List => {
-        return listObject(left.contents.concat(right.contents));
+    "List.concatenate": (context: InterpreterContext, lists: SemObject.List): SemObject.List => {
+        const concatenation = ([] as SemObject[]).concat(...lists.contents.map(list => {
+            if (list.type !== "List") {
+                throw new Error(`Element in a List.concatenate argument not a list; `);
+            }
+            return list.contents
+        }));
+        return listObject(concatenation);
     },
     "List.flatMap": (context: InterpreterContext, list: SemObject.List, fn: SemObject.FunctionBinding): SemObject.List => {
         const mappedToIndividualLists = list.contents.map(item => (context.evaluateBoundFunction(fn, [item]) as SemObject.List).contents);

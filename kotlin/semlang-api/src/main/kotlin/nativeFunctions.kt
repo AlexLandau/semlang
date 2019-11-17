@@ -114,7 +114,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // List.concatenate
     definitions.add(FunctionSignature.create(EntityId.of("List", "concatenate"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.List(typeT)),
+            argumentTypes = listOf(Type.List(Type.List(typeT))),
             outputType = Type.List(typeT)))
 
     // List.subList
