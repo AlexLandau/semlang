@@ -1,0 +1,10 @@
+@Test(["true"], "1")
+@Test(["false"], "2")
+function returnLeavingDeadCode4(b: Boolean): Integer {
+  if (b) {
+    return Integer."1"
+  } else {
+    return Integer."2"
+  }
+  return Integer."3"
+}

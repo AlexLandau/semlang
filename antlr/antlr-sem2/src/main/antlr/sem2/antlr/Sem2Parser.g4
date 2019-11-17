@@ -187,6 +187,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression DOT_ASSIGN expression // .= operator
   | expression AND expression // && operator
   | expression OR expression // || operator
+  | RETURN expression
   | ID
   ;
     catch[RecognitionException e] { throw e; }

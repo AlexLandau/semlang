@@ -307,6 +307,11 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.IfThen(condition, thenBlock, elseBlock, locationOf(expression))
             }
 
+            if (expression.RETURN() != null) {
+                val subexpression = parseExpression(expression.expression(0))
+                return S2Expression.Return(subexpression, locationOf(expression))
+            }
+
             if (expression.FUNCTION() != null) {
                 val arguments = parseFunctionArguments(expression.function_arguments())
                 val returnType = expression.type()?.let { parseType(it) }
