@@ -127,6 +127,7 @@ statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
 statement : assignment
   | expression
+  | RETURN expression
   | WHILE LPAREN expression RPAREN block;
     catch[RecognitionException e] { throw e; }
 

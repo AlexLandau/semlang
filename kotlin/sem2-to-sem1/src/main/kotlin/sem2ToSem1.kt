@@ -199,6 +199,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     expression = expression
                 ), expressionType)
             }
+            is S2Statement.Return -> {
+                TODO("Make this work!")
+            }
             is S2Statement.WhileLoop -> {
                 val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, null, varTypes)
                 val (actionBlock, actionBlockType) = translate(statement.actionBlock, varTypes)
@@ -920,6 +923,9 @@ private fun addVarNames(statement: S2Statement, varNames: MutableSet<String>) {
             addVarNames(statement.expression, varNames)
         }
         is S2Statement.Bare -> {
+            addVarNames(statement.expression, varNames)
+        }
+        is S2Statement.Return -> {
             addVarNames(statement.expression, varNames)
         }
         is S2Statement.WhileLoop -> {
