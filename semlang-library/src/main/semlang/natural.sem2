@@ -31,6 +31,11 @@ function Natural.equals(left: Natural, right: Natural): Boolean {
 }
 
 @Export
+function Natural.notEquals(left: Natural, right: Natural): Boolean {
+  Boolean.not(Integer.equals(left->integer, right->integer))
+}
+
+@Export
 function Natural.lessThan(left: Natural, right: Natural): Boolean {
   Integer.lessThan(left->integer, right->integer)
 }
@@ -195,4 +200,30 @@ function Natural.toString(value: Natural): String {
 
 function unicodeZero(): CodePoint {
   CodePoint."48"
+}
+
+@Export
+function Natural.parse(string: String): Maybe<Natural> {
+  let n = Var(Natural."0")
+  let index = Var(Natural."0")
+  while (index[] < string.length()) {
+    // TODO: Add String.get()
+    let differenceFromZero = Natural.minus(string.codePoints[index[]].assume(), unicodeZero())
+    // TODO: Add || operator
+    if (Boolean.or(differenceFromZero < 0, differenceFromZero > 9)) {
+      // TODO: Add returns to sem2 (and if-blocks without elses, which should be in sem1 now as well...)
+      // Maybe.failure()
+    }
+    // TODO: Let these be on the same line
+    // TODO: index[] + Natural."1" doesn't work here
+    let nextIndex = Natural.plus(index[], Natural."1")
+    index.= nextIndex
+  }
+  Void()
+  // let firstCodePointMaybe = List.get(string->codePoints, Natural."0")
+  // Maybe.flatMap(firstCodePointMaybe, function (firstCodePoint: Unicode.CodePoint): Maybe<Natural> {
+  //   if (Unicode.CodePoint.equals(firstCodePoint, Unicode.String."0")) {
+      
+  //   }
+  // })
 }
