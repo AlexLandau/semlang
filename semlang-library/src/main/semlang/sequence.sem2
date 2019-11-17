@@ -41,20 +41,18 @@ function Sequence.internal.fromAccumulatingSequenceElement<T>(element: Accumulat
 
 @Export
 function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List<T> {
-  // TODO: Can do something better here
-  // TODO: Should we switch Sequence back to a struct and get rid of map()?
-  let initialValue = SequenceRangeElement(Natural."0", []<T>)
-  let rangeSequence = Sequence(initialValue, function(rangeElement: SequenceRangeElement<T>): SequenceRangeElement<T> {
-    let curValue = Sequence.get(sequence, rangeElement->indexToGet)
-    let nextIndex = Natural.plus(rangeElement->indexToGet, Natural."1")
-    let newValues = List.append(rangeElement->accumulatedValues, curValue)
-    SequenceRangeElement(nextIndex, newValues)
-  })
-  Sequence.get(rangeSequence, numElements)->accumulatedValues
-}
-struct SequenceRangeElement<T> {
-  indexToGet: Natural
-  accumulatedValues: List<T>
+  let n = Var(Natural."0")
+  let curElement = Var(sequence.base)
+  let rangeBuilder = ListBuilder<T>()
+  while (n[] < numElements) {
+      let curElemFixed = curElement[]
+      rangeBuilder.append(curElemFixed)
+      let nextElem = sequence.successor(curElement[])
+      curElement.= nextElem
+      let nextN = n[] + Natural."1"
+      n.= nextN
+  }
+  rangeBuilder.build()
 }
 
 @Export
@@ -65,17 +63,7 @@ function SequenceLike.map<T, U>(sequence: SequenceLike<T>, fn: (T) -> U): Sequen
     // Sequence<U>(firstVal, successor)
 
     let mappedSequence: MappedSequence<T, U> = MappedSequence(sequence, fn)
-
-    MappedSequence.getMappedSequenceAdapter<T, U>()(mappedSequence)
-}
-
-// TODO: Refactor to eliminate this (vestige of interfaces existing)
-function MappedSequence.getMappedSequenceAdapter<T, U>(): (MappedSequence<T, U>) -> SequenceLike<U> {
-    let getBinding: (MappedSequence<T, U>, Natural) -> U = MappedSequence.get<T, U>|(_, _)
-    let firstBinding: (MappedSequence<T, U>, (U) -> Boolean) -> U = MappedSequence.first<T, U>|(_, _)
-    function (mappedSequence: MappedSequence<T, U>): SequenceLike<U> {
-        SequenceLike(getBinding|(mappedSequence, _), firstBinding|(mappedSequence, _))
-    }
+    SequenceLike(MappedSequence.get|(mappedSequence, _), MappedSequence.first|(mappedSequence, _))
 }
 
 function MappedSequence.get<T, U>(sequence: MappedSequence<T, U>, index: Natural): U {
