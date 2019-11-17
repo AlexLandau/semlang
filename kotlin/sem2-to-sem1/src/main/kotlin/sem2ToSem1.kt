@@ -548,6 +548,16 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val right = translateFullExpression(expression.right, varTypes)
                 getOperatorExpression(left, right, "set", expression, expression.operatorLocation)
             }
+            is S2Expression.AndOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "and", expression, expression.operatorLocation)
+            }
+            is S2Expression.OrOp -> {
+                val left = translateFullExpression(expression.left, varTypes)
+                val right = translateFullExpression(expression.right, varTypes)
+                getOperatorExpression(left, right, "or", expression, expression.operatorLocation)
+            }
             is S2Expression.GetOp -> {
                 // Let the existing translation code for DotAccess and FunctionCalls do the heavy lifting
                 val equivalentExpression = S2Expression.FunctionCall(
@@ -953,6 +963,14 @@ private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) 
             addVarNames(expression.right, varNames)
         }
         is S2Expression.DotAssignOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.AndOp -> {
+            addVarNames(expression.left, varNames)
+            addVarNames(expression.right, varNames)
+        }
+        is S2Expression.OrOp -> {
             addVarNames(expression.left, varNames)
             addVarNames(expression.right, varNames)
         }

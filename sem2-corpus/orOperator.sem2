@@ -1,0 +1,8 @@
+// || operator for Boolean.or
+@Test(["false", "false"], "false")
+@Test(["true", "false"], "true")
+@Test(["false", "true"], "true")
+@Test(["true", "true"], "true")
+function testOr(left: Boolean, right: Boolean): Boolean {
+  left || right
+}

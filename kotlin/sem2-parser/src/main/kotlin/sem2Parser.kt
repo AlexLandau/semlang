@@ -444,6 +444,18 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.DotAssignOp(left, right, locationOf(expression), locationOf(expression.DOT_ASSIGN().symbol))
             }
 
+            if (expression.AND() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.AndOp(left, right, locationOf(expression), locationOf(expression.AND().symbol))
+            }
+
+            if (expression.OR() != null) {
+                val left = parseExpression(expression.expression(0))
+                val right = parseExpression(expression.expression(1))
+                return S2Expression.OrOp(left, right, locationOf(expression), locationOf(expression.OR().symbol))
+            }
+
             if (expression.ID() != null) {
                 return S2Expression.RawId(expression.text, locationOf(expression))
             }

@@ -1,0 +1,8 @@
+// && operator for Boolean.and
+@Test(["false", "false"], "false")
+@Test(["true", "false"], "false")
+@Test(["false", "true"], "false")
+@Test(["true", "true"], "true")
+function testAnd(left: Boolean, right: Boolean): Boolean {
+  left && right
+}

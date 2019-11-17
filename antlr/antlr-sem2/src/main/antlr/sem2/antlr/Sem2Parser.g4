@@ -46,6 +46,8 @@ tokens {
   PLUS,
   HYPHEN,
   TIMES,
+  AND,
+  OR,
   MODULE_ID,
   ID,
   UNDERSCORE
@@ -183,6 +185,8 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | LPAREN expression DOT_ASSIGN expression RPAREN // .= operator
   | expression DOT_ASSIGN expression // .= operator
   | expression LBRACKET cd_expressions RBRACKET // [] (get) operator
+  | expression AND expression // && operator
+  | expression OR expression // || operator
   | ID
   ;
     catch[RecognitionException e] { throw e; }

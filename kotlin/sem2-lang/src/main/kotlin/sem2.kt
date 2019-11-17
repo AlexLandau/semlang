@@ -299,6 +299,8 @@ sealed class S2Expression {
     data class GreaterThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
     data class DotAssignOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
     data class GetOp(val subject: S2Expression, val arguments: List<S2Expression>, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
+    data class AndOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
+    data class OrOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
 }
 
 sealed class S2Statement {
