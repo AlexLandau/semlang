@@ -176,22 +176,20 @@ struct Natural.toString.State {
 
 @Export
 function Natural.toString(value: Natural): String {
-  // TODO: This feels like something we'd rather implement in sem2
-  // TODO: Being able to use ListBuilder here would be nice; use case for expanding references
-  let sequence = Sequence(Natural.toString.State(value, []<CodePoint>), function(state: Natural.toString.State): Natural.toString.State {
-    let remainder = Maybe.assume(Natural.modulo(state->n, Natural."10"))
-    let divided = Maybe.assume(Natural.dividedBy(state->n, Natural."10"))
-    let codePoint = Maybe.assume(CodePoint(Natural.plus(remainder, unicodeZero()->natural)))
-    let newCodePoints = List.appendFront(state->codePoints, codePoint)
-    Natural.toString.State(divided, newCodePoints)
-  })
-  let finishedState = Sequence.first(sequence, function(state: Natural.toString.State): Boolean {
-    Natural.equals(state->n, Natural."0")
-  })
-  if (List.isEmpty(finishedState->codePoints)) {
-    String."0"
+  let curValue = Var(value)
+  let codePointsBackwardsBuilder = ListBuilder<CodePoint>()
+  while (curValue[] > Natural."0") {
+    let remainder = curValue[].modulo(Natural."10").assume()
+    let divided = Natural.dividedBy(curValue[], Natural."10").assume()
+    let codePoint = CodePoint(remainder + unicodeZero().natural).assume()
+    codePointsBackwardsBuilder.append(codePoint)
+    curValue.= divided
+  }
+  let codePointsBackwards = codePointsBackwardsBuilder.build()
+  if (codePointsBackwards.isEmpty()) {
+    "0"
   } else {
-    String(finishedState->codePoints)
+    String(codePointsBackwards.reversed())
   }
 }
 

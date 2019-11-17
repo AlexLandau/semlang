@@ -1,0 +1,6 @@
+@Test([[]], [])
+@Test([["1"]], ["1"])
+@Test([["1", "2", "3"]], ["3", "2", "1"])
+function testListReversed(list: List<Integer>): List<Integer> {
+  List.reversed(list)
+}

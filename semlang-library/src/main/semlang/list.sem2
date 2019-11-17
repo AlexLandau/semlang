@@ -124,3 +124,16 @@ function List.firstIndexOf<T: Data>(list: List<T>, object: T): Maybe<Natural> {
     }
   )
 }
+
+@Export
+function List.reversed<T>(list: List<T>): List<T> {
+  let newList = ListBuilder<T>()
+  let index = Var<Integer>(Integer.minus(list.size(), 1))
+  while (index[] > -1) {
+    let curItem = list[Natural(index[]).assume()].assume()
+    newList.append(curItem)
+    let nextIndex = index[] - 1
+    index.= nextIndex
+  }
+  newList.build()
+}
