@@ -3,10 +3,8 @@
 struct Int64 {
   integer: Integer
   requires {
-    Boolean.and(
-      -9223372036854775809 < integer,
-      integer < 9223372036854775808
-    )
+      -9223372036854775809 < integer
+      && integer < 9223372036854775808
   }
 }
 

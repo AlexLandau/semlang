@@ -4,21 +4,19 @@
 struct HexString {
   string: String
   requires {
-    Boolean.and(
-      Boolean.not(string.codePoints.isEmpty()),
-      Boolean.all(
-        string.codePoints.map(isValidHexCodePoint)
-      )
-    )
+    Boolean.not(string.codePoints.isEmpty())
+    && Boolean.all(string.codePoints.map(isValidHexCodePoint))
   }
 }
 
 function getHexCodePointValue(codePoint: CodePoint): Maybe<Natural> {
+    // Number case: 0-9
   if (Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57")) {
     // Note: In these cases, absoluteDifference() should act as minus().
     // Not sure if this is the right permanent solution.
     Maybe.success(Natural.absoluteDifference(codePoint->natural, Natural."48"))
   } else {
+    // Letter case: a-f (lowercase only)
     if (Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")) {
       Maybe.success(Natural.absoluteDifference(codePoint->natural, Natural."87"))
     } else {
@@ -29,12 +27,6 @@ function getHexCodePointValue(codePoint: CodePoint): Maybe<Natural> {
 
 function isValidHexCodePoint(codePoint: CodePoint): Boolean {
   Maybe.isSuccess(getHexCodePointValue(codePoint))
-//  Boolean.or(
-//    // Number case: 0-9
-//    Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57"),
-//    // Letter case: a-f (lowercase only)
-//    Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")
-//  )
 }
 
 @Export

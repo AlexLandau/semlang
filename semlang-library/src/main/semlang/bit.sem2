@@ -2,10 +2,8 @@
 struct Bit {
   natural: Natural
   requires {
-    Boolean.or(
-      natural == Natural."0",
-      natural == Natural."1"
-    )
+    natural == Natural."0"
+    || natural == Natural."1"
   }
 }
 

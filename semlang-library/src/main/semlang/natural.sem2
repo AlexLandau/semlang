@@ -42,10 +42,8 @@ function Natural.greaterThan(left: Natural, right: Natural): Boolean {
 
 @Export
 function Natural.isBetweenInclusive(toCheck: Natural, lowerBound: Natural, upperBound: Natural): Boolean {
-  Boolean.and(
-    Natural.lessThanOrEqualTo(lowerBound, toCheck),
-    Natural.lessThanOrEqualTo(toCheck, upperBound)
-  )
+    Natural.lessThanOrEqualTo(lowerBound, toCheck)
+    && Natural.lessThanOrEqualTo(toCheck, upperBound)
 }
 
 @Export
