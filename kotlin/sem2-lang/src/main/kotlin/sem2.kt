@@ -282,7 +282,7 @@ sealed class S2AnnotationArgument {
 sealed class S2Expression {
     abstract val location: Location?
     data class RawId(val name: String, override val location: Location? = null): S2Expression()
-    data class DotAccess(val subexpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
+    data class DotAccess(val subexpression: S2Expression, val name: String, override val location: Location? = null, val nameLocation: Location? = null): S2Expression()
     data class IfThen(val condition: S2Expression, val thenBlock: S2Block, val elseBlock: S2Block, override val location: Location? = null): S2Expression()
     data class FunctionCall(val expression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
     data class Literal(val type: S2Type, val literal: String, override val location: Location? = null): S2Expression()

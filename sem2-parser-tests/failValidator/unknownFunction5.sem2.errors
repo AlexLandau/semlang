@@ -1,0 +1,4 @@
+function myFunction(): Boolean {
+  Integer."1".foo()
+              ~~~ Function Integer.foo not found
+}

@@ -309,7 +309,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         return RealExpression(Expression.NamedFunctionBinding(
                                 functionRef = functionRef,
                                 bindings = bindings,
-                                chosenParameters = chosenParameters
+                                chosenParameters = chosenParameters,
+                                location = expression.location,
+                                functionRefLocation = expression.nameLocation
                         ), functionType)
                     }
                     is NamespacePartExpression -> {
@@ -549,7 +551,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.GetOp -> {
                 // Let the existing translation code for DotAccess and FunctionCalls do the heavy lifting
                 val equivalentExpression = S2Expression.FunctionCall(
-                        S2Expression.DotAccess(expression.subject, "get", expression.operatorLocation),
+                        S2Expression.DotAccess(expression.subject, "get", expression.operatorLocation, expression.operatorLocation),
                         expression.arguments,
                         listOf(),
                         expression.location
