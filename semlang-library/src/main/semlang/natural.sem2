@@ -110,7 +110,8 @@ function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian>
   let paddingNeededMaybe = Natural(Natural.minus(numBits, actualNumBits))
   Maybe.map(paddingNeededMaybe, function(paddingNeeded: Natural): BitsBigEndian {
     let padding = List.nCopies(paddingNeeded, Bit."0")
-    BitsBigEndian(List.concatenate(padding, allBits))
+    // TODO: Infer list types, particularly in cases like this
+    BitsBigEndian(List.concatenate([padding, allBits]<List<Bit>>))
   })
 }
 

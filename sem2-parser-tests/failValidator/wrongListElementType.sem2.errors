@@ -1,0 +1,5 @@
+function makeList(s1: String, s2: String): List<Integer> {
+  [s1, s2]<Integer>
+   ~~ Expression type semlang:lang:0:String does not match the list item type Integer
+       ~~ Expression type semlang:lang:0:String does not match the list item type Integer
+}

@@ -34,10 +34,11 @@ public class Lists {
         return newList;
     }
 
-    public static <T> List<T> concatenate(List<T> left, List<T> right) {
-        List<T> newList = new ArrayList<T>(left.size() + right.size());
-        newList.addAll(left);
-        newList.addAll(right);
+    public static <T> List<T> concatenate(List<List<T>> lists) {
+        List<T> newList = new ArrayList<T>(lists.stream().mapToInt(List::size).sum());
+        for (List<T> list : lists) {
+            newList.addAll(list);
+        }
         return newList;
     }
 

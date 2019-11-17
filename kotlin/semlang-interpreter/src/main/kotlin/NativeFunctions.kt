@@ -178,9 +178,15 @@ private fun addListFunctions(list: MutableList<NativeFunction>) {
 
     // List.concatenate
     list.add(NativeFunction(listDot("concatenate"), { args: List<SemObject>, _: InterpreterCallback ->
-        val list1 = args[0] as? SemObject.SemList ?: typeError()
-        val list2 = args[1] as? SemObject.SemList ?: typeError()
-        SemObject.SemList(list1.contents + list2.contents)
+        val lists = args[0] as? SemObject.SemList ?: typeError()
+        val concatenated = ArrayList<SemObject>()
+        for (list in lists.contents) {
+            if (list !is SemObject.SemList) {
+                typeError()
+            }
+            concatenated.addAll(list.contents)
+        }
+        SemObject.SemList(concatenated)
     }))
 
     // List.subList

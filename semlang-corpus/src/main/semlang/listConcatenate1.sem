@@ -1,0 +1,29 @@
+@Test([], [])
+function testConcatenate0(): List<Integer> {
+  List.concatenate([]<List<Integer>>)
+}
+
+@Test([[]], [])
+@Test([["1"]], ["1"])
+@Test([["4", "2"]], ["4", "2"])
+function testConcatenate1(list1: List<Integer>): List<Integer> {
+  List.concatenate([list1]<List<Integer>>)
+}
+
+@Test([[], []], [])
+@Test([["1"], ["2"]], ["1", "2"])
+@Test([["2"], ["1"]], ["2", "1"])
+@Test([["1", "9"], ["1", "8"]], ["1", "9", "1", "8"])
+@Test([["1", "7"], []], ["1", "7"])
+@Test([[], ["2", "3"]], ["2", "3"])
+function testConcatenate2(list1: List<Integer>, list2: List<Integer>): List<Integer> {
+  List.concatenate([list1, list2]<List<Integer>>)
+}
+
+@Test([[], [], []], [])
+@Test([["1"], ["2"], ["3"]], ["1", "2", "3"])
+@Test([["2"], ["3"], ["1"]], ["2", "3", "1"])
+@Test([["2"], [], ["3"]], ["2", "3"])
+function testConcatenate3(list1: List<Integer>, list2: List<Integer>, list3: List<Integer>): List<Integer> {
+  List.concatenate([list1, list2, list3]<List<Integer>>)
+}
