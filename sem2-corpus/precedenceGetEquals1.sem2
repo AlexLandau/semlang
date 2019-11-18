@@ -1,0 +1,5 @@
+@Test(["3", ["1", "2", "3"], "2"], "true")
+@Test(["2", ["1", "2", "3"], "0"], "false")
+function testPrecedence(a: Integer, b: List<Integer>, c: Natural): Boolean {
+  a == b[c].assume()
+}

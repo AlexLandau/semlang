@@ -89,7 +89,7 @@ function Utf8.isValidOneByteCodePoint(bytes: List<Byte>): Boolean {
     let byteBits = byte.toBits()
     // TODO: Good test base for being able to infer types of literals; should just be byteBits[0]
     // TODO: Gets should have higher precedence than equality (== not working here)
-    Bit.equals(Bit."0", byteBits[Byte.BitPosition."0"])
+    Bit."0" == byteBits[Byte.BitPosition."0"]
   } else {
     Boolean."false"
   }
@@ -102,11 +102,11 @@ function Utf8.isValidTwoByteCodePoint(bytes: List<Byte>): Boolean {
     let byteBits1 = byte1.toBits()
     let byteBits2 = byte2.toBits()
     Boolean.all([
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."0"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."1"]),
-      Bit.equals(Bit."0", byteBits1[Byte.BitPosition."2"]),
-      Bit.equals(Bit."1", byteBits2[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits2[Byte.BitPosition."1"]),
+      Bit."1" == byteBits1[Byte.BitPosition."0"],
+      Bit."1" == byteBits1[Byte.BitPosition."1"],
+      Bit."0" == byteBits1[Byte.BitPosition."2"],
+      Bit."1" == byteBits2[Byte.BitPosition."0"],
+      Bit."0" == byteBits2[Byte.BitPosition."1"],
     ]<Boolean>)
   } else {
     Boolean."false"
@@ -122,14 +122,14 @@ function Utf8.isValidThreeByteCodePoint(bytes: List<Byte>): Boolean {
     let byteBits2 = byte2.toBits()
     let byteBits3 = byte3.toBits()
     Boolean.all([
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."0"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."1"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."2"]),
-      Bit.equals(Bit."0", byteBits1[Byte.BitPosition."3"]),
-      Bit.equals(Bit."1", byteBits2[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits2[Byte.BitPosition."1"]),
-      Bit.equals(Bit."1", byteBits3[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits3[Byte.BitPosition."1"]),
+      Bit."1" == byteBits1[Byte.BitPosition."0"],
+      Bit."1" == byteBits1[Byte.BitPosition."1"],
+      Bit."1" == byteBits1[Byte.BitPosition."2"],
+      Bit."0" == byteBits1[Byte.BitPosition."3"],
+      Bit."1" == byteBits2[Byte.BitPosition."0"],
+      Bit."0" == byteBits2[Byte.BitPosition."1"],
+      Bit."1" == byteBits3[Byte.BitPosition."0"],
+      Bit."0" == byteBits3[Byte.BitPosition."1"],
     ]<Boolean>)
   } else {
     Boolean."false"
@@ -147,17 +147,17 @@ function Utf8.isValidFourByteCodePoint(bytes: List<Byte>): Boolean {
     let byteBits3 = byte3.toBits()
     let byteBits4 = byte4.toBits()
     Boolean.all([
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."0"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."1"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."2"]),
-      Bit.equals(Bit."1", byteBits1[Byte.BitPosition."3"]),
-      Bit.equals(Bit."0", byteBits1[Byte.BitPosition."4"]),
-      Bit.equals(Bit."1", byteBits2[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits2[Byte.BitPosition."1"]),
-      Bit.equals(Bit."1", byteBits3[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits3[Byte.BitPosition."1"]),
-      Bit.equals(Bit."1", byteBits4[Byte.BitPosition."0"]),
-      Bit.equals(Bit."0", byteBits4[Byte.BitPosition."1"]),
+      Bit."1" == byteBits1[Byte.BitPosition."0"],
+      Bit."1" == byteBits1[Byte.BitPosition."1"],
+      Bit."1" == byteBits1[Byte.BitPosition."2"],
+      Bit."1" == byteBits1[Byte.BitPosition."3"],
+      Bit."0" == byteBits1[Byte.BitPosition."4"],
+      Bit."1" == byteBits2[Byte.BitPosition."0"],
+      Bit."0" == byteBits2[Byte.BitPosition."1"],
+      Bit."1" == byteBits3[Byte.BitPosition."0"],
+      Bit."0" == byteBits3[Byte.BitPosition."1"],
+      Bit."1" == byteBits4[Byte.BitPosition."0"],
+      Bit."0" == byteBits4[Byte.BitPosition."1"],
     ]<Boolean>)
   } else {
     Boolean."false"
@@ -166,7 +166,7 @@ function Utf8.isValidFourByteCodePoint(bytes: List<Byte>): Boolean {
 
 function getByteCountGivenInitialByte(initialByte: Byte): Maybe<Utf8.CodePointByteCount> {
   let bits = initialByte.toBits()
-  if (Bit.equals(Bit."0", bits[Byte.BitPosition."0"])) {
+  if (Bit."0" == bits[Byte.BitPosition."0"]) {
     Maybe.success(Utf8.CodePointByteCount."1")
   } else {
     Maybe.failure<Utf8.CodePointByteCount>()
@@ -226,17 +226,17 @@ function getUnicodeValue(codePointBytes: Utf8.CodePointBytes): CodePoint {
 // First implementation is silly recursive approach, just to work out the Byte functions needed.
 @Export
 function Utf8.decodeStrict1(bytes: List<Byte>): Maybe<String> {
-  if (Natural.equals(bytes.size(), Natural."0")) {
+  if (bytes.size() == Natural."0") {
     Maybe.success(String."")
   } else {
     let firstCharMaybe = Utf8.getStartingCodePointBytes(bytes)
-    Maybe.flatMap(firstCharMaybe, function (firstChar: Utf8.CodePointBytes): Maybe<String> {
+    Maybe.flatMap(firstCharMaybe, { firstChar: Utf8.CodePointBytes ->
       let unicodeValue = getUnicodeValue(firstChar)
-      let firstCharBytes = Utf8.CodePointBytes.getBytes(firstChar)
-      let numBytesUsed = List.size(firstCharBytes)
-      let remainingBytes = List.drop(bytes, numBytesUsed)
-      Maybe.map(Utf8.decodeStrict1(remainingBytes), function (remainingString: String): String {
-        String.appendFront(remainingString, unicodeValue)
+      let firstCharBytes = firstChar.getBytes()
+      let numBytesUsed = firstCharBytes.size()
+      let remainingBytes = bytes.drop(numBytesUsed)
+      Maybe.map(Utf8.decodeStrict1(remainingBytes), { remainingString: String ->
+        remainingString.appendFront(unicodeValue)
       })
     })
 
