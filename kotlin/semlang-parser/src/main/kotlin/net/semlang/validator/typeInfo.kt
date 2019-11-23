@@ -522,3 +522,45 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
         is UnvalidatedType.Invalid.ReferenceBoolean -> false
     }
 }
+
+data class TypesMetadata(
+//    val numericalTypes: Set<ResolvedEntityRef>,
+//    val stringyTypes: Set<ResolvedEntityRef>
+    val typeChains: Map<ResolvedEntityRef, TypeChain>
+)
+data class TypeChain(val typeChainRefs: List<TypeChainRef>)
+// Not sure if UnvalidatedType is right here
+data class TypeChainRef(val name: String, val type: UnvalidatedType)
+fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
+    class MetadataCollector {
+        val typeChains = HashMap<ResolvedEntityRef, TypeChain>()
+        val cyclicReferences = HashSet<ResolvedEntityRef>()
+
+        fun collect(): TypesMetadata {
+            for (localType in typeInfo.localTypes.values) {
+                evaluateAndCollect(localType)
+            }
+            for (upstreamType in typeInfo.upstreamTypes.values) {
+                evaluateAndCollect(upstreamType)
+            }
+            return TypesMetadata(typeChains)
+        }
+
+        private fun evaluateAndCollect(type: ResolvedTypeInfo) {
+            if (cyclicReferences.contains(type.resolvedRef)) {
+                // We've already found this to be part of a cycle
+                return
+            }
+            when (type.info) {
+                is TypeInfo.Struct -> {
+                    if (type.info.memberTypes.size == 1) {
+
+                    }
+                }
+                is TypeInfo.Union -> { /* Do nothing */ }
+                is TypeInfo.OpaqueType -> { /* Do nothing */ }
+            }
+        }
+    }
+    return MetadataCollector().collect()
+}

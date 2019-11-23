@@ -1,0 +1,13 @@
+struct TinyInteger {
+  integer: Integer
+  requires {
+    integer < 3
+    && integer > -3
+  }
+}
+
+@Test([], "1")
+function testBoxIntoCustomTypeAssignment(): TinyInteger {
+  let n: TinyInteger = 1
+  n
+}

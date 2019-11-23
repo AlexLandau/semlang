@@ -1,0 +1,6 @@
+function testBoxIntoNaturalAssignment(): Integer {
+                                         ~~~~~~~ Stated return type Integer does not match the block's actual return type semlang:lang:0:Natural
+  let n: Natural = Integer."-1"
+      ~ The assignment to n expects the type semlang:lang:0:Natural, but the expression given has actual type Integer
+  n
+}

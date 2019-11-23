@@ -1,0 +1,5 @@
+@Test([], "1")
+function testBoxIntoNaturalAssignment(): Natural {
+  let n: Natural = 1
+  n
+}

@@ -267,12 +267,15 @@ private class Validator(
 
             val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
             val unvalidatedAssignmentType = statement.type
-            if (unvalidatedAssignmentType != null) {
+            val validatedAssignmentType = if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
-                    fail("In function $containingFunctionId, the variable $varName is supposed to be of type $assignmentType, " +
-                            "but the expression given has actual type ${validatedExpression.type}")
+                    errors.add(Issue("The assignment to $varName expects the type $assignmentType, " +
+                            "but the expression given has actual type ${validatedExpression.type}", statement.nameLocation, IssueLevel.ERROR))
                 }
+                assignmentType
+            } else {
+                validatedExpression.type
             }
 
             val referentialActionsCount = countReferentialActions(validatedExpression)
@@ -282,12 +285,13 @@ private class Validator(
                 errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
             }
 
-            validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
+            validatedStatements.add(ValidatedStatement(varName, validatedAssignmentType, validatedExpression))
             if (varName != null) {
+                // Check the expression type here, not the assignment type, for more appropriate error messages
                 if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
                     errors.add(Issue("We are assigning a reference to the variable $varName, but the reference may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
                 }
-                variableTypes.put(varName, validatedExpression.type)
+                variableTypes.put(varName, validatedAssignmentType)
             }
         }
         val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
