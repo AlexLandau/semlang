@@ -829,7 +829,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (type) {
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
-                val resolvedType = this.module.resolve(type.ref, ResolutionType.Type) ?: error("Unresolved type ${type.ref}")
+                val resolvedType = this.module.resolve(type.ref, ResolutionType.Type)
                 when (resolvedType) {
                     is EntityResolution -> { /* Automatic type gate */ }
                     is ResolutionResult.Error -> error(resolvedType.errorMessage)

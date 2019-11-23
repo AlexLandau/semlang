@@ -15,6 +15,10 @@ import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 import net.semlang.transforms.invalidate
 import net.semlang.validator.*
+import net.semlang.validator.TypeInfo
+import net.semlang.validator.TypesInfo
+import net.semlang.validator.getTypeParameterInferenceSources
+import net.semlang.validator.getTypesMetadata
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.*
@@ -52,6 +56,7 @@ private data class TypedStatement(val statement: Statement, val type: Unvalidate
 private sealed class TypedExpression
 private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
 private data class NamespacePartExpression(val names: List<String>): TypedExpression()
+private data class IntegerLiteralExpression(val literal: String): TypedExpression()
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
@@ -117,7 +122,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             s1Statement.name?.let { varNamesInScope.put(it, statementType) }
             s1Statements.add(s1Statement)
         }
-        val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, varNamesInScope)
+        // TODO: Functions can have a type hint for the declared return type
+        // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
+        val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, null, varNamesInScope)
         if (options.failOnUninferredType && blockType == null) {
             error("Could not infer type for returned expression $returnedExpression in block $block")
         }
@@ -158,20 +165,21 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
         return when (statement) {
             is S2Statement.Normal -> {
-                val (expression, expressionType) = translateFullExpression(statement.expression, varTypes)
+                val (expression, expressionType) = translateFullExpression(statement.expression, statement.type, varTypes)
+                val declaredType = statement.type?.let<S2Type, UnvalidatedType>(::translate)
                 TypedStatement(Statement(
                         name = statement.name,
                         type = if (options.outputExplicitTypes) {
-                            expressionType
+                            declaredType ?: expressionType
                         } else {
-                            statement.type?.let<S2Type, UnvalidatedType>(::translate)
+                            declaredType
                         },
                         expression = expression,
                         nameLocation = statement.nameLocation
-                ), expressionType)
+                ), declaredType ?: expressionType)
             }
             is S2Statement.WhileLoop -> {
-                val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, varTypes)
+                val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, null, varTypes)
                 val (actionBlock, actionBlockType) = translate(statement.actionBlock, varTypes)
 
                 TypedStatement(Statement(
@@ -210,7 +218,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     /**
      * Translates a sem2 expression to sem1 and transforms any resulting partial synthetic expression into a real sem1 expression.
      */
-    private fun translateFullExpression(expression: S2Expression, varTypes: Map<String, UnvalidatedType?>): RealExpression {
+    private fun translateFullExpression(expression: S2Expression, typeHint: S2Type?, varTypes: Map<String, UnvalidatedType?>): RealExpression {
         try {
             val translated = translate(expression, varTypes)
             return when (translated) {
@@ -237,6 +245,27 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         location = expression.location,
                         functionRefLocation = expression.location)
                     RealExpression(functionBinding, typeInfo?.type)
+                }
+                is IntegerLiteralExpression -> {
+                    val intType = UnvalidatedType.NamedType(NativeOpaqueType.INTEGER.resolvedRef.toUnresolvedRef(), false)
+                    val literalType = if (typeHint is S2Type.NamedType) {
+                        // TODO: Add a specific error message for when this isn't an Integer-y type and isn't Integer itself
+                        val resolvedRef = (typeInfo.getResolvedTypeInfo(translate(typeHint.ref)) as? ResolvedTypeInfo)?.resolvedRef
+                        if (resolvedRef != null) {
+                            val chain = typesMetadata.typeChains[resolvedRef]
+                            val lastRef = chain?.getTypesList()?.last()?.let { (it as? UnvalidatedType.NamedType)?.ref }?.let { typeInfo.getResolvedTypeInfo(it) as? ResolvedTypeInfo }?.resolvedRef
+                            if (lastRef == NativeOpaqueType.INTEGER.resolvedRef) {
+                                translate(typeHint)
+                            } else {
+                                intType
+                            }
+                        } else {
+                            intType
+                        }
+                    } else {
+                        intType
+                    }
+                    RealExpression(Expression.Literal(literalType, translated.literal, expression.location), literalType)
                 }
             }
         } catch (e: RuntimeException) {
@@ -318,21 +347,26 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         val newNamespace = subexpression.names + name
                         NamespacePartExpression(newNamespace)
                     }
+                    is IntegerLiteralExpression -> {
+                        TODO("Handle trying to use dot extensions of an integer literal")
+                    }
                 }
             }
             is S2Expression.IfThen -> {
                 // Shortcut: Just assume the then-block has the correct type
                 val (thenBlock, typeInfo) = translate(expression.thenBlock, varTypes)
+                val boolType = S2Type.NamedType(EntityRef(S2ModuleRef(CURRENT_NATIVE_MODULE_ID.name.group, CURRENT_NATIVE_MODULE_ID.name.module, null), EntityId.of("Boolean")), false)
                 RealExpression(Expression.IfThen(
-                        condition = translateFullExpression(expression.condition, varTypes).expression,
+                        condition = translateFullExpression(expression.condition, boolType, varTypes).expression,
                         thenBlock = thenBlock,
                         elseBlock = translate(expression.elseBlock, varTypes).block,
                         location = expression.location
                 ), typeInfo)
             }
             is S2Expression.FunctionCall -> {
-                val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
-                val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, varTypes) }.map { it.expression to it.type }.unzip()
+                val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
+                // TODO: These args would be a good place for type hints; want to be careful zipping
+                val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, null, varTypes) }.map { it.expression to it.type }.unzip()
 
                 // Steps to do here:
                 // Phase 1: Infer any missing type parameters
@@ -402,19 +436,25 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         location = expression.location
                 ), type)
             }
+            is S2Expression.IntegerLiteral -> {
+                IntegerLiteralExpression(
+                    literal = expression.literal
+                )
+            }
             is S2Expression.ListLiteral -> {
                 val chosenParameter = translate(expression.chosenParameter)
                 RealExpression(Expression.ListLiteral(
-                        contents = expression.contents.map { translateFullExpression(it, varTypes).expression },
+                    // TODO: Test this type hinting
+                        contents = expression.contents.map { translateFullExpression(it, expression.chosenParameter, varTypes).expression },
                         chosenParameter = chosenParameter,
                         location = expression.location
                 ), UnvalidatedType.NamedType(NativeOpaqueType.LIST.resolvedRef.toUnresolvedRef(), false, listOf(chosenParameter)))
             }
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
-                val (functionExpression, functionType) = translateFullExpression(expression.expression, varTypes)
+                val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
 
-                val (bindings, bindingTypes) = expression.bindings.map { if (it == null) null else translateFullExpression(it, varTypes) }.map { it?.expression to it?.type }.unzip()
+                val (bindings, bindingTypes) = expression.bindings.map { if (it == null) null else translateFullExpression(it, null, varTypes) }.map { it?.expression to it?.type }.unzip()
 
 
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
@@ -460,7 +500,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 ), postBindingType)
             }
             is S2Expression.Follow -> {
-                val (structureExpression, structureType) = translateFullExpression(expression.structureExpression, varTypes)
+                val (structureExpression, structureType) = translateFullExpression(expression.structureExpression, null, varTypes)
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
                     val typeInfo = typeInfo.getTypeInfo(structureType.ref)
                     if (typeInfo is TypeInfo.Struct) {
@@ -505,56 +545,56 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 ), functionType)
             }
             is S2Expression.PlusOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "plus", expression, expression.operatorLocation)
             }
             is S2Expression.MinusOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "minus", expression, expression.operatorLocation)
             }
             is S2Expression.TimesOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "times", expression, expression.operatorLocation)
             }
             is S2Expression.EqualsOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 // TODO: Support Data.equals
                 getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
             }
             is S2Expression.NotEqualsOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 // TODO: Support Data.equals
                 val equalityExpression = getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
                 getBooleanNegationOf(equalityExpression)
             }
             is S2Expression.LessThanOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "lessThan", expression, expression.operatorLocation)
             }
             is S2Expression.GreaterThanOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "greaterThan", expression, expression.operatorLocation)
             }
             is S2Expression.DotAssignOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "set", expression, expression.operatorLocation)
             }
             is S2Expression.AndOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "and", expression, expression.operatorLocation)
             }
             is S2Expression.OrOp -> {
-                val left = translateFullExpression(expression.left, varTypes)
-                val right = translateFullExpression(expression.right, varTypes)
+                val left = translateFullExpression(expression.left, null, varTypes)
+                val right = translateFullExpression(expression.right, null, varTypes)
                 getOperatorExpression(left, right, "or", expression, expression.operatorLocation)
             }
             is S2Expression.GetOp -> {
@@ -876,6 +916,7 @@ private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) 
             }
         }
         is S2Expression.Literal -> { /* do nothing */ }
+        is S2Expression.IntegerLiteral -> { /* do nothing */ }
         is S2Expression.ListLiteral -> {
             for (item in expression.contents) {
                 addVarNames(item, varNames)

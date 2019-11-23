@@ -260,13 +260,16 @@ private class Validator(
 
             val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
             val unvalidatedAssignmentType = statement.type
-            if (unvalidatedAssignmentType != null) {
+            val validatedAssignmentType = if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
                     errors.add(Issue("Declared variable type ${prettyType(assignmentType)} " +
                             "doesn't match expression type ${prettyType(validatedExpression.type)}", statement.nameLocation, IssueLevel.ERROR))
                     return null
                 }
+                assignmentType
+            } else {
+                validatedExpression.type
             }
 
             val referentialActionsCount = countReferentialActions(validatedExpression)
@@ -276,12 +279,13 @@ private class Validator(
                 errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
             }
 
-            validatedStatements.add(ValidatedStatement(varName, validatedExpression.type, validatedExpression))
+            validatedStatements.add(ValidatedStatement(varName, validatedAssignmentType, validatedExpression))
             if (varName != null) {
+                // Check the expression type here, not the assignment type, for more appropriate error messages
                 if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
                     errors.add(Issue("We are assigning a reference to the variable $varName, but the reference may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
                 }
-                variableTypes.put(varName, validatedExpression.type)
+                variableTypes.put(varName, validatedAssignmentType)
             }
         }
         val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope) ?: return null

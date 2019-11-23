@@ -1,0 +1,9 @@
+struct MyString {
+  string: String
+}
+
+function foo(): MyString {
+  let s: MyString = 42
+      ~ Declared variable type MyString doesn't match expression type Integer
+  s
+}

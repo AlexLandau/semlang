@@ -199,6 +199,7 @@ sealed class S2Expression {
     data class IfThen(val condition: S2Expression, val thenBlock: S2Block, val elseBlock: S2Block, override val location: Location? = null): S2Expression()
     data class FunctionCall(val expression: S2Expression, val arguments: List<S2Expression>, val chosenParameters: List<S2Type>, override val location: Location? = null): S2Expression()
     data class Literal(val type: S2Type, val literal: String, override val location: Location? = null): S2Expression()
+    data class IntegerLiteral(val literal: String, override val location: Location? = null): S2Expression()
     data class ListLiteral(val contents: List<S2Expression>, val chosenParameter: S2Type, override val location: Location? = null): S2Expression()
     data class FunctionBinding(val expression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()

@@ -1,0 +1,5 @@
+function testBoxIntoNaturalAssignment(): Integer {
+  let n: Natural = Integer."-1"
+      ~ Declared variable type Natural doesn't match expression type Integer
+  n
+}

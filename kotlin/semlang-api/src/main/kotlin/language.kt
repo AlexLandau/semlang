@@ -89,7 +89,7 @@ sealed class UnvalidatedType {
     abstract protected fun getTypeString(): String
     abstract fun isReference(): Boolean
     abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
-    abstract fun equalsIgnoringLocation(other: UnvalidatedType): Boolean
+    abstract fun equalsIgnoringLocation(other: UnvalidatedType?): Boolean
     override fun toString(): String {
         return getTypeString()
     }
@@ -108,7 +108,7 @@ sealed class UnvalidatedType {
                     location)
         }
 
-        override fun equalsIgnoringLocation(other: UnvalidatedType): Boolean {
+        override fun equalsIgnoringLocation(other: UnvalidatedType?): Boolean {
             return other is FunctionType &&
                     isReference == other.isReference &&
                     typeParameters == other.typeParameters &&
@@ -166,7 +166,7 @@ sealed class UnvalidatedType {
             }
         }
 
-        override fun equalsIgnoringLocation(other: UnvalidatedType): Boolean {
+        override fun equalsIgnoringLocation(other: UnvalidatedType?): Boolean {
             return other is NamedType &&
                     ref == other.ref &&
                     isReference == other.isReference &&
