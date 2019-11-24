@@ -123,6 +123,7 @@ private class Validator(
         initialIssues: List<Issue>) {
     val warnings = ArrayList<Issue>(initialIssues.filter { it.level == IssueLevel.WARNING })
     val errors = ArrayList<Issue>(initialIssues.filter { it.level == IssueLevel.ERROR })
+    val typesMetadata = getTypesMetadata(typesInfo)
 
     fun validate(context: RawContext): ValidationResult {
         val ownFunctions = validateFunctions(context.functions)
@@ -788,6 +789,15 @@ private class Validator(
      */
     private fun getLiteralTypeChain(initialType: UnvalidatedType, literalLocation: Location?, typeParametersInScope: Map<String, TypeParameter>): List<Type>? {
         var type = validateType(initialType, typeParametersInScope) ?: return null
+
+        if (type is Type.NamedType) {
+            val typeChain = typesMetadata.typeChains[type.ref]
+            if (typeChain != null) {
+
+            }
+        }
+
+
         val list = ArrayList<Type>()
         list.add(type)
         while (getTypeValidatorFor(type) == null) {
