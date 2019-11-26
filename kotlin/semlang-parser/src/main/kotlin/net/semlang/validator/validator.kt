@@ -174,7 +174,6 @@ private class Validator(
     private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>, internalParameters: List<String>): Type? {
         return when (type) {
             is UnvalidatedType.Integer -> Type.INTEGER
-            is UnvalidatedType.Boolean -> Type.BOOLEAN
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
                 Type.List(parameter)
@@ -783,7 +782,8 @@ private class Validator(
         if (lastType is UnvalidatedType.Integer) {
             return LiteralValidator.INTEGER
         }
-        if (lastType is UnvalidatedType.Boolean) {
+        // TODO: Check modules and such
+        if (lastType is UnvalidatedType.NamedType && lastType.ref.id == NativeOpaqueType.BOOLEAN.id) {
             return LiteralValidator.BOOLEAN
         }
         if (types.size >= 2) {
@@ -837,7 +837,7 @@ private class Validator(
     private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
 
-        if (condition.type != Type.BOOLEAN) {
+        if (condition.type != NativeOpaqueType.BOOLEAN.getType()) {
             fail("In function $containingFunctionId, an if-then expression has a non-boolean condition expression: $condition")
         }
 
@@ -903,7 +903,7 @@ private class Validator(
         } else {
             null
         }
-        if (requires != null && requires.type != Type.BOOLEAN) {
+        if (requires != null && requires.type != NativeOpaqueType.BOOLEAN.getType()) {
             val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
             val location = struct.requires!!.location
             errors.add(Issue(message, location, IssueLevel.ERROR))

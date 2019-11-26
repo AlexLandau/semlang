@@ -183,7 +183,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                 arguments = listOf(
                                         Expression.InlineFunction(
                                                 arguments = listOf(),
-                                                returnType = UnvalidatedType.Boolean(),
+                                                returnType = invalidate(NativeOpaqueType.BOOLEAN.getType()),
                                                 block = Block(
                                                         statements = listOf(),
                                                         returnedExpression = conditionExpression,
@@ -655,7 +655,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 functionRef = BooleanNotRef,
                 arguments = listOf(expression.expression),
                 chosenParameters = listOf()
-        ), UnvalidatedType.Boolean())
+        ), invalidate(NativeOpaqueType.BOOLEAN.getType()))
     }
 
     private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression, operatorLocation: Location?): RealExpression {
@@ -688,7 +688,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
             is UnvalidatedType.Invalid.ReferenceBoolean -> listOf("Boolean")
             is UnvalidatedType.Integer -> listOf("Integer")
-            is UnvalidatedType.Boolean -> listOf("Boolean")
             is UnvalidatedType.List -> listOf("List")
             is UnvalidatedType.Maybe -> listOf("Maybe")
             is UnvalidatedType.FunctionType -> listOf()
@@ -794,7 +793,6 @@ internal fun translate(type: S2Type): UnvalidatedType {
         is S2Type.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger(type.location)
         is S2Type.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean(type.location)
         is S2Type.Integer -> UnvalidatedType.Integer(type.location)
-        is S2Type.Boolean -> UnvalidatedType.Boolean(type.location)
         is S2Type.List -> UnvalidatedType.List(
                 parameter = translate(type.parameter),
                 location = type.location)

@@ -2,5 +2,5 @@ function myStuff.myFunction(): Integer {
   let increment = Integer.plus|(_, Integer."1")
   // Calling a binding with an argument of an incorrect type
   increment(Boolean."true")
-  ~~~~~~~~~~~~~~~~~~~~~~~~~ The function expression expects arguments with types [Integer], but was given arguments with types [Boolean]
+  ~~~~~~~~~~~~~~~~~~~~~~~~~ The function expression expects arguments with types [Integer], but was given arguments with types [semlang:lang:0:Boolean]
 }

@@ -218,7 +218,6 @@ private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals
 fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument, interpreter: SemlangForwardInterpreter): SemObject {
     return when (type) {
         Type.INTEGER -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
-        Type.BOOLEAN -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
         is Type.List -> {
             // TODO: Support the alternative list notation
             when (annotationArg) {

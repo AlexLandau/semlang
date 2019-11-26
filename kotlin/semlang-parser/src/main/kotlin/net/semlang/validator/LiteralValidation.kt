@@ -1,5 +1,6 @@
 package net.semlang.validator
 
+import net.semlang.api.NativeOpaqueType
 import net.semlang.api.NativeStruct
 import net.semlang.api.Type
 import net.semlang.api.isNativeModule

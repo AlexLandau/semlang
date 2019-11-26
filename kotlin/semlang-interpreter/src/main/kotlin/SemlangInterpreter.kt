@@ -427,7 +427,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
     private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
         return when (type) {
             Type.INTEGER -> evaluateIntegerLiteral(literal)
-            Type.BOOLEAN -> evaluateBooleanLiteral(literal)
             is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.Maybe -> evaluateMaybeLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
@@ -438,6 +437,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
     }
 
     private fun evaluateNamedLiteral(type: Type.NamedType, literal: String): SemObject {
+        if (isNativeModule(type.ref.module) && type.ref.id == NativeOpaqueType.BOOLEAN.id) {
+            return evaluateBooleanLiteral(literal)
+        }
         if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.NATURAL.id) {
             return evaluateNaturalLiteral(literal)
         }
