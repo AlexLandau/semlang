@@ -50,7 +50,6 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             UnvalidatedType.NamedType(type.ref, type.isReference(), parameters)
         }
         is UnvalidatedType.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger()
-        is UnvalidatedType.Invalid.ReferenceBoolean -> UnvalidatedType.Invalid.ReferenceBoolean()
     }
 }
 

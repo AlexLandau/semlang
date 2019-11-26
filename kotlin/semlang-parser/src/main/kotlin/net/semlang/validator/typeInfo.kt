@@ -522,7 +522,6 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
             }
         }
         is UnvalidatedType.Invalid.ReferenceInteger -> false
-        is UnvalidatedType.Invalid.ReferenceBoolean -> false
     }
 }
 

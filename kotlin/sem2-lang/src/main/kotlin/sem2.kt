@@ -113,20 +113,6 @@ sealed class S2Type {
                 return getTypeString()
             }
         }
-
-        data class ReferenceBoolean(override val location: Location? = null) : S2Type() {
-            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
-                return this
-            }
-
-            override fun getTypeString(): String {
-                return "&Boolean"
-            }
-
-            override fun toString(): String {
-                return getTypeString()
-            }
-        }
     }
 
     data class Integer(override val location: Location? = null) : S2Type() {

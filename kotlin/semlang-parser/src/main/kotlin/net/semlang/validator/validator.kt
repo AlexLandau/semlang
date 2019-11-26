@@ -232,10 +232,6 @@ private class Validator(
                 errors.add(Issue("Integer is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
                 null
             }
-            is UnvalidatedType.Invalid.ReferenceBoolean -> {
-                errors.add(Issue("Boolean is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
-                null
-            }
         }
     }
 

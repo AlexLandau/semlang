@@ -118,28 +118,6 @@ sealed class UnvalidatedType {
                 return getTypeString()
             }
         }
-
-        data class ReferenceBoolean(override val location: Location? = null) : UnvalidatedType() {
-            override fun isReference(): kotlin.Boolean {
-                return true
-            }
-
-            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
-                return this
-            }
-
-            override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-                return other is ReferenceBoolean
-            }
-
-            override fun getTypeString(): String {
-                return "&Boolean"
-            }
-
-            override fun toString(): String {
-                return getTypeString()
-            }
-        }
     }
 
     data class Integer(override val location: Location? = null) : UnvalidatedType() {
