@@ -20,9 +20,10 @@ private val TEST_MODULE_NAME = ModuleName("semlang", "validatorTestFile")
  * This can be used to more easily generate a new test, for example, by writing the code by itself and
  * running this to add the errors.
  */
-fun main(args: Array<String>) {
+fun main() {
     var filesCount = 0
-    val failValidatorDir = File("../../semlang-parser-tests/failValidator")
+    val failValidatorDir = File("semlang-parser-tests/failValidator")
+    println("Regenerating error files in " + failValidatorDir.absolutePath)
     for (file in failValidatorDir.listFiles()) {
         if (!file.name.endsWith(".errors")) {
             System.out.println("Skipping non-.errors file $file")

@@ -524,11 +524,14 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
 }
 
 data class TypesMetadata(
-//    val numericalTypes: Set<ResolvedEntityRef>,
-//    val stringyTypes: Set<ResolvedEntityRef>
     val typeChains: Map<ResolvedEntityRef, TypeChain>
 )
-data class TypeChain(val typeChainLinks: List<TypeChainLink>)
+data class TypeChain(val originalType: UnvalidatedType.NamedType, val typeChainLinks: List<TypeChainLink>) {
+    fun getTypesList(): List<UnvalidatedType> {
+        return listOf(originalType) + typeChainLinks.map { it.type }
+    }
+}
+// TODO: Figure out if we end up using the name or not
 // Not sure if UnvalidatedType is right here
 data class TypeChainLink(val name: String, val type: UnvalidatedType)
 fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
@@ -547,10 +550,6 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
         }
 
         private fun evaluateAndCollect(type: ResolvedTypeInfo) {
-            if (cyclicReferences.contains(type.resolvedRef)) {
-                // We've already found this to be part of a cycle
-                return
-            }
             when (type.info) {
                 is TypeInfo.Struct -> {
                     computeTypeChain(type.resolvedRef, type.info)
@@ -561,6 +560,7 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
         }
 
         // TODO: Reuse already-computed information more
+        // TODO: Support parameterized types
         private fun computeTypeChain(resolvedRef: ResolvedEntityRef, info: TypeInfo.Struct) {
             val typeChain = ArrayList<TypeChainLink>()
             val refsSoFar = HashSet<ResolvedEntityRef>()
@@ -568,17 +568,38 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
             var curInfo = info
             while (true) {
                 refsSoFar.add(curRef)
-                if (curInfo.memberTypes.size == 1) {
-                    val (memberName, memberType) = curInfo.memberTypes.entries.single()
-                    typeChain.add(TypeChainLink(memberName, memberType))
-                    if (memberType !is UnvalidatedType.NamedType) {
-                        break
-                    }
-                    // TODO: Parameterized types will make things kind of hard here (i.e. Foo<T> is a List<T>, or a T)
-                    // Get some new type info for the new thing
-                    memberType.ref
+                if (curInfo.memberTypes.size != 1) {
+                    break
                 }
+
+                val (memberName, memberType) = curInfo.memberTypes.entries.single()
+                typeChain.add(TypeChainLink(memberName, memberType))
+                if (memberType !is UnvalidatedType.NamedType) {
+                    break
+                }
+                // TODO: Parameterized types will make things kind of hard here (i.e. Foo<T> is a List<T>, or a T)
+                // Get some new type info for the new thing
+
+                val memberInfo = typeInfo.getResolvedTypeInfo(memberType.ref)
+                if (memberInfo == null) {
+                    // Unknown type
+                    // TODO: Record an error
+                    return
+                }
+                if (memberInfo.info !is TypeInfo.Struct) {
+                    break
+                }
+                if (refsSoFar.contains(memberInfo.resolvedRef)) {
+                    // Cycle of references
+                    // TODO: Better separation of handling this case, probably
+                    cyclicReferences.add(memberInfo.resolvedRef)
+                    return
+                }
+                curRef = memberInfo.resolvedRef
+                curInfo = memberInfo.info
             }
+            // TODO: Type parameters are discarded here, probably wrong
+            typeChains[resolvedRef] = TypeChain(UnvalidatedType.NamedType(resolvedRef.toUnresolvedRef(), info.isReference, listOf(), null), typeChain)
         }
     }
     return MetadataCollector().collect()
