@@ -1,5 +1,5 @@
 function textOutLiteral(): &TextOut {
   // This doesn't work
   &TextOut."Hello, world!"
-  ~~~~~~~~~~~~~~~~~~~~~~~~ Trying to get a literal of a non-struct or nonexistent type TextOut
+  ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot create a literal for type &TextOut
 }

@@ -37,7 +37,8 @@ fun validateModule(context: RawContext, moduleName: ModuleName, nativeModuleVers
 
     val issuesList = ArrayList<Issue>()
     val typesInfo = getTypesInfo(context, moduleId, upstreamModules, moduleVersionMappings, { issue -> issuesList.add(issue) })
-    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, issuesList)
+    val typesMetadata = getTypesMetadata(typesInfo)
+    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, typesMetadata, issuesList)
     return validator.validate(context)
 }
 
@@ -120,6 +121,7 @@ private class Validator(
         val upstreamModules: List<ValidatedModule>,
         val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
         val typesInfo: TypesInfo,
+        val typesMetadata: TypesMetadata,
         initialIssues: List<Issue>) {
     val warnings = ArrayList<Issue>(initialIssues.filter { it.level == IssueLevel.WARNING })
     val errors = ArrayList<Issue>(initialIssues.filter { it.level == IssueLevel.ERROR })
@@ -756,71 +758,49 @@ private class Validator(
     }
 
     private fun validateLiteralExpression(expression: Expression.Literal, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
-        val typeChain = getLiteralTypeChain(expression.type, expression.location, typeParametersInScope)
+        val type = validateType(expression.type, typeParametersInScope) ?: return null
 
-        if (typeChain != null) {
-            val nativeLiteralType = typeChain[0]
+        val typesList = if (type is Type.NamedType) { typesMetadata.typeChains[type.ref]?.getTypesList() ?: listOf(expression.type) } else listOf(expression.type)
 
-            val validator = getTypeValidatorFor(nativeLiteralType) ?: error("No literal validator for type $nativeLiteralType")
-            val isValid = validator.validate(expression.literal)
-            if (!isValid) {
-                errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.location, IssueLevel.ERROR))
-            }
-            // TODO: Someday we need to check for literal values that violate "requires" blocks at validation time
-            return TypedExpression.Literal(typeChain.last(), AliasType.NotAliased, expression.literal)
-        } else if (errors.isEmpty()) {
-            fail("Something went wrong")
+        val validator = getLiteralValidatorForTypeChain(typesList)
+
+        if (validator == null) {
+            // TODO: Differentiate the error based on types metadata
+            errors.add(Issue("Cannot create a literal for type ${expression.type}", expression.location, IssueLevel.ERROR))
+            return null
         }
-        return null
+
+        val isValid = validator.validate(expression.literal)
+        if (!isValid) {
+            errors.add(Issue("Invalid literal value '${expression.literal}' for type '${expression.type}'", expression.location, IssueLevel.ERROR))
+        }
+        // TODO: Someday we need to check for literal values that violate "requires" blocks at validation time
+        return TypedExpression.Literal(type, AliasType.NotAliased, expression.literal)
     }
 
-    /**
-     * A little explanation:
-     *
-     * We can have literals for either types with native literals or structs with a single
-     * member of a type that can have a literal.
-     *
-     * In the former case, we return a singleton list with just that type.
-     *
-     * In the latter case, we return a list starting with the innermost type (one with a
-     * native literal implementation) and then following the chain in successive layers
-     * outwards to the original type.
-     */
-    private fun getLiteralTypeChain(initialType: UnvalidatedType, literalLocation: Location?, typeParametersInScope: Map<String, TypeParameter>): List<Type>? {
-        var type = validateType(initialType, typeParametersInScope) ?: return null
-        val list = ArrayList<Type>()
-        list.add(type)
-        while (getTypeValidatorFor(type) == null) {
-            if (type is Type.NamedType) {
-                val structInfo = typesInfo.getTypeInfo(type.originalRef) as? TypeInfo.Struct
-                if (structInfo == null) {
-                    errors.add(Issue("Trying to get a literal of a non-struct or nonexistent type ${type.originalRef}", literalLocation, IssueLevel.ERROR))
-                    return null
+    private fun getLiteralValidatorForTypeChain(types: List<UnvalidatedType>): LiteralValidator? {
+        val lastType = types.last()
+        if (lastType is UnvalidatedType.Integer) {
+            return LiteralValidator.INTEGER
+        }
+        if (lastType is UnvalidatedType.Boolean) {
+            return LiteralValidator.BOOLEAN
+        }
+        if (types.size >= 2) {
+            val secondToLastType = types[types.size - 2]
+            if (secondToLastType is UnvalidatedType.NamedType) {
+                val typeRef = secondToLastType.ref
+                if (typeRef.id == NativeStruct.STRING.id) {
+                    return LiteralValidator.STRING
                 }
-
-                if (structInfo.typeParameters.isNotEmpty()) {
-                    // See parameterizedStructLiteral1: this fails in parsing
-                    fail("Can't have a literal of a type with type parameters: $type")
-                }
-                if (structInfo.memberTypes.size != 1) {
-                    errors.add(Issue("Can't have a literal of type ${type.originalRef} because it is a struct type with more than one member", literalLocation, IssueLevel.ERROR))
-                    return null
-                }
-                val unvalidatedMemberType = structInfo.memberTypes.values.single()
-                val memberType = validateType(unvalidatedMemberType, structInfo.typeParameters.associateBy(TypeParameter::name)) ?: return null
-                if (list.contains(memberType)) {
-                    errors.add(Issue("Error: Literal type involves cycle of structs: ${list}", literalLocation, IssueLevel.ERROR))
-                    return null
-                }
-                type = memberType
-                list.add(type)
-            } else {
-                error("")
+                // TODO: This more correct implementation doesn't seem to work; does resolving anything to String fail right now?
+//                val resolvedTypeRef = typesInfo.getResolvedTypeInfo(typeRef)?.resolvedRef ?: return null
+//                if (isNativeModule(resolvedTypeRef.module) && resolvedTypeRef.id == NativeStruct.STRING.id) {
+//                    return LiteralValidator.STRING
+//                }
             }
         }
-
-        list.reverse()
-        return list
+        return null
     }
 
     private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {

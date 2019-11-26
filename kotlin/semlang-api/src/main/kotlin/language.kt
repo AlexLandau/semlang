@@ -76,8 +76,14 @@ data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
     override fun toString(): String {
         return "${module.name}:${module.fake0Version}:$id"
     }
+
+    fun toUnresolvedRef(): EntityRef {
+        val moduleRef = ModuleRef(module.name.group, module.name.module, module.fake0Version)
+        return EntityRef(moduleRef, id)
+    }
 }
 
+// TODO: It would be really nice to have a TypeId or something that didn't have a location, vs. UnvalidatedType
 sealed class UnvalidatedType {
     abstract val location: Location?
     abstract protected fun getTypeString(): String

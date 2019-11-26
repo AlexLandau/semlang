@@ -34,7 +34,7 @@ data class ModuleNonUniqueId(val name: ModuleName, val versionScheme: String, va
             val name = ModuleName(group, module)
             val versionParts = version.split(":", limit = 2)
             if (versionParts.size != 2) {
-                error("Expected a version string with a scheme, but was: $version")
+                error("Expected a version string with a scheme, but was: $version for $group:$module")
             }
             val (versionProtocol, bareVersion) = versionParts
             return ModuleNonUniqueId(name, versionProtocol, bareVersion)

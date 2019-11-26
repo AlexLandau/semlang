@@ -5,5 +5,5 @@ struct Foo {
 
 function baz(): Foo {
   Foo."12"
-  ~~~~~~~~ Can't have a literal of type Foo because it is a struct type with more than one member
+  ~~~~~~~~ Cannot create a literal for type Foo
 }

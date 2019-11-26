@@ -38,21 +38,3 @@ sealed class LiteralValidator {
         }
     }
 }
-
-fun getTypeValidatorFor(type: Type): LiteralValidator? {
-    return when (type) {
-        Type.INTEGER -> LiteralValidator.INTEGER
-        Type.BOOLEAN -> LiteralValidator.BOOLEAN
-        is Type.List -> null
-        is Type.NamedType -> {
-            if (isNativeModule(type.ref.module) && type.ref.id == NativeStruct.STRING.id) {
-                return LiteralValidator.STRING
-            }
-            null
-        }
-        is Type.FunctionType -> null
-        is Type.Maybe -> null
-        is Type.ParameterType -> null
-        is Type.InternalParameterType -> null
-    }
-}

@@ -67,11 +67,11 @@ fun writeErrorFileText(errorFile: ErrorFile): String {
         it.location!!.range.start.lineNumber - 1
     }
     errorFile.lines.forEachIndexed { index, line ->
-        sb.appendln(line)
+        sb.append(line).append("\n")
         val errorsInLine = errorsByLine[index]
         if (errorsInLine != null) {
             for (error in errorsInLine) {
-                sb.appendln(writeErrorLine(error))
+                sb.append(writeErrorLine(error)).append("\n")
             }
         }
     }
