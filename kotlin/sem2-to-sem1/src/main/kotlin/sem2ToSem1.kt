@@ -14,9 +14,7 @@ import net.semlang.sem2.api.EntityRef
 import net.semlang.sem2.api.TypeClass
 import net.semlang.sem2.api.TypeParameter
 import net.semlang.transforms.invalidate
-import net.semlang.validator.TypeInfo
-import net.semlang.validator.TypesInfo
-import net.semlang.validator.getTypeParameterInferenceSources
+import net.semlang.validator.*
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.*
@@ -58,6 +56,8 @@ private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(nu
 
 private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val options: Sem2ToSem1Options) {
     val errors = ArrayList<Issue>()
+    // TODO: Have this provided externally
+    val typesMetadata = getTypesMetadata(typeInfo)
 
     fun translate(): ParsingResult {
         val functions = context.functions.mapNotNull(::translate)
@@ -585,21 +585,22 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         return@argumentSelector null
                     }
 
-                    if (bindingType != null && !intendedType.equalsIgnoringLocation(bindingType)) {
+                    if (bindingType is UnvalidatedType.NamedType && !intendedType.equalsIgnoringLocation(bindingType)) {
                         // Try reconciling the types and adjusting the argument accordingly
 
                         // Try to collect some information about these...
-                        val argumentTypeChain = getAutoboxingTypeChain(bindingType)
-                        val intendedTypeChain = getAutoboxingTypeChain(intendedType)
+                        // TODO: Probably needs error handling
+                        val bindingTypeRef = typeInfo.getResolvedTypeInfo(bindingType.ref) as ResolvedTypeInfo
+                        val argumentTypeChain = typesMetadata.typeChains[bindingTypeRef.resolvedRef]
 
                         // Is one a struct that contains the other?
-                        val intendedTypeIndexInArgs = argumentTypeChain.getIndexOfTypeIgnoringLocation(intendedType)
-                        if (intendedTypeIndexInArgs != null) {
+                        val intendedTypeIndexInArgs = getIndexOfTypeIgnoringLocation(intendedType, argumentTypeChain)
+                        if (intendedTypeIndexInArgs != null && argumentTypeChain != null) {
                             // e.g. argument is Natural, intended type is Integer; replace n with n.integer
                             // (in that example, index is 1, and we want 1 entry from the member names, i.e. 0..0)
                             var curExpression: Expression = binding
                             for (memberNameIndex in 0..(intendedTypeIndexInArgs - 1)) {
-                                val memberName = argumentTypeChain.memberNames[memberNameIndex]
+                                val memberName = argumentTypeChain.typeChainLinks[memberNameIndex].name
                                 curExpression = Expression.Follow(curExpression, memberName, curExpression.location)
                             }
                             return@argumentSelector curExpression
@@ -612,41 +613,18 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         }
     }
 
-    // Note: The first type in the chain will be the original type of the argument. The last type will be the innermost type.
-    // The size of memberNames will be one less than the size of types.
-    private data class AutoboxTypeChain(val types: List<UnvalidatedType>, val memberNames: List<String>) {
-        fun getIndexOfTypeIgnoringLocation(type: UnvalidatedType): Int? {
-            types.forEachIndexed { index, ourType ->
-                if (ourType.equalsIgnoringLocation(type)) {
-                    return index
-                }
-            }
-            return null
-        }
-    }
+    private fun getIndexOfTypeIgnoringLocation(type: UnvalidatedType, argumentTypeChain: TypeChain?): Int? {
+        if (argumentTypeChain == null) return null
 
-    private fun getAutoboxingTypeChain(argumentType: UnvalidatedType): AutoboxTypeChain {
-        val typeChain = ArrayList<UnvalidatedType>()
-        val memberNames = ArrayList<String>()
-
-        var curType = argumentType
-        while (true) {
-            typeChain.add(curType)
-            // TODO: This might need a way to tweak this number someday
-            if (typeChain.size >= 1000) error("Infinite loop in getAutoboxingTypeChain; types: $typeChain, member names: $memberNames")
-            val curTypeInfo = (curType as? UnvalidatedType.NamedType)?.ref?.let { typeInfo.getTypeInfo(it) }
-            if (curTypeInfo !is TypeInfo.Struct) {
-                break
-            }
-            val memberEntry = curTypeInfo.memberTypes.entries.singleOrNull()
-            if (memberEntry == null) {
-                break
-            }
-            memberNames.add(memberEntry.key)
-            val parameterReplacementMap = curTypeInfo.typeParameters.map { it.name }.zip((curType as UnvalidatedType.NamedType).parameters).toMap()
-            curType = memberEntry.value.replacingNamedParameterTypes(parameterReplacementMap)
+        if (argumentTypeChain.originalType.equalsIgnoringLocation(type)) {
+            return 0
         }
-        return AutoboxTypeChain(typeChain, memberNames)
+        for ((index, chainLink) in argumentTypeChain.typeChainLinks.withIndex()) {
+            if (chainLink.type.equalsIgnoringLocation(type)) {
+                return index + 1
+            }
+        }
+        return null
     }
 
     private val BooleanNotRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Boolean", "not"))
