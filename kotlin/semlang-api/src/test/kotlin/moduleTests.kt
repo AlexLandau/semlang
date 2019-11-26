@@ -123,17 +123,17 @@ class ContextTests {
 }
 
 private fun createFunctionWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): ValidatedFunction {
-    val block = TypedBlock(Type.INTEGER, listOf(), TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, uniqueAspect.toString()))
+    val block = TypedBlock(NativeOpaqueType.INTEGER.getType(), listOf(), TypedExpression.Literal(NativeOpaqueType.INTEGER.getType(), AliasType.NotAliased, uniqueAspect.toString()))
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {
         listOf()
     }
-    return ValidatedFunction(id, listOf(), listOf(), Type.INTEGER, block, annotations)
+    return ValidatedFunction(id, listOf(), listOf(), NativeOpaqueType.INTEGER.getType(), block, annotations)
 }
 
 private fun createStructWithId(id: EntityId, moduleId: ModuleUniqueId, uniqueAspect: Int, exported: Boolean): Struct {
-    val member = Member(uniqueAspect.toString(), Type.INTEGER)
+    val member = Member(uniqueAspect.toString(), NativeOpaqueType.INTEGER.getType())
     val annotations = if (exported) {
         listOf(Annotation(EntityId.of("Export"), listOf()))
     } else {

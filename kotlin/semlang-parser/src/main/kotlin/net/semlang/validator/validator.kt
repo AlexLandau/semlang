@@ -173,7 +173,6 @@ private class Validator(
     }
     private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>, internalParameters: List<String>): Type? {
         return when (type) {
-            is UnvalidatedType.Integer -> Type.INTEGER
             is UnvalidatedType.List -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
                 Type.List(parameter)
@@ -227,10 +226,6 @@ private class Validator(
                 }
                 val parameters = type.parameters.map { parameter -> validateType(parameter, typeParametersInScope, internalParameters) ?: return null }
                 Type.NamedType(typeInfo.resolvedRef, type.ref, type.isReference(), parameters)
-            }
-            is UnvalidatedType.Invalid.ReferenceInteger -> {
-                errors.add(Issue("Integer is not a reference type and should not be marked with &", type.location, IssueLevel.ERROR))
-                null
             }
         }
     }
@@ -643,7 +638,8 @@ private class Validator(
                 error("Currently we don't allow follows for unions")
             }
             is TypeInfo.OpaqueType -> {
-                error("Currently we don't allow follows for opaque types")
+                errors.add(Issue("Cannot dereference an expression of opaque type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
+                return null
             }
         }
     }
@@ -775,10 +771,10 @@ private class Validator(
 
     private fun getLiteralValidatorForTypeChain(types: List<UnvalidatedType>): LiteralValidator? {
         val lastType = types.last()
-        if (lastType is UnvalidatedType.Integer) {
+        // TODO: Check modules and such
+        if (lastType is UnvalidatedType.NamedType && lastType.ref.id == NativeOpaqueType.INTEGER.id) {
             return LiteralValidator.INTEGER
         }
-        // TODO: Check modules and such
         if (lastType is UnvalidatedType.NamedType && lastType.ref.id == NativeOpaqueType.BOOLEAN.id) {
             return LiteralValidator.BOOLEAN
         }

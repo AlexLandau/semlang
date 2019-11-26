@@ -600,12 +600,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         }
 
         val typeId = type_ref.entity_id().ID().text
-        if (typeId == "Integer") {
-            if (isReference) {
-                return UnvalidatedType.Invalid.ReferenceInteger(typeLocation)
-            }
-            return UnvalidatedType.Integer(typeLocation)
-        } else if (typeId == "List") {
+        if (typeId == "List") {
             if (isReference) {
                 throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))
             }

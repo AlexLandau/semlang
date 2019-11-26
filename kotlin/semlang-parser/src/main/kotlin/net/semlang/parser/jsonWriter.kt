@@ -146,7 +146,6 @@ private fun addMember(node: ObjectNode, member: Member) {
 private fun toTypeNode(type: Type): JsonNode {
     val factory = JsonNodeFactory.instance
     return when (type) {
-        Type.INTEGER -> TextNode(type.toString())
         is Type.List -> {
             ObjectNode(factory).set("List", toTypeNode(type.parameter))
         }
@@ -197,15 +196,8 @@ private fun parseMember(node: JsonNode): UnvalidatedMember {
 }
 
 private fun parseType(node: JsonNode): UnvalidatedType {
-    if (node.isTextual()) {
-        return when (node.textValue()) {
-            "Integer" -> UnvalidatedType.Integer()
-            else -> error("Unrecognized type string: ${node.textValue()}")
-        }
-    }
-
     if (!node.isObject()) {
-        error("Was expecting a string or object node for a type; was $node")
+        error("Was expecting an object node for a type; was $node")
     }
 
     if (node.has("name")) {

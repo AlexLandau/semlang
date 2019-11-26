@@ -328,7 +328,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             }
 
             if (expression.INTEGER_LITERAL() != null) {
-                return S2Expression.Literal(S2Type.Integer(), expression.INTEGER_LITERAL().text, locationOf(expression))
+                return S2Expression.Literal(S2Type.NamedType(EntityRef.of("Integer"), false), expression.INTEGER_LITERAL().text, locationOf(expression))
             }
 
             if (expression.LBRACE() != null) {
@@ -640,12 +640,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
 
         val typeId = type_ref.entity_id().ID().text
-        if (typeId == "Integer") {
-            if (isReference) {
-                return S2Type.Invalid.ReferenceInteger(typeLocation)
-            }
-            return S2Type.Integer(typeLocation)
-        } else if (typeId == "List") {
+        if (typeId == "List") {
             if (isReference) {
                 throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))
             }

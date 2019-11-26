@@ -453,7 +453,6 @@ private class TypesSummaryToInfoConverter(
 
 fun TypesInfo.isDataType(type: Type): Boolean {
     return when (type) {
-        Type.INTEGER -> true
         is Type.List -> isDataType(type.parameter)
         is Type.Maybe -> isDataType(type.parameter)
         is Type.FunctionType -> false
@@ -483,7 +482,7 @@ fun TypesInfo.isDataType(type: Type): Boolean {
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
                     }
                     is TypeInfo.OpaqueType -> {
-                        isNativeModule(type.ref.module) && type.ref.id == NativeOpaqueType.BOOLEAN.id
+                        isNativeModule(type.ref.module) && (type.ref.id == NativeOpaqueType.BOOLEAN.id || type.ref.id == NativeOpaqueType.INTEGER.id)
                     }
                 }
             }
@@ -494,7 +493,6 @@ fun TypesInfo.isDataType(type: Type): Boolean {
 // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
 private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
     return when (type) {
-        is UnvalidatedType.Integer -> true
         is UnvalidatedType.List -> isDataType(type.parameter)
         is UnvalidatedType.Maybe -> isDataType(type.parameter)
         is UnvalidatedType.FunctionType -> false
@@ -516,12 +514,11 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                     }
                     is TypeInfo.OpaqueType -> {
                         // TODO: This is incorrect (should check the module)
-                        type.ref.id == NativeOpaqueType.BOOLEAN.id
+                        type.ref.id == NativeOpaqueType.BOOLEAN.id || type.ref.id == NativeOpaqueType.INTEGER.id
                     }
                 }
             }
         }
-        is UnvalidatedType.Invalid.ReferenceInteger -> false
     }
 }
 

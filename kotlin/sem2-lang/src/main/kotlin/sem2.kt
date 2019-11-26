@@ -97,38 +97,6 @@ sealed class S2Type {
         return getTypeString()
     }
 
-    // This contains some types that are inherently invalid, but should be returned by the parser so the error messages
-    // can be left to the validator
-    object Invalid {
-        data class ReferenceInteger(override val location: Location? = null) : S2Type() {
-            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
-                return this
-            }
-
-            override fun getTypeString(): String {
-                return "&Integer"
-            }
-
-            override fun toString(): String {
-                return getTypeString()
-            }
-        }
-    }
-
-    data class Integer(override val location: Location? = null) : S2Type() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
-            return this
-        }
-
-        override fun getTypeString(): String {
-            return "Integer"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
-
     data class List(val parameter: S2Type, override val location: Location? = null): S2Type() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
             return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)

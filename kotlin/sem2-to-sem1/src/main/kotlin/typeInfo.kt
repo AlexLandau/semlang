@@ -3,6 +3,7 @@ package net.semlang.sem2.translate
 import net.semlang.api.*
 import net.semlang.api.Function
 import net.semlang.sem2.api.*
+import net.semlang.transforms.invalidate
 import net.semlang.validator.*
 
 fun collectTypesSummary(context: S2Context): TypesSummary {
@@ -23,7 +24,7 @@ fun collectTypeInfo(context: S2Context, moduleName: ModuleName, upstreamModules:
     return getTypesInfoFromSummary(summary, moduleId, upstreamModules, moduleVersionMappings, {})
 }
 
-private val fakeBlock = Block(listOf(), Expression.Literal(UnvalidatedType.Integer(), "111"))
+private val fakeBlock = Block(listOf(), Expression.Literal(invalidate(NativeOpaqueType.INTEGER.getType()), "111"))
 
 private fun translateForTypeOnly(s2Function: S2Function): Function {
     val id = translate(s2Function.id)

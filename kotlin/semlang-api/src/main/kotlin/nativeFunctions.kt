@@ -75,25 +75,25 @@ private fun addBooleanFunctions(definitions: ArrayList<FunctionSignature>) {
 private fun addIntegerFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // Integer.times
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "times"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "times"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.INTEGER.getType()))
 
     // Integer.plus
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "plus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "plus"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.INTEGER.getType()))
 
     // Integer.minus
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "minus"), listOf(Type.INTEGER, Type.INTEGER), Type.INTEGER))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "minus"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.INTEGER.getType()))
 
     // Integer.dividedBy
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), Type.Maybe(NativeOpaqueType.INTEGER.getType())))
     // Integer.modulo
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), Type.Maybe(NativeOpaqueType.INTEGER.getType())))
 
     // Integer.equals
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.BOOLEAN.getType()))
     // Integer.lessThan
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "lessThan"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.BOOLEAN.getType()))
     // Integer.greaterThan
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "greaterThan"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.BOOLEAN.getType()))
 }
 
 private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
@@ -296,7 +296,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("integer", Type.INTEGER)
+                    Member("integer", NativeOpaqueType.INTEGER.getType())
             ),
             // requires: value > -1
             TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(), TypedExpression.NamedFunctionCall(
@@ -304,8 +304,8 @@ object NativeStruct {
                     AliasType.NotAliased,
                     EntityRef.of("Integer", "greaterThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
-                    listOf(TypedExpression.Variable(Type.INTEGER, AliasType.PossiblyAliased, "integer"),
-                            TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, "-1")),
+                    listOf(TypedExpression.Variable(NativeOpaqueType.INTEGER.getType(), AliasType.PossiblyAliased, "integer"),
+                            TypedExpression.Literal(NativeOpaqueType.INTEGER.getType(), AliasType.NotAliased, "-1")),
                     listOf(),
                     listOf()
             )),
@@ -336,11 +336,11 @@ object NativeStruct {
                     EntityRef.of("Integer", "lessThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
                     listOf(
-                            TypedExpression.Follow(Type.INTEGER,
+                            TypedExpression.Follow(NativeOpaqueType.INTEGER.getType(),
                                     AliasType.PossiblyAliased,
                                     TypedExpression.Variable(NativeStruct.NATURAL.getType(), AliasType.PossiblyAliased, "natural"),
                                     "integer"),
-                            TypedExpression.Literal(Type.INTEGER, AliasType.NotAliased, "1114112")
+                            TypedExpression.Literal(NativeOpaqueType.INTEGER.getType(), AliasType.NotAliased, "1114112")
                     ),
                     listOf(),
                     listOf()
@@ -388,6 +388,9 @@ fun getNativeUnions(): Map<EntityId, Union> {
 object NativeOpaqueType {
     private val t = TypeParameter("T", null)
 
+    private val integerId = EntityId.of("Integer")
+    val INTEGER = OpaqueType(integerId, CURRENT_NATIVE_MODULE_ID, listOf(), false)
+
     private val booleanId = EntityId.of("Boolean")
     val BOOLEAN = OpaqueType(booleanId, CURRENT_NATIVE_MODULE_ID, listOf(), false)
 
@@ -412,6 +415,7 @@ object NativeOpaqueType {
 fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     val types = ArrayList<OpaqueType>()
 
+    types.add(NativeOpaqueType.INTEGER)
     types.add(NativeOpaqueType.BOOLEAN)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)

@@ -8,43 +8,6 @@ import { assertNever } from "./util";
 
 const typeT: Type.NamedType = { name: "T" };
 export const NativeStructs: { [structName: string]: Struct } = {
-    "Bit": {
-        id: "Bit",
-        members: [{name: "natural", type: {name: "Natural"}}],
-        requires: [
-            {
-                return: {
-                    type: "namedCall",
-                    function: "Boolean.or",
-                    chosenParameters: [],
-                    arguments: [
-                        {
-                            type: "namedCall",
-                            function: "Integer.equals",
-                            chosenParameters: [],
-                            arguments: [
-                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
-                                { type: "literal", literalType: "Integer", value: "0" }
-                            ],
-                        },
-                        {
-                            type: "namedCall",
-                            function: "Integer.equals",
-                            chosenParameters: [],
-                            arguments: [
-                                { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
-                                { type: "literal", literalType: "Integer", value: "1" }
-                            ],
-                        },
-                    ],
-                }
-            }
-        ],
-    },
-    "BitsBigEndian": {
-        id: "BitsBigEndian",
-        members: [{name: "bits", type: {List: {name: "Bit"}}}],
-    },
     "CodePoint": {
         id: "CodePoint",
         members: [{ name: "natural", type: {name: "Natural"} }],
@@ -56,7 +19,7 @@ export const NativeStructs: { [structName: string]: Struct } = {
                     chosenParameters: [],
                     arguments: [
                         { type: "follow", expression: { type: "var", var: "natural" }, name: "integer" },
-                        { type: "literal", literalType: "Integer", value: "1114112" }
+                        { type: "literal", literalType: {name: "Integer"}, value: "1114112" }
                     ],
                 }
             }

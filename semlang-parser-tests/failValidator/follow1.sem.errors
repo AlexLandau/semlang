@@ -1,5 +1,5 @@
 function myStuff.myFunction(): Integer {
   let i = Integer."1"
   i->cannotFollowAnInteger
-  ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot dereference an expression Variable(type=Integer, aliasType=PossiblyAliased, name=i) of non-struct, non-interface type Integer
+  ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot dereference an expression of opaque type semlang:lang:0:Integer
 }

@@ -30,7 +30,6 @@ private fun stripLocations(function: Function): Function {
 
 private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
     return when (type) {
-        is UnvalidatedType.Integer -> UnvalidatedType.Integer()
         is UnvalidatedType.List -> {
             val parameter = stripLocations(type.parameter)
             UnvalidatedType.List(parameter)
@@ -49,7 +48,6 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
             val parameters = type.parameters.map(::stripLocations)
             UnvalidatedType.NamedType(type.ref, type.isReference(), parameters)
         }
-        is UnvalidatedType.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger()
     }
 }
 

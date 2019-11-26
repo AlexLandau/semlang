@@ -8,7 +8,8 @@ import org.junit.Test
 
 class TypesMetadataTest {
     private val moduleId = ModuleUniqueId(ModuleName("semlang", "semlang-test"), "fake")
-    // TODO: Probably make this easier to instantiate
+    // TODO: Probably make these easier to instantiate
+    private val integerType = UnvalidatedType.NamedType(NativeOpaqueType.INTEGER.id.asRef(), false)
     private val naturalType = UnvalidatedType.NamedType(NativeStruct.NATURAL.id.asRef(), false)
 
     @Test
@@ -19,7 +20,7 @@ class TypesMetadataTest {
              myIntId to TypeInfo.Struct(
                  myIntId,
                  listOf(),
-                 mapOf("integer" to UnvalidatedType.Integer()),
+                 mapOf("integer" to integerType),
                  false,
                  false,
                  null
@@ -29,7 +30,7 @@ class TypesMetadataTest {
 
         assertEquals(TypeChain(
             UnvalidatedType.NamedType(resolvedMyInt.toUnresolvedRef(), false),
-            listOf(TypeChainLink("integer", UnvalidatedType.Integer()))),
+            listOf(TypeChainLink("integer", integerType))),
             metadata.typeChains[resolvedMyInt])
     }
 
@@ -53,7 +54,7 @@ class TypesMetadataTest {
             UnvalidatedType.NamedType(resolvedMyBit.toUnresolvedRef(), false),
             listOf(
                 TypeChainLink("natural", naturalType),
-                TypeChainLink("integer", UnvalidatedType.Integer())
+                TypeChainLink("integer", integerType)
             )),
             metadata.typeChains[resolvedMyBit])
     }

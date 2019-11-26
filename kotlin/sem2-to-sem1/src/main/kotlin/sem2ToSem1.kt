@@ -685,8 +685,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
     private fun getNamespaceForType(subexpressionType: UnvalidatedType?): List<String> {
         return when (subexpressionType) {
-            is UnvalidatedType.Invalid.ReferenceInteger -> listOf("Integer")
-            is UnvalidatedType.Integer -> listOf("Integer")
             is UnvalidatedType.List -> listOf("List")
             is UnvalidatedType.Maybe -> listOf("Maybe")
             is UnvalidatedType.FunctionType -> listOf()
@@ -789,8 +787,6 @@ private fun translate(typeClass: TypeClass?): net.semlang.api.TypeClass? {
 
 internal fun translate(type: S2Type): UnvalidatedType {
     return when (type) {
-        is S2Type.Invalid.ReferenceInteger -> UnvalidatedType.Invalid.ReferenceInteger(type.location)
-        is S2Type.Integer -> UnvalidatedType.Integer(type.location)
         is S2Type.List -> UnvalidatedType.List(
                 parameter = translate(type.parameter),
                 location = type.location)

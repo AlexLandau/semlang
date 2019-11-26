@@ -46,7 +46,6 @@ fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionTyp
 
 fun invalidate(type: Type): UnvalidatedType {
     return when (type) {
-        Type.INTEGER -> UnvalidatedType.Integer()
         is Type.List -> {
             UnvalidatedType.List(invalidate(type.parameter))
         }

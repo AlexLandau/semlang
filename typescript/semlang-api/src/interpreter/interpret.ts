@@ -289,9 +289,7 @@ export class InterpreterContext {
     }
 
     evaluateLiteral(type: Type, value: string): SemObject {
-        if (type === "Integer") {
-            return integerObject(bigInt(value));
-        } else if (isMaybeType(type)) {
+        if (isMaybeType(type)) {
             // Note: This is currently only intended for @Test cases
             if (value === "failure") {
                 return failureObject();
@@ -317,6 +315,11 @@ export class InterpreterContext {
                         return booleanObject(false);
                     }
                     throw new Error(`Unexpected Boolean literal ${value}`);
+                }
+
+                // Handle integers
+                if (name === "Integer") {
+                    return integerObject(bigInt(value));
                 }
 
                 // Handle naturals
@@ -474,11 +477,11 @@ interface LiteralTypeChain {
 }
 
 function isNativeLiteralType(type: Type) {
-    if (type === "Integer") {
-        return true;
-    }
     if (isNamedType(type)) {
-        if (type.name === "Boolean" || type.name === "String" || type.name === "Natural") {
+        if (type.name === "Boolean" ||
+            type.name === "Integer" ||
+            type.name === "Natural" ||
+            type.name === "String") {
             return true;
         }
     }

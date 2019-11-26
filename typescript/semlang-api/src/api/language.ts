@@ -152,7 +152,7 @@ export namespace Expression {
 
 export type Binding = Expression | null;
 
-export type Type = "Integer"
+export type Type =
  | { List: Type }
  | { Maybe: Type }
  | Type.FunctionType

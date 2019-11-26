@@ -94,54 +94,6 @@ sealed class UnvalidatedType {
         return getTypeString()
     }
 
-    // This contains some types that are inherently invalid, but should be returned by the parser so the error messages
-    // can be left to the validator
-    object Invalid {
-        data class ReferenceInteger(override val location: Location? = null) : UnvalidatedType() {
-            override fun isReference(): kotlin.Boolean {
-                return true
-            }
-
-            override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType {
-                return this
-            }
-
-            override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-                return other is ReferenceInteger
-            }
-
-            override fun getTypeString(): String {
-                return "&Integer"
-            }
-
-            override fun toString(): String {
-                return getTypeString()
-            }
-        }
-    }
-
-    data class Integer(override val location: Location? = null) : UnvalidatedType() {
-        override fun isReference(): kotlin.Boolean {
-            return false
-        }
-
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Integer {
-            return this
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is Integer
-        }
-
-        override fun getTypeString(): String {
-            return "Integer"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
-
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun isReference(): kotlin.Boolean {
             return false
@@ -309,29 +261,6 @@ sealed class Type {
         return isBindableInternal(0)
     }
     abstract protected fun isBindableInternal(numAllowedIndices: Int): Boolean
-
-    // TODO: Recase these to Integer and Boolean when convenient
-    object INTEGER : Type() {
-        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
-            return true
-        }
-
-        override fun isReference(): Boolean {
-            return false
-        }
-
-        override fun getTypeString(): String {
-            return "Integer"
-        }
-
-        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
-            return this
-        }
-
-        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
-            return this
-        }
-    }
 
     data class List(val parameter: Type): Type() {
         override fun isBindableInternal(numAllowedIndices: Int): Boolean {
@@ -1084,7 +1013,6 @@ data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typePa
 
 private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
     return when (this) {
-        Type.INTEGER -> this
         is Type.List -> {
             Type.List(parameter.internalizeParameters(newParameterIndices, indexOffset))
         }

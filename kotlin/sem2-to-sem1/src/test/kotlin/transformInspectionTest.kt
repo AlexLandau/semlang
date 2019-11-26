@@ -11,11 +11,12 @@ import org.junit.Test
 class TransformInspectionTest {
     val s2F1Id = EntityId.of("f1")
     val s2IntegerPlus = S2Expression.DotAccess(S2Expression.RawId("Integer"), "plus")
-    val s2Integer1 = S2Expression.Literal(S2Type.Integer(), "1")
+    val s2IntType = S2Type.NamedType(EntityRef(null, EntityId.of("Integer")), false)
+    val s2Integer1 = S2Expression.Literal(s2IntType, "1")
 
     @Test
     fun testNamedFunctionCallFromNamespacedFunctionCall() {
-        val sem2Function = S2Function(s2F1Id, listOf(), listOf(), S2Type.Integer(), S2Block(
+        val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
                 statements = listOf(),
                 returnedExpression = S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
                         expression = s2IntegerPlus,
@@ -34,7 +35,7 @@ class TransformInspectionTest {
 
     @Test
     fun testNamedFunctionCallFromLocalFunctionCall() {
-        val sem2Function = S2Function(s2F1Id, listOf(), listOf(), S2Type.Integer(), S2Block(
+        val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
                 statements = listOf(),
                 returnedExpression = S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
                         expression = S2Expression.DotAccess( // Integer."1".plus
