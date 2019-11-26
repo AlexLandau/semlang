@@ -60,7 +60,6 @@ internal fun Type.FunctionType.Parameterized.getTypeParameterInferenceSources():
     fun addPossibleSources(type: Type, sourceSoFar: TypeParameterInferenceSource, indexOffset: Int) {
         val unused: Any = when (type) {
             is Type.INTEGER -> { return }
-            is Type.BOOLEAN -> { return }
             is Type.List -> {
                 val listSource = TypeParameterInferenceSource.ListType(sourceSoFar)
                 addPossibleSources(type.parameter, listSource, indexOffset)
@@ -171,7 +170,6 @@ fun getTypeParameterInferenceSources(type: UnvalidatedType.FunctionType): List<L
             is UnvalidatedType.Invalid.ReferenceInteger -> { return }
             is UnvalidatedType.Invalid.ReferenceBoolean -> { return }
             is UnvalidatedType.Integer -> { return }
-            is UnvalidatedType.Boolean -> { return }
             is UnvalidatedType.List -> {
                 val listSource = UnvalidatedTypeParameterInferenceSource.ListType(sourceSoFar)
                 addPossibleSources(type.parameter, listSource)

@@ -1,5 +1,5 @@
 // Function types are not data types
 function areFunctionsEqual(fn1: (Integer) -> Boolean, fn2: (Integer) -> Boolean): Boolean {
   Data.equals<(Integer) -> Boolean>(fn1, fn2)
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but (Integer) -> Boolean is not a data type
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but (Integer) -> semlang:lang:0:Boolean is not a data type
 }

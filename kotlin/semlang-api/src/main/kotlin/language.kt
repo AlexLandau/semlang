@@ -163,27 +163,6 @@ sealed class UnvalidatedType {
             return getTypeString()
         }
     }
-    data class Boolean(override val location: Location? = null) : UnvalidatedType() {
-        override fun isReference(): kotlin.Boolean {
-            return false
-        }
-
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Boolean {
-            return this
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is Boolean
-        }
-
-        override fun getTypeString(): String {
-            return "Boolean"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
 
     data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun isReference(): kotlin.Boolean {
@@ -365,27 +344,6 @@ sealed class Type {
 
         override fun getTypeString(): String {
             return "Integer"
-        }
-
-        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
-            return this
-        }
-
-        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
-            return this
-        }
-    }
-    object BOOLEAN : Type() {
-        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
-            return true
-        }
-
-        override fun isReference(): Boolean {
-            return false
-        }
-
-        override fun getTypeString(): String {
-            return "Boolean"
         }
 
         override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
@@ -1149,7 +1107,6 @@ data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typePa
 private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
     return when (this) {
         Type.INTEGER -> this
-        Type.BOOLEAN -> this
         is Type.List -> {
             Type.List(parameter.internalizeParameters(newParameterIndices, indexOffset))
         }

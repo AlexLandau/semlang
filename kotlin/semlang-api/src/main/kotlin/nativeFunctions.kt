@@ -62,13 +62,13 @@ private fun <T: HasId> toMap(definitions: ArrayList<T>): Map<EntityId, T> {
 private fun addBooleanFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // Boolean.not
-    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "not"), listOf(Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "not"), listOf(NativeOpaqueType.BOOLEAN.getType()), NativeOpaqueType.BOOLEAN.getType()))
 
     // Boolean.and
-    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "and"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "and"), listOf(NativeOpaqueType.BOOLEAN.getType(), NativeOpaqueType.BOOLEAN.getType()), NativeOpaqueType.BOOLEAN.getType()))
 
     // Boolean.or
-    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "or"), listOf(Type.BOOLEAN, Type.BOOLEAN), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Boolean", "or"), listOf(NativeOpaqueType.BOOLEAN.getType(), NativeOpaqueType.BOOLEAN.getType()), NativeOpaqueType.BOOLEAN.getType()))
 
 }
 
@@ -89,11 +89,11 @@ private fun addIntegerFunctions(definitions: ArrayList<FunctionSignature>) {
     definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(Type.INTEGER, Type.INTEGER), Type.Maybe(Type.INTEGER)))
 
     // Integer.equals
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
     // Integer.lessThan
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "lessThan"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
     // Integer.greaterThan
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), Type.BOOLEAN))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "greaterThan"), listOf(Type.INTEGER, Type.INTEGER), NativeOpaqueType.BOOLEAN.getType()))
 }
 
 private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
@@ -134,7 +134,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // List.filter
     definitions.add(FunctionSignature.create(EntityId.of("List", "filter"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.BOOLEAN)),
+            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), NativeOpaqueType.BOOLEAN.getType())),
             outputType = Type.List(typeT)))
 
     // List.reduce
@@ -183,7 +183,7 @@ private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
     // Maybe.isSuccess
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "isSuccess"), typeParameters = listOf(t),
             argumentTypes = listOf(Type.Maybe(typeT)),
-            outputType = Type.BOOLEAN))
+            outputType = NativeOpaqueType.BOOLEAN.getType()))
 
     // Maybe.map
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "map"), typeParameters = listOf(t, u),
@@ -215,7 +215,7 @@ private fun addSequenceFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // Sequence.first
     definitions.add(FunctionSignature.create(EntityId.of("Sequence", "first"), typeParameters = listOf(t),
-            argumentTypes = listOf(sequenceT, Type.FunctionType.create(false, listOf(), listOf(typeT), Type.BOOLEAN)),
+            argumentTypes = listOf(sequenceT, Type.FunctionType.create(false, listOf(), listOf(typeT), NativeOpaqueType.BOOLEAN.getType())),
             outputType = typeT))
 
     // TODO: Consider adding BasicSequence functions here? Or unnecessary?
@@ -228,7 +228,7 @@ private fun addDataFunctions(definitions: ArrayList<FunctionSignature>) {
     // Data.equals
     definitions.add(FunctionSignature.create(EntityId.of("Data", "equals"), typeParameters = listOf(t),
             argumentTypes = listOf(typeT, typeT),
-            outputType = Type.BOOLEAN))
+            outputType = NativeOpaqueType.BOOLEAN.getType()))
 }
 
 // TODO: Some of these should probably go elsewhere; at least TextOut should be in a separate module
@@ -282,7 +282,7 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
     // TODO: Maybe give these their own function in this file
     // Function.whileTrueDo
     definitions.add(FunctionSignature.create(EntityId.of("Function", "whileTrueDo"),
-            argumentTypes = listOf(Type.FunctionType.create(true, listOf(), listOf(), Type.BOOLEAN), Type.FunctionType.create(true, listOf(), listOf(), NativeStruct.VOID.getType())),
+            argumentTypes = listOf(Type.FunctionType.create(true, listOf(), listOf(), NativeOpaqueType.BOOLEAN.getType()), Type.FunctionType.create(true, listOf(), listOf(), NativeStruct.VOID.getType())),
             outputType = NativeStruct.VOID.getType()))
 
 }
@@ -299,8 +299,8 @@ object NativeStruct {
                     Member("integer", Type.INTEGER)
             ),
             // requires: value > -1
-            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
-                    Type.BOOLEAN,
+            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(), TypedExpression.NamedFunctionCall(
+                    NativeOpaqueType.BOOLEAN.getType(),
                     AliasType.NotAliased,
                     EntityRef.of("Integer", "greaterThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "greaterThan")),
@@ -330,8 +330,8 @@ object NativeStruct {
                     Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value < 1114112
-            TypedBlock(Type.BOOLEAN, listOf(), TypedExpression.NamedFunctionCall(
-                    Type.BOOLEAN,
+            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(), TypedExpression.NamedFunctionCall(
+                    NativeOpaqueType.BOOLEAN.getType(),
                     AliasType.NotAliased,
                     EntityRef.of("Integer", "lessThan"),
                     ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Integer", "lessThan")),
@@ -388,6 +388,9 @@ fun getNativeUnions(): Map<EntityId, Union> {
 object NativeOpaqueType {
     private val t = TypeParameter("T", null)
 
+    private val booleanId = EntityId.of("Boolean")
+    val BOOLEAN = OpaqueType(booleanId, CURRENT_NATIVE_MODULE_ID, listOf(), false)
+
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
@@ -409,6 +412,7 @@ object NativeOpaqueType {
 fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     val types = ArrayList<OpaqueType>()
 
+    types.add(NativeOpaqueType.BOOLEAN)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
     types.add(NativeOpaqueType.VAR)

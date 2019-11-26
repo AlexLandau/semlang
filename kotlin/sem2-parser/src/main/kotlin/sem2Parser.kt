@@ -645,11 +645,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Type.Invalid.ReferenceInteger(typeLocation)
             }
             return S2Type.Integer(typeLocation)
-        } else if (typeId == "Boolean") {
-            if (isReference) {
-                return S2Type.Invalid.ReferenceBoolean(typeLocation)
-            }
-            return S2Type.Boolean(typeLocation)
         } else if (typeId == "List") {
             if (isReference) {
                 throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))

@@ -831,9 +831,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     CodeBlock.of("new \$T(\$S)", BigInteger::class.java, literal)
                 }
             }
-            Type.BOOLEAN -> {
-                CodeBlock.of("\$L", literal)
-            }
             is Type.List -> error("Literals not supported for list type $type")
             is Type.Maybe -> {
                 // We need to support this for unit tests, specifically
@@ -856,6 +853,9 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                     }
                     if (resolvedType.entityRef.id == NativeStruct.STRING.id) {
                         return writeStringLiteral(literal)
+                    }
+                    if (resolvedType.entityRef.id == NativeOpaqueType.BOOLEAN.id) {
+                        return CodeBlock.of("\$L", literal)
                     }
                 }
 
@@ -905,11 +905,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
             Type.INTEGER -> ClassName.get(BigInteger::class.java)
-            Type.BOOLEAN -> if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
             is Type.Maybe -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
-            is Type.NamedType -> getNamedType(semlangType)
+            is Type.NamedType -> getNamedType(semlangType, isParameter)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
             is Type.InternalParameterType -> TypeName.OBJECT
         }
@@ -921,10 +920,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return strategy.getTypeName(semlangType, { this.getType(it, true) })
     }
 
-    private fun getNamedType(semlangType: Type.NamedType): TypeName {
+    private fun getNamedType(semlangType: Type.NamedType, isParameter: Boolean): TypeName {
         //TODO: Resolve beforehand, not after (part of multi-module support (?))
 
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
+            listOf("Boolean") -> return if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             listOf("Natural") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("String") -> ClassName.get(String::class.java)
@@ -1159,13 +1159,12 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             val right = writeExpression(arguments[1])
             // TODO: We may need to vary this based on the chosen type in the future
             val type = chosenTypes[0]
-            if (type == Type.BOOLEAN) {
-                return CodeBlock.of("(\$L == \$L)", left, right)
-            } else if (type is Type.NamedType && isNativeModule(type.ref.module) && type.ref.id == EntityId.of("Void")) {
-                return CodeBlock.of("(\$L == \$L)", left, right)
-            } else {
-                return CodeBlock.of("\$L.equals(\$L)", left, right)
+            if (type is Type.NamedType && isNativeModule(type.ref.module)) {
+                if (type.ref.id == NativeOpaqueType.BOOLEAN.id || type.ref.id == NativeStruct.VOID.id) {
+                    return CodeBlock.of("(\$L == \$L)", left, right)
+                }
             }
+            return CodeBlock.of("\$L.equals(\$L)", left, right)
         }
     }
 
@@ -1371,7 +1370,6 @@ private fun ClassName.sanitize(): ClassName {
 private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
     return when (type) {
         Type.INTEGER -> true
-        Type.BOOLEAN -> true
         is Type.List -> isDataType(type.parameter, containingModule)
         is Type.Maybe -> isDataType(type.parameter, containingModule)
         is Type.FunctionType -> false
@@ -1389,7 +1387,9 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                     val struct = containingModule.getInternalStruct(entityResolution.entityRef)
                     isDataStruct(struct.struct, struct.module)
                 }
-                FunctionLikeType.OPAQUE_TYPE -> false
+                FunctionLikeType.OPAQUE_TYPE -> {
+                    type == NativeOpaqueType.BOOLEAN.getType()
+                }
                 FunctionLikeType.UNION_TYPE -> TODO()
                 FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()
                 FunctionLikeType.UNION_WHEN_FUNCTION -> TODO()
