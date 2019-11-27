@@ -84,9 +84,9 @@ private fun addIntegerFunctions(definitions: ArrayList<FunctionSignature>) {
     definitions.add(FunctionSignature.create(EntityId.of("Integer", "minus"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.INTEGER.getType()))
 
     // Integer.dividedBy
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(listOf(NativeOpaqueType.INTEGER.getType()))))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(NativeOpaqueType.INTEGER.getType())))
     // Integer.modulo
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(listOf(NativeOpaqueType.INTEGER.getType()))))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(NativeOpaqueType.INTEGER.getType())))
 
     // Integer.equals
     definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.BOOLEAN.getType()))
@@ -103,7 +103,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     val typeU = Type.InternalParameterType(1)
 
     fun listType(t: Type): Type {
-        return NativeOpaqueType.LIST.getType(listOf(t))
+        return NativeOpaqueType.LIST.getType(t)
     }
 
     // List.append
@@ -124,7 +124,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     // List.subList
     definitions.add(FunctionSignature.create(EntityId.of("List", "subList"), typeParameters = listOf(t),
             argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
-            outputType = NativeOpaqueType.MAYBE.getType(listOf(listType(typeT)))))
+            outputType = NativeOpaqueType.MAYBE.getType(listType(typeT))))
 
     // List.map
     definitions.add(FunctionSignature.create(EntityId.of("List", "map"), typeParameters = listOf(t, u),
@@ -159,7 +159,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     // List.get
     definitions.add(FunctionSignature.create(EntityId.of("List", "get"), typeParameters = listOf(t),
             argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType()),
-            outputType = NativeOpaqueType.MAYBE.getType(listOf(typeT))))
+            outputType = NativeOpaqueType.MAYBE.getType(typeT)))
 }
 
 private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
@@ -169,7 +169,7 @@ private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
     val typeU = Type.InternalParameterType(1)
 
     fun maybeType(t: Type): Type {
-        return NativeOpaqueType.MAYBE.getType(listOf(t))
+        return NativeOpaqueType.MAYBE.getType(t)
     }
 
     // Maybe.success
@@ -214,7 +214,7 @@ private fun addSequenceFunctions(definitions: ArrayList<FunctionSignature>) {
     val t = TypeParameter("T", null)
     val typeT = Type.InternalParameterType(0)
 
-    val sequenceT = NativeStruct.SEQUENCE.getType(listOf(typeT))
+    val sequenceT = NativeStruct.SEQUENCE.getType(typeT)
 
     // Sequence.get
     definitions.add(FunctionSignature.create(EntityId.of("Sequence", "get"), typeParameters = listOf(t),
@@ -249,7 +249,7 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
             argumentTypes = listOf(NativeOpaqueType.TEXT_OUT.getType(), NativeStruct.STRING.getType()),
             outputType = NativeStruct.VOID.getType()))
 
-    val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(listOf(typeT))
+    val listBuilderT = NativeOpaqueType.LIST_BUILDER.getType(typeT)
 
     // ListBuilder constructor
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder"), typeParameters = listOf(t),
@@ -263,16 +263,16 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // ListBuilder.appendAll
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
-            argumentTypes = listOf(listBuilderT, NativeOpaqueType.LIST.getType(listOf(typeT))),
+            argumentTypes = listOf(listBuilderT, NativeOpaqueType.LIST.getType(typeT)),
             outputType = NativeStruct.VOID.getType()))
 
     // ListBuilder.build
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT),
-            outputType = NativeOpaqueType.LIST.getType(listOf(typeT))))
+            outputType = NativeOpaqueType.LIST.getType(typeT)))
 
     // Var constructor
-    val varT = NativeOpaqueType.VAR.getType(listOf(typeT))
+    val varT = NativeOpaqueType.VAR.getType(typeT)
     definitions.add(FunctionSignature.create(EntityId.of("Var"), typeParameters = listOf(t),
             argumentTypes = listOf(typeT),
             outputType = varT))
@@ -360,7 +360,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("codePoints", NativeOpaqueType.LIST.getType(listOf(CODE_POINT.getType())))
+                    Member("codePoints", NativeOpaqueType.LIST.getType(CODE_POINT.getType()))
             ),
             null,
             listOf()

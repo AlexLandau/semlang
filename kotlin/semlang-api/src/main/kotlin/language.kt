@@ -792,11 +792,11 @@ data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val t
         return members.indexOfFirst { member -> member.name == name }
     }
 
-    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+    fun getType(vararg chosenParameters: Type = arrayOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {
             error("Incorrect number of type parameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), false, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), false, chosenParameters.toList())
     }
 
     // TODO: Deconflict with UnvalidatedStruct version
@@ -806,7 +806,7 @@ data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val t
         val outputType = if (requires == null) {
             Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
         } else {
-            NativeOpaqueType.MAYBE.getType(listOf(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)))
+            NativeOpaqueType.MAYBE.getType(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
         }
         return FunctionSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -909,12 +909,12 @@ private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParamete
 
 data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isReference: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
-    // TODO: Can this be varargs?
-    fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
+
+    fun getType(vararg chosenParameters: Type = arrayOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {
             error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
         }
-        return Type.NamedType(resolvedRef, id.asRef(), isReference, chosenParameters)
+        return Type.NamedType(resolvedRef, id.asRef(), isReference, chosenParameters.toList())
     }
 }
 

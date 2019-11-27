@@ -793,7 +793,7 @@ private class Validator(
             errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
         }
 
-        val listType = NativeOpaqueType.LIST.getType(listOf(chosenParameter))
+        val listType = NativeOpaqueType.LIST.getType(chosenParameter)
 
         var itemErrorFound = false
         val contents = ArrayList<TypedExpression>()
