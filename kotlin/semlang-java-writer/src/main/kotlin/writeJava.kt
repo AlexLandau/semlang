@@ -823,7 +823,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
     private fun writeLiteralExpression(type: Type, literal: String): CodeBlock {
         return when (type) {
-            is Type.List -> error("Literals not supported for list type $type")
             is Type.Maybe -> {
                 // We need to support this for unit tests, specifically
                 if (literal == "failure") {
@@ -904,7 +903,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
-            is Type.List -> ParameterizedTypeName.get(ClassName.get(java.util.List::class.java), getType(semlangType.parameter, true))
             is Type.Maybe -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType, isParameter)
@@ -925,6 +923,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val predefinedClassName: ClassName? = when (semlangType.originalRef.id.namespacedName) {
             listOf("Integer") -> ClassName.get(BigInteger::class.java)
             listOf("Boolean") -> return if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
+            listOf("List") -> ClassName.get(java.util.List::class.java)
             listOf("Natural") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("String") -> ClassName.get(String::class.java)
@@ -974,9 +973,14 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         return when (annotationArg) {
             is AnnotationArgument.Literal -> TypedExpression.Literal(type, AliasType.NotAliased, annotationArg.value)
             is AnnotationArgument.List -> {
-                if (type is Type.List) {
-                    val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
-                    TypedExpression.ListLiteral(type, AliasType.NotAliased, contents, type.parameter)
+                if (type is Type.NamedType) {
+                    if (type.ref == NativeOpaqueType.LIST.resolvedRef) {
+                        val parameter = type.parameters[0]
+                        val contents = annotationArg.values.map { toTestLiteral(parameter, it) }
+                        TypedExpression.ListLiteral(type, AliasType.NotAliased, contents, parameter)
+                    } else {
+                        TODO()
+                    }
                 } else if (type is Type.Maybe) {
                     val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
                     if (contents.isEmpty()) {
@@ -1369,7 +1373,6 @@ private fun ClassName.sanitize(): ClassName {
 // TODO: Maybe put this on the ValidatedModule itself?
 private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
     return when (type) {
-        is Type.List -> isDataType(type.parameter, containingModule)
         is Type.Maybe -> isDataType(type.parameter, containingModule)
         is Type.FunctionType -> false
         is Type.ParameterType -> false // Might have cases in the future where a parameter can be restricted to be data
@@ -1391,7 +1394,9 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 FunctionLikeType.OPAQUE_TYPE -> {
                     // TODO: Maybe have a Type.isDataType()?
                     // TODO: These are also mentioned above, can we deduplicate?
-                    type == NativeOpaqueType.BOOLEAN.getType() || type == NativeOpaqueType.INTEGER.getType()
+                    type == NativeOpaqueType.BOOLEAN.getType() ||
+                            type == NativeOpaqueType.INTEGER.getType() ||
+                            (type.ref == NativeOpaqueType.LIST.resolvedRef && isDataType(type.parameters[0], containingModule))
                 }
                 FunctionLikeType.UNION_TYPE -> TODO()
                 FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()

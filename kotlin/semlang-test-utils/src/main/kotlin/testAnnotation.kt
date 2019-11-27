@@ -217,18 +217,6 @@ private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals
 
 fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument, interpreter: SemlangForwardInterpreter): SemObject {
     return when (type) {
-        is Type.List -> {
-            // TODO: Support the alternative list notation
-            when (annotationArg) {
-                is AnnotationArgument.Literal -> error("List types should be expressed as an annotation argument list, but was: $annotationArg")
-                is AnnotationArgument.List -> {
-                    val itemType = type.parameter
-                    val semObjects = annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
-                    SemObject.SemList(semObjects)
-                }
-            }
-
-        }
         is Type.Maybe -> {
             when (annotationArg) {
                 is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
@@ -246,7 +234,20 @@ fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument
         is Type.FunctionType.Parameterized -> TODO()
         is Type.InternalParameterType -> TODO()
         is Type.ParameterType -> TODO()
-        is Type.NamedType -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+        is Type.NamedType -> {
+            if (type.ref == NativeOpaqueType.LIST.resolvedRef) {
+                when (annotationArg) {
+                    is AnnotationArgument.Literal -> error("List types should be expressed as an annotation argument list, but was: $annotationArg")
+                    is AnnotationArgument.List -> {
+                        val itemType = type.parameters[0]
+                        val semObjects = annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
+                        SemObject.SemList(semObjects)
+                    }
+                }
+            } else {
+                interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+            }
+        }
     }
 }
 

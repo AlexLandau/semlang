@@ -4,5 +4,5 @@
 struct Foo {
   a: Integer
   requires { Integer."1" }
-           ~~~~~~~~~~~~~~~ Struct Foo has a requires block with inferred type semlang:lang:0:Integer, but the type should be Boolean
+           ~~~~~~~~~~~~~~~ Struct Foo has a requires block with inferred type semlang:lang:"fake0:0":Integer, but the type should be Boolean
 }

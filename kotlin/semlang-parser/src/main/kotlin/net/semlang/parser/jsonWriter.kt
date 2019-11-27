@@ -146,9 +146,6 @@ private fun addMember(node: ObjectNode, member: Member) {
 private fun toTypeNode(type: Type): JsonNode {
     val factory = JsonNodeFactory.instance
     return when (type) {
-        is Type.List -> {
-            ObjectNode(factory).set("List", toTypeNode(type.parameter))
-        }
         is Type.Maybe -> {
             ObjectNode(factory).set("Maybe", toTypeNode(type.parameter))
         }
@@ -219,8 +216,6 @@ private fun parseType(node: JsonNode): UnvalidatedType {
         return UnvalidatedType.FunctionType(isReference, typeParameters, argTypes, outputType)
     } else if (node.has("Maybe")) {
         return UnvalidatedType.Maybe(parseType(node["Maybe"]))
-    } else if (node.has("List")) {
-        return UnvalidatedType.List(parseType(node["List"]))
     }
     error("Unrecognized type: $node")
 }

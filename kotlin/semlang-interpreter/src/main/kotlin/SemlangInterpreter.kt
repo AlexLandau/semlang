@@ -426,7 +426,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
         return when (type) {
-            is Type.List -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.Maybe -> evaluateMaybeLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)

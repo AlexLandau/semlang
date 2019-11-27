@@ -1,4 +1,4 @@
 function doSomethingWrong(): Integer {
-                             ~~~~~~~ Stated return type Integer does not match the block's actual return type semlang:lang:0:String
+                             ~~~~~~~ Stated return type Integer does not match the block's actual return type semlang:lang:"fake0:0":String
   "1"
 }

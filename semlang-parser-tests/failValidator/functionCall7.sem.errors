@@ -2,5 +2,5 @@ function myStuff.myFunction(): List<Integer> {
   let empty: List<Integer> = []<Integer>
   // Call with too many type parameters
   List.append<Integer, Integer>(empty, Integer."1")
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Too many type parameters were supplied for function call/binding for List.append; provided 2, but 1 were expected, function type was <T>(List<InternalParameterType(index=0)>, InternalParameterType(index=0)) -> List<InternalParameterType(index=0)>
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Too many type parameters were supplied for function call/binding for List.append; provided 2, but 1 were expected, function type was <T>(semlang:lang:"fake0:0":List<InternalParameterType(index=0)>, InternalParameterType(index=0)) -> semlang:lang:"fake0:0":List<InternalParameterType(index=0)>
 }

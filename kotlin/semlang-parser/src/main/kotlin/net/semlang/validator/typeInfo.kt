@@ -453,7 +453,6 @@ private class TypesSummaryToInfoConverter(
 
 fun TypesInfo.isDataType(type: Type): Boolean {
     return when (type) {
-        is Type.List -> isDataType(type.parameter)
         is Type.Maybe -> isDataType(type.parameter)
         is Type.FunctionType -> false
         is Type.ParameterType -> {
@@ -482,7 +481,10 @@ fun TypesInfo.isDataType(type: Type): Boolean {
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
                     }
                     is TypeInfo.OpaqueType -> {
-                        isNativeModule(type.ref.module) && (type.ref.id == NativeOpaqueType.BOOLEAN.id || type.ref.id == NativeOpaqueType.INTEGER.id)
+                        isNativeModule(type.ref.module) &&
+                                (type.ref.id == NativeOpaqueType.BOOLEAN.id ||
+                                        type.ref.id == NativeOpaqueType.INTEGER.id ||
+                                        (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0])))
                     }
                 }
             }
@@ -493,7 +495,6 @@ fun TypesInfo.isDataType(type: Type): Boolean {
 // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
 private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
     return when (type) {
-        is UnvalidatedType.List -> isDataType(type.parameter)
         is UnvalidatedType.Maybe -> isDataType(type.parameter)
         is UnvalidatedType.FunctionType -> false
         is UnvalidatedType.NamedType -> {
@@ -514,7 +515,10 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                     }
                     is TypeInfo.OpaqueType -> {
                         // TODO: This is incorrect (should check the module)
-                        type.ref.id == NativeOpaqueType.BOOLEAN.id || type.ref.id == NativeOpaqueType.INTEGER.id
+                        // TODO: Maybe check all parameters unconditionally?
+                        type.ref.id == NativeOpaqueType.BOOLEAN.id ||
+                                type.ref.id == NativeOpaqueType.INTEGER.id ||
+                                (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0]))
                     }
                 }
             }

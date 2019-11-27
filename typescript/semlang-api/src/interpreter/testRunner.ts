@@ -1,7 +1,8 @@
 import { isEqual } from "lodash";
-import { Module, Type, isListType, isMaybeType } from "../api/language";
+import { Module, Type, isMaybeType, isNamedType } from "../api/language";
 import { interpret, evaluateLiteral, InterpreterContext } from "./interpret";
 import { SemObject, listObject, failureObject, successObject } from "./SemObject";
+import { isOpaqueType } from "@babel/types";
 
 
 // Returns the error messages from any failed tests.
@@ -54,8 +55,8 @@ function evaluateAnnotationLiteral(module: Module, type: Type, annotationArg: st
         } else {
             throw new Error(`Expected a @Test annotation argument for a Maybe type (${JSON.stringify(type)}) to have zero or one item, but was: ${JSON.stringify(annotationArg)}`);
         }
-    } else if (isListType(type)) {
-        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.List, value));
+    } else if (isNamedType(type) && type.name === "List") {
+        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.params![0], value));
         return listObject(semObjects);
     } else {
         throw new Error(`Expected a @Test annotation argument that was a list (${JSON.stringify(annotationArg)}) to be of a List or Maybe type, but was: ${JSON.stringify(type)}`);

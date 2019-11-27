@@ -169,9 +169,6 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
 
     private fun addTypeParameters(set: MutableSet<TypeParameter>, type: Type) {
         val unused: Any = when (type) {
-            is Type.List -> {
-                addTypeParameters(set, type.parameter)
-            }
             is Type.Maybe -> {
                 addTypeParameters(set, type.parameter)
             }

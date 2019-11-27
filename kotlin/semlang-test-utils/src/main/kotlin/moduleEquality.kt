@@ -30,10 +30,6 @@ private fun stripLocations(function: Function): Function {
 
 private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
     return when (type) {
-        is UnvalidatedType.List -> {
-            val parameter = stripLocations(type.parameter)
-            UnvalidatedType.List(parameter)
-        }
         is UnvalidatedType.Maybe -> {
             val parameter = stripLocations(type.parameter)
             UnvalidatedType.Maybe(parameter)

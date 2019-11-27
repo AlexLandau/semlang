@@ -409,7 +409,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         contents = expression.contents.map { translateFullExpression(it, varTypes).expression },
                         chosenParameter = chosenParameter,
                         location = expression.location
-                ), UnvalidatedType.List(chosenParameter))
+                ), UnvalidatedType.NamedType(NativeOpaqueType.LIST.resolvedRef.toUnresolvedRef(), false, listOf(chosenParameter)))
             }
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
@@ -685,7 +685,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
     private fun getNamespaceForType(subexpressionType: UnvalidatedType?): List<String> {
         return when (subexpressionType) {
-            is UnvalidatedType.List -> listOf("List")
             is UnvalidatedType.Maybe -> listOf("Maybe")
             is UnvalidatedType.FunctionType -> listOf()
             is UnvalidatedType.NamedType -> {
@@ -787,9 +786,6 @@ private fun translate(typeClass: TypeClass?): net.semlang.api.TypeClass? {
 
 internal fun translate(type: S2Type): UnvalidatedType {
     return when (type) {
-        is S2Type.List -> UnvalidatedType.List(
-                parameter = translate(type.parameter),
-                location = type.location)
         is S2Type.Maybe -> UnvalidatedType.Maybe(
                 parameter = translate(type.parameter),
                 location = type.location)

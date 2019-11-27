@@ -97,20 +97,6 @@ sealed class S2Type {
         return getTypeString()
     }
 
-    data class List(val parameter: S2Type, override val location: Location? = null): S2Type() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
-            return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
-        }
-
-        override fun getTypeString(): String {
-            return "List<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
-
     data class Maybe(val parameter: S2Type, override val location: Location? = null): S2Type() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
             return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)

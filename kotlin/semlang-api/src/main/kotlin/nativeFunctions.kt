@@ -102,59 +102,63 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     val typeT = Type.InternalParameterType(0)
     val typeU = Type.InternalParameterType(1)
 
+    fun listType(t: Type): Type {
+        return NativeOpaqueType.LIST.getType(listOf(t))
+    }
+
     // List.append
     definitions.add(FunctionSignature.create(EntityId.of("List", "append"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), typeT),
-            outputType = Type.List(typeT)))
+            argumentTypes = listOf(listType(typeT), typeT),
+            outputType = listType(typeT)))
 
     // List.appendFront
     definitions.add(FunctionSignature.create(EntityId.of("List", "appendFront"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), typeT),
-            outputType = Type.List(typeT)))
+            argumentTypes = listOf(listType(typeT), typeT),
+            outputType = listType(typeT)))
 
     // List.concatenate
     definitions.add(FunctionSignature.create(EntityId.of("List", "concatenate"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(Type.List(typeT))),
-            outputType = Type.List(typeT)))
+            argumentTypes = listOf(listType(listType(typeT))),
+            outputType = listType(typeT)))
 
     // List.subList
     definitions.add(FunctionSignature.create(EntityId.of("List", "subList"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
-            outputType = Type.Maybe(Type.List(typeT))))
+            argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
+            outputType = Type.Maybe(listType(typeT))))
 
     // List.map
     definitions.add(FunctionSignature.create(EntityId.of("List", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
-            outputType = Type.List(typeU)))
+            argumentTypes = listOf(listType(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
+            outputType = listType(typeU)))
 
     // List.flatMap
     definitions.add(FunctionSignature.create(EntityId.of("List", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.List(typeU))),
-            outputType = Type.List(typeU)))
+            argumentTypes = listOf(listType(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), listType(typeU))),
+            outputType = listType(typeU)))
 
     // List.filter
     definitions.add(FunctionSignature.create(EntityId.of("List", "filter"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), NativeOpaqueType.BOOLEAN.getType())),
-            outputType = Type.List(typeT)))
+            argumentTypes = listOf(listType(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), NativeOpaqueType.BOOLEAN.getType())),
+            outputType = listType(typeT)))
 
     // List.reduce
     definitions.add(FunctionSignature.create(EntityId.of("List", "reduce"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.List(typeT), typeU, Type.FunctionType.create(false, listOf(), listOf(typeU, typeT), typeU)),
+            argumentTypes = listOf(listType(typeT), typeU, Type.FunctionType.create(false, listOf(), listOf(typeU, typeT), typeU)),
             outputType = typeU))
 
     // List.forEach
     definitions.add(FunctionSignature.create(EntityId.of("List", "forEach"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), Type.FunctionType.create(true, listOf(), listOf(typeT), NativeStruct.VOID.getType())),
+            argumentTypes = listOf(listType(typeT), Type.FunctionType.create(true, listOf(), listOf(typeT), NativeStruct.VOID.getType())),
             outputType = NativeStruct.VOID.getType()))
 
     // List.size
     definitions.add(FunctionSignature.create(EntityId.of("List", "size"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT)),
+            argumentTypes = listOf(listType(typeT)),
             outputType = NativeStruct.NATURAL.getType()))
 
     // List.get
     definitions.add(FunctionSignature.create(EntityId.of("List", "get"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.List(typeT), NativeStruct.NATURAL.getType()),
+            argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType()),
             outputType = Type.Maybe(typeT)))
 }
 
@@ -255,13 +259,13 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
 
     // ListBuilder.appendAll
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "appendAll"), typeParameters = listOf(t),
-            argumentTypes = listOf(listBuilderT, Type.List(typeT)),
+            argumentTypes = listOf(listBuilderT, NativeOpaqueType.LIST.getType(listOf(typeT))),
             outputType = NativeStruct.VOID.getType()))
 
     // ListBuilder.build
     definitions.add(FunctionSignature.create(EntityId.of("ListBuilder", "build"), typeParameters = listOf(t),
             argumentTypes = listOf(listBuilderT),
-            outputType = Type.List(typeT)))
+            outputType = NativeOpaqueType.LIST.getType(listOf(typeT))))
 
     // Var constructor
     val varT = NativeOpaqueType.VAR.getType(listOf(typeT))
@@ -352,7 +356,7 @@ object NativeStruct {
             CURRENT_NATIVE_MODULE_ID,
             listOf(),
             listOf(
-                    Member("codePoints", Type.List(CODE_POINT.getType()))
+                    Member("codePoints", NativeOpaqueType.LIST.getType(listOf(CODE_POINT.getType())))
             ),
             null,
             listOf()
@@ -394,6 +398,9 @@ object NativeOpaqueType {
     private val booleanId = EntityId.of("Boolean")
     val BOOLEAN = OpaqueType(booleanId, CURRENT_NATIVE_MODULE_ID, listOf(), false)
 
+    private val listId = EntityId.of("List")
+    val LIST = OpaqueType(listId, CURRENT_NATIVE_MODULE_ID, listOf(t), false)
+
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
@@ -417,6 +424,7 @@ fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
 
     types.add(NativeOpaqueType.INTEGER)
     types.add(NativeOpaqueType.BOOLEAN)
+    types.add(NativeOpaqueType.LIST)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
     types.add(NativeOpaqueType.VAR)

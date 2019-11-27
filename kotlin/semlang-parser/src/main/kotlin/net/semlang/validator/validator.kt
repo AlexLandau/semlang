@@ -173,10 +173,6 @@ private class Validator(
     }
     private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>, internalParameters: List<String>): Type? {
         return when (type) {
-            is UnvalidatedType.List -> {
-                val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                Type.List(parameter)
-            }
             is UnvalidatedType.Maybe -> {
                 val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
                 Type.Maybe(parameter)
@@ -801,7 +797,7 @@ private class Validator(
             errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
         }
 
-        val listType = Type.List(chosenParameter)
+        val listType = NativeOpaqueType.LIST.getType(listOf(chosenParameter))
 
         var itemErrorFound = false
         val contents = ArrayList<TypedExpression>()

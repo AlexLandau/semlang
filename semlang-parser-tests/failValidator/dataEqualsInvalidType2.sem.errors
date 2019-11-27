@@ -5,5 +5,5 @@ struct Foo {
 // Structs containing function types are not data types
 function areStructsEqual(foo1: Foo, foo2: Foo): Boolean {
   Data.equals<Foo>(foo1, foo2)
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but semlang:validatorTestFile:b538186282f89ad665e6116855ff23f5d97efd2cceb910eefd524ee6385589e0:Foo is not a data type
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but semlang:validatorTestFile:"fake0:b538186282f89ad665e6116855ff23f5d97efd2cceb910eefd524ee6385589e0":Foo is not a data type
 }

@@ -15,12 +15,6 @@ internal sealed class TypeParameterInferenceSource {
             return argumentTypes[index]
         }
     }
-    data class ListType(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<Type?>): Type? {
-            val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? Type.List ?: return null).parameter
-        }
-    }
     data class MaybeType(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
             val currentType = containingSource.findType(argumentTypes)
@@ -59,10 +53,6 @@ internal fun Type.FunctionType.Parameterized.getTypeParameterInferenceSources():
 
     fun addPossibleSources(type: Type, sourceSoFar: TypeParameterInferenceSource, indexOffset: Int) {
         val unused: Any = when (type) {
-            is Type.List -> {
-                val listSource = TypeParameterInferenceSource.ListType(sourceSoFar)
-                addPossibleSources(type.parameter, listSource, indexOffset)
-            }
             is Type.Maybe -> {
                 val maybeSource = TypeParameterInferenceSource.MaybeType(sourceSoFar)
                 addPossibleSources(type.parameter, maybeSource, indexOffset)
@@ -122,12 +112,6 @@ sealed class UnvalidatedTypeParameterInferenceSource {
             return argumentTypes[index]
         }
     }
-    data class ListType(val containingSource: UnvalidatedTypeParameterInferenceSource): UnvalidatedTypeParameterInferenceSource() {
-        override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
-            val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? UnvalidatedType.List ?: return null).parameter
-        }
-    }
     data class MaybeType(val containingSource: UnvalidatedTypeParameterInferenceSource): UnvalidatedTypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
             val currentType = containingSource.findType(argumentTypes)
@@ -151,7 +135,12 @@ sealed class UnvalidatedTypeParameterInferenceSource {
     data class NamedTypeParameter(val containingSource: UnvalidatedTypeParameterInferenceSource, val index: Int): UnvalidatedTypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
             val currentType = containingSource.findType(argumentTypes)
-            return (currentType as? UnvalidatedType.NamedType ?: return null).parameters[index]
+            val parameters = (currentType as? UnvalidatedType.NamedType ?: return null).parameters
+            if (parameters.size > index) {
+                return parameters[index]
+            } else {
+                return null
+            }
         }
     }
 }
@@ -166,10 +155,6 @@ fun getTypeParameterInferenceSources(type: UnvalidatedType.FunctionType): List<L
 
     fun addPossibleSources(type: UnvalidatedType, sourceSoFar: UnvalidatedTypeParameterInferenceSource) {
         val unused: Any = when (type) {
-            is UnvalidatedType.List -> {
-                val listSource = UnvalidatedTypeParameterInferenceSource.ListType(sourceSoFar)
-                addPossibleSources(type.parameter, listSource)
-            }
             is UnvalidatedType.Maybe -> {
                 val maybeSource = UnvalidatedTypeParameterInferenceSource.MaybeType(sourceSoFar)
                 addPossibleSources(type.parameter, maybeSource)

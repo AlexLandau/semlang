@@ -74,11 +74,11 @@ data class EntityRef(val moduleRef: ModuleRef?, val id: EntityId) {
 }
 data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
     override fun toString(): String {
-        return "${module.name}:${module.fake0Version}:$id"
+        return "${module.name}:\"${ModuleUniqueId.UNIQUE_VERSION_SCHEME_PREFIX}${module.fake0Version}\":$id"
     }
 
     fun toUnresolvedRef(): EntityRef {
-        val moduleRef = ModuleRef(module.name.group, module.name.module, module.fake0Version)
+        val moduleRef = ModuleRef(module.name.group, module.name.module, ModuleUniqueId.UNIQUE_VERSION_SCHEME_PREFIX + module.fake0Version)
         return EntityRef(moduleRef, id)
     }
 }
@@ -92,28 +92,6 @@ sealed class UnvalidatedType {
     abstract fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean
     override fun toString(): String {
         return getTypeString()
-    }
-
-    data class List(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun isReference(): kotlin.Boolean {
-            return false
-        }
-
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.List {
-            return List(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is List && parameter.equalsIgnoringLocation(other.parameter)
-        }
-
-        override fun getTypeString(): String {
-            return "List<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
     }
 
     data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
@@ -261,32 +239,6 @@ sealed class Type {
         return isBindableInternal(0)
     }
     abstract protected fun isBindableInternal(numAllowedIndices: Int): Boolean
-
-    data class List(val parameter: Type): Type() {
-        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
-            return parameter.isBindableInternal(numAllowedIndices)
-        }
-
-        override fun isReference(): Boolean {
-            return false
-        }
-
-        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
-            return List(parameter.replacingInternalParametersInternal(chosenParameters))
-        }
-
-        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
-            return List(parameter.replacingExternalParameters(parametersMap))
-        }
-
-        override fun getTypeString(): String {
-            return "List<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
 
     data class Maybe(val parameter: Type): Type() {
         override fun isBindableInternal(numAllowedIndices: Int): Boolean {
@@ -1003,6 +955,7 @@ private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParamete
 
 data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typeParameters: List<TypeParameter>, val isReference: Boolean) {
     val resolvedRef = ResolvedEntityRef(moduleId, id)
+    // TODO: Can this be varargs?
     fun getType(chosenParameters: List<Type> = listOf()): Type.NamedType {
         if (chosenParameters.size != typeParameters.size) {
             error("Passed in the wrong number of type parameters to type $this; passed in $chosenParameters")
@@ -1013,9 +966,6 @@ data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typePa
 
 private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
     return when (this) {
-        is Type.List -> {
-            Type.List(parameter.internalizeParameters(newParameterIndices, indexOffset))
-        }
         is Type.Maybe -> {
             Type.Maybe(parameter.internalizeParameters(newParameterIndices, indexOffset))
         }

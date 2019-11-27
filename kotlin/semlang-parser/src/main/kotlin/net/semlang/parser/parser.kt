@@ -600,15 +600,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         }
 
         val typeId = type_ref.entity_id().ID().text
-        if (typeId == "List") {
-            if (isReference) {
-                throw LocationAwareParsingException("List is not a reference type; remove the &", locationOf(type_ref))
-            }
-            if (parameters.size != 1) {
-                error("List should only accept a single parameter; parameters were: $parameters")
-            }
-            return UnvalidatedType.List(parameters[0], typeLocation)
-        } else if (typeId == "Maybe") {
+        if (typeId == "Maybe") {
             if (isReference) {
                 throw LocationAwareParsingException("Maybe is not a reference type; remove the &", locationOf(type_ref))
             }

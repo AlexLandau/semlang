@@ -67,7 +67,7 @@ data class ModuleRef(val group: String?, val module: String, val version: String
     }
     override fun toString(): String {
         if (version != null) {
-            return "$group:$module:$version"
+            return "$group:$module:\"$version\""
         } else if (group != null) {
             return "$group:$module"
         } else {

@@ -153,7 +153,6 @@ export namespace Expression {
 export type Binding = Expression | null;
 
 export type Type =
- | { List: Type }
  | { Maybe: Type }
  | Type.FunctionType
  | Type.NamedType;
@@ -166,10 +165,6 @@ export namespace Type {
         name: string;
         params?: Type[];
     }
-}
-
-export function isListType(type: Type): type is { List: Type } {
-    return typeof type === "object" && "List" in type;
 }
 
 export function isMaybeType(type: Type): type is { Maybe: Type } {

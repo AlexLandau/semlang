@@ -10,7 +10,7 @@ function myStuff.myFunction(input: Integer): Integer {
   let newY: Integer = Integer.minus(input, _1)
   let object: myStuff.Point<Integer> = myStuff.Point<Integer>(newX, newY)
   let output: Natural = Natural.times(object->x, object->y)
-                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Natural.times expects arguments with types [semlang:lang:0:Natural, semlang:lang:0:Natural], but was given arguments with types [semlang:lang:0:Integer, semlang:lang:0:Integer]
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Natural.times expects arguments with types [semlang:lang:"fake0:0":Natural, semlang:lang:"fake0:0":Natural], but was given arguments with types [semlang:lang:"fake0:0":Integer, semlang:lang:"fake0:0":Integer]
   output
 }
 

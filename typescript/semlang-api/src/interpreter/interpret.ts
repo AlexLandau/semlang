@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, Struct, getStructType, Argument, isListType } from "../api/language";
+import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, Struct, getStructType, Argument } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, isFunctionBinding, namedBindingObject, inlineBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
