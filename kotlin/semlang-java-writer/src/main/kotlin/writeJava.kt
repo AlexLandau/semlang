@@ -823,18 +823,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     }
     private fun writeLiteralExpression(type: Type, literal: String): CodeBlock {
         return when (type) {
-            is Type.Maybe -> {
-                // We need to support this for unit tests, specifically
-                if (literal == "failure") {
-                    return CodeBlock.of("\$T.empty()", java.util.Optional::class.java)
-                }
-                if (literal.startsWith("success(") && literal.endsWith(")")) {
-                    val innerType = type.parameter
-                    val innerLiteral = literal.substring("success(".length, literal.length - ")".length)
-                    return CodeBlock.of("\$T.of(\$L)", java.util.Optional::class.java, writeLiteralExpression(innerType, innerLiteral))
-                }
-                throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
-            }
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
                 val resolvedType = this.module.resolve(type.ref, ResolutionType.Type) ?: error("Unresolved type ${type.ref}")
@@ -903,7 +891,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
 
     private fun getType(semlangType: Type, isParameter: Boolean): TypeName {
         return when (semlangType) {
-            is Type.Maybe -> ParameterizedTypeName.get(ClassName.get(java.util.Optional::class.java), getType(semlangType.parameter, true))
             is Type.FunctionType -> getFunctionType(semlangType)
             is Type.NamedType -> getNamedType(semlangType, isParameter)
             is Type.ParameterType -> TypeVariableName.get(semlangType.parameter.name)
@@ -924,6 +911,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             listOf("Integer") -> ClassName.get(BigInteger::class.java)
             listOf("Boolean") -> return if (isParameter) TypeName.get(java.lang.Boolean::class.java) else TypeName.BOOLEAN
             listOf("List") -> ClassName.get(java.util.List::class.java)
+            listOf("Maybe") -> ClassName.get(java.util.Optional::class.java)
             listOf("Natural") -> ClassName.get(BigInteger::class.java)
             listOf("Sequence") -> ClassName.bestGuess("net.semlang.java.Sequence")
             listOf("String") -> ClassName.get(String::class.java)
@@ -978,20 +966,21 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                         val parameter = type.parameters[0]
                         val contents = annotationArg.values.map { toTestLiteral(parameter, it) }
                         TypedExpression.ListLiteral(type, AliasType.NotAliased, contents, parameter)
+                    } else if (type.ref == NativeOpaqueType.MAYBE.resolvedRef) {
+                        val parameter = type.parameters[0]
+                        val contents = annotationArg.values.map { toTestLiteral(parameter, it) }
+                        if (contents.isEmpty()) {
+                            val maybeFailureRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "failure"))
+                            val resolvedMaybeFailureRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "failure"))
+                            TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeFailureRef, resolvedMaybeFailureRef, listOf(), listOf(parameter), listOf(parameter))
+                        } else {
+                            val containedLiteral = contents.single()
+                            val maybeSuccessRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "success"))
+                            val resolvedMaybeSuccessRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "success"))
+                            TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeSuccessRef, resolvedMaybeSuccessRef, listOf(containedLiteral), listOf(parameter), listOf(parameter))
+                        }
                     } else {
                         TODO()
-                    }
-                } else if (type is Type.Maybe) {
-                    val contents = annotationArg.values.map { toTestLiteral(type.parameter, it) }
-                    if (contents.isEmpty()) {
-                        val maybeFailureRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "failure"))
-                        val resolvedMaybeFailureRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "failure"))
-                        TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeFailureRef, resolvedMaybeFailureRef, listOf(), listOf(type.parameter), listOf(type.parameter))
-                    } else {
-                        val containedLiteral = contents.single()
-                        val maybeSuccessRef = EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), EntityId.of("Maybe", "success"))
-                        val resolvedMaybeSuccessRef = ResolvedEntityRef(CURRENT_NATIVE_MODULE_ID, EntityId.of("Maybe", "success"))
-                        TypedExpression.NamedFunctionCall(type, AliasType.NotAliased, maybeSuccessRef, resolvedMaybeSuccessRef, listOf(containedLiteral), listOf(type.parameter), listOf(type.parameter))
                     }
                 } else {
                     TODO()
@@ -1373,7 +1362,6 @@ private fun ClassName.sanitize(): ClassName {
 // TODO: Maybe put this on the ValidatedModule itself?
 private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean {
     return when (type) {
-        is Type.Maybe -> isDataType(type.parameter, containingModule)
         is Type.FunctionType -> false
         is Type.ParameterType -> false // Might have cases in the future where a parameter can be restricted to be data
         is Type.NamedType -> {
@@ -1382,6 +1370,8 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                 return (getNativeStructs().containsKey(type.ref.id) && type.ref.id != NativeStruct.SEQUENCE.id)
                         || type.ref.id == NativeOpaqueType.BOOLEAN.id
                         || type.ref.id == NativeOpaqueType.INTEGER.id
+                        || (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0], containingModule))
+                        || (type.ref.id == NativeOpaqueType.MAYBE.id && isDataType(type.parameters[0], containingModule))
             }
             val entityResolution = containingModule.resolve(type.ref, ResolutionType.Type) ?: error("failed entityResolution for ${type.ref}")
             when (entityResolution.type) {
@@ -1396,7 +1386,8 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                     // TODO: These are also mentioned above, can we deduplicate?
                     type == NativeOpaqueType.BOOLEAN.getType() ||
                             type == NativeOpaqueType.INTEGER.getType() ||
-                            (type.ref == NativeOpaqueType.LIST.resolvedRef && isDataType(type.parameters[0], containingModule))
+                            (type.ref == NativeOpaqueType.LIST.resolvedRef && isDataType(type.parameters[0], containingModule)) ||
+                            (type.ref == NativeOpaqueType.MAYBE.resolvedRef && isDataType(type.parameters[0], containingModule))
                 }
                 FunctionLikeType.UNION_TYPE -> TODO()
                 FunctionLikeType.UNION_OPTION_CONSTRUCTOR -> TODO()

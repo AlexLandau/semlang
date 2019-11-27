@@ -640,16 +640,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
         }
 
         val typeId = type_ref.entity_id().ID().text
-        if (typeId == "Maybe") {
-            if (isReference) {
-                throw LocationAwareParsingException("Maybe is not a reference type; remove the &", locationOf(type_ref))
-            }
-            if (parameters.size != 1) {
-                error("Maybe should only accept a single parameter; parameters were: $parameters")
-            }
-            return S2Type.Maybe(parameters[0], typeLocation)
-        }
-
         return S2Type.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
     }
 

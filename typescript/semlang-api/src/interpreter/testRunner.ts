@@ -1,5 +1,5 @@
 import { isEqual } from "lodash";
-import { Module, Type, isMaybeType, isNamedType } from "../api/language";
+import { Module, Type, isNamedType } from "../api/language";
 import { interpret, evaluateLiteral, InterpreterContext } from "./interpret";
 import { SemObject, listObject, failureObject, successObject } from "./SemObject";
 import { isOpaqueType } from "@babel/types";
@@ -46,8 +46,8 @@ function evaluateAnnotationLiteral(module: Module, type: Type, annotationArg: st
         return evaluateLiteral(module, type, annotationArg);
     }
 
-    if (isMaybeType(type)) {
-        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.Maybe, value));
+    if (isNamedType(type) && type.name === "Maybe") {
+        const semObjects = annotationArg.map((value) => evaluateAnnotationLiteral(module, type.params![0], value));
         if (semObjects.length === 0) {
             return failureObject();
         } else if (semObjects.length === 1) {

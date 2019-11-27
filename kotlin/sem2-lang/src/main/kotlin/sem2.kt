@@ -97,20 +97,6 @@ sealed class S2Type {
         return getTypeString()
     }
 
-    data class Maybe(val parameter: S2Type, override val location: Location? = null): S2Type() {
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
-            return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
-        }
-
-        override fun getTypeString(): String {
-            return "Maybe<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
-
     data class FunctionType(val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<S2Type>, val outputType: S2Type, override val location: Location? = null): S2Type() {
         override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, S2Type>): S2Type {
             return FunctionType(
@@ -259,7 +245,9 @@ data class S2Struct(override val id: EntityId, val typeParameters: List<TypePara
         val outputType = if (requires == null) {
             S2Type.NamedType(id.asRef(), false, typeParameters, idLocation)
         } else {
-            S2Type.Maybe(S2Type.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
+            S2Type.NamedType(id.asRef(), false, listOf(
+                S2Type.NamedType(id.asRef(), false, typeParameters, idLocation)
+            ), idLocation)
         }
         return S2FunctionSignature(id, argumentTypes, outputType, this.typeParameters)
     }

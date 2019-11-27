@@ -46,9 +46,6 @@ fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionTyp
 
 fun invalidate(type: Type): UnvalidatedType {
     return when (type) {
-        is Type.Maybe -> {
-            UnvalidatedType.Maybe(invalidate(type.parameter))
-        }
         is Type.FunctionType -> {
             invalidateFunctionType(type)
         }

@@ -84,9 +84,9 @@ private fun addIntegerFunctions(definitions: ArrayList<FunctionSignature>) {
     definitions.add(FunctionSignature.create(EntityId.of("Integer", "minus"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.INTEGER.getType()))
 
     // Integer.dividedBy
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), Type.Maybe(NativeOpaqueType.INTEGER.getType())))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "dividedBy"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(listOf(NativeOpaqueType.INTEGER.getType()))))
     // Integer.modulo
-    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), Type.Maybe(NativeOpaqueType.INTEGER.getType())))
+    definitions.add(FunctionSignature.create(EntityId.of("Integer", "modulo"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.MAYBE.getType(listOf(NativeOpaqueType.INTEGER.getType()))))
 
     // Integer.equals
     definitions.add(FunctionSignature.create(EntityId.of("Integer", "equals"), listOf(NativeOpaqueType.INTEGER.getType(), NativeOpaqueType.INTEGER.getType()), NativeOpaqueType.BOOLEAN.getType()))
@@ -124,7 +124,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     // List.subList
     definitions.add(FunctionSignature.create(EntityId.of("List", "subList"), typeParameters = listOf(t),
             argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType(), NativeStruct.NATURAL.getType()),
-            outputType = Type.Maybe(listType(typeT))))
+            outputType = NativeOpaqueType.MAYBE.getType(listOf(listType(typeT)))))
 
     // List.map
     definitions.add(FunctionSignature.create(EntityId.of("List", "map"), typeParameters = listOf(t, u),
@@ -159,7 +159,7 @@ private fun addListFunctions(definitions: ArrayList<FunctionSignature>) {
     // List.get
     definitions.add(FunctionSignature.create(EntityId.of("List", "get"), typeParameters = listOf(t),
             argumentTypes = listOf(listType(typeT), NativeStruct.NATURAL.getType()),
-            outputType = Type.Maybe(typeT)))
+            outputType = NativeOpaqueType.MAYBE.getType(listOf(typeT))))
 }
 
 private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
@@ -168,40 +168,44 @@ private fun addMaybeFunctions(definitions: ArrayList<FunctionSignature>) {
     val typeT = Type.InternalParameterType(0)
     val typeU = Type.InternalParameterType(1)
 
+    fun maybeType(t: Type): Type {
+        return NativeOpaqueType.MAYBE.getType(listOf(t))
+    }
+
     // Maybe.success
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "success"), typeParameters = listOf(t),
             argumentTypes = listOf(typeT),
-            outputType = Type.Maybe(typeT)))
+            outputType = maybeType(typeT)))
 
     // Maybe.failure
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "failure"), typeParameters = listOf(t),
             argumentTypes = listOf(),
-            outputType = Type.Maybe(typeT)))
+            outputType = maybeType(typeT)))
 
     // Maybe.assume
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "assume"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.Maybe(typeT)),
+            argumentTypes = listOf(maybeType(typeT)),
             outputType = typeT))
 
 
     // Maybe.isSuccess
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "isSuccess"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.Maybe(typeT)),
+            argumentTypes = listOf(maybeType(typeT)),
             outputType = NativeOpaqueType.BOOLEAN.getType()))
 
     // Maybe.map
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "map"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
-            outputType = Type.Maybe(typeU)))
+            argumentTypes = listOf(maybeType(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), typeU)),
+            outputType = maybeType(typeU)))
 
     // Maybe.flatMap
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "flatMap"), typeParameters = listOf(t, u),
-            argumentTypes = listOf(Type.Maybe(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), Type.Maybe(typeU))),
-            outputType = Type.Maybe(typeU)))
+            argumentTypes = listOf(maybeType(typeT), Type.FunctionType.create(false, listOf(), listOf(typeT), maybeType(typeU))),
+            outputType = maybeType(typeU)))
 
     // Maybe.orElse
     definitions.add(FunctionSignature.create(EntityId.of("Maybe", "orElse"), typeParameters = listOf(t),
-            argumentTypes = listOf(Type.Maybe(typeT), typeT),
+            argumentTypes = listOf(maybeType(typeT), typeT),
             outputType = typeT))
 
 }
@@ -401,6 +405,9 @@ object NativeOpaqueType {
     private val listId = EntityId.of("List")
     val LIST = OpaqueType(listId, CURRENT_NATIVE_MODULE_ID, listOf(t), false)
 
+    private val maybeId = EntityId.of("Maybe")
+    val MAYBE = OpaqueType(maybeId, CURRENT_NATIVE_MODULE_ID, listOf(t), false)
+
     private val textOutId = EntityId.of("TextOut")
     val TEXT_OUT = OpaqueType(textOutId, CURRENT_NATIVE_MODULE_ID, listOf(), true)
 
@@ -425,6 +432,7 @@ fun getNativeOpaqueTypes(): Map<EntityId, OpaqueType> {
     types.add(NativeOpaqueType.INTEGER)
     types.add(NativeOpaqueType.BOOLEAN)
     types.add(NativeOpaqueType.LIST)
+    types.add(NativeOpaqueType.MAYBE)
     types.add(NativeOpaqueType.TEXT_OUT)
     types.add(NativeOpaqueType.LIST_BUILDER)
     types.add(NativeOpaqueType.VAR)

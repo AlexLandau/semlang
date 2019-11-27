@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isStatement, Expression, Type, isNamedType, isMaybeType, Struct, getStructType, Argument } from "../api/language";
+import { Function, Module, Block, isStatement, Expression, Type, isNamedType, Struct, getStructType, Argument } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, isFunctionBinding, namedBindingObject, inlineBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -289,77 +289,62 @@ export class InterpreterContext {
     }
 
     evaluateLiteral(type: Type, value: string): SemObject {
-        if (isMaybeType(type)) {
-            // Note: This is currently only intended for @Test cases
-            if (value === "failure") {
-                return failureObject();
-            } else {
-                if (value.substr(0, 8) !== "success(" || value.charAt(value.length - 1) !== ")") {
-                    throw new Error(`Maybe literal format error; was ${value}`);
+        // Remainder of cases should be named types
+        if (isNamedType(type)) {
+            const name = type.name;
+
+            // Handle booleans
+            if (name === "Boolean") {
+                if (value === "true") {
+                    return booleanObject(true);
+                } else if (value === "false") {
+                    return booleanObject(false);
                 }
-                const innerType = type.Maybe;
-                const innerValue = value.substr(8, value.length - 9);
-                const innerObject = this.evaluateLiteral(innerType, innerValue);
-                return successObject(innerObject);
+                throw new Error(`Unexpected Boolean literal ${value}`);
             }
-        } else {
-            // Remainder of cases should be named types
-            if (isNamedType(type)) {
-                const name = type.name;
 
-                // Handle booleans
-                if (name === "Boolean") {
-                    if (value === "true") {
-                        return booleanObject(true);
-                    } else if (value === "false") {
-                        return booleanObject(false);
-                    }
-                    throw new Error(`Unexpected Boolean literal ${value}`);
-                }
+            // Handle integers
+            if (name === "Integer") {
+                return integerObject(bigInt(value));
+            }
 
-                // Handle integers
-                if (name === "Integer") {
-                    return integerObject(bigInt(value));
-                }
+            // Handle naturals
+            if (name === "Natural") {
+                return naturalObject(bigInt(value));
+            }
 
-                // Handle naturals
-                if (name === "Natural") {
-                    return naturalObject(bigInt(value));
-                }
+            // Handle strings
+            if (name === "String") {
+                return stringObject(value);
+            }
 
-                // Handle strings
-                if (name === "String") {
-                    return stringObject(value);
-                }
-
-                // Struct with only one element? Try that
-                const literalTypeChain = this.getStructSingleElementChain(name);
-                if (literalTypeChain !== undefined) {
-                    // Get the literal from the basic type
-                    const literalType = literalTypeChain.literalType;
-                    let curValue = this.evaluateLiteral(literalType, value);
-                    for (const structToApply of literalTypeChain.structChain) {
-                        const wrapped = structObject(structToApply, [curValue]);
-                        // We don't yet have checks for this at compile-time, so check at runtime instead
-                        if (structToApply.requires !== undefined) {
-                            const proposedValues: BoundVars = {};
-                            proposedValues[structToApply.members[0].name] = curValue;
-                            const requiresValue = this.evaluateBlock(structToApply.requires, proposedValues);
-                            if (requiresValue.type !== "Boolean") {
-                                throw new Error(`Non-boolean value returned from a 'requires' block`);
-                            }
-                            const isSatisfied = requiresValue.value;
-                            if (!isSatisfied) {
-                                throw new Error(`Invalid literal value ${value} for struct type ${type} with literal type ${literalType}`);
-                            }
+            // Struct with only one element? Try that
+            const literalTypeChain = this.getStructSingleElementChain(name);
+            if (literalTypeChain !== undefined) {
+                // Get the literal from the basic type
+                const literalType = literalTypeChain.literalType;
+                let curValue = this.evaluateLiteral(literalType, value);
+                for (const structToApply of literalTypeChain.structChain) {
+                    const wrapped = structObject(structToApply, [curValue]);
+                    // We don't yet have checks for this at compile-time, so check at runtime instead
+                    if (structToApply.requires !== undefined) {
+                        const proposedValues: BoundVars = {};
+                        proposedValues[structToApply.members[0].name] = curValue;
+                        const requiresValue = this.evaluateBlock(structToApply.requires, proposedValues);
+                        if (requiresValue.type !== "Boolean") {
+                            throw new Error(`Non-boolean value returned from a 'requires' block`);
                         }
-                        curValue = wrapped;
+                        const isSatisfied = requiresValue.value;
+                        if (!isSatisfied) {
+                            throw new Error(`Invalid literal value ${value} for struct type ${type} with literal type ${literalType}`);
+                        }
                     }
-                    return curValue;
+                    curValue = wrapped;
                 }
+                return curValue;
             }
-            throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
         }
+        throw new Error(`TODO: Implement case for type ${JSON.stringify(type)}`);
     }
 
     private getStructSingleElementChain(structName: string): LiteralTypeChain | undefined {

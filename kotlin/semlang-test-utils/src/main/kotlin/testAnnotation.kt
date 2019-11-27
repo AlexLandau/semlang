@@ -217,19 +217,6 @@ private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals
 
 fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument, interpreter: SemlangForwardInterpreter): SemObject {
     return when (type) {
-        is Type.Maybe -> {
-            when (annotationArg) {
-                is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
-                is AnnotationArgument.List -> {
-                    if (annotationArg.values.isEmpty()) {
-                        SemObject.Maybe.Failure
-                    } else {
-                        val semObject = evaluateAnnotationArgAsLiteral(type.parameter, annotationArg.values.single(), interpreter)
-                        SemObject.Maybe.Success(semObject)
-                    }
-                }
-            }
-        }
         is Type.FunctionType.Ground -> TODO()
         is Type.FunctionType.Parameterized -> TODO()
         is Type.InternalParameterType -> TODO()
@@ -240,8 +227,21 @@ fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument
                     is AnnotationArgument.Literal -> error("List types should be expressed as an annotation argument list, but was: $annotationArg")
                     is AnnotationArgument.List -> {
                         val itemType = type.parameters[0]
-                        val semObjects = annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
+                        val semObjects =
+                            annotationArg.values.map { evaluateAnnotationArgAsLiteral(itemType, it, interpreter) }
                         SemObject.SemList(semObjects)
+                    }
+                }
+            } else if (type.ref == NativeOpaqueType.MAYBE.resolvedRef) {
+                when (annotationArg) {
+                    is AnnotationArgument.Literal -> interpreter.evaluateLiteral(type, (annotationArg as AnnotationArgument.Literal).value)
+                    is AnnotationArgument.List -> {
+                        if (annotationArg.values.isEmpty()) {
+                            SemObject.Maybe.Failure
+                        } else {
+                            val semObject = evaluateAnnotationArgAsLiteral(type.parameters[0], annotationArg.values.single(), interpreter)
+                            SemObject.Maybe.Success(semObject)
+                        }
                     }
                 }
             } else {

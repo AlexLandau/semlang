@@ -4,7 +4,7 @@ union MyMaybe<T> {
   Gone
 }
 
-@Test([], "success(6)")
+@Test([], ["6"])
 function testMyMaybe(): Maybe<Integer> {
   let intMaybe0: MyMaybe<Integer> = MyMaybe.Gone<Integer>()
   let intMaybe1: MyMaybe<Integer> = MyMaybe.Here<Integer>(Integer."6")

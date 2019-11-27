@@ -453,7 +453,6 @@ private class TypesSummaryToInfoConverter(
 
 fun TypesInfo.isDataType(type: Type): Boolean {
     return when (type) {
-        is Type.Maybe -> isDataType(type.parameter)
         is Type.FunctionType -> false
         is Type.ParameterType -> {
             val typeClass = type.parameter.typeClass
@@ -484,7 +483,8 @@ fun TypesInfo.isDataType(type: Type): Boolean {
                         isNativeModule(type.ref.module) &&
                                 (type.ref.id == NativeOpaqueType.BOOLEAN.id ||
                                         type.ref.id == NativeOpaqueType.INTEGER.id ||
-                                        (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0])))
+                                        (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0])) ||
+                                        (type.ref.id == NativeOpaqueType.MAYBE.id && isDataType(type.parameters[0])))
                     }
                 }
             }
@@ -495,7 +495,6 @@ fun TypesInfo.isDataType(type: Type): Boolean {
 // TODO: We shouldn't have two functions doing this on Types and UnvalidatedTypes
 private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
     return when (type) {
-        is UnvalidatedType.Maybe -> isDataType(type.parameter)
         is UnvalidatedType.FunctionType -> false
         is UnvalidatedType.NamedType -> {
             // TODO: We might want some caching here
@@ -518,7 +517,8 @@ private fun TypesInfo.isDataType(type: UnvalidatedType): Boolean {
                         // TODO: Maybe check all parameters unconditionally?
                         type.ref.id == NativeOpaqueType.BOOLEAN.id ||
                                 type.ref.id == NativeOpaqueType.INTEGER.id ||
-                                (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0]))
+                                (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0])) ||
+                                (type.ref.id == NativeOpaqueType.MAYBE.id && isDataType(type.parameters[0]))
                     }
                 }
             }

@@ -94,28 +94,6 @@ sealed class UnvalidatedType {
         return getTypeString()
     }
 
-    data class Maybe(val parameter: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
-        override fun isReference(): kotlin.Boolean {
-            return false
-        }
-
-        override fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType.Maybe {
-            return Maybe(parameter.replacingNamedParameterTypes(parameterReplacementMap), location)
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is Maybe && parameter.equalsIgnoringLocation(other.parameter)
-        }
-
-        override fun getTypeString(): String {
-            return "Maybe<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
-
     data class FunctionType(private val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
         override fun isReference(): kotlin.Boolean {
             return isReference
@@ -239,32 +217,6 @@ sealed class Type {
         return isBindableInternal(0)
     }
     abstract protected fun isBindableInternal(numAllowedIndices: Int): Boolean
-
-    data class Maybe(val parameter: Type): Type() {
-        override fun isBindableInternal(numAllowedIndices: Int): Boolean {
-            return parameter.isBindableInternal(numAllowedIndices)
-        }
-
-        override fun isReference(): Boolean {
-            return false
-        }
-
-        override fun replacingInternalParametersInternal(chosenParameters: kotlin.collections.List<Type?>): Type {
-            return Maybe(parameter.replacingInternalParametersInternal(chosenParameters))
-        }
-
-        override fun replacingExternalParameters(parametersMap: Map<ParameterType, Type>): Type {
-            return Maybe(parameter.replacingExternalParameters(parametersMap))
-        }
-
-        override fun getTypeString(): String {
-            return "Maybe<$parameter>"
-        }
-
-        override fun toString(): String {
-            return getTypeString()
-        }
-    }
 
     sealed class FunctionType: Type() {
         abstract fun getNumArguments(): Int
@@ -827,7 +779,9 @@ data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List
         val outputType = if (requires == null) {
             UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
         } else {
-            UnvalidatedType.Maybe(UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation), idLocation)
+            UnvalidatedType.NamedType(NativeOpaqueType.MAYBE.resolvedRef.toUnresolvedRef(), false, listOf(
+                UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
+            ), idLocation)
         }
         return UnvalidatedFunctionSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -852,7 +806,7 @@ data class Struct(override val id: EntityId, val moduleId: ModuleUniqueId, val t
         val outputType = if (requires == null) {
             Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)
         } else {
-            Type.Maybe(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters))
+            NativeOpaqueType.MAYBE.getType(listOf(Type.NamedType(resolvedRef, id.asRef(), false, typeParameters)))
         }
         return FunctionSignature.create(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -966,9 +920,6 @@ data class OpaqueType(val id: EntityId, val moduleId: ModuleUniqueId, val typePa
 
 private fun Type.internalizeParameters(newParameterIndices: HashMap<String, Int>, indexOffset: Int): Type {
     return when (this) {
-        is Type.Maybe -> {
-            Type.Maybe(parameter.internalizeParameters(newParameterIndices, indexOffset))
-        }
         is Type.FunctionType.Ground -> {
             val newArgTypes = argTypes.map { it.internalizeParameters(newParameterIndices, indexOffset) }
             val newOutputType = outputType.internalizeParameters(newParameterIndices, indexOffset)

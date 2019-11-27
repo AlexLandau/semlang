@@ -1,8 +1,8 @@
 
-@Test(["0"], "success(0)")
-@Test(["255"], "success(255)")
-@Test(["256"], "failure")
-@Test(["511"], "failure")
+@Test(["0"], ["0"])
+@Test(["255"], ["255"])
+@Test(["256"], [])
+@Test(["511"], [])
 function byteTest(i: Natural): Maybe<Natural> {
     let byte: Maybe<Byte> = Byte(i)
     Maybe.map(byte, function(validByte: Byte): Natural { validByte->natural })

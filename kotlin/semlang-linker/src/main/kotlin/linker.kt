@@ -159,7 +159,6 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
 
     private fun apply(type: Type): UnvalidatedType {
         return when (type) {
-            is Type.Maybe -> UnvalidatedType.Maybe(apply(type.parameter))
             is Type.FunctionType -> {
                 val groundType = type.getDefaultGrounding()
                 val argTypes = groundType.argTypes.map(this::apply)
@@ -554,9 +553,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
 
     private fun enqueueType(type: Type, containingModule: ValidatedModule) {
         val unused: Any = when (type) {
-            is Type.Maybe -> {
-                enqueueType(type.parameter, containingModule)
-            }
             is Type.FunctionType -> {
                 val groundType = type.getDefaultGrounding()
                 for (inputType in groundType.argTypes) {

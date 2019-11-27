@@ -1,9 +1,9 @@
-@Test([[], "0"], "failure")
-@Test([["0"], "0"], "success(0)")
-@Test([["0"], "1"], "failure")
-@Test([["0", "0"], "0"], "success(0)")
-@Test([["1", "2", "4", "8"], "8"], "success(3)")
-@Test([["1", "2", "4", "8"], "7"], "failure")
+@Test([[], "0"], [])
+@Test([["0"], "0"], ["0"])
+@Test([["0"], "1"], [])
+@Test([["0", "0"], "0"], ["0"])
+@Test([["1", "2", "4", "8"], "8"], ["3"])
+@Test([["1", "2", "4", "8"], "7"], [])
 function List.testFirstIndexOf(list: List<Integer>, i: Integer): Maybe<Natural> {
   List.firstIndexOf(list, i)
 }

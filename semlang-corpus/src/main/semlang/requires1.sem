@@ -5,9 +5,9 @@ struct WholeNumber {
   }
 }
 
-@Test(["1"], "success(1)")
-@Test(["123"], "success(123)")
-@Test(["0"], "failure")
+@Test(["1"], ["1"])
+@Test(["123"], ["123"])
+@Test(["0"], [])
 function testWholeNumber(input: Natural): Maybe<Natural> {
   let wholeNumber: Maybe<WholeNumber> = WholeNumber(input)
   Maybe.map<WholeNumber, Natural>(wholeNumber, getWholeNumberValue|(_))

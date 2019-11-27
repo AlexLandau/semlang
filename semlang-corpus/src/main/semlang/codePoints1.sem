@@ -1,7 +1,7 @@
-@Test(["0"], "success(0)")
-@Test(["70"], "success(70)")
-@Test(["1114111"], "success(1114111)")
-@Test(["1114112"], "failure")
+@Test(["0"], ["0"])
+@Test(["70"], ["70"])
+@Test(["1114111"], ["1114111"])
+@Test(["1114112"], [])
 function createCodePoint(value: Natural): Maybe<Natural> {
   let codePointMaybe = CodePoint(value)
   Maybe.map<CodePoint, Natural>(codePointMaybe, getCodePointValue|(_))

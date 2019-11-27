@@ -426,7 +426,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private fun evaluateLiteralImpl(type: Type, literal: String): SemObject {
         return when (type) {
-            is Type.Maybe -> evaluateMaybeLiteral(type, literal)
             is Type.FunctionType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
             is Type.NamedType -> evaluateNamedLiteral(type, literal)
             is Type.ParameterType -> throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
@@ -478,22 +477,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
         }
 
         throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type; resolved as $resolved")
-    }
-
-    /**
-     * Note: Currently this can be used by things like @Test, but trying to invoke this directly in a
-     * Semlang function will fail.
-     */
-    private fun evaluateMaybeLiteral(type: Type.Maybe, literal: String): SemObject {
-        if (literal == "failure") {
-            return SemObject.Maybe.Failure
-        }
-        if (literal.startsWith("success(") && literal.endsWith(")")) {
-            val innerType = type.parameter
-            val innerLiteral = literal.substring("success(".length, literal.length - ")".length)
-            return SemObject.Maybe.Success(evaluateLiteralImpl(innerType, innerLiteral))
-        }
-        throw IllegalArgumentException("Unhandled literal \"$literal\" of type $type")
     }
 }
 

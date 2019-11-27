@@ -173,10 +173,6 @@ private class Validator(
     }
     private fun validateType(type: UnvalidatedType, typeParametersInScope: Map<String, TypeParameter>, internalParameters: List<String>): Type? {
         return when (type) {
-            is UnvalidatedType.Maybe -> {
-                val parameter = validateType(type.parameter, typeParametersInScope, internalParameters) ?: return null
-                Type.Maybe(parameter)
-            }
             is UnvalidatedType.FunctionType -> {
                 val newInternalParameters = ArrayList<String>()
                 // Add the new parameters to the front of the list

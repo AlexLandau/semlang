@@ -47,14 +47,14 @@ function toBitsLengthTest(value: Natural): Natural {
   List.size(bits->bits)
 }
 
-@Test(["0", "0"], "success(0)")
-@Test(["0", "1"], "success(1)")
-@Test(["0", "7"], "success(7)")
-@Test(["1", "0"], "failure")
-@Test(["1", "1"], "success(1)")
-@Test(["1", "8"], "success(8)")
-@Test(["255", "8"], "success(8)")
-@Test(["256", "8"], "failure")
+@Test(["0", "0"], ["0"])
+@Test(["0", "1"], ["1"])
+@Test(["0", "7"], ["7"])
+@Test(["1", "0"], [])
+@Test(["1", "1"], ["1"])
+@Test(["1", "8"], ["8"])
+@Test(["255", "8"], ["8"])
+@Test(["256", "8"], [])
 function toNBitsLengthTest(value: Natural, numBits: Natural): Maybe<Natural> {
   let bits: Maybe<BitsBigEndian> = Natural.toNBits(value, numBits)
   Maybe.map(bits, function(validBits: BitsBigEndian): Natural { List.size(validBits->bits) })
