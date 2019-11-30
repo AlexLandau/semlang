@@ -2,5 +2,5 @@ function myStuff.myFunction(): () -> Integer {
   let myInt = Integer."1"
   // Trying to bind a variable of non-function type
   myInt|(Integer."3")
-  ~~~~~ Attempting to bind Variable(type=semlang:lang:"fake0:0":Integer, aliasType=PossiblyAliased, name=myInt) like a function, but it has a non-function type semlang:lang:"fake0:0":Integer
+  ~~~~~ Attempting to bind expression like a function, but it has a non-function type Integer
 }

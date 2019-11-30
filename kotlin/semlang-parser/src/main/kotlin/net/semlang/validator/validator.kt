@@ -162,7 +162,7 @@ private class Validator(
         val variableTypes = getArgumentVariableTypes(arguments)
         val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), function.id) ?: return null
         if (returnType != block.type) {
-            errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${block.type}", function.returnTypeLocation, IssueLevel.ERROR))
+            errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${prettyType(block.type)}", function.returnTypeLocation, IssueLevel.ERROR))
         }
 
         return ValidatedFunction(function.id, function.typeParameters, arguments, returnType, block, function.annotations)
@@ -245,10 +245,10 @@ private class Validator(
             val varName = statement.name
             if (varName != null) {
                 if (variableTypes.containsKey(varName)) {
-                    errors.add(Issue("The already-assigned variable ${varName} cannot be reassigned", statement.nameLocation, IssueLevel.ERROR))
+                    errors.add(Issue("The already-assigned variable $varName cannot be reassigned", statement.nameLocation, IssueLevel.ERROR))
                 }
                 if (isInvalidVariableName(varName)) {
-                    errors.add(Issue("Invalid variable name ${varName}", statement.nameLocation, IssueLevel.ERROR))
+                    errors.add(Issue("Invalid variable name $varName", statement.nameLocation, IssueLevel.ERROR))
                 }
             }
 
@@ -416,7 +416,7 @@ private class Validator(
 
         val returnType = validateType(expression.returnType, typeParametersInScope) ?: return null
         if (validatedBlock.type != returnType) {
-            errors.add(Issue("The inline function has a return type $returnType, but the actual type returned is ${validatedBlock.type}", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("The inline function has a return type ${prettyType(returnType)}, but the actual type returned is ${prettyType(validatedBlock.type)}", expression.location, IssueLevel.ERROR))
         }
 
         val functionType = Type.FunctionType.create(isReference, listOf(), validatedArguments.map(Argument::type), returnType)
@@ -429,7 +429,7 @@ private class Validator(
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
-            errors.add(Issue("Attempting to bind $functionExpression like a function, but it has a non-function type ${functionExpression.type}", expression.functionExpression.location, IssueLevel.ERROR))
+            errors.add(Issue("Attempting to bind expression like a function, but it has a non-function type ${prettyType(functionExpression.type)}", expression.functionExpression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -464,7 +464,7 @@ private class Validator(
                     error("Invalid binding")
                 }
                 if (binding.type != expectedType) {
-                    errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
+                    errors.add(Issue("A binding is of type ${prettyType(binding.type)} but the expected argument type is ${prettyType(expectedType)}", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
                     isBindingAReference = true
@@ -479,6 +479,40 @@ private class Validator(
         }
 
         return TypedExpression.ExpressionFunctionBinding(postBindingType, functionExpression.aliasType, functionExpression, bindings, inferredTypeParameters, providedChoices)
+    }
+
+    private fun prettyType(type: Type): String {
+        return when (type) {
+            is Type.FunctionType.Ground -> TODO()
+            is Type.FunctionType.Parameterized -> {
+                val groundType = type.getDefaultGrounding()
+                val referenceString = if (type.isReference()) "&" else ""
+                val typeParametersString = if (type.typeParameters.isEmpty()) {
+                    ""
+                } else {
+                    "<" + type.typeParameters.joinToString(", ") + ">"
+                }
+                referenceString +
+                        typeParametersString +
+                        "(" +
+                        groundType.argTypes.map(this::prettyType).joinToString(", ") +
+                        ") -> " +
+                        prettyType(groundType.outputType)
+            }
+            is Type.InternalParameterType -> TODO()
+            is Type.ParameterType -> {
+                type.parameter.name
+            }
+            is Type.NamedType -> {
+                val refString = typesInfo.getSimplestRefForType(type.ref).toString()
+                val parametersString = if (type.parameters.isEmpty()) {
+                    ""
+                } else {
+                    "<" + type.parameters.joinToString(", ") + ">"
+                }
+                refString + parametersString
+            }
+        }
     }
 
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
@@ -531,7 +565,7 @@ private class Validator(
                     error("Invalid binding")
                 }
                 if (binding.type != expectedType) {
-                    errors.add(Issue("A binding is of type ${binding.type} but the expected argument type is $expectedType", expression.location, IssueLevel.ERROR))
+                    errors.add(Issue("A binding is of type ${prettyType(binding.type)} but the expected argument type is ${prettyType(expectedType)}", expression.location, IssueLevel.ERROR))
                 }
                 if (binding.type.isReference()) {
                     isBindingAReference = true
@@ -559,7 +593,7 @@ private class Validator(
         val chosenParameters = if (functionType.typeParameters.size == providedChoices.size) {
             providedChoices
         } else if (functionType.typeParameters.size < providedChoices.size) {
-            errors.add(Issue("Too many type parameters were supplied for function call/binding for $functionDescription; provided ${providedChoices.size}, but ${functionType.typeParameters.size} were expected, function type was $functionType", expressionLocation, IssueLevel.ERROR))
+            errors.add(Issue("Too many type parameters were supplied for function call/binding for $functionDescription; provided ${providedChoices.size}, but ${functionType.typeParameters.size} were expected, function type was ${prettyType(functionType)}", expressionLocation, IssueLevel.ERROR))
             return null
         } else {
             // Apply type parameter inference
@@ -601,7 +635,7 @@ private class Validator(
 
         val structureNamedType = structureExpression.type as? Type.NamedType
         if (structureNamedType == null) {
-            errors.add(Issue("Cannot dereference an expression $structureExpression of non-struct, non-interface type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("Cannot dereference an expression $structureExpression of non-struct, non-interface type ${prettyType(structureExpression.type)}", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -611,7 +645,7 @@ private class Validator(
             is TypeInfo.Struct -> {
                 val memberType = structureTypeInfo.memberTypes[expression.name]
                 if (memberType == null) {
-                    errors.add(Issue("Struct type $structureNamedType does not have a member named '${expression.name}'", expression.location, IssueLevel.ERROR))
+                    errors.add(Issue("Struct type ${prettyType(structureNamedType)} does not have a member named '${expression.name}'", expression.location, IssueLevel.ERROR))
                     return null
                 }
 
@@ -636,7 +670,7 @@ private class Validator(
                 error("Currently we don't allow follows for unions")
             }
             is TypeInfo.OpaqueType -> {
-                errors.add(Issue("Cannot dereference an expression of opaque type ${structureExpression.type}", expression.location, IssueLevel.ERROR))
+                errors.add(Issue("Cannot dereference an expression of opaque type ${prettyType(structureExpression.type)}", expression.location, IssueLevel.ERROR))
                 return null
             }
         }
@@ -654,12 +688,12 @@ private class Validator(
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
-            errors.add(Issue("The expression $functionExpression is called like a function, but it has a non-function type ${functionExpression.type}", expression.functionExpression.location, IssueLevel.ERROR))
+            errors.add(Issue("The expression $functionExpression is called like a function, but it has a non-function type ${prettyType(functionExpression.type)}", expression.functionExpression.location, IssueLevel.ERROR))
             return null
         }
 
         if (expression.arguments.size != functionType.getNumArguments()) {
-            errors.add(Issue("The function binding here expects ${functionType.getNumArguments()} arguments (with types ${functionType.getDefaultGrounding().argTypes}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("The function binding here expects ${functionType.getNumArguments()} arguments (with types ${functionType.getDefaultGrounding().argTypes.map(this::prettyType)}), but ${expression.arguments.size} were given", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -681,7 +715,7 @@ private class Validator(
         val groundFunctionType = functionType.groundWithTypeParameters(inferredTypeParameters)
 
         if (argumentTypes != groundFunctionType.argTypes) {
-            errors.add(Issue("The function expression expects arguments with types ${groundFunctionType.argTypes}, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("The function expression expects arguments with types ${groundFunctionType.argTypes.map(this::prettyType)}, but was given arguments with types ${argumentTypes.map(this::prettyType)}", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -726,7 +760,7 @@ private class Validator(
 
         if (argumentTypes != groundFunctionType.argTypes) {
             val paramString = if (inferredTypeParameters.isEmpty()) "" else "<$inferredTypeParameters>"
-            errors.add(Issue("The function $functionRef$paramString expects arguments with types ${groundFunctionType.argTypes}, but was given arguments with types $argumentTypes", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("The function $functionRef$paramString expects arguments with types ${groundFunctionType.argTypes.map(this::prettyType)}, but was given arguments with types ${argumentTypes.map(this::prettyType)}", expression.location, IssueLevel.ERROR))
             return null
         }
 
@@ -812,7 +846,7 @@ private class Validator(
                 itemErrorFound = true
             } else {
                 if (validated.type != chosenParameter) {
-                    errors.add(Issue("Expression type ${validated.type} does not match the list item type $chosenParameter", itemExpression.location, IssueLevel.ERROR))
+                    errors.add(Issue("Expression type ${prettyType(validated.type)} does not match the list item type ${prettyType(chosenParameter)}", itemExpression.location, IssueLevel.ERROR))
                     itemErrorFound = true
                 } else {
                     contents.add(validated)
@@ -841,7 +875,7 @@ private class Validator(
         val type = try {
             typeUnion(thenBlock.type, elseBlock.type)
         } catch (e: RuntimeException) {
-            errors.add(Issue("Cannot reconcile types of 'then' block (${thenBlock.type}) and 'else' block (${elseBlock.type})", expression.location, IssueLevel.ERROR))
+            errors.add(Issue("Cannot reconcile types of 'then' block (${prettyType(thenBlock.type)}) and 'else' block (${prettyType(elseBlock.type)})", expression.location, IssueLevel.ERROR))
             return null
         }
 

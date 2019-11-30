@@ -209,7 +209,7 @@ class EntityResolver(private val typeResolutions: Map<EntityId, Set<EntityResolu
         }
     }
 
-    private fun getSimplestRefFor(resolvedRef: ResolvedEntityRef, resolutionType: ResolutionType): EntityRef {
+    fun getSimplestRefFor(resolvedRef: ResolvedEntityRef, resolutionType: ResolutionType): EntityRef {
         val group = resolvedRef.module.name.group
         val module = resolvedRef.module.name.module
         val id = resolvedRef.id

@@ -2,6 +2,6 @@
 function doStuff(i: Natural): Natural {
   // Implicit return type is incorrect
   let myFunction = function(a: Natural): Natural { Integer.plus(a->integer, Integer."1") }
-                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The inline function has a return type semlang:lang:"fake0:0":Natural, but the actual type returned is semlang:lang:"fake0:0":Integer
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The inline function has a return type Natural, but the actual type returned is Integer
   myFunction(i)
 }

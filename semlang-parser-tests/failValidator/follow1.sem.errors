@@ -1,5 +1,5 @@
 function myStuff.myFunction(): Integer {
   let i = Integer."1"
   i->cannotFollowAnInteger
-  ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot dereference an expression of opaque type semlang:lang:"fake0:0":Integer
+  ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot dereference an expression of opaque type Integer
 }

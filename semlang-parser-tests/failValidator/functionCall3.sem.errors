@@ -1,5 +1,5 @@
 function myStuff.myFunction(): Integer {
   let myInt = Integer."1"
   myInt(Integer."3")
-  ~~~~~ The expression Variable(type=semlang:lang:"fake0:0":Integer, aliasType=PossiblyAliased, name=myInt) is called like a function, but it has a non-function type semlang:lang:"fake0:0":Integer
+  ~~~~~ The expression Variable(type=semlang:lang:"fake0:0":Integer, aliasType=PossiblyAliased, name=myInt) is called like a function, but it has a non-function type Integer
 }

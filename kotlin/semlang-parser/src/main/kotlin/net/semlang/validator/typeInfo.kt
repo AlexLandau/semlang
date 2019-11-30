@@ -51,6 +51,21 @@ class TypesInfo(
     val upstreamFunctions: Map<ResolvedEntityRef, ResolvedFunctionInfo>,
     private val moduleId: ModuleUniqueId
 ) {
+    fun getSimplestRefForType(ref: ResolvedEntityRef): EntityRef {
+        if (ref.module == moduleId) {
+            return EntityRef(null, ref.id)
+        }
+        // TODO: Correctly handle the case where the type is in both this module and one upstream module
+        return upstreamResolver.getSimplestRefFor(ref, ResolutionType.Type)
+    }
+    fun getSimplestRefForFunction(ref: ResolvedEntityRef): EntityRef {
+        if (ref.module == moduleId) {
+            return EntityRef(null, ref.id)
+        }
+        // TODO: Correctly handle the case where the function is in both this module and one upstream module
+        return upstreamResolver.getSimplestRefFor(ref, ResolutionType.Function)
+    }
+
     fun getResolvedTypeInfo(ref: EntityRef): TypeInfoResult {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localTypes[ref.id]

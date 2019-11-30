@@ -1,5 +1,5 @@
 function myStuff.myFunction(): Integer {
   // Call with an argument of an incorrect type
   Integer.plus(Integer."0", Boolean."true")
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Integer.plus expects arguments with types [semlang:lang:"fake0:0":Integer, semlang:lang:"fake0:0":Integer], but was given arguments with types [semlang:lang:"fake0:0":Integer, semlang:lang:"fake0:0":Boolean]
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Integer.plus expects arguments with types [Integer, Integer], but was given arguments with types [Integer, Boolean]
 }

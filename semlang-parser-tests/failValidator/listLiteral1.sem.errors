@@ -1,4 +1,4 @@
 function foo(): List<Integer> {
   [String."foo"]<Integer>
-   ~~~~~~~~~~~~ Expression type semlang:lang:"fake0:0":String does not match the list item type semlang:lang:"fake0:0":Integer
+   ~~~~~~~~~~~~ Expression type String does not match the list item type Integer
 }

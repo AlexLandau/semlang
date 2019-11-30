@@ -2,5 +2,5 @@ function myStuff.myFunction(): Integer {
   let successor: (Integer) -> Integer = Integer.plus|(_, Integer."1")
   // Too few arguments
   successor()
-  ~~~~~~~~~~~ The function binding here expects 1 arguments (with types [semlang:lang:"fake0:0":Integer]), but 0 were given
+  ~~~~~~~~~~~ The function binding here expects 1 arguments (with types [Integer]), but 0 were given
 }

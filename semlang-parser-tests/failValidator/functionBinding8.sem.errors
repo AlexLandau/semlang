@@ -1,5 +1,5 @@
 function myStuff.myFunction(): (Integer) -> Integer {
   // Binding with an argument of an incorrect type
   Integer.plus|(_, Boolean."true")
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ A binding is of type semlang:lang:"fake0:0":Boolean but the expected argument type is semlang:lang:"fake0:0":Integer
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ A binding is of type Boolean but the expected argument type is Integer
 }
