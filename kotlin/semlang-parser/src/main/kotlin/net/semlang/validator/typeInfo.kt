@@ -51,7 +51,7 @@ class TypesInfo(
     val upstreamFunctions: Map<ResolvedEntityRef, ResolvedFunctionInfo>,
     private val moduleId: ModuleUniqueId
 ) {
-    fun getResolvedTypeInfo(ref: EntityRef): ResolvedTypeInfo? {
+    fun getResolvedTypeInfo(ref: EntityRef): TypeInfoResult {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localTypes[ref.id]
             if (localResult != null) {
@@ -59,14 +59,18 @@ class TypesInfo(
             }
         }
         val resolved = upstreamResolver.resolve(ref, ResolutionType.Type)
-        if (resolved != null) {
-            return upstreamTypes[resolved.entityRef]
+        return when (resolved) {
+            is EntityResolution -> {
+                upstreamTypes[resolved.entityRef]!!
+            }
+            is ResolutionResult.Error -> {
+                TypeInfoResult.Error(resolved.errorMessage)
+            }
         }
-        return null
     }
     fun getTypeInfo(ref: EntityRef): TypeInfo? {
         val resolvedInfo = getResolvedTypeInfo(ref)
-        if (resolvedInfo == null) {
+        if (resolvedInfo !is ResolvedTypeInfo) {
             return null
         }
         return resolvedInfo.info
@@ -87,7 +91,7 @@ class TypesInfo(
         return true
     }
 
-    fun getResolvedFunctionInfo(ref: EntityRef): ResolvedFunctionInfo? {
+    fun getResolvedFunctionInfo(ref: EntityRef): FunctionInfoResult {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localFunctions[ref.id]
             if (localResult != null) {
@@ -95,14 +99,16 @@ class TypesInfo(
             }
         }
         val resolved = upstreamResolver.resolve(ref, ResolutionType.Function)
-        if (resolved != null) {
-            return upstreamFunctions[resolved.entityRef]
+        return when (resolved) {
+            is EntityResolution -> {
+                upstreamFunctions[resolved.entityRef]!!
+            }
+            is ResolutionResult.Error -> FunctionInfoResult.Error(resolved.errorMessage)
         }
-        return null
     }
     fun getFunctionInfo(ref: EntityRef): FunctionInfo? {
         val resolvedInfo = getResolvedFunctionInfo(ref)
-        if (resolvedInfo == null) {
+        if (resolvedInfo !is ResolvedFunctionInfo) {
             return null
         }
         return resolvedInfo.info
@@ -119,8 +125,14 @@ sealed class TypeInfo {
     data class Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
     data class OpaqueType(override val id: EntityId, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
 }
-data class ResolvedFunctionInfo(val resolvedRef: ResolvedEntityRef, val info: FunctionInfo)
-data class ResolvedTypeInfo(val resolvedRef: ResolvedEntityRef, val info: TypeInfo)
+data class ResolvedFunctionInfo(val resolvedRef: ResolvedEntityRef, val info: FunctionInfo): FunctionInfoResult()
+sealed class FunctionInfoResult {
+    data class Error(val errorMessage: String): FunctionInfoResult()
+}
+data class ResolvedTypeInfo(val resolvedRef: ResolvedEntityRef, val info: TypeInfo): TypeInfoResult()
+sealed class TypeInfoResult {
+    data class Error(val errorMessage: String): TypeInfoResult()
+}
 
 fun getTypesInfo(context: RawContext, moduleId: ModuleUniqueId, upstreamModules: List<ValidatedModule>, moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>, recordIssue: (Issue) -> Unit): TypesInfo {
     val typesSummary = getTypesSummary(context, recordIssue)
@@ -584,7 +596,7 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
                 // Get some new type info for the new thing
 
                 val memberInfo = typeInfo.getResolvedTypeInfo(memberType.ref)
-                if (memberInfo == null) {
+                if (memberInfo !is ResolvedTypeInfo) {
                     // Unknown type
                     // TODO: Record an error
                     return

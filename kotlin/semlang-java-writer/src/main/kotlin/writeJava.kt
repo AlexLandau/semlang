@@ -669,7 +669,11 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeNamedFunctionBinding(expression: TypedExpression.NamedFunctionBinding): CodeBlock {
         val functionRef = expression.functionRef
 
-        val resolved = module.resolve(functionRef, ResolutionType.Function) ?: error("Could not resolve $functionRef")
+        val resolved = module.resolve(functionRef, ResolutionType.Function)
+        when (resolved) {
+            is ResolutionResult.Error -> error(resolved.errorMessage)
+            is EntityResolution -> { /* Automatic type gate */ }
+        }
         // TODO: Put this in the module itself?
         val signature = when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
@@ -826,6 +830,10 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
             is Type.FunctionType -> error("Function type literals not supported")
             is Type.NamedType -> {
                 val resolvedType = this.module.resolve(type.ref, ResolutionType.Type) ?: error("Unresolved type ${type.ref}")
+                when (resolvedType) {
+                    is EntityResolution -> { /* Automatic type gate */ }
+                    is ResolutionResult.Error -> error(resolvedType.errorMessage)
+                }
                 if (isNativeModule(resolvedType.entityRef.module))  {
                     if (resolvedType.entityRef.id == NativeOpaqueType.INTEGER.id) {
                         val isValidLong = (literal.toLongOrNull() != null)
@@ -1373,7 +1381,11 @@ private fun isDataType(type: Type, containingModule: ValidatedModule?): Boolean 
                         || (type.ref.id == NativeOpaqueType.LIST.id && isDataType(type.parameters[0], containingModule))
                         || (type.ref.id == NativeOpaqueType.MAYBE.id && isDataType(type.parameters[0], containingModule))
             }
-            val entityResolution = containingModule.resolve(type.ref, ResolutionType.Type) ?: error("failed entityResolution for ${type.ref}")
+            val entityResolution = containingModule.resolve(type.ref, ResolutionType.Type)
+            when (entityResolution) {
+                is EntityResolution -> { /* Automatic type gate */ }
+                is ResolutionResult.Error -> error(entityResolution.errorMessage)
+            }
             when (entityResolution.type) {
                 FunctionLikeType.NATIVE_FUNCTION -> error("Native functions shouldn't be types")
                 FunctionLikeType.FUNCTION -> error("Functions shouldn't be types")

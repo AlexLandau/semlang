@@ -1,4 +1,5 @@
 
 function testExportedByNeither(): Integer {
     testModule2:exportedByNeither()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Function testModule2:exportedByNeither not found
 }

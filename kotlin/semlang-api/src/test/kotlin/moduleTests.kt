@@ -18,10 +18,9 @@ class ContextTests {
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id), ResolutionType.Function)
                     System.out.println("Resolved of $id was $resolved")
-                    if (resolved == null) {
-                        null
-                    } else {
-                        module.getInternalFunction(resolved.entityRef).function
+                    when (resolved) {
+                        is EntityResolution -> module.getInternalFunction(resolved.entityRef).function
+                        is ResolutionResult.Error -> null
                     }
                 },
                 { module, id -> module.getExportedFunction(id)?.function })
@@ -36,10 +35,9 @@ class ContextTests {
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id), ResolutionType.Type)
-                    if (resolved == null) {
-                        null
-                    } else {
-                        module.getInternalStruct(resolved.entityRef).struct
+                    when (resolved) {
+                        is EntityResolution -> module.getInternalStruct(resolved.entityRef).struct
+                        is ResolutionResult.Error -> null
                     }
                 },
                 { module, id -> module.getExportedStruct(id)?.struct })
@@ -54,10 +52,9 @@ class ContextTests {
                 },
                 { module, id ->
                     val resolved = module.resolve(EntityRef(null, id), ResolutionType.Type)
-                    if (resolved == null) {
-                        null
-                    } else {
-                        module.getInternalUnion(resolved.entityRef).union
+                    when (resolved) {
+                        is EntityResolution -> module.getInternalUnion(resolved.entityRef).union
+                        is ResolutionResult.Error -> null
                     }
                 },
                 { module, id -> module.getExportedUnion(id)?.union })

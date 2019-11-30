@@ -514,7 +514,7 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
 
     private fun enqueueFunctionRef(functionRef: ResolvedEntityRef, resolutionType: ResolutionType, containingModule: ValidatedModule) {
         // TODO: This is another place where it would help to either store the EntityResolution or have another map in the resolver
-        val resolved = containingModule.resolve(functionRef, resolutionType)!!
+        val resolved = containingModule.resolve(functionRef, resolutionType) as EntityResolution
         val ignored: Any = when (resolved.type) {
             FunctionLikeType.NATIVE_FUNCTION -> {
                 // Do nothing

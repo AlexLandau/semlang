@@ -2,6 +2,6 @@ function myStuff.myFunction(): Integer {
   let builderMaker = ListBuilder<_>|()
   // Call with a type parameter of an unknown type
   let builder = builderMaker<Inntegeer>()
-                             ~~~~~~~~~ Unresolved type reference: Inntegeer
+                             ~~~~~~~~~ Type Inntegeer not found
   Integer."1"
 }

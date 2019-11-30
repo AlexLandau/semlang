@@ -1,0 +1,5 @@
+
+function testExportedByBoth(): Integer {
+    exportedByBoth()
+    ~~~~~~~~~~~~~~ Function exportedByBoth is ambiguous; possible functions are: [EntityResolution(entityRef=semlang-test:test-module-1:"fake0:3dc663329e4e27a3be89eb26698a4c81421c4fab997e9f3eafd48999f0b06c":exportedByBoth, type=FUNCTION, isReference=false), EntityResolution(entityRef=semlang-test:test-module-2:"fake0:d7358dc2ebe26baaa09271796f1ae3e5082bb72f7c079f53d326ad18be9c":exportedByBoth, type=FUNCTION, isReference=false)]
+}

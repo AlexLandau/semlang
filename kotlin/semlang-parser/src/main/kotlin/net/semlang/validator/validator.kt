@@ -202,9 +202,12 @@ private class Validator(
 
                 val typeInfo = typesInfo.getResolvedTypeInfo(type.ref)
 
-                if (typeInfo == null) {
-                    errors.add(Issue("Unresolved type reference: ${type.ref}", type.location, IssueLevel.ERROR))
-                    return null
+                when (typeInfo) {
+                    is TypeInfoResult.Error -> {
+                        errors.add(Issue(typeInfo.errorMessage, type.location, IssueLevel.ERROR))
+                        return null
+                    }
+                    is ResolvedTypeInfo -> { /* Automatic type guard */ }
                 }
                 val shouldBeReference = typeInfo.info.isReference
 
@@ -481,9 +484,12 @@ private class Validator(
     private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
         val functionRef = expression.functionRef
         val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
-        if (resolvedFunctionInfo == null) {
-            errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
-            return null
+        when (resolvedFunctionInfo) {
+            is FunctionInfoResult.Error -> {
+                errors.add(Issue(resolvedFunctionInfo.errorMessage, expression.functionRefLocation, IssueLevel.ERROR))
+                return null
+            }
+            is ResolvedFunctionInfo -> { /* Automatic type guard */ }
         }
         val functionInfo = resolvedFunctionInfo.info
 
@@ -686,9 +692,12 @@ private class Validator(
         val functionRef = expression.functionRef
 
         val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
-        if (resolvedFunctionInfo == null) {
-            errors.add(Issue("Function $functionRef not found", expression.functionRefLocation, IssueLevel.ERROR))
-            return null
+        when (resolvedFunctionInfo) {
+            is FunctionInfoResult.Error -> {
+                errors.add(Issue(resolvedFunctionInfo.errorMessage, expression.functionRefLocation, IssueLevel.ERROR))
+                return null
+            }
+            is ResolvedFunctionInfo -> { /* Automatic type guard */ }
         }
         val functionInfo = resolvedFunctionInfo.info
 

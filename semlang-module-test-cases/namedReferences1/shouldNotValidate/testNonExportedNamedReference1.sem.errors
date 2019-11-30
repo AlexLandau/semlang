@@ -1,4 +1,5 @@
 
 function testExportedByWrongModule(): Integer {
     testModule2:exportedBy1()
+    ~~~~~~~~~~~~~~~~~~~~~~~ Function testModule2:exportedBy1 not found
 }

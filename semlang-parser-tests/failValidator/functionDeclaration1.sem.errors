@@ -1,5 +1,5 @@
 
 function myFunction(unknownType: UnknownType): Integer {
-                                 ~~~~~~~~~~~ Unresolved type reference: UnknownType
+                                 ~~~~~~~~~~~ Type UnknownType not found
   Integer."1"
 }

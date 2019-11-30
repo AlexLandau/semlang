@@ -172,21 +172,39 @@ class EntityResolver(private val typeResolutions: Map<EntityId, Set<EntityResolu
         }
     }
 
-    fun resolve(ref: EntityRef, resolutionType: ResolutionType): EntityResolution? {
+    fun resolve(ref: EntityRef, resolutionType: ResolutionType): ResolutionResult {
         val allResolutions = when (resolutionType) {
             ResolutionType.Type -> typeResolutions[ref.id]
             ResolutionType.Function -> functionResolutions[ref.id]
         }
         if (allResolutions == null) {
-            return null
+            return ResolutionResult.Error(getNoResolutionsFoundError(resolutionType, ref))
         }
         val filtered = filterByModuleRef(allResolutions, ref.moduleRef)
         if (filtered.size == 1) {
             return filtered.single()
         } else if (filtered.size == 0) {
-            return null
+            return ResolutionResult.Error(getNoResolutionsFoundError(resolutionType, ref))
         } else {
-            error("Tried to resolve $ref, but there were multiple possible resolutions: $filtered")
+            return ResolutionResult.Error(getMultipleResolutionsFoundError(resolutionType, ref, filtered))
+        }
+    }
+
+    private fun getNoResolutionsFoundError(resolutionType: ResolutionType, ref: EntityRef): String {
+        return when (resolutionType) {
+            ResolutionType.Type -> "Type $ref not found"
+            ResolutionType.Function -> "Function $ref not found"
+        }
+    }
+
+    private fun getMultipleResolutionsFoundError(
+        resolutionType: ResolutionType,
+        ref: EntityRef,
+        possibilities: Collection<EntityResolution>
+    ): String {
+        return when (resolutionType) {
+            ResolutionType.Type -> "Type $ref is ambiguous; possible types are: $possibilities"
+            ResolutionType.Function -> "Function $ref is ambiguous; possible functions are: $possibilities"
         }
     }
 
@@ -403,11 +421,11 @@ class ValidatedModule private constructor(val id: ModuleUniqueId,
         return exportedFunctions.associate { id -> id to getExportedFunction(id)!!.function }
     }
 
-    fun resolve(ref: EntityRef, resolutionType: ResolutionType): EntityResolution? {
+    fun resolve(ref: EntityRef, resolutionType: ResolutionType): ResolutionResult {
         return resolver.resolve(ref, resolutionType)
     }
 
-    fun resolve(ref: ResolvedEntityRef, resolutionType: ResolutionType): EntityResolution? {
+    fun resolve(ref: ResolvedEntityRef, resolutionType: ResolutionType): ResolutionResult {
         return resolver.resolve(EntityRef(ref.module.asRef(), ref.id), resolutionType)
     }
 
@@ -424,4 +442,7 @@ enum class FunctionLikeType {
     OPAQUE_TYPE
 }
 
-data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType, val isReference: Boolean)
+data class EntityResolution(val entityRef: ResolvedEntityRef, val type: FunctionLikeType, val isReference: Boolean): ResolutionResult()
+sealed class ResolutionResult {
+    data class Error(val errorMessage: String): ResolutionResult()
+}
