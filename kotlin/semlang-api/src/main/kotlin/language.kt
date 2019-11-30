@@ -83,18 +83,52 @@ data class ResolvedEntityRef(val module: ModuleUniqueId, val id: EntityId) {
     }
 }
 
-// TODO: It would be really nice to have a TypeId or something that didn't have a location, vs. UnvalidatedType
+data class UnvalidatedTypeLabel(val type: UnvalidatedType, val location: TypeLocation) {
+    init {
+        // Sanity checks
+        when (type) {
+            is UnvalidatedType.FunctionType -> {
+                if (type.typeParameters.size != location.parameterLocations.size) {
+                    error("Parameter count mismatch")
+                }
+                if (type.argTypes.size != location.argLocations.size) {
+                    error("Arg type mismatch")
+                }
+                if (location.outputLocation == null) {
+                    error("Expected an output location")
+                }
+            }
+            is UnvalidatedType.NamedType -> {
+                if (type.parameters.size != location.parameterLocations.size) {
+                    error("Parameter count mismatch")
+                }
+                if (location.argLocations.isNotEmpty()) {
+                    error("Expected no args")
+                }
+                if (location.outputLocation != null) {
+                    error("Expected no output location")
+                }
+            }
+        }
+    }
+}
+data class TypeLocation(
+    val location: Location?,
+    val parameterLocations: List<TypeLocation>,
+    val argLocations: List<TypeLocation>,
+    val outputLocation: TypeLocation?
+)
+
+// This is an unvalidated name of something that might be a type (named or functional), not necessarily real
 sealed class UnvalidatedType {
-    abstract val location: Location?
     abstract protected fun getTypeString(): String
     abstract fun isReference(): kotlin.Boolean
     abstract fun replacingNamedParameterTypes(parameterReplacementMap: Map<String, UnvalidatedType>): UnvalidatedType
-    abstract fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean
     override fun toString(): String {
         return getTypeString()
     }
 
-    data class FunctionType(private val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType, override val location: Location? = null): UnvalidatedType() {
+    data class FunctionType(private val isReference: kotlin.Boolean, val typeParameters: kotlin.collections.List<TypeParameter>, val argTypes: kotlin.collections.List<UnvalidatedType>, val outputType: UnvalidatedType): UnvalidatedType() {
         override fun isReference(): kotlin.Boolean {
             return isReference
         }
@@ -104,17 +138,7 @@ sealed class UnvalidatedType {
                     isReference,
                     typeParameters.filter { !parameterReplacementMap.containsKey(it.name) },
                     this.argTypes.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
-                    this.outputType.replacingNamedParameterTypes(parameterReplacementMap),
-                    location)
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is FunctionType &&
-                    isReference == other.isReference &&
-                    typeParameters == other.typeParameters &&
-                    argTypes.size == other.argTypes.size &&
-                    argTypes.zip(other.argTypes).all { it.first.equalsIgnoringLocation(it.second) } &&
-                    outputType.equalsIgnoringLocation(other.outputType)
+                    this.outputType.replacingNamedParameterTypes(parameterReplacementMap))
         }
 
         override fun getTypeString(): String {
@@ -141,7 +165,7 @@ sealed class UnvalidatedType {
         }
     }
 
-    data class NamedType(val ref: EntityRef, private val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf(), override val location: Location? = null): UnvalidatedType() {
+    data class NamedType(val ref: EntityRef, private val isReference: kotlin.Boolean, val parameters: kotlin.collections.List<UnvalidatedType> = listOf()): UnvalidatedType() {
         override fun isReference(): kotlin.Boolean {
             return isReference
         }
@@ -156,22 +180,13 @@ sealed class UnvalidatedType {
             return NamedType(
                     ref,
                     isReference,
-                    parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) },
-                    location)
+                    parameters.map { it.replacingNamedParameterTypes(parameterReplacementMap) })
         }
 
         companion object {
-            fun forParameter(parameter: TypeParameter, location: Location? = null): NamedType {
-                return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf(), location)
+            fun forParameter(parameter: TypeParameter): NamedType {
+                return NamedType(EntityRef(null, EntityId(listOf(parameter.name))), false, listOf())
             }
-        }
-
-        override fun equalsIgnoringLocation(other: UnvalidatedType): kotlin.Boolean {
-            return other is NamedType &&
-                    ref == other.ref &&
-                    isReference == other.isReference &&
-                    parameters.size == other.parameters.size &&
-                    parameters.zip(other.parameters).all { it.first.equalsIgnoringLocation(it.second) }
         }
 
         override fun getTypeString(): String {
@@ -691,14 +706,14 @@ sealed class Expression {
     abstract val location: Location?
     data class Variable(val name: String, override val location: Location? = null): Expression()
     data class IfThen(val condition: Expression, val thenBlock: Block, val elseBlock: Block, override val location: Location? = null): Expression()
-    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
-    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedType>, override val location: Location? = null): Expression()
-    data class Literal(val type: UnvalidatedType, val literal: String, override val location: Location? = null): Expression()
-    data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedType, override val location: Location? = null): Expression()
-    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
-    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedType?>, override val location: Location? = null): Expression()
+    data class NamedFunctionCall(val functionRef: EntityRef, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedTypeLabel>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
+    data class ExpressionFunctionCall(val functionExpression: Expression, val arguments: List<Expression>, val chosenParameters: List<UnvalidatedTypeLabel>, override val location: Location? = null): Expression()
+    data class Literal(val type: UnvalidatedTypeLabel, val literal: String, override val location: Location? = null): Expression()
+    data class ListLiteral(val contents: List<Expression>, val chosenParameter: UnvalidatedTypeLabel, override val location: Location? = null): Expression()
+    data class NamedFunctionBinding(val functionRef: EntityRef, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedTypeLabel?>, override val location: Location? = null, val functionRefLocation: Location? = null): Expression()
+    data class ExpressionFunctionBinding(val functionExpression: Expression, val bindings: List<Expression?>, val chosenParameters: List<UnvalidatedTypeLabel?>, override val location: Location? = null): Expression()
     data class Follow(val structureExpression: Expression, val name: String, override val location: Location? = null): Expression()
-    data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val location: Location? = null): Expression()
+    data class InlineFunction(val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedTypeLabel, val block: Block, override val location: Location? = null): Expression()
 }
 // Post-type-analysis
 enum class AliasType {
@@ -747,19 +762,19 @@ sealed class TypedExpression {
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
 // effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
+data class Statement(val name: String?, val type: UnvalidatedTypeLabel?, val expression: Expression, val nameLocation: Location? = null)
 data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
-data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
+data class UnvalidatedArgument(val name: String, val type: UnvalidatedTypeLabel, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
 data class Block(val statements: List<Statement>, val returnedExpression: Expression, val location: Location? = null)
 data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val returnedExpression: TypedExpression)
-data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
+data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedTypeLabel, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(
                 false,
                 typeParameters,
-                arguments.map(UnvalidatedArgument::type),
-                returnType
+                arguments.map { it.type.type },
+                returnType.type
         )
     }
 }
@@ -774,14 +789,14 @@ data class ValidatedFunction(override val id: EntityId, val typeParameters: List
 
 data class UnvalidatedStruct(override val id: EntityId, val typeParameters: List<TypeParameter>, val members: List<UnvalidatedMember>, val requires: Block?, override val annotations: List<Annotation>, val idLocation: Location? = null) : TopLevelEntity {
     fun getConstructorSignature(): UnvalidatedFunctionSignature {
-        val argumentTypes = members.map(UnvalidatedMember::type)
-        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it, idLocation) }
+        val argumentTypes = members.map { it.type.type }
+        val typeParameters = typeParameters.map { UnvalidatedType.NamedType.forParameter(it) }
         val outputType = if (requires == null) {
-            UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
+            UnvalidatedType.NamedType(id.asRef(), false, typeParameters)
         } else {
             UnvalidatedType.NamedType(NativeOpaqueType.MAYBE.resolvedRef.toUnresolvedRef(), false, listOf(
-                UnvalidatedType.NamedType(id.asRef(), false, typeParameters, idLocation)
-            ), idLocation)
+                UnvalidatedType.NamedType(id.asRef(), false, typeParameters)
+            ))
         }
         return UnvalidatedFunctionSignature(id, argumentTypes, outputType, this.typeParameters)
     }
@@ -818,7 +833,7 @@ interface HasId {
 interface TopLevelEntity: HasId {
     val annotations: List<Annotation>
 }
-data class UnvalidatedMember(val name: String, val type: UnvalidatedType)
+data class UnvalidatedMember(val name: String, val type: UnvalidatedTypeLabel)
 data class Member(val name: String, val type: Type)
 
 data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<TypeParameter>, val options: List<UnvalidatedOption>, override val annotations: List<Annotation>, val idLocation: Location? = null): TopLevelEntity {
@@ -834,7 +849,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
         val argumentTypes = if (option.type == null) {
             listOf()
         } else {
-            listOf(option.type)
+            listOf(option.type.type)
         }
         return UnvalidatedFunctionSignature(optionId, argumentTypes, getType(), typeParameters)
     }
@@ -850,7 +865,7 @@ data class UnvalidatedUnion(override val id: EntityId, val typeParameters: List<
             val optionArgTypes = if (option.type == null) {
                 listOf()
             } else {
-                listOf(option.type)
+                listOf(option.type.type)
             }
             UnvalidatedType.FunctionType(false, listOf(), optionArgTypes, outputParameterType)
         }
@@ -889,7 +904,7 @@ data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val ty
     }
 
 }
-data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
+data class UnvalidatedOption(val name: String, val type: UnvalidatedTypeLabel?, val idLocation: Location? = null)
 data class Option(val name: String, val type: Type?)
 
 private fun getUnusedTypeParameterName(explicitTypeParameters: List<TypeParameter>): String {

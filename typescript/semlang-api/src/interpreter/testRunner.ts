@@ -2,8 +2,6 @@ import { isEqual } from "lodash";
 import { Module, Type, isNamedType } from "../api/language";
 import { interpret, evaluateLiteral, InterpreterContext } from "./interpret";
 import { SemObject, listObject, failureObject, successObject } from "./SemObject";
-import { isOpaqueType } from "@babel/types";
-
 
 // Returns the error messages from any failed tests.
 export function runTests(module: Module): string[] {

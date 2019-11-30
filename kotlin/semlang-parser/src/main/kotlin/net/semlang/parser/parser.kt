@@ -183,7 +183,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         if (function.type() == null) {
             throw LocationAwareParsingException("Functions must specify a return type", locationOf(function))
         }
-        val returnType: UnvalidatedType = parseType(function.type())
+        val returnType = parseType(function.type())
 
         val block: Block = parseBlock(function.block(), arguments.map { it.name }.toSet())
 
@@ -538,7 +538,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 TerminalNode::getText)
     }
 
-    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem1Parser.Type_or_underscoreContext): UnvalidatedType? {
+    private fun parseTypeOrUnderscore(typeOrUnderscore: Sem1Parser.Type_or_underscoreContext): UnvalidatedTypeLabel? {
         if (typeOrUnderscore.type() != null) {
             return parseType(typeOrUnderscore.type())
         } else {
@@ -547,7 +547,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         }
     }
 
-    private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedType {
+    private fun parseType(type: Sem1Parser.TypeContext): UnvalidatedTypeLabel {
         if (type.ARROW() != null) {
             //Function type
             val isReference = type.AMPERSAND() != null
@@ -556,9 +556,18 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             } else {
                 listOf()
             }
-            val argumentTypes = parseCommaDelimitedTypes(type.cd_types())
+            val argumentTypeLabels = parseCommaDelimitedTypes(type.cd_types())
+            val argumentTypes = argumentTypeLabels.map { it.type }
+            val argumentTypeLocations = argumentTypeLabels.map { it.location }
             val outputType = parseType(type.type())
-            return UnvalidatedType.FunctionType(isReference, typeParameters, argumentTypes, outputType, locationOf(type))
+            return UnvalidatedTypeLabel(
+                UnvalidatedType.FunctionType(isReference, typeParameters, argumentTypes, outputType.type),
+                TypeLocation(
+                    location = locationOf(type),
+                    parameterLocations = Collections.nCopies(typeParameters.size, null),
+                    argLocations = argumentTypeLocations,
+                    outputLocation = outputType.location)
+            )
         }
 
         if (type.LESS_THAN() != null) {
@@ -572,35 +581,39 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         throw IllegalArgumentException("Unparsed type " + type.text)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<UnvalidatedType> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_typesContext): List<UnvalidatedTypeLabel> {
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_typesContext::type,
                 Sem1Parser.Cd_typesContext::cd_types,
                 this::parseType)
     }
 
-    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_types_nonemptyContext): List<UnvalidatedType> {
+    private fun parseCommaDelimitedTypes(cd_types: Sem1Parser.Cd_types_nonemptyContext): List<UnvalidatedTypeLabel> {
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_types_nonemptyContext::type,
                 Sem1Parser.Cd_types_nonemptyContext::cd_types_nonempty,
                 this::parseType)
     }
 
-    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem1Parser.Cd_types_or_underscores_nonemptyContext): List<UnvalidatedType?> {
+    private fun parseCommaDelimitedTypesOrUnderscores(cd_types: Sem1Parser.Cd_types_or_underscores_nonemptyContext): List<UnvalidatedTypeLabel?> {
         return parseLinkedList(cd_types,
                 Sem1Parser.Cd_types_or_underscores_nonemptyContext::type_or_underscore,
                 Sem1Parser.Cd_types_or_underscores_nonemptyContext::cd_types_or_underscores_nonempty,
                 this::parseTypeOrUnderscore)
     }
 
-    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameters: List<UnvalidatedType>, typeLocation: Location): UnvalidatedType {
+    private fun parseTypeGivenParameters(type_ref: Sem1Parser.Type_refContext, parameterTypeLabels: List<UnvalidatedTypeLabel>, typeLocation: Location): UnvalidatedTypeLabel {
+        val parameters = parameterTypeLabels.map { it.type }
+        val parameterLocations = parameterTypeLabels.map { it.location }
         val isReference = type_ref.AMPERSAND() != null
         if (type_ref.module_ref() != null || type_ref.entity_id().namespace() != null) {
-            return UnvalidatedType.NamedType(parseTypeRef(type_ref), isReference, parameters, typeLocation)
+            return UnvalidatedTypeLabel(UnvalidatedType.NamedType(parseTypeRef(type_ref), isReference, parameters),
+                TypeLocation(typeLocation, parameterLocations, listOf(), null))
         }
 
         val typeId = type_ref.entity_id().ID().text
-        return UnvalidatedType.NamedType(EntityRef.of(typeId), isReference, parameters, typeLocation)
+        return UnvalidatedTypeLabel(UnvalidatedType.NamedType(EntityRef.of(typeId), isReference, parameters),
+            TypeLocation(typeLocation, parameterLocations, listOf(), null))
     }
 
     private fun parseOptions(options: Sem1Parser.DisjunctsContext): List<UnvalidatedOption> {
@@ -612,7 +625,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
 
     private fun parseOption(option: Sem1Parser.DisjunctContext): UnvalidatedOption {
         val name = option.ID().text
-        val type: UnvalidatedType? = option.type()?.let { parseType(it) }
+        val type: UnvalidatedTypeLabel? = option.type()?.let { parseType(it) }
 
         return UnvalidatedOption(name, type, locationOf(option.ID().symbol))
     }
