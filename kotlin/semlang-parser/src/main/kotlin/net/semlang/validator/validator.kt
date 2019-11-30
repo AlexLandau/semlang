@@ -759,7 +759,7 @@ private class Validator(
         val groundFunctionType = validatedFunctionType.groundWithTypeParameters(inferredTypeParameters)
 
         if (argumentTypes != groundFunctionType.argTypes) {
-            val paramString = if (inferredTypeParameters.isEmpty()) "" else "<$inferredTypeParameters>"
+            val paramString = if (inferredTypeParameters.isEmpty()) "" else "<${inferredTypeParameters.map(this::prettyType).joinToString(", ")}>"
             errors.add(Issue("The function $functionRef$paramString expects arguments with types ${groundFunctionType.argTypes.map(this::prettyType)}, but was given arguments with types ${argumentTypes.map(this::prettyType)}", expression.location, IssueLevel.ERROR))
             return null
         }

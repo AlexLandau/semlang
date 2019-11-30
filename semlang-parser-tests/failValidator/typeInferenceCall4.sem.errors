@@ -10,5 +10,5 @@ function pairConsumer<T>(pair: MatchedPair<T>): Boolean {
 // Trying to infer a type for a struct constructor in a way that is contradictory
 function myFunction(): Boolean {
   pairConsumer(MatchedPair(Integer."0", Boolean."true"))
-               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function MatchedPair<[semlang:lang:"fake0:0":Integer]> expects arguments with types [Integer, Integer], but was given arguments with types [Integer, Boolean]
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function MatchedPair<Integer> expects arguments with types [Integer, Integer], but was given arguments with types [Integer, Boolean]
 }

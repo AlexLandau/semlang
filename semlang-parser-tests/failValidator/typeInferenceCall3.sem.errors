@@ -1,5 +1,5 @@
 // Trying to infer a type in a way that is contradictory
 function myFunction(): Boolean {
   Data.equals(Integer."0", Boolean."true")
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Data.equals<[semlang:lang:"fake0:0":Integer]> expects arguments with types [Integer, Integer], but was given arguments with types [Integer, Boolean]
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ The function Data.equals<Integer> expects arguments with types [Integer, Integer], but was given arguments with types [Integer, Boolean]
 }
