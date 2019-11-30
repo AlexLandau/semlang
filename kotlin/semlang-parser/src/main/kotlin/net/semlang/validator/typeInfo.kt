@@ -43,15 +43,15 @@ fun combineTypesSummaries(summaries: Collection<TypesSummary>): TypesSummary {
 
 class TypesInfo(
     private val upstreamResolver: EntityResolver,
-    val localTypes: Map<EntityId, ValidatedTypeInfo>,
+    val localTypes: Map<EntityId, ResolvedTypeInfo>,
     val duplicateLocalTypeIds: Set<EntityId>,
-    val localFunctions: Map<EntityId, ValidatedFunctionInfo>,
+    val localFunctions: Map<EntityId, ResolvedFunctionInfo>,
     val duplicateLocalFunctionIds: Set<EntityId>,
-    val upstreamTypes: Map<ResolvedEntityRef, ValidatedTypeInfo>,
-    val upstreamFunctions: Map<ResolvedEntityRef, ValidatedFunctionInfo>,
+    val upstreamTypes: Map<ResolvedEntityRef, ResolvedTypeInfo>,
+    val upstreamFunctions: Map<ResolvedEntityRef, ResolvedFunctionInfo>,
     private val moduleId: ModuleUniqueId
 ) {
-    fun getTypeInfo(ref: EntityRef): ValidatedTypeInfo? {
+    fun getTypeInfo(ref: EntityRef): ResolvedTypeInfo? {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localTypes[ref.id]
             if (localResult != null) {
@@ -87,7 +87,7 @@ class TypesInfo(
         return true
     }
 
-    fun getFunctionInfo(ref: EntityRef): ValidatedFunctionInfo? {
+    fun getFunctionInfo(ref: EntityRef): ResolvedFunctionInfo? {
         if (isCompatibleWithThisModule(ref)) {
             val localResult = localFunctions[ref.id]
             if (localResult != null) {
@@ -127,16 +127,16 @@ sealed class TypeInfo {
     data class Union(override val id: EntityId, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<UnvalidatedType>>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
     data class OpaqueType(override val id: EntityId, val typeParameters: List<TypeParameter>, override val isReference: Boolean, override val idLocation: Location?): TypeInfo()
 }
-data class ValidatedFunctionInfo(
+data class ResolvedFunctionInfo(
     val resolvedRef: ResolvedEntityRef,
-    val type: Type.FunctionType
+    val type: ResolvedType.Function
 )
-sealed class ValidatedTypeInfo {
+sealed class ResolvedTypeInfo {
     abstract val resolvedRef: ResolvedEntityRef
     abstract val isReference: Boolean
-    data class Struct(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, Type>, val usesRequires: Boolean): ValidatedTypeInfo()
-    data class Union(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<Type>>): ValidatedTypeInfo()
-    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>): ValidatedTypeInfo()
+    data class Struct(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>, val memberTypes: Map<String, ResolvedType>, val usesRequires: Boolean): ResolvedTypeInfo()
+    data class Union(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>, val optionTypes: Map<String, Optional<ResolvedType>>): ResolvedTypeInfo()
+    data class OpaqueType(override val resolvedRef: ResolvedEntityRef, override val isReference: Boolean, val typeParameters: List<TypeParameter>): ResolvedTypeInfo()
 }
 
 
@@ -290,8 +290,8 @@ private class TypesSummaryToInfoConverter(
     val moduleVersionMappings: Map<ModuleNonUniqueId, ModuleUniqueId>,
     val recordIssue: (Issue) -> Unit
 ) {
-    val localFunctionsMultimap = HashMap<EntityId, MutableList<ValidatedFunctionInfo>>()
-    val localTypesMultimap = HashMap<EntityId, MutableList<ValidatedTypeInfo>>()
+    val localFunctionsMultimap = HashMap<EntityId, MutableList<ResolvedFunctionInfo>>()
+    val localTypesMultimap = HashMap<EntityId, MutableList<ResolvedTypeInfo>>()
     val upstreamResolver = EntityResolver.create(
         moduleId,
         listOf(),
@@ -318,7 +318,7 @@ private class TypesSummaryToInfoConverter(
         val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { recordIssue(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
         val duplicateLocalTypeIds = HashSet<EntityId>()
-        val uniqueLocalTypes = HashMap<EntityId, ValidatedTypeInfo>()
+        val uniqueLocalTypes = HashMap<EntityId, ResolvedTypeInfo>()
         for ((id, typeInfoList) in localTypesMultimap.entries) {
             if (typeInfoList.size > 1) {
                 for (typeInfo in typeInfoList) {
@@ -331,7 +331,7 @@ private class TypesSummaryToInfoConverter(
         }
 
         val duplicateLocalFunctionIds = HashSet<EntityId>()
-        val uniqueLocalFunctions = HashMap<EntityId, ValidatedFunctionInfo>()
+        val uniqueLocalFunctions = HashMap<EntityId, ResolvedFunctionInfo>()
         for ((id, functionInfoList) in localFunctionsMultimap.entries) {
             if (functionInfoList.size > 1) {
                 for (functionInfo in functionInfoList) {
@@ -483,19 +483,19 @@ private class TypesSummaryToInfoConverter(
                 is TypeInfo.Union -> TODO()
                 is TypeInfo.OpaqueType -> TODO()
             }
-            localTypesMultimap.multimapPut(type.id, ValidatedTypeInfo(resolvedRef, type))
+            localTypesMultimap.multimapPut(type.id, ResolvedTypeInfo(resolvedRef, type))
         }
     }
 
     private fun addLocalFunctions() {
         for (function in summary.localFunctions.values) {
             val resolvedRef = ResolvedEntityRef(moduleId, function.id)
-            localFunctionsMultimap.multimapPut(function.id, ValidatedFunctionInfo(resolvedRef, function))
+            localFunctionsMultimap.multimapPut(function.id, ResolvedFunctionInfo(resolvedRef, function))
         }
     }
 
-    private fun getTypeInfo(struct: Struct, idLocation: Location?): ValidatedTypeInfo {
-        return ValidatedTypeInfo.Struct(struct.resolvedRef,
+    private fun getTypeInfo(struct: Struct, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo.Struct(struct.resolvedRef,
             false,
             struct.typeParameters,
             getMemberTypeMap(struct.members),
@@ -515,8 +515,8 @@ private class TypesSummaryToInfoConverter(
         return typeMap
     }
 
-    private fun getTypeInfo(union: Union, idLocation: Location?): ValidatedTypeInfo {
-        return ValidatedTypeInfo.Union(union.resolvedRef,
+    private fun getTypeInfo(union: Union, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo.Union(union.resolvedRef,
             false,
             union.typeParameters,
             getUnionTypeMap(union.options)
@@ -536,8 +536,8 @@ private class TypesSummaryToInfoConverter(
         return typeMap
     }
 
-    private fun getUpstreamTypes(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ValidatedTypeInfo> {
-        val upstreamTypes = HashMap<ResolvedEntityRef, ValidatedTypeInfo>()
+    private fun getUpstreamTypes(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ResolvedTypeInfo> {
+        val upstreamTypes = HashMap<ResolvedEntityRef, ResolvedTypeInfo>()
 
         // TODO: Fix this to use nativeModuleVersion
         val nativeModuleId = CURRENT_NATIVE_MODULE_ID
@@ -564,8 +564,8 @@ private class TypesSummaryToInfoConverter(
         return upstreamTypes
     }
 
-    private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): ValidatedTypeInfo {
-        return ValidatedTypeInfo.OpaqueType(
+    private fun getTypeInfo(opaqueType: OpaqueType, idLocation: Location?): ResolvedTypeInfo {
+        return ResolvedTypeInfo.OpaqueType(
             opaqueType.resolvedRef,
             opaqueType.isReference,
             opaqueType.typeParameters
@@ -573,12 +573,12 @@ private class TypesSummaryToInfoConverter(
         )
     }
 
-    private fun getUpstreamFunctions(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ValidatedFunctionInfo> {
-        val upstreamFunctions = HashMap<ResolvedEntityRef, ValidatedFunctionInfo>()
+    private fun getUpstreamFunctions(upstreamModules: List<ValidatedModule>): Map<ResolvedEntityRef, ResolvedFunctionInfo> {
+        val upstreamFunctions = HashMap<ResolvedEntityRef, ResolvedFunctionInfo>()
 
         // (We don't need the idPosition for functions in upstream modules)
-        val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): ValidatedFunctionInfo {
-            return ValidatedFunctionInfo(ref, FunctionInfo(signature.id, invalidateFunctionType(signature.getFunctionType()), null))
+        val functionInfo = fun(ref: ResolvedEntityRef, signature: FunctionSignature): ResolvedFunctionInfo {
+            return ResolvedFunctionInfo(ref, FunctionInfo(signature.id, invalidateFunctionType(signature.getFunctionType()), null))
         }
 
         // TODO: Fix this to use nativeModuleVersion
@@ -627,16 +627,16 @@ fun TypesInfo.isDataType(type: Type): Boolean {
             } else {
                 val typeInfo = getTypeInfo(type.originalRef)!!
                 when (typeInfo) {
-                    is ValidatedTypeInfo.Struct -> {
+                    is ResolvedTypeInfo.Struct -> {
                         // TODO: Need to handle recursive references; perhaps precomputing this across the whole type graph would be preferable (or do lazy computation and caching...)
                         // TODO: What does the validation of a Type actually do? And can we do it in its own stage?
                         typeInfo.memberTypes.values.all { isDataType(it) }
                     }
-                    is ValidatedTypeInfo.Union -> {
+                    is ResolvedTypeInfo.Union -> {
                         // TODO: Need to handle recursive references here, too
                         typeInfo.optionTypes.values.all { !it.isPresent || isDataType(it.get()) }
                     }
-                    is ValidatedTypeInfo.OpaqueType -> {
+                    is ResolvedTypeInfo.OpaqueType -> {
                         isNativeModule(type.ref.module) &&
                                 (type.ref.id == NativeOpaqueType.BOOLEAN.id ||
                                         type.ref.id == NativeOpaqueType.INTEGER.id ||
@@ -709,19 +709,19 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
             return TypesMetadata(typeChains)
         }
 
-        private fun evaluateAndCollect(type: ValidatedTypeInfo) {
+        private fun evaluateAndCollect(type: ResolvedTypeInfo) {
             when (type) {
-                is ValidatedTypeInfo.Struct -> {
+                is ResolvedTypeInfo.Struct -> {
                     computeTypeChain(type.resolvedRef, type)
                 }
-                is ValidatedTypeInfo.Union -> { /* Do nothing */ }
-                is ValidatedTypeInfo.OpaqueType -> { /* Do nothing */ }
+                is ResolvedTypeInfo.Union -> { /* Do nothing */ }
+                is ResolvedTypeInfo.OpaqueType -> { /* Do nothing */ }
             }
         }
 
         // TODO: Reuse already-computed information more
         // TODO: Support parameterized types
-        private fun computeTypeChain(resolvedRef: ResolvedEntityRef, info: ValidatedTypeInfo.Struct) {
+        private fun computeTypeChain(resolvedRef: ResolvedEntityRef, info: ResolvedTypeInfo.Struct) {
             val typeChain = ArrayList<TypeChainLink>()
             val refsSoFar = HashSet<ResolvedEntityRef>()
             var curRef = resolvedRef
@@ -746,7 +746,7 @@ fun getTypesMetadata(typeInfo: TypesInfo): TypesMetadata {
                     // TODO: Record an error
                     return
                 }
-                if (memberInfo !is ValidatedTypeInfo.Struct) {
+                if (memberInfo !is ResolvedTypeInfo.Struct) {
                     break
                 }
                 if (refsSoFar.contains(memberInfo.resolvedRef)) {

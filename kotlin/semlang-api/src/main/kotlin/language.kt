@@ -207,6 +207,14 @@ sealed class UnvalidatedType {
 
 }
 
+// Maybe throwing more types at the problem will solve things
+// This represents the type of a resolved function, member, or option
+sealed class ResolvedType {
+    data class Named(val ref: ResolvedEntityRef, val isReference: Boolean, val parameters: List<ResolvedType>): ResolvedType()
+    data class Function(val isReference: Boolean, val parameters: List<TypeParameter>, val argTypes: List<ResolvedType>, val outputType: ResolvedType): ResolvedType()
+    data class UnknownNamed(val originalRef: EntityRef): ResolvedType()
+}
+
 /**
  * Note: The hashCode() and equals() methods for [Type.NamedType] ignore [Type.NamedType.originalRef], which is provided for a narrow
  * range of reasons -- primarily, converting back to the original unvalidated code. This may cause odd behavior if
