@@ -202,10 +202,36 @@ class EntityResolver(private val typeResolutions: Map<EntityId, Set<EntityResolu
         ref: EntityRef,
         possibilities: Collection<EntityResolution>
     ): String {
+        val possibilityRefs = possibilities.map { getSimplestRefFor(it.entityRef, resolutionType) }.sortedBy { it.toString() }
         return when (resolutionType) {
-            ResolutionType.Type -> "Type $ref is ambiguous; possible types are: $possibilities"
-            ResolutionType.Function -> "Function $ref is ambiguous; possible functions are: $possibilities"
+            ResolutionType.Type -> "Type $ref is ambiguous; possible types are: $possibilityRefs"
+            ResolutionType.Function -> "Function $ref is ambiguous; possible functions are: $possibilityRefs"
         }
+    }
+
+    private fun getSimplestRefFor(resolvedRef: ResolvedEntityRef, resolutionType: ResolutionType): EntityRef {
+        val group = resolvedRef.module.name.group
+        val module = resolvedRef.module.name.module
+        val id = resolvedRef.id
+        val candidateRefs = listOf(
+            EntityRef(null, id),
+            EntityRef(ModuleRef(null, module, null), id),
+            EntityRef(ModuleRef(group, module, null), id)
+        )
+        val allResolutions = when (resolutionType) {
+            ResolutionType.Type -> typeResolutions[id]
+            ResolutionType.Function -> functionResolutions[id]
+        }
+        for (ref in candidateRefs) {
+            if (allResolutions == null) {
+                return ref
+            }
+
+            if (filterByModuleRef(allResolutions, ref.moduleRef).size <= 1) {
+                return ref
+            }
+        }
+        return resolvedRef.toUnresolvedRef()
     }
 
     private fun filterByModuleRef(allResolutions: Set<EntityResolution>, moduleRef: ModuleRef?): Collection<EntityResolution> {
