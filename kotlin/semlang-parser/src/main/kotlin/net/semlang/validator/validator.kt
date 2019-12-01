@@ -696,7 +696,7 @@ private class Validator(
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
-            errors.add(Issue("The expression $functionExpression is called like a function, but it has a non-function type ${prettyType(functionExpression.type)}", expression.functionExpression.location, IssueLevel.ERROR))
+            errors.add(Issue("This expression is called like a function, but has a non-function type ${prettyType(functionExpression.type)}", expression.functionExpression.location, IssueLevel.ERROR))
             return null
         }
 
