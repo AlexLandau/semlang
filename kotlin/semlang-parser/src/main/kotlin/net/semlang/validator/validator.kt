@@ -483,7 +483,14 @@ private class Validator(
 
     private fun prettyType(type: Type): String {
         return when (type) {
-            is Type.FunctionType.Ground -> TODO()
+            is Type.FunctionType.Ground -> {
+                val referenceString = if (type.isReference()) "&" else ""
+                referenceString +
+                        "(" +
+                        type.argTypes.map(this::prettyType).joinToString(", ") +
+                        ") -> " +
+                        prettyType(type.outputType)
+            }
             is Type.FunctionType.Parameterized -> {
                 val groundType = type.getDefaultGrounding()
                 val referenceString = if (type.isReference()) "&" else ""
@@ -504,13 +511,14 @@ private class Validator(
                 type.parameter.name
             }
             is Type.NamedType -> {
+                val isRefString = if (type.isReference()) "&" else ""
                 val refString = typesInfo.getSimplestRefForType(type.ref).toString()
                 val parametersString = if (type.parameters.isEmpty()) {
                     ""
                 } else {
                     "<" + type.parameters.joinToString(", ") + ">"
                 }
-                refString + parametersString
+                isRefString + refString + parametersString
             }
         }
     }
@@ -776,7 +784,7 @@ private class Validator(
             val unused: Any = when (typeClass) {
                 TypeClass.Data -> {
                     if (!typesInfo.isDataType(chosenType)) {
-                        errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but ${chosenType.getTypeString()} is not a data type", location, IssueLevel.ERROR))
+                        errors.add(Issue("Type parameter ${typeParameter.name} requires a data type, but ${prettyType(chosenType)} is not a data type", location, IssueLevel.ERROR))
                     } else {}
                 }
             }

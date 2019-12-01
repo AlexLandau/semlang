@@ -2,5 +2,5 @@
 function areListBuildersEqual(left: &ListBuilder, right: &ListBuilder): Boolean {
   Data.equals<&ListBuilder>(left, right)
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Reference types cannot be used as parameters
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but &semlang:lang:"fake0:0":ListBuilder is not a data type
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Type parameter T requires a data type, but &ListBuilder is not a data type
 }
