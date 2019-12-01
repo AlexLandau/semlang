@@ -806,28 +806,30 @@ private class Validator(
 
     private fun getLiteralValidatorForTypeChain(types: List<UnvalidatedType>): LiteralValidator? {
         val lastType = types.last()
-        // TODO: Check modules and such
-        if (lastType is UnvalidatedType.NamedType && lastType.ref.id == NativeOpaqueType.INTEGER.id) {
+        if (lastType is UnvalidatedType.NamedType && isNativeType(lastType) && lastType.ref.id == NativeOpaqueType.INTEGER.id) {
             return LiteralValidator.INTEGER
         }
-        if (lastType is UnvalidatedType.NamedType && lastType.ref.id == NativeOpaqueType.BOOLEAN.id) {
+        if (lastType is UnvalidatedType.NamedType && isNativeType(lastType) && lastType.ref.id == NativeOpaqueType.BOOLEAN.id) {
             return LiteralValidator.BOOLEAN
         }
         if (types.size >= 2) {
             val secondToLastType = types[types.size - 2]
             if (secondToLastType is UnvalidatedType.NamedType) {
                 val typeRef = secondToLastType.ref
-                if (typeRef.id == NativeStruct.STRING.id) {
+                if (isNativeType(secondToLastType) && typeRef.id == NativeStruct.STRING.id) {
                     return LiteralValidator.STRING
                 }
-                // TODO: This more correct implementation doesn't seem to work; does resolving anything to String fail right now?
-//                val resolvedTypeRef = typesInfo.getResolvedTypeInfo(typeRef)?.resolvedRef ?: return null
-//                if (isNativeModule(resolvedTypeRef.module) && resolvedTypeRef.id == NativeStruct.STRING.id) {
-//                    return LiteralValidator.STRING
-//                }
             }
         }
         return null
+    }
+
+    private fun isNativeType(type: UnvalidatedType.NamedType): Boolean {
+        val resolved = typesInfo.getResolvedTypeInfo(type.ref)
+        return when (resolved) {
+            is ResolvedTypeInfo -> isNativeModule(resolved.resolvedRef.module)
+            is TypeInfoResult.Error -> false
+        }
     }
 
     private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
@@ -865,7 +867,7 @@ private class Validator(
         val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
 
         if (condition.type != NativeOpaqueType.BOOLEAN.getType()) {
-            fail("In function $containingFunctionId, an if-then expression has a non-boolean condition expression: $condition")
+            errors.add(Issue("The condition of an if expression should be a Boolean, but is of type ${prettyType(condition.type)}", expression.condition.location, IssueLevel.ERROR))
         }
 
         // TODO: Reconsider how references interact with if/then expressions

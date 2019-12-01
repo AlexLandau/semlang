@@ -1,0 +1,8 @@
+function myFunction(n: Integer): String {
+  if (n) {
+      ~ The condition of an if expression should be a Boolean, but is of type Integer
+    String."foo"
+  } else {
+    String."bar"
+  }
+}
