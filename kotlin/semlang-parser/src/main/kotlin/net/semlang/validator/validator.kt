@@ -941,7 +941,7 @@ private class Validator(
             null
         }
         if (requires != null && requires.type != NativeOpaqueType.BOOLEAN.getType()) {
-            val message = "Struct ${struct.id} has a requires block with inferred type ${requires.type}, but the type should be Boolean"
+            val message = "Struct ${struct.id} has a requires block with inferred type ${prettyType(requires.type)}, but the type should be Boolean"
             val location = struct.requires!!.location
             errors.add(Issue(message, location, IssueLevel.ERROR))
         }
