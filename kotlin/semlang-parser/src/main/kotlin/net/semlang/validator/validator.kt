@@ -160,7 +160,7 @@ private class Validator(
 
         //TODO: Validate that type parameters don't share a name with something important
         val variableTypes = getArgumentVariableTypes(arguments)
-        val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name), function.id) ?: return null
+        val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         if (returnType != block.type) {
             errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${prettyType(block.type)}", function.returnTypeLocation, IssueLevel.ERROR))
         }
@@ -238,7 +238,7 @@ private class Validator(
         return arguments.associate { argument -> Pair(argument.name, argument.type) }
     }
 
-    private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedBlock? {
+    private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
         val validatedStatements = ArrayList<ValidatedStatement>()
         for (statement in block.statements) {
@@ -252,7 +252,7 @@ private class Validator(
                 }
             }
 
-            val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+            val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
             val unvalidatedAssignmentType = statement.type
             if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
@@ -278,7 +278,7 @@ private class Validator(
                 variableTypes.put(varName, validatedExpression.type)
             }
         }
-        val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+        val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope) ?: return null
         val referentialActionsCount = countReferentialActions(returnedExpression)
         if (referentialActionsCount > 1) {
             // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
@@ -325,7 +325,7 @@ private class Validator(
     }
 
     //TODO: Construct this more sensibly from more centralized lists
-    private val INVALID_VARIABLE_NAMES: Set<String> = setOf("Integer", "Boolean", "function", "let", "if", "else", "struct", "requires", "interface", "union")
+    private val INVALID_VARIABLE_NAMES: Set<String> = setOf("function", "let", "if", "else", "struct", "requires", "interface", "union")
 
     private fun isInvalidVariableName(name: String): Boolean {
         val nameAsEntityRef = EntityId.of(name).asRef()
@@ -333,59 +333,50 @@ private class Validator(
                 || INVALID_VARIABLE_NAMES.contains(name)
     }
 
-    // TODO: Remove containingFunctionId argument when no longer needed
-    private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateExpression(expression: Expression, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         try {
             return when (expression) {
-                is Expression.Variable -> validateVariableExpression(expression, variableTypes, containingFunctionId)
+                is Expression.Variable -> validateVariableExpression(expression, variableTypes)
                 is Expression.IfThen -> validateIfThenExpression(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.Follow -> validateFollowExpression(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.NamedFunctionCall -> validateNamedFunctionCallExpression(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.ExpressionFunctionCall -> validateExpressionFunctionCallExpression(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.Literal -> validateLiteralExpression(expression, typeParametersInScope)
                 is Expression.ListLiteral -> validateListLiteralExpression(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.NamedFunctionBinding -> validateNamedFunctionBinding(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.ExpressionFunctionBinding -> validateExpressionFunctionBinding(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
                 is Expression.InlineFunction -> validateInlineFunction(
                     expression,
                     variableTypes,
-                    typeParametersInScope,
-                    containingFunctionId
+                    typeParametersInScope
                 )
             }
         } catch (e: RuntimeException) {
@@ -393,7 +384,7 @@ private class Validator(
         }
     }
 
-    private fun validateInlineFunction(expression: Expression.InlineFunction, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateInlineFunction(expression: Expression.InlineFunction, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         for (arg in expression.arguments) {
             if (variableTypes.containsKey(arg.name)) {
                 errors.add(Issue("Argument name ${arg.name} shadows an existing variable name", arg.location, IssueLevel.ERROR))
@@ -402,7 +393,7 @@ private class Validator(
         val validatedArguments = validateArguments(expression.arguments, typeParametersInScope) ?: return null
 
         val incomingVariableTypes: Map<String, Type> = variableTypes + validatedArguments.asVariableTypesMap()
-        val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeParametersInScope, containingFunctionId) ?: return null
+        val validatedBlock = validateBlock(expression.block, incomingVariableTypes, typeParametersInScope) ?: return null
 
         // Note: This is the source of the canonical in-memory ordering
         val varsToBind = ArrayList<String>(variableTypes.keys)
@@ -425,8 +416,8 @@ private class Validator(
         return TypedExpression.InlineFunction(functionType, AliasType.NotAliased, validatedArguments, varsToBindWithTypes, returnType, validatedBlock)
     }
 
-    private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
-        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+    private fun validateExpressionFunctionBinding(expression: Expression.ExpressionFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
+        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope) ?: return null
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
@@ -443,7 +434,7 @@ private class Validator(
             if (binding == null) {
                 null
             } else {
-                validateExpression(binding, variableTypes, typeParametersInScope, containingFunctionId)
+                validateExpression(binding, variableTypes, typeParametersInScope)
             }
         }
         val bindingTypes = bindings.map { if (it == null) null else it.type }
@@ -524,7 +515,7 @@ private class Validator(
         }
     }
 
-    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateNamedFunctionBinding(expression: Expression.NamedFunctionBinding, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         val functionRef = expression.functionRef
         val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
         when (resolvedFunctionInfo) {
@@ -540,7 +531,7 @@ private class Validator(
             if (binding == null) {
                 null
             } else {
-                validateExpression(binding, variableTypes, typeParametersInScope, containingFunctionId)
+                validateExpression(binding, variableTypes, typeParametersInScope)
             }
         }
         val bindingTypes = bindings.map { binding ->
@@ -639,8 +630,8 @@ private class Validator(
         return chosenParameters
     }
 
-    private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
-        val structureExpression = validateExpression(expression.structureExpression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+    private fun validateFollowExpression(expression: Expression.Follow, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
+        val structureExpression = validateExpression(expression.structureExpression, variableTypes, typeParametersInScope) ?: return null
 
         val structureNamedType = structureExpression.type as? Type.NamedType
         if (structureNamedType == null) {
@@ -692,8 +683,8 @@ private class Validator(
         return replacedType
     }
 
-    private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
-        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+    private fun validateExpressionFunctionCallExpression(expression: Expression.ExpressionFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
+        val functionExpression = validateExpression(expression.functionExpression, variableTypes, typeParametersInScope) ?: return null
 
         val functionType = functionExpression.type as? Type.FunctionType
         if (functionType == null) {
@@ -713,7 +704,7 @@ private class Validator(
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
-            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope) ?: return null
             arguments.add(argument)
         }
         val argumentTypes = arguments.map(TypedExpression::type)
@@ -731,7 +722,7 @@ private class Validator(
         return TypedExpression.ExpressionFunctionCall(groundFunctionType.outputType, AliasType.NotAliased, functionExpression, arguments, inferredTypeParameters, providedChoices.map { it ?: error("This case should be handled earlier") })
     }
 
-    private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateNamedFunctionCallExpression(expression: Expression.NamedFunctionCall, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         val functionRef = expression.functionRef
 
         val resolvedFunctionInfo = typesInfo.getResolvedFunctionInfo(functionRef)
@@ -751,7 +742,7 @@ private class Validator(
 
         val arguments = ArrayList<TypedExpression>()
         for (untypedArgument in expression.arguments) {
-            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+            val argument = validateExpression(untypedArgument, variableTypes, typeParametersInScope) ?: return null
             arguments.add(argument)
         }
         val argumentTypes = arguments.map(TypedExpression::type)
@@ -841,7 +832,7 @@ private class Validator(
         }
     }
 
-    private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateListLiteralExpression(expression: Expression.ListLiteral, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
         val chosenParameter = validateType(expression.chosenParameter, typeParametersInScope) ?: return null
         if (chosenParameter.isReference()) {
             errors.add(Issue("Reference types cannot be used as parameters", expression.location, IssueLevel.ERROR))
@@ -852,7 +843,7 @@ private class Validator(
         var itemErrorFound = false
         val contents = ArrayList<TypedExpression>()
         for (itemExpression in expression.contents) {
-            val validated = validateExpression(itemExpression, variableTypes, typeParametersInScope, containingFunctionId)
+            val validated = validateExpression(itemExpression, variableTypes, typeParametersInScope)
             if (validated == null) {
                 itemErrorFound = true
             } else {
@@ -872,16 +863,16 @@ private class Validator(
         return TypedExpression.ListLiteral(listType, AliasType.NotAliased, contents, chosenParameter)
     }
 
-    private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>, containingFunctionId: EntityId): TypedExpression? {
-        val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+    private fun validateIfThenExpression(expression: Expression.IfThen, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedExpression? {
+        val condition = validateExpression(expression.condition, variableTypes, typeParametersInScope) ?: return null
 
         if (condition.type != NativeOpaqueType.BOOLEAN.getType()) {
             errors.add(Issue("The condition of an if expression should be a Boolean, but is of type ${prettyType(condition.type)}", expression.condition.location, IssueLevel.ERROR))
         }
 
         // TODO: Reconsider how references interact with if/then expressions
-        val thenBlock = validateBlock(expression.thenBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
-        val elseBlock = validateBlock(expression.elseBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
+        val thenBlock = validateBlock(expression.thenBlock, variableTypes, typeParametersInScope) ?: return null
+        val elseBlock = validateBlock(expression.elseBlock, variableTypes, typeParametersInScope) ?: return null
 
         val type = typeUnion(thenBlock.type, elseBlock.type)
         if (type == null) {
@@ -907,7 +898,7 @@ private class Validator(
         return null
     }
 
-    private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, containingFunctionId: EntityId): TypedExpression? {
+    private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>): TypedExpression? {
         val type = variableTypes[expression.name]
         if (type != null) {
             return TypedExpression.Variable(type, AliasType.PossiblyAliased, expression.name)
@@ -933,10 +924,9 @@ private class Validator(
 
         val memberTypes = members.associate { member -> member.name to member.type }
 
-        val fakeContainingFunctionId = EntityId(struct.id.namespacedName + "requires")
         val uncheckedRequires = struct.requires
         val requires = if (uncheckedRequires != null) {
-            validateBlock(uncheckedRequires, memberTypes, struct.typeParameters.associateBy(TypeParameter::name), fakeContainingFunctionId) ?: return null
+            validateBlock(uncheckedRequires, memberTypes, struct.typeParameters.associateBy(TypeParameter::name)) ?: return null
         } else {
             null
         }
