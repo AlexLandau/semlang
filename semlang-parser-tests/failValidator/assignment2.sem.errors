@@ -1,0 +1,5 @@
+function foo(): Integer {
+  let n: Integer = Integer.plus|(_, _)
+      ~ Declared variable type Integer doesn't match expression type (Integer, Integer) -> Integer
+  n
+}

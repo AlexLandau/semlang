@@ -13,17 +13,6 @@ import net.semlang.transforms.invalidate
 import java.io.File
 import java.util.*
 
-// TODO: Remove once unused
-private fun fail(e: Exception, text: String): Nothing {
-    throw IllegalStateException(text, e)
-}
-
-// TODO: Remove once unused
-private fun fail(text: String): Nothing {
-    val fullMessage = "Validation error, position not recorded: $text"
-    error(fullMessage)
-}
-
 /*
  * Warning: Doesn't validate that composed literals satisfy their requires blocks, which requires running semlang code to
  *   check (albeit code that can always be run in a vacuum)
@@ -157,7 +146,7 @@ private class Validator(
             if (validatedFunction != null && !typesInfo.duplicateLocalFunctionIds.contains(validatedFunction.id)) {
                 validatedFunctions.put(function.id, validatedFunction)
             } else if (errors.isEmpty()) {
-                fail("Something bad happened")
+                error("Something bad happened")
             }
         }
         return validatedFunctions
@@ -268,8 +257,9 @@ private class Validator(
             if (unvalidatedAssignmentType != null) {
                 val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
                 if (validatedExpression.type != assignmentType) {
-                    fail("In function $containingFunctionId, the variable $varName is supposed to be of type $assignmentType, " +
-                            "but the expression given has actual type ${validatedExpression.type}")
+                    errors.add(Issue("Declared variable type ${prettyType(assignmentType)} " +
+                            "doesn't match expression type ${prettyType(validatedExpression.type)}", statement.nameLocation, IssueLevel.ERROR))
+                    return null
                 }
             }
 
@@ -639,7 +629,7 @@ private class Validator(
         }
         if (chosenParameters.size != functionType.typeParameters.size) {
             // TODO: Hopefully this is impossible to hit now
-            fail("Referenced a function $functionDescription with type parameters ${functionType.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
+            error("Referenced a function $functionDescription with type parameters ${functionType.typeParameters}, but used an incorrect number of type parameters, passing in $chosenParameters")
         }
         for ((typeParameter, chosenType) in functionType.typeParameters.zip(chosenParameters)) {
             if (chosenType != null) {
@@ -893,9 +883,8 @@ private class Validator(
         val thenBlock = validateBlock(expression.thenBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
         val elseBlock = validateBlock(expression.elseBlock, variableTypes, typeParametersInScope, containingFunctionId) ?: return null
 
-        val type = try {
-            typeUnion(thenBlock.type, elseBlock.type)
-        } catch (e: RuntimeException) {
+        val type = typeUnion(thenBlock.type, elseBlock.type)
+        if (type == null) {
             errors.add(Issue("Cannot reconcile types of 'then' block (${prettyType(thenBlock.type)}) and 'else' block (${prettyType(elseBlock.type)})", expression.location, IssueLevel.ERROR))
             return null
         }
@@ -909,13 +898,13 @@ private class Validator(
         return TypedExpression.IfThen(type, aliasType, condition, thenBlock, elseBlock)
     }
 
-    private fun typeUnion(type1: Type, type2: Type): Type {
+    private fun typeUnion(type1: Type, type2: Type): Type? {
         // TODO: Handle actual type unions, inheritance as these things get added
         // TODO: Then move this stuff to the API level
         if (type1 == type2) {
             return type1
         }
-        fail("Types $type1 and $type2 cannot be unioned")
+        return null
     }
 
     private fun validateVariableExpression(expression: Expression.Variable, variableTypes: Map<String, Type>, containingFunctionId: EntityId): TypedExpression? {

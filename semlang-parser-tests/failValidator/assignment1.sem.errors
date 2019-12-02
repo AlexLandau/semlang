@@ -1,0 +1,5 @@
+function foo(): Integer {
+  let n: Integer = Natural."1"
+      ~ Declared variable type Integer doesn't match expression type Natural
+  n
+}
