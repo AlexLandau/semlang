@@ -41,6 +41,17 @@ fun validateModule(context: RawContext, moduleName: ModuleName, nativeModuleVers
     val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, typesMetadata, issuesList)
     return validator.validate(context)
 }
+fun validateModule(context: RawContext, typesInfo: TypesInfo, typesMetadata: TypesMetadata, moduleName: ModuleName, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
+    val fake0Version = computeFake0Version(context, upstreamModules)
+    val moduleId = ModuleUniqueId(moduleName, fake0Version)
+
+    // TODO: Actually implement this
+    val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+
+    val issuesList = ArrayList<Issue>()
+    val validator = Validator(moduleId, nativeModuleVersion, upstreamModules, moduleVersionMappings, typesInfo, typesMetadata, issuesList)
+    return validator.validate(context)
+}
 
 fun validate(parsingResult: ParsingResult, moduleName: ModuleName, nativeModuleVersion: String, upstreamModules: List<ValidatedModule>): ValidationResult {
     return when (parsingResult) {

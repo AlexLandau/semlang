@@ -44,7 +44,7 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             return getTypesSummary(context, {})
         }
 
-        override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult {
+        override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo, typesMetadata: TypesMetadata): ParsingResult {
             return fromIR(ir)
         }
     },
@@ -73,14 +73,14 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
             return collectTypesSummary(context)
         }
 
-        override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult {
+        override fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo, typesMetadata: TypesMetadata): ParsingResult {
             val sem2Result = fromIR(ir)
             return when (sem2Result) {
                 is net.semlang.sem2.parser.ParsingResult.Success -> {
-                    translateSem2ContextToSem1(sem2Result.context, allTypesSummary)
+                    translateSem2ContextToSem1(sem2Result.context, allTypesSummary, typesMetadata)
                 }
                 is net.semlang.sem2.parser.ParsingResult.Failure -> {
-                    val sem2PartialTranslation = translateSem2ContextToSem1(sem2Result.partialContext, allTypesSummary)
+                    val sem2PartialTranslation = translateSem2ContextToSem1(sem2Result.partialContext, allTypesSummary, typesMetadata)
                     when (sem2PartialTranslation) {
                         is ParsingResult.Success -> ParsingResult.Failure(
                             sem2Result.errors,
@@ -103,7 +103,7 @@ enum class Dialect(val extensions: Set<String>, val needsTypeInfoToParse: Boolea
     // Two-pass parsing API (IR type should be a single type per dialect)
     abstract fun parseToIR(documentUri: String, text: String): IR
     abstract fun getTypesSummary(ir: IR, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): TypesSummary
-    abstract fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo): ParsingResult
+    abstract fun parseWithTypeInfo(ir: IR, allTypesSummary: TypesInfo, typesMetadata: TypesMetadata): ParsingResult
 
     /**
      * An intermediate representation used by the dialect to prevent needing to parse a file multiple times.
@@ -149,70 +149,70 @@ fun parseModuleDirectory(directory: File, repository: ModuleRepository): ModuleD
 
 }
 
-fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): ParsingResult {
-    val typesSummaries = ArrayList<TypesSummary>()
-    val irs = HashMap<File, Dialect.IR>()
-    for ((dialect, files) in filesByDialect.entries) {
-        for (file in files) {
-            try {
-                val ir = dialect.parseToIR(file.absolutePath, file.readText())
-                irs[file] = ir
-                typesSummaries.add(dialect.getTypesSummary(ir, moduleName, upstreamModules))
-            } catch (e: RuntimeException) {
-                throw RuntimeException("Error collecting types summary from file $file", e)
-            }
-        }
-    }
+//fun collectParsingResultsTwoPasses(filesByDialect: Map<Dialect, List<File>>, moduleName: ModuleName, upstreamModules: List<ValidatedModule>): ParsingResult {
+//    val typesSummaries = ArrayList<TypesSummary>()
+//    val irs = HashMap<File, Dialect.IR>()
+//    for ((dialect, files) in filesByDialect.entries) {
+//        for (file in files) {
+//            try {
+//                val ir = dialect.parseToIR(file.absolutePath, file.readText())
+//                irs[file] = ir
+//                typesSummaries.add(dialect.getTypesSummary(ir, moduleName, upstreamModules))
+//            } catch (e: RuntimeException) {
+//                throw RuntimeException("Error collecting types summary from file $file", e)
+//            }
+//        }
+//    }
+//
+//    val allTypesSummary = combineTypesSummaries(typesSummaries)
+//    // TODO: Actually support upstream modules
+//    val moduleId = ModuleUniqueId(moduleName, "")
+//    val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
+//    val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
+//    val allTypesInfo = getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
+//
+//    val parsingResults = ArrayList<ParsingResult>()
+//    for ((dialect, files) in filesByDialect.entries) {
+//        for (file in files) {
+//            try {
+//                parsingResults.add(dialect.parseWithTypeInfo(irs[file]!!, allTypesInfo))
+//            } catch (e: RuntimeException) {
+//                throw RuntimeException("Error parsing file $file", e)
+//            }
+//
+//        }
+//    }
+//    return combineParsingResults(parsingResults)
+//}
 
-    val allTypesSummary = combineTypesSummaries(typesSummaries)
-    // TODO: Actually support upstream modules
-    val moduleId = ModuleUniqueId(moduleName, "")
-    val moduleVersionMappings = mapOf<ModuleNonUniqueId, ModuleUniqueId>()
-    val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
-    val allTypesInfo = getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
+//fun collectParsingResultsSinglePass(filesByDialect: Map<Dialect, List<File>>): ParsingResult {
+//    val parsingResults = ArrayList<ParsingResult>()
+//    for ((dialect, files) in filesByDialect.entries) {
+//        for (file in files) {
+//            try {
+//                parsingResults.add(dialect.parseWithoutTypeInfo(file))
+//            } catch (e: RuntimeException) {
+//                throw RuntimeException("Error parsing file $file", e)
+//            }
+//        }
+//    }
+//    return combineParsingResults(parsingResults)
+//}
 
-    val parsingResults = ArrayList<ParsingResult>()
-    for ((dialect, files) in filesByDialect.entries) {
-        for (file in files) {
-            try {
-                parsingResults.add(dialect.parseWithTypeInfo(irs[file]!!, allTypesInfo))
-            } catch (e: RuntimeException) {
-                throw RuntimeException("Error parsing file $file", e)
-            }
-
-        }
-    }
-    return combineParsingResults(parsingResults)
-}
-
-fun collectParsingResultsSinglePass(filesByDialect: Map<Dialect, List<File>>): ParsingResult {
-    val parsingResults = ArrayList<ParsingResult>()
-    for ((dialect, files) in filesByDialect.entries) {
-        for (file in files) {
-            try {
-                parsingResults.add(dialect.parseWithoutTypeInfo(file))
-            } catch (e: RuntimeException) {
-                throw RuntimeException("Error parsing file $file", e)
-            }
-        }
-    }
-    return combineParsingResults(parsingResults)
-}
-
-fun sortByDialect(allFiles: Array<out File>): Map<Dialect, List<File>> {
-    val results = HashMap<Dialect, MutableList<File>>()
-    for (file in allFiles) {
-        for (dialect in Dialect.values()) {
-            if (dialect.extensions.contains(file.extension)) {
-                if (!results.containsKey(dialect)) {
-                    results[dialect] = ArrayList()
-                }
-                results[dialect]!!.add(file)
-            }
-        }
-    }
-    return results
-}
+//fun sortByDialect(allFiles: Array<out File>): Map<Dialect, List<File>> {
+//    val results = HashMap<Dialect, MutableList<File>>()
+//    for (file in allFiles) {
+//        for (dialect in Dialect.values()) {
+//            if (dialect.extensions.contains(file.extension)) {
+//                if (!results.containsKey(dialect)) {
+//                    results[dialect] = ArrayList()
+//                }
+//                results[dialect]!!.add(file)
+//            }
+//        }
+//    }
+//    return results
+//}
 
 fun parseAndValidateModuleDirectory(directory: File, nativeModuleVersion: String, repository: ModuleRepository): ValidationResult {
     val dirParseResult = parseModuleDirectory(directory, repository)

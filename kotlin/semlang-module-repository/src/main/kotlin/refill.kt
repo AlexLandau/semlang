@@ -15,14 +15,14 @@ val SOURCE_FILE_URLS = KeyListNodeName<String>("sourceFileUrls")
 val SOURCE_TEXTS = KeyedNodeName<String, String>("sourceTexts")
 val IRS = KeyedNodeName<String, Dialect.IR>("irs")
 val TYPE_SUMMARIES = KeyedNodeName<String, TypesSummary>("typeSummaries")
-val TYPE_INFO = NodeName<TypesInfo>("typeInfo")
+val TYPES_INFO = NodeName<TypesInfo>("typesInfo")
+val TYPES_METADATA = NodeName<TypesMetadata>("typesMetadata")
 val PARSING_RESULTS = KeyedNodeName<String, ParsingResult>("parsingResults")
 val COMBINED_PARSING_RESULT = NodeName<ParsingResult>("combinedParsingResult")
 val MODULE_PARSING_RESULT = NodeName<ModuleDirectoryParsingResult>("moduleParsingResult")
 val MODULE_VALIDATION_RESULT = NodeName<ValidationResult>("moduleValidationResult")
 fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): TrickleDefinition {
     val builder = TrickleDefinitionBuilder()
-    val stringClass = kotlin.String::class.java
     val configTextInput = builder.createInputNode(CONFIG_TEXT)
     val parsedConfig = builder.createNode(PARSED_CONFIG, configTextInput, { text ->
         // Parse the config
@@ -44,7 +44,7 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
         dialect.getTypesSummary(ir, moduleName, upstreamModules)
     })
 
-    val typeInfoNode = builder.createNode(TYPE_INFO, typeSummaries.fullOutput(), parsedConfig, { summaries, config ->
+    val typesInfoNode = builder.createNode(TYPES_INFO, typeSummaries.fullOutput(), parsedConfig, { summaries, config ->
         val moduleName = config.info.name
         val upstreamModules = listOf<ValidatedModule>() // TODO: support
         // TODO: This can result in errors (when there are duplicate types); handle and report those errors
@@ -55,11 +55,15 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
         val recordIssue: (Issue) -> Unit = {} // TODO: Handle error case with conflicts across files
         getTypesInfoFromSummary(allTypesSummary, moduleId, upstreamModules, moduleVersionMappings, recordIssue)
     })
+    // TODO: Combine with previous node
+    val typesMetadataNode = builder.createNode(TYPES_METADATA, typesInfoNode, { typeInfo ->
+        getTypesMetadata(typeInfo)
+    })
 
-    val parsingResultsNode = builder.createKeyedNode(PARSING_RESULTS, sourceFileUrls, irs.keyedOutput(), typeInfoNode, { filePath, ir, typeInfo ->
+    val parsingResultsNode = builder.createKeyedNode(PARSING_RESULTS, sourceFileUrls, irs.keyedOutput(), typesInfoNode, typesMetadataNode, { filePath, ir, typeInfo, typesMetadata ->
         try {
             val dialect = determineDialect(filePath)!!
-            dialect.parseWithTypeInfo(ir, typeInfo)
+            dialect.parseWithTypeInfo(ir, typeInfo, typesMetadata)
         } catch (e: RuntimeException) {
             e.printStackTrace()
             val message = "Parsing threw an exception: ${e.stackTrace.contentToString()}"
@@ -91,7 +95,7 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
         ModuleDirectoryParsingResult.Failure(listOf(), listOf())
     })
 
-    val moduleValidationResultNode = builder.createNode(MODULE_VALIDATION_RESULT, moduleParsingResultNode, { parsingResult ->
+    val moduleValidationResultNode = builder.createNode(MODULE_VALIDATION_RESULT, moduleParsingResultNode, typesInfoNode, typesMetadataNode, { parsingResult, typesInfo, typesMetadata ->
         when (parsingResult) {
             is ModuleDirectoryParsingResult.Success -> {
                 val module = parsingResult.module
@@ -101,7 +105,8 @@ fun getFilesParsingDefinition(directory: File, repository: ModuleRepository): Tr
                     repository.loadModule(uniqueId)
                 }
 
-                validateModule(module.contents, module.info.name, CURRENT_NATIVE_MODULE_VERSION, dependencies)
+                // TODO: Pass in types info and metadata as well
+                validateModule(module.contents, typesInfo, typesMetadata, module.info.name, CURRENT_NATIVE_MODULE_VERSION, dependencies)
             }
             is ModuleDirectoryParsingResult.Failure -> {
                 ValidationResult.Failure(parsingResult.errors, parsingResult.warnings)

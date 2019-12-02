@@ -22,10 +22,11 @@ import java.util.*
 // TODO: Maybe get rid of this first one?
 fun translateSem2ContextToSem1(context: S2Context, moduleName: ModuleName, upstreamModules: List<ValidatedModule>, options: Sem2ToSem1Options = Sem2ToSem1Options()): ParsingResult {
     val typeInfo = collectTypeInfo(context, moduleName, upstreamModules)
-    return Sem2ToSem1Translator(context, typeInfo, options).translate()
+    val typesMetadata = getTypesMetadata(typeInfo)
+    return Sem2ToSem1Translator(context, typeInfo, typesMetadata, options).translate()
 }
-fun translateSem2ContextToSem1(context: S2Context, typeInfo: TypesInfo, options: Sem2ToSem1Options = Sem2ToSem1Options()): ParsingResult {
-    return Sem2ToSem1Translator(context, typeInfo, options).translate()
+fun translateSem2ContextToSem1(context: S2Context, typeInfo: TypesInfo, typesMetadata: TypesMetadata, options: Sem2ToSem1Options = Sem2ToSem1Options()): ParsingResult {
+    return Sem2ToSem1Translator(context, typeInfo, typesMetadata, options).translate()
 }
 
 data class Sem2ToSem1Options(
@@ -54,10 +55,8 @@ private data class NamespacePartExpression(val names: List<String>): TypedExpres
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
 
-private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val options: Sem2ToSem1Options) {
+private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val typesMetadata: TypesMetadata, val options: Sem2ToSem1Options) {
     val errors = ArrayList<Issue>()
-    // TODO: Have this provided externally
-    val typesMetadata = getTypesMetadata(typeInfo)
 
     fun translate(): ParsingResult {
         val functions = context.functions.mapNotNull(::translate)
