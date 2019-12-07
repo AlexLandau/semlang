@@ -980,7 +980,6 @@ private class Validator(
     }
 
     private fun validateUnion(union: UnvalidatedUnion): Union? {
-        // TODO: Do some additional validation of unions (e.g. no duplicate option IDs)
         if (union.options.isEmpty()) {
             errors.add(Issue("A union must include at least one option", union.idLocation, IssueLevel.ERROR))
             return null
@@ -990,7 +989,14 @@ private class Validator(
     }
 
     private fun validateOptions(options: List<UnvalidatedOption>, unionTypeParameters: Map<String, TypeParameter>): List<Option>? {
+        val namesAlreadySeen = HashSet<String>()
         return options.map { option ->
+            if (namesAlreadySeen.contains(option.name)) {
+                errors.add(Issue("Duplicate option name ${option.name}", option.idLocation, IssueLevel.ERROR))
+                return null
+            }
+            namesAlreadySeen.add(option.name)
+
             val unvalidatedType = option.type
             val type = if (unvalidatedType == null) null else validateType(unvalidatedType, unionTypeParameters)
             if (type != null && type.isReference()) {

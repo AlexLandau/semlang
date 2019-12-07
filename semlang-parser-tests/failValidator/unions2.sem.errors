@@ -1,0 +1,6 @@
+union Foobar {
+      ~~~~~~ Duplicate ID Foobar.Foo
+  Foo: Integer
+  Foo: Integer
+  ~~~ Duplicate option name Foo
+}

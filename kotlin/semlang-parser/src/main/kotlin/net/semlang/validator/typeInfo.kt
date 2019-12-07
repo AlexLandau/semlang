@@ -187,10 +187,12 @@ private class TypesSummaryCollector(
 
         addLocalUnions()
 
-        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { recordIssue(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
+        val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) {
+            recordIssue(Issue("Duplicate ID $id", idLocation, IssueLevel.ERROR))
+        }
 
         val duplicateLocalTypeIds = HashSet<EntityId>()
-        val uniqueLocalTypes = java.util.HashMap<EntityId, TypeInfo>()
+        val uniqueLocalTypes = HashMap<EntityId, TypeInfo>()
         for ((id, typeInfoList) in localTypesMultimap.entries) {
             if (typeInfoList.size > 1) {
                 for (typeInfo in typeInfoList) {
@@ -203,7 +205,7 @@ private class TypesSummaryCollector(
         }
 
         val duplicateLocalFunctionIds = HashSet<EntityId>()
-        val uniqueLocalFunctions = java.util.HashMap<EntityId, FunctionInfo>()
+        val uniqueLocalFunctions = HashMap<EntityId, FunctionInfo>()
         for ((id, functionInfoList) in localFunctionsMultimap.entries) {
             if (functionInfoList.size > 1) {
                 for (functionInfo in functionInfoList) {
@@ -269,12 +271,7 @@ private class TypesSummaryCollector(
     private fun getUnvalidatedUnionTypeMap(options: List<UnvalidatedOption>): Map<String, Optional<UnvalidatedType>> {
         val typeMap = HashMap<String, Optional<UnvalidatedType>>()
         for (option in options) {
-            if (typeMap.containsKey(option.name)) {
-                // TODO: Test this case
-                error("Duplicate option name ${option.name}")
-            } else {
-                typeMap.put(option.name, Optional.ofNullable(option.type))
-            }
+            typeMap.putIfAbsent(option.name, Optional.ofNullable(option.type))
         }
         return typeMap
     }
@@ -327,7 +324,7 @@ private class TypesSummaryToInfoConverter(
         val addDuplicateIdError = fun(id: EntityId, idLocation: Location?) { recordIssue(Issue("Duplicate ID ${id}", idLocation, IssueLevel.ERROR)) }
 
         val duplicateLocalTypeIds = HashSet<EntityId>()
-        val uniqueLocalTypes = java.util.HashMap<EntityId, ResolvedTypeInfo>()
+        val uniqueLocalTypes = HashMap<EntityId, ResolvedTypeInfo>()
         for ((id, typeInfoList) in localTypesMultimap.entries) {
             if (typeInfoList.size > 1) {
                 for (typeInfo in typeInfoList) {
