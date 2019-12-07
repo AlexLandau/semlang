@@ -1,0 +1,9 @@
+function Natural.plus(left: Natural, right: Natural): Natural {
+  Natural(Integer.plus(left.integer, right.integer)).assume()
+}
+
+@Test([], "5")
+function testBoxIntoFunctionCall(): Natural {
+  let getter = Natural.plus|(2, 3)
+  getter()
+}

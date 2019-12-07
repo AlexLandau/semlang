@@ -1,0 +1,4 @@
+@Test([], ["2", "3", "1"])
+function testBoxIntoListLiteral(): List<Natural> {
+  [2, 3, 1]<Natural>
+}

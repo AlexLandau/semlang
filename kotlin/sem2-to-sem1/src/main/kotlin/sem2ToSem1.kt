@@ -75,6 +75,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         }
     }
 
+    private data class TypeHint(val ref: net.semlang.api.EntityRef, val type: UnvalidatedType)
+
     private fun translate(function: S2Function): Function? {
         try {
             return Function(
@@ -165,7 +167,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
         return when (statement) {
             is S2Statement.Normal -> {
-                val (expression, expressionType) = translateFullExpression(statement.expression, statement.type, varTypes)
+                val (expression, expressionType) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
                 val declaredType = statement.type?.let<S2Type, UnvalidatedType>(::translate)
                 TypedStatement(Statement(
                         name = statement.name,
@@ -215,10 +217,31 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         }
     }
 
+    private fun typeHint(type: S2Type?): TypeHint? {
+        if (type is S2Type.NamedType) {
+            return TypeHint(translate(type.ref), translate(type))
+        }
+        return null
+    }
+
+    private fun typeHint(type: UnvalidatedType?): TypeHint? {
+        if (type is UnvalidatedType.NamedType) {
+            return TypeHint(type.ref, type)
+        }
+        return null
+    }
+
+    private fun typeHint(type: OpaqueType): TypeHint {
+        if (type.typeParameters.isNotEmpty()) {
+            error("Haven't handled this case yet; the type.getType() call needs parameters passed to it")
+        }
+        return TypeHint(type.resolvedRef.toUnresolvedRef(), invalidate(type.getType()))
+    }
+
     /**
      * Translates a sem2 expression to sem1 and transforms any resulting partial synthetic expression into a real sem1 expression.
      */
-    private fun translateFullExpression(expression: S2Expression, typeHint: S2Type?, varTypes: Map<String, UnvalidatedType?>): RealExpression {
+    private fun translateFullExpression(expression: S2Expression, typeHint: TypeHint?, varTypes: Map<String, UnvalidatedType?>): RealExpression {
         try {
             val translated = translate(expression, varTypes)
             return when (translated) {
@@ -248,14 +271,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 }
                 is IntegerLiteralExpression -> {
                     val intType = UnvalidatedType.NamedType(NativeOpaqueType.INTEGER.resolvedRef.toUnresolvedRef(), false)
-                    val literalType = if (typeHint is S2Type.NamedType) {
+                    val literalType = if (typeHint != null) {
                         // TODO: Add a specific error message for when this isn't an Integer-y type and isn't Integer itself
-                        val resolvedRef = (typeInfo.getResolvedTypeInfo(translate(typeHint.ref)) as? ResolvedTypeInfo)?.resolvedRef
+                        val resolvedRef = (typeInfo.getResolvedTypeInfo(typeHint.ref) as? ResolvedTypeInfo)?.resolvedRef
                         if (resolvedRef != null) {
                             val chain = typesMetadata.typeChains[resolvedRef]
                             val lastRef = chain?.getTypesList()?.last()?.let { (it as? UnvalidatedType.NamedType)?.ref }?.let { typeInfo.getResolvedTypeInfo(it) as? ResolvedTypeInfo }?.resolvedRef
                             if (lastRef == NativeOpaqueType.INTEGER.resolvedRef) {
-                                translate(typeHint)
+                                typeHint.type
                             } else {
                                 intType
                             }
@@ -355,9 +378,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.IfThen -> {
                 // Shortcut: Just assume the then-block has the correct type
                 val (thenBlock, typeInfo) = translate(expression.thenBlock, varTypes)
-                val boolType = S2Type.NamedType(EntityRef(S2ModuleRef(CURRENT_NATIVE_MODULE_ID.name.group, CURRENT_NATIVE_MODULE_ID.name.module, null), EntityId.of("Boolean")), false)
+//                val boolType = S2Type.NamedType(EntityRef(S2ModuleRef(CURRENT_NATIVE_MODULE_ID.name.group, CURRENT_NATIVE_MODULE_ID.name.module, null), EntityId.of("Boolean")), false)
                 RealExpression(Expression.IfThen(
-                        condition = translateFullExpression(expression.condition, boolType, varTypes).expression,
+                        condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression,
                         thenBlock = thenBlock,
                         elseBlock = translate(expression.elseBlock, varTypes).block,
                         location = expression.location
@@ -365,8 +388,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             }
             is S2Expression.FunctionCall -> {
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
-                // TODO: These args would be a good place for type hints; want to be careful zipping
-                val (arguments, argumentTypes) = expression.arguments.map { translateFullExpression(it, null, varTypes) }.map { it.expression to it.type }.unzip()
+                val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
+                // Pad with nulls to safely zippable length
+                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size), null)
+                val (arguments, argumentTypes) = expression.arguments.zip(argTypeHints).map { (argument, typeHint) -> translateFullExpression(argument, typeHint(typeHint), varTypes) }.map { it.expression to it.type }.unzip()
 
                 // Steps to do here:
                 // Phase 1: Infer any missing type parameters
@@ -444,8 +469,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.ListLiteral -> {
                 val chosenParameter = translate(expression.chosenParameter)
                 RealExpression(Expression.ListLiteral(
-                    // TODO: Test this type hinting
-                        contents = expression.contents.map { translateFullExpression(it, expression.chosenParameter, varTypes).expression },
+                        contents = expression.contents.map { translateFullExpression(it, typeHint(expression.chosenParameter), varTypes).expression },
                         chosenParameter = chosenParameter,
                         location = expression.location
                 ), UnvalidatedType.NamedType(NativeOpaqueType.LIST.resolvedRef.toUnresolvedRef(), false, listOf(chosenParameter)))
@@ -453,9 +477,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
+                val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
+                // Pad with nulls to safely zippable length
+                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.bindings.size - argTypesMaybeWrongLength.size), null)
 
-                val (bindings, bindingTypes) = expression.bindings.map { if (it == null) null else translateFullExpression(it, null, varTypes) }.map { it?.expression to it?.type }.unzip()
-
+                val (bindings, bindingTypes) = expression.bindings.zip(argTypeHints).map { (binding, typeHint) -> if (binding == null) null else translateFullExpression(binding, typeHint(typeHint), varTypes) }.map { it?.expression to it?.type }.unzip()
 
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
 

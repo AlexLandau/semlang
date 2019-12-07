@@ -217,7 +217,7 @@ private fun instantiateArguments(argumentSpecs: List<Argument>, argumentLiterals
 
 fun evaluateAnnotationArgAsLiteral(type: Type, annotationArg: AnnotationArgument, interpreter: SemlangForwardInterpreter): SemObject {
     return when (type) {
-        is Type.FunctionType.Ground -> TODO()
+        is Type.FunctionType.Ground -> error("The @Test annotation cannot (currently) test a function that outputs a function.")
         is Type.FunctionType.Parameterized -> TODO()
         is Type.InternalParameterType -> TODO()
         is Type.ParameterType -> TODO()
