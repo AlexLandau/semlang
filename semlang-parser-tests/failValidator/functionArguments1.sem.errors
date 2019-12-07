@@ -1,0 +1,4 @@
+function foo(i: Integer, i: Integer): Integer {
+                         ~~~~~~~~~~ Duplicate argument name i
+  Integer.plus(i, i)
+}

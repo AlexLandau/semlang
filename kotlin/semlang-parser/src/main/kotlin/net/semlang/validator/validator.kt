@@ -153,13 +153,11 @@ private class Validator(
     }
 
     private fun validateFunction(function: Function): ValidatedFunction? {
-        //TODO: Validate that no two arguments have the same name
-
         val arguments = validateArguments(function.arguments, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         val returnType = validateType(function.returnType, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
 
         //TODO: Validate that type parameters don't share a name with something important
-        val variableTypes = getArgumentVariableTypes(arguments)
+        val variableTypes = getArgumentVariableTypes(arguments, function.arguments)
         val block = validateBlock(function.block, variableTypes, function.typeParameters.associateBy(TypeParameter::name)) ?: return null
         if (returnType != block.type) {
             errors.add(Issue("Stated return type ${function.returnType} does not match the block's actual return type ${prettyType(block.type)}", function.returnTypeLocation, IssueLevel.ERROR))
@@ -234,8 +232,16 @@ private class Validator(
         return validatedArguments
     }
 
-    private fun getArgumentVariableTypes(arguments: List<Argument>): Map<String, Type> {
-        return arguments.associate { argument -> Pair(argument.name, argument.type) }
+    private fun getArgumentVariableTypes(arguments: List<Argument>, unvalidatedArguments: List<UnvalidatedArgument>): Map<String, Type> {
+        val variableTypes = HashMap<String, Type>()
+        for ((index, argument) in arguments.withIndex()) {
+            if (variableTypes.containsKey(argument.name)) {
+                errors.add(Issue("Duplicate argument name ${argument.name}", unvalidatedArguments[index].location, IssueLevel.ERROR))
+            } else {
+                variableTypes[argument.name] = argument.type
+            }
+        }
+        return variableTypes
     }
 
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedBlock? {
