@@ -25,7 +25,7 @@ struct Byte.BitPosition {
 
 @Export
 function Byte.toBits(byte: Byte): ByteBits {
-  let bits = byte.natural.toNBits(Natural."8").assume()
+  let bits = byte.natural.toNBits(8).assume()
   ByteBits(bits).assume()
 }
 

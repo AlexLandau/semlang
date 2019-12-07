@@ -6,7 +6,7 @@ function List.isEmpty<T>(list: List<T>): Boolean {
 
 @Export
 function List.first<T>(list: List<T>): Maybe<T> {
-  list[Natural."0"]
+  list[0]
 }
 
 @Export
@@ -40,21 +40,21 @@ function List.drop<T>(list: List<T>, n: Natural): List<T> {
 @Export
 function List.dropLast<T>(list: List<T>, n: Natural): List<T> {
   let endMaybe = Natural(list.size() - n)
-  let end = endMaybe.orElse(Natural."0")
-  list.subList(Natural."0", end).assume()
+  let end = endMaybe.orElse(0)
+  list.subList(0, end).assume()
 }
 
 @Export
 function List.firstN<T>(list: List<T>, n: Natural): List<T> {
   let end = Natural.lesser(n, list.size())
-  list.subList(Natural."0", end).assume()
+  list.subList(0, end).assume()
 }
 
 @Export
 function List.lastN<T>(list: List<T>, n: Natural): List<T> {
   let size = list.size()
   let startMaybe = Natural(size - n)
-  let start = startMaybe.orElse(Natural."0")
+  let start = startMaybe.orElse(0)
   list.subList(start, size).assume()
 }
 
@@ -66,7 +66,7 @@ function List.interpose<T>(list: List<T>, interposer: T): List<T> {
     let listWithExtraTrailingItem = list.flatMap({ item: T ->
       [item, interposer]<T>
     })
-    listWithExtraTrailingItem.dropLast(Natural."1")
+    listWithExtraTrailingItem.dropLast(1)
   }
 }
 
@@ -77,19 +77,18 @@ function List.getIndices<T>(list: List<T>): List<Natural> {
     []<Natural>
   } else {
     let lastIndex = Natural(size - Natural."1").assume()
-    Natural.rangeInclusive(Natural."0", lastIndex)
+    Natural.rangeInclusive(0, lastIndex)
   }
 }
 
 // TODO: Consider exporting some version of this
 function List.getItemsSequence<T>(list: List<T>): Sequence<Maybe<IndexedItem<T>>> {
-  let firstItemMaybe = list[Natural."0"]
-  let firstIndexedItem = firstItemMaybe.map({ item: T -> IndexedItem(Natural."0", item) })
+  let firstItemMaybe = list[0]
+  let firstIndexedItem = firstItemMaybe.map({ item: T -> IndexedItem(0, item) })
   Sequence(firstIndexedItem, function (lastIndexedItemMaybe: Maybe<IndexedItem<T>>): Maybe<IndexedItem<T>> {
     Maybe.flatMap(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Maybe<IndexedItem<T>> {
-      let lastIndex = lastIndexedItem->index
-      let curIndex = Natural.plus(lastIndex, Natural."1")
-      let itemMaybe = List.get(list, curIndex)
+      let curIndex = lastIndexedItem.index + Natural."1"
+      let itemMaybe = list[curIndex]
       Maybe.map(itemMaybe, IndexedItem<T>|(curIndex, _))
     })
   })

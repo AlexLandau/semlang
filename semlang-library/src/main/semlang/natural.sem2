@@ -89,17 +89,17 @@ function Natural.absoluteDifference(left: Natural, right: Natural): Natural {
 
 @Export
 function Natural.absoluteValue(integer: Integer): Natural {
-  let integerValue = if (Integer.lessThan(integer, Integer."0")) {
-    Integer.minus(Integer."0", integer)
+  let integerValue = if (integer < 0) {
+    0 - integer
   } else {
     integer
   }
-  Maybe.assume(Natural(integerValue))
+  Natural(integerValue).assume()
 }
 
 @Export
 function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian> {
-  let allBits = if (Natural.equals(value, Natural."0")) {
+  let allBits = if (value == Natural."0") {
     []<Bit>
   } else {
     Natural.toBits(value)->bits
@@ -116,15 +116,15 @@ function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian>
 // TODO: You really want this to be done natively...
 @Export
 function Natural.toBits(value: Natural): BitsBigEndian {
-  if (Natural.equals(value, Natural."0")) {
-    BitsBigEndian([Bit."0"]<Bit>)
+  if (value == Natural."0") {
+    BitsBigEndian([0]<Bit>)
   } else {
     BitsBigEndian(Natural.toBitsList(value))
   }
 }
 function Natural.toBitsList(value: Natural): List<Bit> {
   // TODO: This can probably be done better/non-recursively
-  if (Natural.equals(value, Natural."0")) {
+  if (value == Natural."0") {
     []<Bit>
   } else {
     let listWithoutLastBit = Natural.toBitsList(Maybe.assume(Natural.dividedBy(value, Natural."2")))
@@ -159,7 +159,7 @@ function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
 
 @Export
 function Natural.sequence(): Sequence<Natural> {
-  Sequence(Natural."0", Natural.plus|(_, Natural."1"))
+  Sequence(Natural."0", Natural.plus|(_, 1))
 }
 
 @Export

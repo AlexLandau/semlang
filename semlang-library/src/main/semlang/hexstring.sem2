@@ -11,14 +11,14 @@ struct HexString {
 
 function getHexCodePointValue(codePoint: CodePoint): Maybe<Natural> {
     // Number case: 0-9
-  if (Natural.isBetweenInclusive(codePoint->natural, Natural."48", Natural."57")) {
+  if (Natural.isBetweenInclusive(codePoint->natural, 48, 57)) {
     // Note: In these cases, absoluteDifference() should act as minus().
     // Not sure if this is the right permanent solution.
-    Maybe.success(Natural.absoluteDifference(codePoint->natural, Natural."48"))
+    Maybe.success(Natural.absoluteDifference(codePoint->natural, 48))
   } else {
     // Letter case: a-f (lowercase only)
-    if (Natural.isBetweenInclusive(codePoint->natural, Natural."97", Natural."102")) {
-      Maybe.success(Natural.absoluteDifference(codePoint->natural, Natural."87"))
+    if (Natural.isBetweenInclusive(codePoint->natural, 97, 102)) {
+      Maybe.success(Natural.absoluteDifference(codePoint->natural, 87))
     } else {
       Maybe.failure<Natural>()
     }
@@ -34,13 +34,13 @@ function HexString.toValue(hexString: HexString): Natural {
   List.reduce(
     hexString->string->codePoints,
     Natural."0",
-    hexStringReduction|(_, _)
+    hexStringReduction
   )
 }
 
 function hexStringReduction(numberSoFar: Natural, nextCodePoint: CodePoint): Natural {
-  let prefixValue = Natural.times(numberSoFar, Natural."16")
-  let currentDigitValue = Maybe.assume(getHexCodePointValue(nextCodePoint))
-  Natural.plus(prefixValue, currentDigitValue)
+  let prefixValue = numberSoFar * Natural."16"
+  let currentDigitValue = getHexCodePointValue(nextCodePoint).assume()
+  prefixValue + currentDigitValue
 }
 
