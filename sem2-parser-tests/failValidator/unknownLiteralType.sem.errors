@@ -1,0 +1,5 @@
+function unknownTypeLiteral(): Boolean {
+  let x = UnknownType."Hello, world!"
+          ~~~~~~~~~~~ Type UnknownType not found
+  Boolean."true"
+}

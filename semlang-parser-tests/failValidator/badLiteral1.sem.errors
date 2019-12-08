@@ -1,5 +1,4 @@
 function textOutLiteral(): &TextOut {
-  // This doesn't work
   &TextOut."Hello, world!"
   ~~~~~~~~~~~~~~~~~~~~~~~~ Cannot create a literal for type &TextOut
 }
