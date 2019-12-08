@@ -371,7 +371,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         NamespacePartExpression(newNamespace)
                     }
                     is IntegerLiteralExpression -> {
-                        TODO("Handle trying to use dot extensions of an integer literal")
+                        val intType = getS2Type(NativeOpaqueType.INTEGER)
+                        val rewrittenExpression = S2Expression.DotAccess(
+                            S2Expression.Literal(intType, subexpression.literal, expression.subexpression.location),
+                            expression.name,
+                            expression.location,
+                            expression.nameLocation
+                        )
+                        return translate(rewrittenExpression, varTypes)
                     }
                 }
             }
@@ -571,57 +578,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 ), functionType)
             }
             is S2Expression.PlusOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "plus", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "plus", expression.operatorLocation, varTypes)
             }
             is S2Expression.MinusOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "minus", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "minus", expression.operatorLocation, varTypes)
             }
             is S2Expression.TimesOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "times", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "times", expression.operatorLocation, varTypes)
             }
             is S2Expression.EqualsOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
                 // TODO: Support Data.equals
-                getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "equals", expression.operatorLocation, varTypes)
             }
             is S2Expression.NotEqualsOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
                 // TODO: Support Data.equals
-                val equalityExpression = getOperatorExpression(left, right, "equals", expression, expression.operatorLocation)
-                getBooleanNegationOf(equalityExpression)
+                val equalityExpression = getOperatorExpression(expression.left, expression.right, "equals", expression.operatorLocation, varTypes)
+                getBooleanNegationOf(equalityExpression as RealExpression)
             }
             is S2Expression.LessThanOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "lessThan", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "lessThan", expression.operatorLocation, varTypes)
             }
             is S2Expression.GreaterThanOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "greaterThan", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "greaterThan", expression.operatorLocation, varTypes)
             }
             is S2Expression.DotAssignOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "set", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "set", expression.operatorLocation, varTypes)
             }
             is S2Expression.AndOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "and", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "and", expression.operatorLocation, varTypes)
             }
             is S2Expression.OrOp -> {
-                val left = translateFullExpression(expression.left, null, varTypes)
-                val right = translateFullExpression(expression.right, null, varTypes)
-                getOperatorExpression(left, right, "or", expression, expression.operatorLocation)
+                getOperatorExpression(expression.left, expression.right, "or", expression.operatorLocation, varTypes)
             }
             is S2Expression.GetOp -> {
                 // Let the existing translation code for DotAccess and FunctionCalls do the heavy lifting
@@ -701,29 +688,26 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         ), invalidate(NativeOpaqueType.BOOLEAN.getType()))
     }
 
-    private fun getOperatorExpression(left: RealExpression, right: RealExpression, operatorName: String, expression: S2Expression, operatorLocation: Location?): RealExpression {
+
+    private fun getOperatorExpression(
+        left: S2Expression,
+        right: S2Expression,
+        operatorName: String,
+        operatorLocation: Location?,
+        varTypes: Map<String, UnvalidatedType?>
+    ): TypedExpression {
         // At some point we might support doing this with separate types (e.g. Natural + Integer), but for
         // now expect the two to be the same
-        val operandType = left.type
-        val functionNamespace = getNamespaceForType(operandType)
-        val functionRef = net.semlang.api.EntityRef(null, net.semlang.api.EntityId(functionNamespace + operatorName))
+        // TODO: Support symmetrical-ish selection of a function based on both expressions' types (?)
 
-        val functionInfo = typeInfo.getFunctionInfo(functionRef)
-        val outputType = if (functionInfo != null) {
-            functionInfo.type.outputType
-        } else {
-            null
-        }
-        if (options.failOnUninferredType && outputType == null) {
-            error("Could not determine type for expression $expression")
-        }
-        return RealExpression(Expression.NamedFunctionCall(
-                functionRef = functionRef,
-                arguments = listOf(left.expression, right.expression),
-                chosenParameters = listOf(),
-                location = expression.location,
-                functionRefLocation = operatorLocation
-        ), outputType)
+        // Let the existing translation code for DotAccess and FunctionCalls do the heavy lifting
+        val equivalentExpression = S2Expression.FunctionCall(
+            S2Expression.DotAccess(left, operatorName, operatorLocation, operatorLocation),
+            listOf(right),
+            listOf(),
+            operatorLocation
+        )
+        return translate(equivalentExpression, varTypes)
     }
 
     private fun getNamespaceForType(subexpressionType: UnvalidatedType?): List<String> {
@@ -1009,4 +993,16 @@ private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) 
             }
         }
     }
+}
+
+private fun getS2Type(type: OpaqueType): S2Type {
+    if (type.typeParameters.isNotEmpty()) {
+        error("Haven't handled this case yet")
+    }
+    val ref = type.resolvedRef
+    val id = EntityId(ref.id.namespacedName)
+    return S2Type.NamedType(
+        EntityRef(S2ModuleRef(ref.module.name.group, ref.module.name.module, null), id),
+        type.isReference
+    )
 }

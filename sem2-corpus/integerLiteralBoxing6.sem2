@@ -1,0 +1,8 @@
+function Natural.plus(left: Natural, right: Natural): Natural {
+  Natural(Integer.plus(left.integer, right.integer)).assume()
+}
+
+@Test([], "5")
+function testBoxIntoPlusOp(): Natural {
+  Natural."2" + 3
+}

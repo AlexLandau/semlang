@@ -1,0 +1,8 @@
+function Natural.equals(left: Natural, right: Natural): Boolean {
+  left.integer == right.integer
+}
+
+@Test([], "false")
+function testBoxIntoEqualsOp(): Boolean {
+  Natural."2" == 3
+}
