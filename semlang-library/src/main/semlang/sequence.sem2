@@ -49,7 +49,7 @@ function Sequence.getRange<T>(sequence: Sequence<T>, numElements: Natural): List
       rangeBuilder.append(curElemFixed)
       let nextElem = sequence.successor(curElement[])
       curElement.= nextElem
-      let nextN = n[] + Natural."1"
+      let nextN = n[] + 1
       n.= nextN
   }
   rangeBuilder.build()

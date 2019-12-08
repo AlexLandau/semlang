@@ -99,7 +99,7 @@ function Natural.absoluteValue(integer: Integer): Natural {
 
 @Export
 function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian> {
-  let allBits = if (value == Natural."0") {
+  let allBits = if (value == 0) {
     []<Bit>
   } else {
     Natural.toBits(value)->bits
@@ -116,7 +116,7 @@ function Natural.toNBits(value: Natural, numBits: Natural): Maybe<BitsBigEndian>
 // TODO: You really want this to be done natively...
 @Export
 function Natural.toBits(value: Natural): BitsBigEndian {
-  if (value == Natural."0") {
+  if (value == 0) {
     BitsBigEndian([0]<Bit>)
   } else {
     BitsBigEndian(Natural.toBitsList(value))
@@ -124,11 +124,11 @@ function Natural.toBits(value: Natural): BitsBigEndian {
 }
 function Natural.toBitsList(value: Natural): List<Bit> {
   // TODO: This can probably be done better/non-recursively
-  if (value == Natural."0") {
+  if (value == 0) {
     []<Bit>
   } else {
-    let listWithoutLastBit = Natural.toBitsList(Maybe.assume(Natural.dividedBy(value, Natural."2")))
-    let curBit = Maybe.assume(Bit(Maybe.assume(Natural.modulo(value, Natural."2"))))
+    let listWithoutLastBit = Natural.toBitsList(Maybe.assume(Natural.dividedBy(value, 2)))
+    let curBit = Maybe.assume(Bit(Maybe.assume(Natural.modulo(value, 2))))
     List.append(listWithoutLastBit, curBit)
   }
 }
@@ -136,9 +136,9 @@ function Natural.toBitsList(value: Natural): List<Bit> {
 // TODO: You really want this to be done natively...
 @Export
 function Natural.fromBits(bitsBigEndian: BitsBigEndian): Natural {
-  List.reduce(bitsBigEndian->bits, Natural."0", function(valueSoFar: Natural, bit: Bit): Natural {
-    let doubledValue = Natural.times(valueSoFar, Natural."2")
-    Natural.plus(doubledValue, bit->natural)
+  List.reduce(bitsBigEndian->bits, Natural."0", { valueSoFar: Natural, bit: Bit ->
+    let doubledValue = valueSoFar * 2
+    doubledValue + bit->natural
   })
 }
 
@@ -150,9 +150,9 @@ function Natural.sum(numbers: List<Natural>): Natural {
 
 @Export
 function Natural.rangeInclusive(start: Natural, end: Natural): List<Natural> {
-  let numberOfValuesMaybe = Natural(Natural.minus(Natural.plus(end, Natural."1"), start))
+  let numberOfValuesMaybe = Natural(end + 1 - start)
   let rangeMaybe = Maybe.map(numberOfValuesMaybe, function(numValues: Natural): List<Natural> {
-    Sequence.getRange(Natural.arithmeticProgression(start, Natural."1"), numValues)
+    Sequence.getRange(Natural.arithmeticProgression(start, 1), numValues)
   })
   Maybe.orElse(rangeMaybe, []<Natural>)
 }
@@ -176,9 +176,9 @@ struct Natural.toString.State {
 function Natural.toString(value: Natural): String {
   let curValue = Var(value)
   let codePointsBackwardsBuilder = ListBuilder<CodePoint>()
-  while (curValue[] > Natural."0") {
-    let remainder = curValue[].modulo(Natural."10").assume()
-    let divided = Natural.dividedBy(curValue[], Natural."10").assume()
+  while (curValue[] > 0) {
+    let remainder = curValue[].modulo(10).assume()
+    let divided = Natural.dividedBy(curValue[], 10).assume()
     let codePoint = CodePoint(remainder + unicodeZero().natural).assume()
     codePointsBackwardsBuilder.append(codePoint)
     curValue.= divided
@@ -192,5 +192,6 @@ function Natural.toString(value: Natural): String {
 }
 
 function unicodeZero(): CodePoint {
+  // TODO: Type hinting here
   CodePoint."48"
 }

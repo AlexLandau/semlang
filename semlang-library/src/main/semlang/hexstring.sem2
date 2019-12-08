@@ -39,7 +39,7 @@ function HexString.toValue(hexString: HexString): Natural {
 }
 
 function hexStringReduction(numberSoFar: Natural, nextCodePoint: CodePoint): Natural {
-  let prefixValue = numberSoFar * Natural."16"
+  let prefixValue = numberSoFar * 16
   let currentDigitValue = getHexCodePointValue(nextCodePoint).assume()
   prefixValue + currentDigitValue
 }

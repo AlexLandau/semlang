@@ -1,7 +1,7 @@
 
 @Export
 function List.isEmpty<T>(list: List<T>): Boolean {
-  list.size() == Natural."0"
+  list.size() == 0
 }
 
 @Export
@@ -11,7 +11,7 @@ function List.first<T>(list: List<T>): Maybe<T> {
 
 @Export
 function List.last<T>(list: List<T>): Maybe<T> {
-  let lastIndexMaybe: Maybe<Natural> = Natural(list.size() - Natural."1")
+  let lastIndexMaybe: Maybe<Natural> = Natural(list.size() - 1)
   lastIndexMaybe.flatMap({ lastIndex: Natural ->
     list[lastIndex]
   })
@@ -24,7 +24,7 @@ function List.nCopies<T>(n: Natural, value: T): List<T> {
   let count = Var(Natural."0")
   while (count[] < n) {
     builder.append(value)
-    let nextCount = count[] + Natural."1"
+    let nextCount = count[] + 1
     count.= nextCount
   }
   builder.build()
@@ -73,10 +73,10 @@ function List.interpose<T>(list: List<T>, interposer: T): List<T> {
 @Export
 function List.getIndices<T>(list: List<T>): List<Natural> {
   let size = list.size()
-  if (size == Natural."0") {
+  if (size == 0) {
     []<Natural>
   } else {
-    let lastIndex = Natural(size - Natural."1").assume()
+    let lastIndex = Natural(size - 1).assume()
     Natural.rangeInclusive(0, lastIndex)
   }
 }
@@ -87,7 +87,7 @@ function List.getItemsSequence<T>(list: List<T>): Sequence<Maybe<IndexedItem<T>>
   let firstIndexedItem = firstItemMaybe.map({ item: T -> IndexedItem(0, item) })
   Sequence(firstIndexedItem, function (lastIndexedItemMaybe: Maybe<IndexedItem<T>>): Maybe<IndexedItem<T>> {
     Maybe.flatMap(lastIndexedItemMaybe, function (lastIndexedItem: IndexedItem<T>): Maybe<IndexedItem<T>> {
-      let curIndex = lastIndexedItem.index + Natural."1"
+      let curIndex = lastIndexedItem.index + 1
       let itemMaybe = list[curIndex]
       Maybe.map(itemMaybe, IndexedItem<T>|(curIndex, _))
     })

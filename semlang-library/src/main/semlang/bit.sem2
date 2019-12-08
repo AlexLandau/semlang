@@ -2,8 +2,8 @@
 struct Bit {
   natural: Natural
   requires {
-    natural == Natural."0"
-    || natural == Natural."1"
+    natural == 0
+    || natural == 1
   }
 }
 

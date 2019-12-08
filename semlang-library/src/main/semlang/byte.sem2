@@ -3,7 +3,7 @@
 struct Byte {
   natural: Natural
   requires {
-    natural < Natural."256"
+    natural < 256
   }
 }
 
@@ -11,7 +11,7 @@ struct Byte {
 struct ByteBits {
   bitsBigEndian: BitsBigEndian
   requires {
-    Natural."8" == bitsBigEndian.bits.size()
+    bitsBigEndian.bits.size() == 8
   }
 }
 
@@ -19,7 +19,7 @@ struct ByteBits {
 struct Byte.BitPosition {
   natural: Natural
   requires {
-    natural < Natural."8"
+    natural < 8
   }
 }
 
