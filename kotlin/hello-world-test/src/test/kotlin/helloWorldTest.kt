@@ -1,4 +1,4 @@
-package net.semlang.test
+package net.semlang.helloworld
 
 import net.semlang.api.CURRENT_NATIVE_MODULE_VERSION
 import net.semlang.api.EntityId
