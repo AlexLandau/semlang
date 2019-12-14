@@ -1,20 +1,33 @@
 Major near-term projects:
 - Reference types, console-out support, and application functions
+  - Isolated (&) vs. shared (&&) reference types?
   - Recreate mock tests
   - Support for actually running @Scripts
   - Give TextOut and @Script their own module (also with Script.ExitValue?)
 - Build system
   - Let's start by creating a repo where buildSrc depends on hand-built jars...
-- Module reexports
+  - Probably blocks on module system and a @Script module
+- Revamp the module system a bit
+  - Support definition of opaque types and native functions in a module, including the "main" native module
+    - Would be nice to do this before the remake of code gen
+  - Reexports of upstream types
+  - Individual versions for types?
 - Sem64
   - It would be nice if reference types were stable first
+- Floating point support in a standard library
 - Sem2 and Try notation
   - Autocomplete for .
   - Consider a return keyword and similar imperative control structures?
     - For loops?
     - Break/continue for loops?
+    - How should we support returning from inner functions?
+      - I kind of like the concept of a Returnable<T> or ShortCircuit<T> that can be returned from
+        a method in a standardized way to indicate that under certain circumstances, the outcome
+        should be returned right away (perhaps via another syntactic feature that can be optimized
+        away)
+      - We should be able to eliminate returns if needed
   - Better notation for dealing with Maybes
-  - It would be nice if threaded types were stable first, but this might be a prereq for usability...
+  - It would be nice if reference types were stable first, but this might be a prereq for usability...
 - Finish converting the validator to use fine-grained errors
   - and/or port the validator itself to Semlang?
     - Really want a validator of the sem64 format, not sem1 text
@@ -22,6 +35,8 @@ Major near-term projects:
 - Some possible design refactors:
   - Also consider renaming Maybe.assume to just assume? (Or have it be an alternative name?)
   - Consider function -> fun
+  - Do I want type gating? (Related to "return" constructs)
+  - Do I want throw/catch?
 - Find more cases of uncaught errors (that end up at the function level) when coding in sem2
 Not as near-term but on my mind:
 - Some kind of proof system?
