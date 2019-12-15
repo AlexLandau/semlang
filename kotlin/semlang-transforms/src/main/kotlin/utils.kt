@@ -85,9 +85,6 @@ private fun addAllDeclaredVarNames(statement: Statement, varNames: HashSet<Strin
         is Statement.Bare -> {
             addAllDeclaredVarNames(statement.expression, varNames)
         }
-        is Statement.Return -> {
-            addAllDeclaredVarNames(statement.expression, varNames)
-        }
     }
 }
 
@@ -194,9 +191,6 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
             }
             is Statement.Bare -> {
                 Statement.Bare(apply(statement.expression))
-            }
-            is Statement.Return -> {
-                Statement.Return(apply(statement.expression))
             }
         }
     }

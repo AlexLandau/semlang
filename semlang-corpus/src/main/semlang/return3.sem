@@ -1,5 +1,0 @@
-@Test([], "1")
-function returnLeavingDeadCode1(): Integer {
-  return Integer."1"
-  Integer."2"
-}

@@ -59,10 +59,6 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
                     val splitResult = trySplitting(statement.expression)
                     newStatements.add(Statement.Bare(splitResult))
                 }
-                is Statement.Return -> {
-                    val splitResult = trySplitting(statement.expression)
-                    newStatements.add(Statement.Return(splitResult))
-                }
             }
         }
 
@@ -75,10 +71,6 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
             is Statement.Bare -> {
                 val expression = tryMakingIntoVar(statement.expression)
                 Statement.Bare(expression)
-            }
-            is Statement.Return -> {
-                val expression = tryMakingIntoVar(statement.expression)
-                Statement.Return(expression)
             }
         }
 

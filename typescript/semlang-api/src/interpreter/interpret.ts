@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, Expression, Type, isNamedType, Struct, getStructType, Argument, isAssignment, isBareStatement, isReturnStatement } from "../api/language";
+import { Module, Block, Expression, Type, isNamedType, Struct, isAssignment, isBareStatement } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, isFunctionBinding, namedBindingObject, inlineBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -151,15 +151,6 @@ export class InterpreterContext {
                     throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
                 }
                 lastEvaluatedExpression = evaluatedExpression;
-            } else if (isReturnStatement(statement)) {
-                const expression = statement.return;
-    
-                const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
-                if (evaluatedExpression == undefined) {
-                    throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
-                }
-                // TODO: Handle this correctly, return this out to the function scope
-                return evaluatedExpression;
             } else {
                 assertNever(statement);
             }
@@ -425,8 +416,6 @@ function addVarNamesReferencedInBlock(block: Block, varNamesSet: DumbStringSet) 
             addVarNamesReferencedInExpression(statement.be, varNamesSet);
         } else if (isBareStatement(statement)) {
             addVarNamesReferencedInExpression(statement.do, varNamesSet);
-        } else if (isReturnStatement(statement)) {
-            addVarNamesReferencedInExpression(statement.return, varNamesSet);
         } else {
             assertNever(statement);
         }

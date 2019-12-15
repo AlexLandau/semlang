@@ -73,9 +73,6 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
             is ValidatedStatement.Bare -> {
                 Statement.Bare(transformExpression(statement.expression))
             }
-            is ValidatedStatement.Return -> {
-                Statement.Return(transformExpression(statement.expression))
-            }
         }
     }
 

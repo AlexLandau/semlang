@@ -1,5 +1,0 @@
-@Test([], "2")
-function pointlessReturn2(): Integer {
-  let x = Integer."1"
-  return Integer."2"
-}

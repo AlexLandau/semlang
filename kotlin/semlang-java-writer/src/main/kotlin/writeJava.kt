@@ -533,9 +533,6 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
                 is ValidatedStatement.Bare -> {
                     builder.addStatement("\$L", writeExpression(statement.expression))
                 }
-                is ValidatedStatement.Return -> {
-                    builder.addStatement("return \$L", writeExpression(statement.expression))
-                }
             }
         }
 
@@ -543,10 +540,8 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         val lastExpression = when (val statement = block.lastStatement) {
             is ValidatedStatement.Assignment -> TODO()
             is ValidatedStatement.Bare -> statement.expression
-            is ValidatedStatement.Return -> statement.expression
         }
-        // TODO: Not sure if the semantics of return match here
-        if (varToAssign == null || block.lastStatement is ValidatedStatement.Return) {
+        if (varToAssign == null) {
             builder.addStatement("return \$L", writeExpression(lastExpression))
         } else {
             builder.addStatement("\$L = \$L", varToAssign, writeExpression(lastExpression))

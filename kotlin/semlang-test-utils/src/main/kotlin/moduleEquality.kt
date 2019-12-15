@@ -59,9 +59,6 @@ private fun stripLocations(statement: Statement): Statement {
         is Statement.Bare -> {
             Statement.Bare(stripLocations(statement.expression))
         }
-        is Statement.Return -> {
-            Statement.Return(stripLocations(statement.expression))
-        }
     }
 }
 

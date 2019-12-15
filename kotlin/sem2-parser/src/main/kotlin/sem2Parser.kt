@@ -286,9 +286,6 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             val conditionExpression = parseExpression(statement.expression())
             val actionBlock = parseBlock(statement.block())
             return S2Statement.WhileLoop(conditionExpression, actionBlock, locationOf(statement))
-        } else if (statement.RETURN() != null) {
-            val expression = parseExpression(statement.expression())
-            return S2Statement.Return(expression, locationOf(statement))
         } else if (statement.assignment() != null) {
             val assignment = statement.assignment()
             val name = assignment.ID().text

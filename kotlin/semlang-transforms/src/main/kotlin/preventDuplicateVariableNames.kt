@@ -60,10 +60,6 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
                 val expression = applyTransformations(statement.expression, varTransformations)
                 Statement.Bare(expression)
             }
-            is Statement.Return -> {
-                val expression = applyTransformations(statement.expression, varTransformations)
-                Statement.Return(expression)
-            }
         }
     }
 

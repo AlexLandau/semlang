@@ -753,16 +753,12 @@ sealed class Statement {
     data class Bare(val expression: Expression): Statement() {
         override val location: Location? get() = expression.location
     }
-    data class Return(val expression: Expression, override val location: Location? = null): Statement()
 }
-//data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
 sealed class ValidatedStatement {
     data class Assignment(val name: String, val type: Type, val expression: TypedExpression): ValidatedStatement()
     // TODO: Is the type here necessary?
     data class Bare(val type: Type, val expression: TypedExpression): ValidatedStatement()
-    data class Return(val expression: TypedExpression): ValidatedStatement()
 }
-//data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
 // TODO: Consider making this just another statement (before validation)

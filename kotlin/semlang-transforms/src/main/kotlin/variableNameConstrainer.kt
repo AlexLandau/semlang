@@ -68,7 +68,6 @@ private fun renameWithinStatement(statement: Statement, renamingMap: Map<String,
             return Statement.Assignment(newName, statement.type, expression)
         }
         is Statement.Bare -> Statement.Bare(renameWithinExpression(statement.expression, renamingMap))
-        is Statement.Return -> Statement.Return(renameWithinExpression(statement.expression, renamingMap))
     }
 }
 

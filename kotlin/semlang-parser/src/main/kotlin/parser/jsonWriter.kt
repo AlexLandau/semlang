@@ -365,9 +365,6 @@ private fun addStatement(node: ObjectNode, assignment: ValidatedStatement) {
         is ValidatedStatement.Bare -> {
             addExpression(node.putObject("do"), assignment.expression)
         }
-        is ValidatedStatement.Return -> {
-            addExpression(node.putObject("return"), assignment.expression)
-        }
     }
 }
 
@@ -381,9 +378,6 @@ private fun parseStatement(node: JsonNode): Statement {
     } else if (node.has("do")) {
         val expression = parseExpression(node["do"]!!)
         return Statement.Bare(expression)
-    } else if (node.has("return")) {
-        val expression = parseExpression(node["return"]!!)
-        return Statement.Return(expression)
     }
 
     error("Expected a statement to have 'let'/'be', 'do', or 'return' keys")

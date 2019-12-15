@@ -188,10 +188,6 @@ private fun writeStatement(statement: Statement, indentationLevel: Int, writer: 
         is Statement.Bare -> {
             writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
         }
-        is Statement.Return -> {
-            writer.append("return ")
-            writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
-        }
     }
 }
 

@@ -310,10 +310,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 is ValidatedStatement.Bare -> {
                     evaluateExpression(statement.expression, assignments, containingModule)
                 }
-                is ValidatedStatement.Return -> {
-                    // TODO: This needs to return from not just the block, but the function/"outer block"
-                    return evaluateExpression(statement.expression, assignments, containingModule)
-                }
             }
         }
         when (val lastStatement = block.lastStatement) {
@@ -321,10 +317,6 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                 error("The last statement in a block is not supposed to be an assignment")
             }
             is ValidatedStatement.Bare -> {
-                return evaluateExpression(lastStatement.expression, assignments, containingModule)
-            }
-            is ValidatedStatement.Return -> {
-                // TODO: This needs to return from not just the block, but the function/"outer block"
                 return evaluateExpression(lastStatement.expression, assignments, containingModule)
             }
         }

@@ -99,9 +99,6 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
             is ValidatedStatement.Bare -> {
                 Statement.Bare(apply(statement.expression))
             }
-            is ValidatedStatement.Return -> {
-                Statement.Return(apply(statement.expression))
-            }
         }
     }
 
@@ -454,9 +451,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             }
             is ValidatedStatement.Bare -> {
                 enqueueType(statement.type, containingModule)
-                enqueueExpression(statement.expression, containingModule)
-            }
-            is ValidatedStatement.Return -> {
                 enqueueExpression(statement.expression, containingModule)
             }
         }

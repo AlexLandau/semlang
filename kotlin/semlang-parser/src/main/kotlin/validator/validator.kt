@@ -266,87 +266,16 @@ private class Validator(
             }
 
             validatedStatements.add(validatedStatement)
-//            val unused: Any? = when (statement) {
-//                is Statement.Assignment -> {
-//                    val varName = statement.name
-//                    if (variableTypes.containsKey(varName)) {
-//                        errors.add(Issue("The already-assigned variable $varName cannot be reassigned", statement.nameLocation, IssueLevel.ERROR))
-//                    }
-//                    if (isInvalidVariableName(varName)) {
-//                        errors.add(Issue("Invalid variable name $varName", statement.nameLocation, IssueLevel.ERROR))
-//                    }
-//
-//                    val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
-//                    val unvalidatedAssignmentType = statement.type
-//                    val validatedAssignmentType = if (unvalidatedAssignmentType != null) {
-//                        val assignmentType = validateType(unvalidatedAssignmentType, typeParametersInScope) ?: return null
-//                        if (validatedExpression.type != assignmentType) {
-//                            errors.add(Issue("Declared variable type ${prettyType(assignmentType)} " +
-//                                    "doesn't match expression type ${prettyType(validatedExpression.type)}", statement.nameLocation, IssueLevel.ERROR))
-//                            return null
-//                        }
-//                        assignmentType
-//                    } else {
-//                        validatedExpression.type
-//                    }
-//
-//                    val referentialActionsCount = countReferentialActions(validatedExpression)
-//                    if (referentialActionsCount > 1) {
-//                        // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
-//                        // TODO: Another convenience we can add is allowing multiple referential "actions" if they are all read-only, e.g. reading a bunch of variables
-//                        errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
-//                    }
-//
-//                    validatedStatements.add(ValidatedStatement.Assignment(varName, validatedAssignmentType, validatedExpression))
-//                    // Check the expression type here, not the assignment type, for more appropriate error messages
-//                    if (validatedExpression.type.isReference() && validatedExpression.aliasType == AliasType.PossiblyAliased) {
-//                        errors.add(Issue("We are assigning a reference to the variable $varName, but the reference may already have an alias; references are not allowed to have more than one alias", statement.nameLocation, IssueLevel.ERROR))
-//                    }
-//                    variableTypes.put(varName, validatedAssignmentType)
-//                }
-//                is Statement.Bare -> {
-//                    val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
-//
-//                    val referentialActionsCount = countReferentialActions(validatedExpression)
-//                    if (referentialActionsCount > 1) {
-//                        // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
-//                        // TODO: Another convenience we can add is allowing multiple referential "actions" if they are all read-only, e.g. reading a bunch of variables
-//                        errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
-//                    }
-//
-//                    validatedStatements.add(ValidatedStatement.Bare(validatedExpression.type, validatedExpression))
-//                }
-//                is Statement.Return -> {
-//                    val validatedExpression = validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
-//
-//                    val referentialActionsCount = countReferentialActions(validatedExpression)
-//                    if (referentialActionsCount > 1) {
-//                        // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
-//                        // TODO: Another convenience we can add is allowing multiple referential "actions" if they are all read-only, e.g. reading a bunch of variables
-//                        errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", statement.expression.location, IssueLevel.ERROR))
-//                    }
-//
-//                    validatedStatements.add(ValidatedStatement.Return(validatedExpression))
-//                }
-//            }
         }
 
         val lastStatement = validateStatement(block.lastStatement, variableTypes, typeParametersInScope) ?: return null
-//        val returnedExpression = validateExpression(block.returnedExpression, variableTypes, typeParametersInScope) ?: return null
         val (lastStatementType, lastStatementAliasType) = when (lastStatement) {
             is ValidatedStatement.Assignment -> {
-                // TODO: Test this
-//                error("The last statement in a block should not be an assignment")
                 errors.add(Issue("The last statement in a block should not be an assignment", block.lastStatement.location, IssueLevel.ERROR))
                 return null
             }
             is ValidatedStatement.Bare -> {
                 Pair(lastStatement.type, lastStatement.expression.aliasType)
-            }
-            is ValidatedStatement.Return -> {
-                // TODO: Technically this should be something like "nothing" and we should handle this some other way...
-                // I think this won't cause any issues for now (edit: yes it will)
-                Pair(lastStatement.expression.type, lastStatement.expression.aliasType)
             }
         }
 
@@ -435,25 +364,6 @@ private class Validator(
 
                 ValidatedStatement.Bare(validatedExpression.type, validatedExpression)
             }
-            is Statement.Return -> {
-                val validatedExpression =
-                    validateExpression(statement.expression, variableTypes, typeParametersInScope) ?: return null
-
-                val referentialActionsCount = countReferentialActions(validatedExpression)
-                if (referentialActionsCount > 1) {
-                    // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
-                    // TODO: Another convenience we can add is allowing multiple referential "actions" if they are all read-only, e.g. reading a bunch of variables
-                    errors.add(
-                        Issue(
-                            "The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen",
-                            statement.expression.location,
-                            IssueLevel.ERROR
-                        )
-                    )
-                }
-
-                ValidatedStatement.Return(validatedExpression)
-            }
         }
     }
 
@@ -461,7 +371,6 @@ private class Validator(
         return when (statement) {
             is ValidatedStatement.Assignment -> countReferentialActions(statement.expression)
             is ValidatedStatement.Bare -> countReferentialActions(statement.expression)
-            is ValidatedStatement.Return -> countReferentialActions(statement.expression)
         }
     }
 

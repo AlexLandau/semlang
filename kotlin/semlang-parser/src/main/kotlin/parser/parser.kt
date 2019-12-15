@@ -331,9 +331,6 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             val type = if (assignment.type() != null) parseType(assignment.type()) else null
             val expression = parseExpression(assignment.expression(), varsInScope)
             return Statement.Assignment(name, type, expression, locationOf(statement), locationOf(assignment.ID().symbol))
-        } else if (statement.RETURN() != null) {
-            val expression = parseExpression(statement.expression(), varsInScope)
-            return Statement.Return(expression, locationOf(statement))
         } else {
             val expression = parseExpression(statement.expression(), varsInScope)
             return Statement.Bare(expression)

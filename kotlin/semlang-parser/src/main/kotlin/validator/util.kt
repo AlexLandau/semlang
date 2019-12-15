@@ -22,7 +22,6 @@ private fun collectVars(varsReferenced: MutableCollection<String>, statement: Va
     val unused = when (statement) {
         is ValidatedStatement.Assignment -> collectVars(varsReferenced, statement.expression)
         is ValidatedStatement.Bare -> collectVars(varsReferenced, statement.expression)
-        is ValidatedStatement.Return -> collectVars(varsReferenced, statement.expression)
     }
 }
 

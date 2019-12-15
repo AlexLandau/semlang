@@ -220,7 +220,6 @@ sealed class S2Expression {
 sealed class S2Statement {
     data class Assignment(val name: String, val type: S2Type?, val expression: S2Expression, val location: Location? = null, val nameLocation: Location? = null): S2Statement()
     data class Bare(val expression: S2Expression, val location: Location? = null): S2Statement()
-    data class Return(val expression: S2Expression, val location: Location? = null): S2Statement()
     data class WhileLoop(val conditionExpression: S2Expression, val actionBlock: S2Block, val location: Location? = null): S2Statement()
 }
 

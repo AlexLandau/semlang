@@ -114,7 +114,7 @@ type_class : ID ;
 
 statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
-statement : assignment | expression | RETURN expression ;
+statement : assignment | expression ;
     catch[RecognitionException e] { throw e; }
 
 assignments : | assignment assignments ;

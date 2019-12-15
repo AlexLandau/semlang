@@ -72,7 +72,6 @@ export type AnnotationArgument = string | (string | any[])[];
 export type Statement = 
  | Statement.Assignment
  | Statement.Bare
- | Statement.Return
  ;
 export namespace Statement {
     export interface Assignment {
@@ -82,9 +81,6 @@ export namespace Statement {
     export interface Bare {
         do: Expression;
     }
-    export interface Return {
-        return: Expression;
-    }
 }
 
 export function isAssignment(statement: Statement): statement is Statement.Assignment {
@@ -92,9 +88,6 @@ export function isAssignment(statement: Statement): statement is Statement.Assig
 }
 export function isBareStatement(statement: Statement): statement is Statement.Bare {
     return "do" in statement;
-}
-export function isReturnStatement(statement: Statement): statement is Statement.Return {
-    return "return" in statement;
 }
 
 export type Expression = Expression.Variable

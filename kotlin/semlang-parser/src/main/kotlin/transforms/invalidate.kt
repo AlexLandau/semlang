@@ -137,9 +137,6 @@ private fun invalidate(statement: ValidatedStatement): Statement {
         is ValidatedStatement.Bare -> {
             Statement.Bare(invalidate(statement.expression))
         }
-        is ValidatedStatement.Return -> {
-            Statement.Return(invalidate(statement.expression))
-        }
     }
 }
 
