@@ -337,8 +337,7 @@ private fun addBlock(node: ArrayNode, block: TypedBlock) {
     for (statement in block.statements) {
         addStatement(node.addObject(), statement)
     }
-    val returnNode = node.addObject()
-    addExpression(returnNode.putObject("return"), block.returnedExpression)
+    addStatement(node.addObject(), block.lastStatement)
 }
 
 private fun parseBlock(node: JsonNode): Block {
@@ -352,25 +351,42 @@ private fun parseBlock(node: JsonNode): Block {
     for (index in 0..(node.size() - 2)) {
         statements.add(parseStatement(node[index]))
     }
-    val returnedExpression = parseExpression(node.last()["return"])
+    val lastStatement = parseStatement(node.last())
 
-    return Block(statements, returnedExpression)
+    return Block(statements, lastStatement)
 }
 
 private fun addStatement(node: ObjectNode, assignment: ValidatedStatement) {
-    if (assignment.name != null) {
-        node.put("let", assignment.name)
+    val unused: Any? = when (assignment) {
+        is ValidatedStatement.Assignment -> {
+            node.put("let", assignment.name)
+            addExpression(node.putObject("be"), assignment.expression)
+        }
+        is ValidatedStatement.Bare -> {
+            addExpression(node.putObject("do"), assignment.expression)
+        }
+        is ValidatedStatement.Return -> {
+            addExpression(node.putObject("return"), assignment.expression)
+        }
     }
-    addExpression(node.putObject("be"), assignment.expression)
 }
 
 private fun parseStatement(node: JsonNode): Statement {
-    if (!node.isObject()) error("Expected an assignment to be an object")
+    if (!node.isObject()) error("Expected a statement to be an object")
 
-    val name = node["let"]?.textValue()
-    val expression = parseExpression(node["be"] ?: error("Assignments should have a '=' field indicating the expression"))
+    if (node.has("let")) {
+        val name = node["let"]!!.textValue()
+        val expression = parseExpression(node["be"] ?: error("Assignments should have a 'be' field indicating the expression"))
+        return Statement.Assignment(name, null, expression)
+    } else if (node.has("do")) {
+        val expression = parseExpression(node["do"]!!)
+        return Statement.Bare(expression)
+    } else if (node.has("return")) {
+        val expression = parseExpression(node["return"]!!)
+        return Statement.Return(expression)
+    }
 
-    return Statement(name, null, expression)
+    error("Expected a statement to have 'let'/'be', 'do', or 'return' keys")
 }
 
 private fun addExpression(node: ObjectNode, expression: TypedExpression) {

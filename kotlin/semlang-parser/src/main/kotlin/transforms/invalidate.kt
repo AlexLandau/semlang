@@ -32,9 +32,9 @@ fun invalidate(struct: Struct): UnvalidatedStruct {
 }
 
 fun invalidate(block: TypedBlock): Block {
-    val assignments = block.statements.map(::invalidateStatement)
-    val returnedExpression = invalidateExpression(block.returnedExpression)
-    return Block(assignments, returnedExpression)
+    val assignments = block.statements.map(::invalidate)
+    val lastStatement = invalidate(block.lastStatement)
+    return Block(assignments, lastStatement)
 }
 
 fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionType {
@@ -71,25 +71,25 @@ fun invalidate(member: Member): UnvalidatedMember {
     return UnvalidatedMember(member.name, type)
 }
 
-private fun invalidateExpression(expression: TypedExpression): Expression {
+private fun invalidate(expression: TypedExpression): Expression {
     return when (expression) {
         is TypedExpression.Variable -> {
             Expression.Variable(expression.name)
         }
         is TypedExpression.IfThen -> {
-            val condition = invalidateExpression(expression.condition)
+            val condition = invalidate(expression.condition)
             val thenBlock = invalidate(expression.thenBlock)
             val elseBlock = invalidate(expression.elseBlock)
             Expression.IfThen(condition, thenBlock, elseBlock)
         }
         is TypedExpression.NamedFunctionCall -> {
-            val arguments = expression.arguments.map(::invalidateExpression)
+            val arguments = expression.arguments.map(::invalidate)
             val chosenParameters = expression.originalChosenParameters.map(::invalidate)
             Expression.NamedFunctionCall(expression.functionRef, arguments, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionCall -> {
-            val functionExpression = invalidateExpression(expression.functionExpression)
-            val arguments = expression.arguments.map(::invalidateExpression)
+            val functionExpression = invalidate(expression.functionExpression)
+            val arguments = expression.arguments.map(::invalidate)
             val chosenParameters = expression.originalChosenParameters.map(::invalidate)
             Expression.ExpressionFunctionCall(functionExpression, arguments, chosenParameters)
         }
@@ -98,23 +98,23 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
             Expression.Literal(type, expression.literal)
         }
         is TypedExpression.ListLiteral -> {
-            val contents = expression.contents.map(::invalidateExpression)
+            val contents = expression.contents.map(::invalidate)
             val chosenParameter = invalidate(expression.chosenParameter)
             Expression.ListLiteral(contents, chosenParameter)
         }
         is TypedExpression.NamedFunctionBinding -> {
-            val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
+            val bindings = expression.bindings.map { if (it == null) null else invalidate(it) }
             val chosenParameters = expression.originalChosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.NamedFunctionBinding(expression.functionRef, bindings, chosenParameters)
         }
         is TypedExpression.ExpressionFunctionBinding -> {
-            val functionExpression = invalidateExpression(expression.functionExpression)
-            val bindings = expression.bindings.map { if (it == null) null else invalidateExpression(it) }
+            val functionExpression = invalidate(expression.functionExpression)
+            val bindings = expression.bindings.map { if (it == null) null else invalidate(it) }
             val chosenParameters = expression.originalChosenParameters.map { if (it == null) null else invalidate(it) }
             Expression.ExpressionFunctionBinding(functionExpression, bindings, chosenParameters)
         }
         is TypedExpression.Follow -> {
-            val structureExpression = invalidateExpression(expression.structureExpression)
+            val structureExpression = invalidate(expression.structureExpression)
             Expression.Follow(structureExpression, expression.name)
         }
         is TypedExpression.InlineFunction -> {
@@ -126,9 +126,21 @@ private fun invalidateExpression(expression: TypedExpression): Expression {
     }
 }
 
-private fun invalidateStatement(statement: ValidatedStatement): Statement {
-    val expression = invalidateExpression(statement.expression)
-    return Statement(statement.name, invalidate(statement.type), expression)
+private fun invalidate(statement: ValidatedStatement): Statement {
+    return when (statement) {
+        is ValidatedStatement.Assignment -> {
+            Statement.Assignment(statement.name,
+                invalidate(statement.type),
+                invalidate(statement.expression)
+            )
+        }
+        is ValidatedStatement.Bare -> {
+            Statement.Bare(invalidate(statement.expression))
+        }
+        is ValidatedStatement.Return -> {
+            Statement.Return(invalidate(statement.expression))
+        }
+    }
 }
 
 fun invalidate(function: ValidatedFunction): Function {

@@ -747,12 +747,29 @@ sealed class TypedExpression {
 
 // Note: Currently Statements can refer to either assignments (if name is non-null) or "plain" statements with imperative
 // effects (otherwise). If we introduce a third statement type, we should probably switch this to be a sealed class.
-data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
-data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
+sealed class Statement {
+    abstract val location: Location?
+    data class Assignment(val name: String, val type: UnvalidatedType?, val expression: Expression, override val location: Location? = null, val nameLocation: Location? = null): Statement()
+    data class Bare(val expression: Expression): Statement() {
+        override val location: Location? get() = expression.location
+    }
+    data class Return(val expression: Expression, override val location: Location? = null): Statement()
+}
+//data class Statement(val name: String?, val type: UnvalidatedType?, val expression: Expression, val nameLocation: Location? = null)
+sealed class ValidatedStatement {
+    data class Assignment(val name: String, val type: Type, val expression: TypedExpression): ValidatedStatement()
+    // TODO: Is the type here necessary?
+    data class Bare(val type: Type, val expression: TypedExpression): ValidatedStatement()
+    data class Return(val expression: TypedExpression): ValidatedStatement()
+}
+//data class ValidatedStatement(val name: String?, val type: Type, val expression: TypedExpression)
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
-data class Block(val statements: List<Statement>, val returnedExpression: Expression, val location: Location? = null)
-data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val returnedExpression: TypedExpression)
+// TODO: Consider making this just another statement (before validation)
+data class Block(val statements: List<Statement>, val lastStatement: Statement, val location: Location? = null)
+// TODO: Rename to standardize
+// TODO: Probably do something different about the lastStatementAliasType
+data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val lastStatement: ValidatedStatement, val lastStatementAliasType: AliasType)
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(

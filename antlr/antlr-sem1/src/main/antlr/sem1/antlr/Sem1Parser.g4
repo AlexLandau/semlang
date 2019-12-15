@@ -73,7 +73,7 @@ struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE statements return_statement RBRACE ;
+block : LBRACE statements statement RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }
@@ -114,15 +114,13 @@ type_class : ID ;
 
 statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
-statement : assignment | expression ;
+statement : assignment | expression | RETURN expression ;
     catch[RecognitionException e] { throw e; }
 
 assignments : | assignment assignments ;
     catch[RecognitionException e] { throw e; }
 assignment : LET ID ASSIGN expression
   | LET ID COLON type ASSIGN expression;
-    catch[RecognitionException e] { throw e; }
-return_statement: expression ;
     catch[RecognitionException e] { throw e; }
 
 type : type_ref

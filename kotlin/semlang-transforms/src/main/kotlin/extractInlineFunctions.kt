@@ -61,11 +61,22 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
     }
 
     private fun transformBlock(block: TypedBlock): Block {
-        val assignments = block.statements.map { statement ->
-            Statement(statement.name, invalidate(statement.type), transformExpression(statement.expression))
+        val statements = block.statements.map(::transform)
+        return Block(statements, transform(block.lastStatement))
+    }
+
+    private fun transform(statement: ValidatedStatement): Statement {
+        return when (statement) {
+            is ValidatedStatement.Assignment -> {
+                Statement.Assignment(statement.name, invalidate(statement.type), transformExpression(statement.expression))
+            }
+            is ValidatedStatement.Bare -> {
+                Statement.Bare(transformExpression(statement.expression))
+            }
+            is ValidatedStatement.Return -> {
+                Statement.Return(transformExpression(statement.expression))
+            }
         }
-        val returnedExpression = transformExpression(block.returnedExpression)
-        return Block(assignments, returnedExpression)
     }
 
     private fun transformExpression(expression: TypedExpression): Expression {

@@ -5,6 +5,7 @@ dependencies {
 
   testCompile project(':kotlin:sem2-parser')
   testCompile project(':kotlin:semlang-test-utils')
+  testCompile project(':kotlin:semlang-module-test-utils')
 }
 
 tasks.test.inputs.dir("../../semlang-corpus/")

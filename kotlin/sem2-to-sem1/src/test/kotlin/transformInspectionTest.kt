@@ -3,6 +3,7 @@ package net.semlang.sem2.translate
 import net.semlang.api.Expression
 import net.semlang.api.Function
 import net.semlang.api.ModuleName
+import net.semlang.api.Statement
 import net.semlang.sem2.api.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -18,15 +19,19 @@ class TransformInspectionTest {
     fun testNamedFunctionCallFromNamespacedFunctionCall() {
         val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
                 statements = listOf(),
-                returnedExpression = S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
+                lastStatement = S2Statement.Bare(S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
                         expression = s2IntegerPlus,
                         arguments = listOf(s2Integer1, s2Integer1),
                         chosenParameters = listOf()
-                )
+                ))
         ), listOf())
 
         val sem1Function = translateFunction(sem2Function)
-        val returnedExpression = sem1Function.block.returnedExpression
+        val lastStatement = sem1Function.block.lastStatement
+        if (lastStatement !is Statement.Bare) {
+            fail("Expected a bare statement, but was: $lastStatement") as Nothing
+        }
+        val returnedExpression = lastStatement.expression
         if (returnedExpression !is Expression.NamedFunctionCall) {
             fail("Expected a NamedFunctionCall, but was: $returnedExpression") as Nothing
         }
@@ -37,18 +42,22 @@ class TransformInspectionTest {
     fun testNamedFunctionCallFromLocalFunctionCall() {
         val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
                 statements = listOf(),
-                returnedExpression = S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
+                lastStatement = S2Statement.Bare(S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
                         expression = S2Expression.DotAccess( // Integer."1".plus
                                 subexpression = s2Integer1,
                                 name = "plus"
                         ),
                         arguments = listOf(s2Integer1),
                         chosenParameters = listOf()
-                )
+                ))
         ), listOf())
 
         val sem1Function = translateFunction(sem2Function)
-        val returnedExpression = sem1Function.block.returnedExpression
+        val lastStatement = sem1Function.block.lastStatement
+        if (lastStatement !is Statement.Bare) {
+            fail("Expected a bare statement, but was: $lastStatement") as Nothing
+        }
+        val returnedExpression = lastStatement.expression
         if (returnedExpression !is Expression.NamedFunctionCall) {
             fail("Expected a NamedFunctionCall, but was: $returnedExpression") as Nothing
         }

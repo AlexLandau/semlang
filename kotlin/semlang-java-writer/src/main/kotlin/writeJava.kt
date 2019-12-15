@@ -511,38 +511,51 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeBlock(block: TypedBlock, varToAssign: String?): CodeBlock {
         val builder = CodeBlock.builder()
 
-        for ((name, type, expression) in block.statements) {
-            // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
-            if (name != null) {
-                // Assignment case
-                if (expression is TypedExpression.IfThen) {
-                    // The variable gets added to our scope early in this case
-                    addToVariableScope(name)
-                    builder.addStatement("final \$T \$L", getType(type, false), name)
-                    builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
-                    builder.add(writeBlock(expression.thenBlock, name))
-                    builder.nextControlFlow("else")
-                    builder.add(writeBlock(expression.elseBlock, name))
-                    builder.endControlFlow()
-                } else {
-                    builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
-                    addToVariableScope(name)
+        for (statement in block.statements) {
+            val unused: Any? = when (statement) {
+                is ValidatedStatement.Assignment -> {
+                    // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
+                    val (name, type, expression) = statement
+                    if (expression is TypedExpression.IfThen) {
+                        // The variable gets added to our scope early in this case
+                        addToVariableScope(name)
+                        builder.addStatement("final \$T \$L", getType(type, false), name)
+                        builder.beginControlFlow("if (\$L)", writeExpression(expression.condition))
+                        builder.add(writeBlock(expression.thenBlock, name))
+                        builder.nextControlFlow("else")
+                        builder.add(writeBlock(expression.elseBlock, name))
+                        builder.endControlFlow()
+                    } else {
+                        builder.addStatement("final \$T \$L = \$L", getType(type, false), name, writeExpression(expression))
+                        addToVariableScope(name)
+                    }
                 }
-            } else {
-                // Non-assignment expression
-                builder.addStatement("\$L", writeExpression(expression))
+                is ValidatedStatement.Bare -> {
+                    builder.addStatement("\$L", writeExpression(statement.expression))
+                }
+                is ValidatedStatement.Return -> {
+                    builder.addStatement("return \$L", writeExpression(statement.expression))
+                }
             }
         }
 
         // TODO: Handle case where returnedExpression is if/then (?) -- or will that get factored out?
-        if (varToAssign == null) {
-            builder.addStatement("return \$L", writeExpression(block.returnedExpression))
+        val lastExpression = when (val statement = block.lastStatement) {
+            is ValidatedStatement.Assignment -> TODO()
+            is ValidatedStatement.Bare -> statement.expression
+            is ValidatedStatement.Return -> statement.expression
+        }
+        // TODO: Not sure if the semantics of return match here
+        if (varToAssign == null || block.lastStatement is ValidatedStatement.Return) {
+            builder.addStatement("return \$L", writeExpression(lastExpression))
         } else {
-            builder.addStatement("\$L = \$L", varToAssign, writeExpression(block.returnedExpression))
+            builder.addStatement("\$L = \$L", varToAssign, writeExpression(lastExpression))
         }
 
-        for (assignment in block.statements) {
-            assignment.name?.let { removeFromVariableScope(it) }
+        for (statement in block.statements) {
+            if (statement is ValidatedStatement.Assignment) {
+                removeFromVariableScope(statement.name)
+            }
         }
 
         return builder.build()

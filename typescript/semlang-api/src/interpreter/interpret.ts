@@ -1,6 +1,6 @@
 import * as bigInt from "big-integer";
 import * as UtfString from "utfstring";
-import { Function, Module, Block, isStatement, Expression, Type, isNamedType, Struct, getStructType, Argument } from "../api/language";
+import { Function, Module, Block, Expression, Type, isNamedType, Struct, getStructType, Argument, isAssignment, isBareStatement, isReturnStatement } from "../api/language";
 import { SemObject, listObject, booleanObject, integerObject, naturalObject, failureObject, successObject, structObject, stringObject, isFunctionBinding, namedBindingObject, inlineBindingObject, unionObject } from "./SemObject";
 import { NativeFunctions, NativeStructs } from "./nativeFunctions";
 import { findIndex, assertNever } from "./util";
@@ -131,24 +131,43 @@ export class InterpreterContext {
     }
 
     private evaluateBlock(block: Block, alreadyBoundVars: BoundVars): SemObject {
-        for (const blockElement of block) {
-            if (isStatement(blockElement)) {
-                const varName = blockElement.let;
-                const expression = blockElement.be;
+        let lastEvaluatedExpression: SemObject | undefined = undefined;
+        for (const statement of block) {
+            if (isAssignment(statement)) {
+                const varName = statement.let;
+                const expression = statement.be;
     
                 const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
                 if (evaluatedExpression == undefined) {
                     throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
                 }
-                if (varName !== undefined) {
-                    alreadyBoundVars[varName] = evaluatedExpression;
+                alreadyBoundVars[varName] = evaluatedExpression;
+                lastEvaluatedExpression = undefined;
+            } else if (isBareStatement(statement)) {
+                const expression = statement.do;
+    
+                const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
+                if (evaluatedExpression == undefined) {
+                    throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
                 }
+                lastEvaluatedExpression = evaluatedExpression;
+            } else if (isReturnStatement(statement)) {
+                const expression = statement.return;
+    
+                const evaluatedExpression = this.evaluateExpression(expression, alreadyBoundVars);
+                if (evaluatedExpression == undefined) {
+                    throw new Error(`Evaluated expression was undefined; expression was: ${JSON.stringify(expression)}`);
+                }
+                // TODO: Handle this correctly, return this out to the function scope
+                return evaluatedExpression;
             } else {
-                const expression = blockElement.return;
-                return this.evaluateExpression(expression, alreadyBoundVars);
+                assertNever(statement);
             }
         }
-        throw new Error(`Malformed block: ${JSON.stringify(block)}`);
+        if (lastEvaluatedExpression === undefined) {
+            throw new Error(`Malformed block: ${JSON.stringify(block)}`);
+        }
+        return lastEvaluatedExpression;
     }
     
     private evaluateExpression(expression: Expression, alreadyBoundVars: BoundVars): SemObject {
@@ -401,11 +420,15 @@ function getVarNamesReferencedInBlock(block: Block): string[] {
 }
 
 function addVarNamesReferencedInBlock(block: Block, varNamesSet: DumbStringSet) {
-    for (const blockEntry of block) {
-        if (isStatement(blockEntry)) {
-            addVarNamesReferencedInExpression(blockEntry.be, varNamesSet);
+    for (const statement of block) {
+        if (isAssignment(statement)) {
+            addVarNamesReferencedInExpression(statement.be, varNamesSet);
+        } else if (isBareStatement(statement)) {
+            addVarNamesReferencedInExpression(statement.do, varNamesSet);
+        } else if (isReturnStatement(statement)) {
+            addVarNamesReferencedInExpression(statement.return, varNamesSet);
         } else {
-            addVarNamesReferencedInExpression(blockEntry.return, varNamesSet);
+            assertNever(statement);
         }
     }
 }

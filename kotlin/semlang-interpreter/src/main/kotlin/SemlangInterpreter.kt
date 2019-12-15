@@ -34,6 +34,8 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private val runCounts = HashMap<ResolvedEntityRef, Long>()
 
+    private data class SemObjectOrReturning(val obj: SemObject, val isReturning: Boolean)
+
     override fun interpret(functionId: EntityId, arguments: List<SemObject>): SemObject {
         val result = interpret(ResolvedEntityRef(mainModule.id, functionId), arguments, mainModule)
         if (options.runCountOutput != null) {
@@ -296,16 +298,36 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
-        for ((name, _, expression) in block.statements) {
-            val value = evaluateExpression(expression, assignments, containingModule)
-            if (assignments.containsKey(name)) {
-                throw IllegalStateException("Tried to double-assign variable $name")
-            }
-            if (name != null) {
-                assignments.put(name, value)
+        for (statement in block.statements) {
+            val unused = when (statement) {
+                is ValidatedStatement.Assignment -> {
+                    val value = evaluateExpression(statement.expression, assignments, containingModule)
+                    if (assignments.containsKey(statement.name)) {
+                        throw IllegalStateException("Tried to double-assign variable ${statement.name}")
+                    }
+                    assignments.put(statement.name, value)
+                }
+                is ValidatedStatement.Bare -> {
+                    evaluateExpression(statement.expression, assignments, containingModule)
+                }
+                is ValidatedStatement.Return -> {
+                    // TODO: This needs to return from not just the block, but the function/"outer block"
+                    return evaluateExpression(statement.expression, assignments, containingModule)
+                }
             }
         }
-        return evaluateExpression(block.returnedExpression, assignments, containingModule)
+        when (val lastStatement = block.lastStatement) {
+            is ValidatedStatement.Assignment -> {
+                error("The last statement in a block is not supposed to be an assignment")
+            }
+            is ValidatedStatement.Bare -> {
+                return evaluateExpression(lastStatement.expression, assignments, containingModule)
+            }
+            is ValidatedStatement.Return -> {
+                // TODO: This needs to return from not just the block, but the function/"outer block"
+                return evaluateExpression(lastStatement.expression, assignments, containingModule)
+            }
+        }
     }
 
     private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {

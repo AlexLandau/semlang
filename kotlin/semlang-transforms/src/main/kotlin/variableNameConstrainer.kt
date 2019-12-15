@@ -5,6 +5,8 @@ import net.semlang.api.Function
 
 /**
  * Replaces the names of any variables or arguments in the context in a consistent way.
+ *
+ * Note: This currently drops locations from the context.
  */
 fun constrainVariableNames(context: RawContext, renamingStrategy: RenamingStrategy): RawContext {
     val validatingStrategy = getValidatingStrategy(renamingStrategy)
@@ -53,15 +55,21 @@ private fun renameWithinFunction(function: Function, renamingMap: Map<String, St
 
 private fun renameBlock(block: Block, renamingMap: Map<String, String>): Block {
     val assignments = block.statements.map { statement -> renameWithinStatement(statement, renamingMap) }
-    val returnedExpression = renameWithinExpression(block.returnedExpression, renamingMap)
-    return Block(assignments, returnedExpression)
+    val lastStatement = renameWithinStatement(block.lastStatement, renamingMap)
+    return Block(assignments, lastStatement)
 }
 
 private fun renameWithinStatement(statement: Statement, renamingMap: Map<String, String>): Statement {
-    val varName = statement.name
-    val newName = if (varName == null) null else (renamingMap[varName] ?: error("Bug in renaming"))
-    val expression = renameWithinExpression(statement.expression, renamingMap)
-    return Statement(newName, statement.type, expression)
+    return when (statement) {
+        is Statement.Assignment -> {
+            val varName = statement.name
+            val newName = renamingMap[varName] ?: error("Bug in renaming")
+            val expression = renameWithinExpression(statement.expression, renamingMap)
+            return Statement.Assignment(newName, statement.type, expression)
+        }
+        is Statement.Bare -> Statement.Bare(renameWithinExpression(statement.expression, renamingMap))
+        is Statement.Return -> Statement.Return(renameWithinExpression(statement.expression, renamingMap))
+    }
 }
 
 private fun renameWithinExpression(expression: Expression, renamingMap: Map<String, String>): Expression {

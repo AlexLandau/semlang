@@ -82,7 +82,7 @@ struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE statements return_statement RBRACE ;
+block : LBRACE statements statement RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }
@@ -127,6 +127,7 @@ statements : | statement statements ;
     catch[RecognitionException e] { throw e; }
 statement : assignment
   | expression
+  | RETURN expression
   | WHILE LPAREN expression RPAREN block;
     catch[RecognitionException e] { throw e; }
 
@@ -134,8 +135,6 @@ assignments : | assignment assignments ;
     catch[RecognitionException e] { throw e; }
 assignment : LET ID ASSIGN expression
   | LET ID COLON type ASSIGN expression;
-    catch[RecognitionException e] { throw e; }
-return_statement: expression ;
     catch[RecognitionException e] { throw e; }
 
 type : type_ref
@@ -165,7 +164,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
   | FUNCTION LPAREN function_arguments RPAREN block
-  | LBRACE optional_args statements return_statement RBRACE
+  | LBRACE optional_args statements statement RBRACE
   | expression DOT ID
   // NOTE: Higher expressions have higher precedence
   | expression LBRACKET cd_expressions RBRACKET // [] (get) operator
@@ -187,7 +186,6 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression DOT_ASSIGN expression // .= operator
   | expression AND expression // && operator
   | expression OR expression // || operator
-  | RETURN expression
   | ID
   ;
     catch[RecognitionException e] { throw e; }
