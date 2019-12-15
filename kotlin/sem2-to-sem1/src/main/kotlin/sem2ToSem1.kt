@@ -51,7 +51,7 @@ data class Sem2ToSem1Options(
 )
 
 private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
-private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?)
+private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?, val isReturning: Boolean)
 
 private sealed class TypedExpression
 private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
@@ -125,7 +125,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         // TODO: Functions can have a type hint for the declared return type
         // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
         for (s2Statement in block.statements) {
-            val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
+            val (s1Statement, statementType, statementIsReturning) = translate(s2Statement, varNamesInScope)
             if (s1Statement is Statement.Assignment) {
                 if (options.failOnUninferredType && statementType == null) {
                     error("Could not infer type for statement $s2Statement in block $block")
@@ -134,6 +134,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             }
             s1Statements.add(s1Statement)
             lastStatementType = statementType
+            if (statementIsReturning) {
+                break
+            }
         }
 
         val s1LastStatement = s1Statements.last()
@@ -191,15 +194,21 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         location = statement.location,
                         nameLocation = statement.nameLocation
                 // TODO: It's not clear that we want the type here
-                ), declaredType ?: expressionType)
+                ), declaredType ?: expressionType, false)
             }
             is S2Statement.Bare -> {
                 val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
                 TypedStatement(Statement.Bare(
                     expression = expression
-                ), expressionType)
+                ), expressionType, false)
             }
             is S2Statement.Return -> {
+                /*
+                So here's the short version:
+                1) If we have a
+                 */
+                val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
+                TypedStatement(Statement.Bare(expression), expressionType, true)
                 TODO("Make this work!")
             }
             is S2Statement.WhileLoop -> {
@@ -230,7 +239,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                 location = statement.location,
                                 functionRefLocation = null
                         )
-                ), invalidate(NativeStruct.VOID.getType()))
+                ), invalidate(NativeStruct.VOID.getType()), false)
             }
         }
     }
