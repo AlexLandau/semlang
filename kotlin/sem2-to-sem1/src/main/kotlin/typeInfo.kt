@@ -24,7 +24,8 @@ fun collectTypeInfo(context: S2Context, moduleName: ModuleName, upstreamModules:
     return getTypesInfoFromSummary(summary, moduleId, upstreamModules, moduleVersionMappings, {})
 }
 
-private val fakeBlock = Block(listOf(), Expression.Literal(invalidate(NativeOpaqueType.INTEGER.getType()), "111"))
+private val fakeBlock = Block(listOf(),
+    Statement.Bare(Expression.Literal(invalidate(NativeOpaqueType.INTEGER.getType()), "111")))
 
 private fun translateForTypeOnly(s2Function: S2Function): Function {
     val id = translate(s2Function.id)

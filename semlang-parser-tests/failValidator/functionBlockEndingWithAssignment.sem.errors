@@ -1,4 +1,5 @@
 // Block with only assignments
 function doSomething(): Integer {
   let foo = Integer."1"
+  ~~~~~~~~~~~~~~~~~~~~~ The last statement in a block should not be an assignment
 }

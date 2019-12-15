@@ -1,8 +1,11 @@
 dependencies {
   compile project(':kotlin:semlang-parser')
   compile project(':kotlin:semlang-transforms')
+
+  // TODO: Make this make sense
   compile project(':kotlin:semlang-test-utils')
 
+  testCompile project(':kotlin:semlang-module-test-utils')
   testCompile project(':java:semlang-java-runtime')
   testCompile project(':kotlin:semlang-linker')
 

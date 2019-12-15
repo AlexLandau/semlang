@@ -2,6 +2,7 @@ package net.semlang.validator
 
 import net.semlang.api.TypedBlock
 import net.semlang.api.TypedExpression
+import net.semlang.api.ValidatedStatement
 import java.util.ArrayList
 
 internal fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
@@ -12,9 +13,16 @@ internal fun getVarsReferencedIn(validatedBlock: TypedBlock): Set<String> {
 
 private fun collectVars(varsReferenced: MutableCollection<String>, block: TypedBlock) {
     for (statement in block.statements) {
-        collectVars(varsReferenced, statement.expression)
+        collectVars(varsReferenced, statement)
     }
-    collectVars(varsReferenced, block.returnedExpression)
+    collectVars(varsReferenced, block.lastStatement)
+}
+
+private fun collectVars(varsReferenced: MutableCollection<String>, statement: ValidatedStatement) {
+    val unused = when (statement) {
+        is ValidatedStatement.Assignment -> collectVars(varsReferenced, statement.expression)
+        is ValidatedStatement.Bare -> collectVars(varsReferenced, statement.expression)
+    }
 }
 
 private fun collectVars(varsReferenced: MutableCollection<String>, expression: TypedExpression) {

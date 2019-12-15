@@ -13,7 +13,7 @@ export const NativeStructs: { [structName: string]: Struct } = {
         members: [{ name: "natural", type: {name: "Natural"} }],
         requires: [
             {
-                return: {
+                do: {
                     type: "namedCall",
                     function: "Integer.lessThan",
                     chosenParameters: [],

@@ -87,13 +87,19 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
 
     private fun apply(block: TypedBlock): Block {
         val assignments = block.statements.map(this::apply)
-        val returnedExpression = apply(block.returnedExpression)
-        return Block(assignments, returnedExpression)
+        val lastStatement = apply(block.lastStatement)
+        return Block(assignments, lastStatement)
     }
 
     private fun apply(statement: ValidatedStatement): Statement {
-        val expression = apply(statement.expression)
-        return Statement(statement.name, null, expression)
+        return when (statement) {
+            is ValidatedStatement.Assignment -> {
+                Statement.Assignment(statement.name, null, apply(statement.expression))
+            }
+            is ValidatedStatement.Bare -> {
+                Statement.Bare(apply(statement.expression))
+            }
+        }
     }
 
     private fun apply(expression: TypedExpression): Expression {
@@ -431,11 +437,23 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
     // TODO: The type enqueueings here are probably redundant; confirm or show otherwise once testing is sufficient
     private fun enqueueBlock(block: TypedBlock, containingModule: ValidatedModule) {
         for (statement in block.statements) {
-            enqueueType(statement.type, containingModule)
-            enqueueExpression(statement.expression, containingModule)
+            enqueueStatement(statement, containingModule)
         }
         enqueueType(block.type, containingModule)
-        enqueueExpression(block.returnedExpression, containingModule)
+        enqueueStatement(block.lastStatement, containingModule)
+    }
+
+    private fun enqueueStatement(statement: ValidatedStatement, containingModule: ValidatedModule) {
+        val unused = when (statement) {
+            is ValidatedStatement.Assignment -> {
+                enqueueType(statement.type, containingModule)
+                enqueueExpression(statement.expression, containingModule)
+            }
+            is ValidatedStatement.Bare -> {
+                enqueueType(statement.type, containingModule)
+                enqueueExpression(statement.expression, containingModule)
+            }
+        }
     }
 
     private fun enqueueExpression(expression: TypedExpression, containingModule: ValidatedModule) {

@@ -1,3 +1,4 @@
+import { statement } from "@babel/template";
 
 // Note: This is the same type as the Kotlin toJson outputs
 export interface Context {
@@ -57,7 +58,7 @@ export interface Option {
     type?: Type;
 }
 
-export type Block = BlockElement[];
+export type Block = Statement[];
 
 export interface Annotation {
     name: string;
@@ -68,16 +69,25 @@ export interface Annotation {
 // export type AnnotationArgument = string | AnnotationArgument[];
 export type AnnotationArgument = string | (string | any[])[];
 
-// TODO: Maybe reconsider these two and Block?
-export type BlockElement = Statement | { return: Expression };
-
-export function isStatement(blockElement: BlockElement): blockElement is Statement {
-    return "be" in blockElement;
+export type Statement = 
+ | Statement.Assignment
+ | Statement.Bare
+ ;
+export namespace Statement {
+    export interface Assignment {
+        let: string;
+        be: Expression;
+    }
+    export interface Bare {
+        do: Expression;
+    }
 }
 
-export interface Statement {
-    let?: string;
-    be: Expression;
+export function isAssignment(statement: Statement): statement is Statement.Assignment {
+    return "let" in statement;
+}
+export function isBareStatement(statement: Statement): statement is Statement.Bare {
+    return "do" in statement;
 }
 
 export type Expression = Expression.Variable

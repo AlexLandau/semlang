@@ -218,12 +218,14 @@ sealed class S2Expression {
 }
 
 sealed class S2Statement {
-    data class Normal(val name: String?, val type: S2Type?, val expression: S2Expression, val nameLocation: Location? = null): S2Statement()
+    data class Assignment(val name: String, val type: S2Type?, val expression: S2Expression, val location: Location? = null, val nameLocation: Location? = null): S2Statement()
+    data class Bare(val expression: S2Expression, val location: Location? = null): S2Statement()
     data class WhileLoop(val conditionExpression: S2Expression, val actionBlock: S2Block, val location: Location? = null): S2Statement()
 }
 
 data class S2Argument(val name: String, val type: S2Type, val location: Location? = null)
-data class S2Block(val statements: List<S2Statement>, val returnedExpression: S2Expression, val location: Location? = null)
+// TODO: Consider making this just one list of statements
+data class S2Block(val statements: List<S2Statement>, val lastStatement: S2Statement, val location: Location? = null)
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): S2Type.FunctionType {
         return S2Type.FunctionType(

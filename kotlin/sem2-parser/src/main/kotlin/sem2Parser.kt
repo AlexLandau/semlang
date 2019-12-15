@@ -270,8 +270,8 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
     private fun parseBlock(block: Sem2Parser.BlockContext): S2Block {
         val statements = parseStatements(block.statements())
-        val returnedExpression = parseExpression(block.return_statement().expression())
-        return S2Block(statements, returnedExpression, locationOf(block))
+        val lastStatement = parseStatement(block.statement())
+        return S2Block(statements, lastStatement, locationOf(block))
     }
 
     private fun parseStatements(statements: Sem2Parser.StatementsContext): List<S2Statement> {
@@ -291,10 +291,10 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             val name = assignment.ID().text
             val type = if (assignment.type() != null) parseType(assignment.type()) else null
             val expression = parseExpression(assignment.expression())
-            return S2Statement.Normal(name, type, expression, locationOf(assignment.ID().symbol))
+            return S2Statement.Assignment(name, type, expression, locationOf(statement), locationOf(assignment.ID().symbol))
         } else {
             val expression = parseExpression(statement.expression())
-            return S2Statement.Normal(null, null, expression, locationOf(statement))
+            return S2Statement.Bare(expression, locationOf(statement))
         }
     }
 
@@ -334,8 +334,8 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             if (expression.LBRACE() != null) {
                 val args = parseLambdaOptionalArguments(expression.optional_args())
                 val statements = parseStatements(expression.statements())
-                val returnedExpression = parseExpression(expression.return_statement().expression())
-                val block = S2Block(statements, returnedExpression, locationOf(expression))
+                val lastStatement = parseStatement(expression.statement())
+                val block = S2Block(statements, lastStatement, locationOf(expression))
                 return S2Expression.InlineFunction(args, null, block, locationOf(expression))
             }
 

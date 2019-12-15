@@ -49,14 +49,32 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     val newStatements = ArrayList<Statement>()
 
     fun apply(): Block {
-        for (assignment in block.statements) {
-            val splitResult = trySplitting(assignment.expression)
-            newStatements.add(Statement(assignment.name, assignment.type, splitResult))
+        for (statement in block.statements) {
+            val unused = when (statement) {
+                is Statement.Assignment -> {
+                    val splitResult = trySplitting(statement.expression)
+                    newStatements.add(Statement.Assignment(statement.name, statement.type, splitResult))
+                }
+                is Statement.Bare -> {
+                    val splitResult = trySplitting(statement.expression)
+                    newStatements.add(Statement.Bare(splitResult))
+                }
+            }
         }
 
-        val newReturnedExpression = tryMakingIntoVar(block.returnedExpression)
+        val newLastStatement = when (val statement = block.lastStatement) {
+            is Statement.Assignment -> {
+                // This is probably an error case
+                val splitResult = trySplitting(statement.expression)
+                Statement.Assignment(statement.name, statement.type, splitResult)
+            }
+            is Statement.Bare -> {
+                val expression = tryMakingIntoVar(statement.expression)
+                Statement.Bare(expression)
+            }
+        }
 
-        return Block(newStatements, newReturnedExpression)
+        return Block(newStatements, newLastStatement)
     }
 
     /**
@@ -240,7 +258,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
         }
         return if (shouldHoist(expressionWithNewContents)) {
             val replacementName = createAndRecordNewVarName()
-            newStatements.add(Statement(replacementName, null, expressionWithNewContents))
+            newStatements.add(Statement.Assignment(replacementName, null, expressionWithNewContents))
             Expression.Variable(replacementName)
         } else {
             expressionWithNewContents

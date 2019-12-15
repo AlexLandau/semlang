@@ -307,14 +307,14 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
         val statementContexts = getStatementContexts(block.statements())
         for (statementContext in statementContexts) {
             val statement = parseStatement(statementContext, varsInBlockScope)
-            if (statement.name != null) {
+            if (statement is Statement.Assignment) {
                 varsInBlockScope.add(statement.name)
             }
             statements.add(statement)
         }
 
-        val returnedExpression = parseExpression(block.return_statement().expression(), varsInBlockScope)
-        return Block(statements, returnedExpression, locationOf(block))
+        val lastStatement = parseStatement(block.statement(), varsInBlockScope)
+        return Block(statements, lastStatement, locationOf(block))
     }
 
     private fun getStatementContexts(statements: Sem1Parser.StatementsContext): List<Sem1Parser.StatementContext> {
@@ -330,10 +330,10 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             val name = assignment.ID().text
             val type = if (assignment.type() != null) parseType(assignment.type()) else null
             val expression = parseExpression(assignment.expression(), varsInScope)
-            return Statement(name, type, expression, locationOf(assignment.ID().symbol))
+            return Statement.Assignment(name, type, expression, locationOf(statement), locationOf(assignment.ID().symbol))
         } else {
             val expression = parseExpression(statement.expression(), varsInScope)
-            return Statement(null, null, expression, locationOf(statement))
+            return Statement.Bare(expression)
         }
     }
 

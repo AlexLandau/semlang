@@ -162,22 +162,33 @@ private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, dete
     val newline = if (deterministicMode) "\n" else System.lineSeparator()
     val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
     for (statement in block.statements) {
-        if (statement.name != null) {
-            writer.append(indent)
-                    .append("let ")
-                    .append(statement.name)
-            if (statement.type != null && !deterministicMode) {
-                writer.append(": ")
-                        .append(statement.type.toString())
-            }
-            writer.append(" = ")
-        }
-        writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
+        writer.append(indent)
+        writeStatement(statement, indentationLevel, writer, deterministicMode)
         writer.append(newline)
     }
     writer.append(indent)
-    writeExpression(block.returnedExpression, indentationLevel, writer, deterministicMode)
+    writeStatement(block.lastStatement, indentationLevel, writer, deterministicMode)
     writer.append(newline)
+}
+
+// TODO: Move this to a class structure
+// Note: This doesn't include indentation or newlines
+private fun writeStatement(statement: Statement, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
+    val unused: Any? = when (statement) {
+        is Statement.Assignment -> {
+            writer.append("let ")
+                .append(statement.name)
+            if (statement.type != null && !deterministicMode) {
+                writer.append(": ")
+                    .append(statement.type.toString())
+            }
+            writer.append(" = ")
+            writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
+        }
+        is Statement.Bare -> {
+            writeExpression(statement.expression, indentationLevel, writer, deterministicMode)
+        }
+    }
 }
 
 private fun writeExpression(expression: Expression, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {

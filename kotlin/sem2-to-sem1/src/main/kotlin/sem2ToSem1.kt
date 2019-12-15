@@ -118,34 +118,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
         for (s2Statement in block.statements) {
             val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
-            if (options.failOnUninferredType && statementType == null) {
-                error("Could not infer type for statement $s2Statement in block $block")
+            if (s1Statement is Statement.Assignment) {
+                if (options.failOnUninferredType && statementType == null) {
+                    error("Could not infer type for statement $s2Statement in block $block")
+                }
+                varNamesInScope.put(s1Statement.name, statementType)
             }
-            s1Statement.name?.let { varNamesInScope.put(it, statementType) }
             s1Statements.add(s1Statement)
         }
+
         // TODO: Functions can have a type hint for the declared return type
         // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
-        val (returnedExpression, blockType) = translateFullExpression(block.returnedExpression, null, varNamesInScope)
+        val (s1LastStatement, blockType) = translate(block.lastStatement, varNamesInScope)
         if (options.failOnUninferredType && blockType == null) {
-            error("Could not infer type for returned expression $returnedExpression in block $block")
+            error("Could not infer type for returned expression $s1LastStatement in block $block")
         }
 
-        if (options.outputExplicitTypes && returnedExpression !is Expression.Variable) {
+        if (options.outputExplicitTypes && s1LastStatement is Statement.Bare && s1LastStatement.expression !is Expression.Variable) {
             // Have the returned expression also make its expected type explicit by putting it into a variable before
             // we return it
             val varName = getUnusedVarName(varNamesInScope.keys)
-            val finalAssignment = Statement(varName, blockType, returnedExpression)
+            val finalAssignment = Statement.Assignment(varName, blockType, s1LastStatement.expression)
             s1Statements.add(finalAssignment)
             return TypedBlock(Block(
                     statements = s1Statements,
-                    returnedExpression = Expression.Variable(varName),
+                    lastStatement = Statement.Bare(Expression.Variable(varName)),
                     location = block.location
             ), blockType)
         }
         return TypedBlock(Block(
                 statements = s1Statements,
-                returnedExpression = returnedExpression,
+                lastStatement = s1LastStatement,
                 location = block.location
         ), blockType)
     }
@@ -166,10 +169,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
         return when (statement) {
-            is S2Statement.Normal -> {
+            is S2Statement.Assignment -> {
                 val (expression, expressionType) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
                 val declaredType = statement.type?.let<S2Type, UnvalidatedType>(::translate)
-                TypedStatement(Statement(
+                TypedStatement(Statement.Assignment(
                         name = statement.name,
                         type = if (options.outputExplicitTypes) {
                             declaredType ?: expressionType
@@ -177,16 +180,21 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                             declaredType
                         },
                         expression = expression,
+                        location = statement.location,
                         nameLocation = statement.nameLocation
                 ), declaredType ?: expressionType)
+            }
+            is S2Statement.Bare -> {
+                val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
+                TypedStatement(Statement.Bare(
+                    expression = expression
+                ), expressionType)
             }
             is S2Statement.WhileLoop -> {
                 val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, null, varTypes)
                 val (actionBlock, actionBlockType) = translate(statement.actionBlock, varTypes)
 
-                TypedStatement(Statement(
-                        name = null,
-                        type = null,
+                TypedStatement(Statement.Bare(
                         expression = Expression.NamedFunctionCall(
                                 functionRef = net.semlang.api.EntityRef(ModuleRef(NATIVE_MODULE_NAME.group, NATIVE_MODULE_NAME.module, null), net.semlang.api.EntityId.of("Function", "whileTrueDo")),
                                 arguments = listOf(
@@ -195,7 +203,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                                 returnType = invalidate(NativeOpaqueType.BOOLEAN.getType()),
                                                 block = Block(
                                                         statements = listOf(),
-                                                        returnedExpression = conditionExpression,
+                                                        lastStatement = Statement.Bare(conditionExpression),
                                                         location = conditionExpression.location
                                                 ),
                                                 location = conditionExpression.location
@@ -210,8 +218,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                 chosenParameters = listOf(),
                                 location = statement.location,
                                 functionRefLocation = null
-                        ),
-                        nameLocation = null
+                        )
                 ), invalidate(NativeStruct.VOID.getType()))
             }
         }
@@ -888,6 +895,7 @@ private fun <T> fillIntoNulls(bindings: List<T?>, fillings: List<T>): List<T> {
  * Returns a set that includes all the variables referenced in the block -- but also things that are not actually
  * variables, so be careful how you use this.
  */
+// TODO: Figure out if this is screwed up if a variable is declared but not used
 private fun collectVarNames(block: S2Block): Set<String> {
     val varNames = HashSet<String>()
     addVarNames(block, varNames)
@@ -895,17 +903,23 @@ private fun collectVarNames(block: S2Block): Set<String> {
 }
 private fun addVarNames(block: S2Block, varNames: MutableSet<String>) {
     for (statement in block.statements) {
-        val unused: Any = when (statement) {
-            is S2Statement.Normal -> {
-                addVarNames(statement.expression, varNames)
-            }
-            is S2Statement.WhileLoop -> {
-                addVarNames(statement.conditionExpression, varNames)
-                addVarNames(statement.actionBlock, varNames)
-            }
+        addVarNames(statement, varNames)
+    }
+    addVarNames(block.lastStatement, varNames)
+}
+private fun addVarNames(statement: S2Statement, varNames: MutableSet<String>) {
+    val unused: Any = when (statement) {
+        is S2Statement.Assignment -> {
+            addVarNames(statement.expression, varNames)
+        }
+        is S2Statement.Bare -> {
+            addVarNames(statement.expression, varNames)
+        }
+        is S2Statement.WhileLoop -> {
+            addVarNames(statement.conditionExpression, varNames)
+            addVarNames(statement.actionBlock, varNames)
         }
     }
-    addVarNames(block.returnedExpression, varNames)
 }
 private fun addVarNames(expression: S2Expression, varNames: MutableSet<String>) {
     val unused: Any = when (expression) {

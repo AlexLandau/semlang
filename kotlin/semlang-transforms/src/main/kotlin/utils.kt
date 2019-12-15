@@ -22,7 +22,7 @@ private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
     for (statement in block.statements) {
         addAllDeclaredVarNames(statement, varNames)
     }
-    addAllDeclaredVarNames(block.returnedExpression, varNames)
+    addAllDeclaredVarNames(block.lastStatement, varNames)
 }
 
 private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<String>) {
@@ -77,8 +77,15 @@ private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<Str
 }
 
 private fun addAllDeclaredVarNames(statement: Statement, varNames: HashSet<String>) {
-    statement.name?.let { varNames.add(it) }
-    addAllDeclaredVarNames(statement.expression, varNames)
+    val unused = when (statement) {
+        is Statement.Assignment -> {
+            varNames.add(statement.name)
+            addAllDeclaredVarNames(statement.expression, varNames)
+        }
+        is Statement.Bare -> {
+            addAllDeclaredVarNames(statement.expression, varNames)
+        }
+    }
 }
 
 fun replaceLocalFunctionNameReferences(function: Function, replacements: Map<EntityId, EntityId>): Function {
@@ -123,8 +130,8 @@ fun replaceSomeExpressionsPostvisit(block: Block, transformation: (Expression) -
 private class PostvisitExpressionReplacer(val transformation: (Expression) -> Expression?) {
     fun apply(block: Block): Block {
         val assignments = block.statements.map(this::apply)
-        val returnedExpression = apply(block.returnedExpression)
-        return Block(assignments, returnedExpression, block.location)
+        val lastStatement = apply(block.lastStatement)
+        return Block(assignments, lastStatement, block.location)
     }
 
     private fun apply(expression: Expression): Expression {
@@ -176,8 +183,15 @@ private class PostvisitExpressionReplacer(val transformation: (Expression) -> Ex
         }
     }
 
-    private fun apply(assignment: Statement): Statement {
-        val expression = apply(assignment.expression)
-        return Statement(assignment.name, assignment.type, expression, assignment.nameLocation)
+    private fun apply(statement: Statement): Statement {
+        return when (statement) {
+            is Statement.Assignment -> {
+                val expression = apply(statement.expression)
+                Statement.Assignment(statement.name, statement.type, expression, statement.nameLocation)
+            }
+            is Statement.Bare -> {
+                Statement.Bare(apply(statement.expression))
+            }
+        }
     }
 }
