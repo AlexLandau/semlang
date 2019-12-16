@@ -247,6 +247,12 @@ private class Validator(
     private fun validateBlock(block: Block, externalVariableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): TypedBlock? {
         val variableTypes = HashMap(externalVariableTypes)
         val validatedStatements = ArrayList<ValidatedStatement>()
+
+        if (block.statements.isEmpty()) {
+            errors.add(Issue("Blocks cannot be empty", block.location, IssueLevel.ERROR))
+            return null
+        }
+
         for (statement in block.statements) {
             // TODO: Refactor to combine the referential action checks, if possible
             val validatedStatement = validateStatement(statement, variableTypes, typeParametersInScope) ?: return null
@@ -268,10 +274,10 @@ private class Validator(
             validatedStatements.add(validatedStatement)
         }
 
-        val lastStatement = validateStatement(block.lastStatement, variableTypes, typeParametersInScope) ?: return null
-        val (lastStatementType, lastStatementAliasType) = when (lastStatement) {
+        // TODO: It's not clear that this is the right way to propagate this information
+        val (lastStatementType, lastStatementAliasType) = when (val lastStatement = validatedStatements.last()) {
             is ValidatedStatement.Assignment -> {
-                errors.add(Issue("The last statement in a block should not be an assignment", block.lastStatement.location, IssueLevel.ERROR))
+                errors.add(Issue("The last statement in a block should not be an assignment", block.statements.last().location, IssueLevel.ERROR))
                 return null
             }
             is ValidatedStatement.Bare -> {
@@ -279,13 +285,7 @@ private class Validator(
             }
         }
 
-        val referentialActionsCount = countReferentialActions(lastStatement)
-        if (referentialActionsCount > 1) {
-            // TODO: This should allow nested calls where the order is unambiguous, but I need to consider the general case more carefully
-            errors.add(Issue("The statement contains more than one referential action; move these to separate statements to disambiguate the order in which they should happen", block.lastStatement.location, IssueLevel.ERROR))
-        }
-
-        return TypedBlock(lastStatementType, validatedStatements, lastStatement, lastStatementAliasType)
+        return TypedBlock(lastStatementType, validatedStatements, lastStatementAliasType)
     }
 
     private fun validateStatement(statement: Statement, variableTypes: Map<String, Type>, typeParametersInScope: Map<String, TypeParameter>): ValidatedStatement? {

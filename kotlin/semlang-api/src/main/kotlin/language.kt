@@ -761,11 +761,16 @@ sealed class ValidatedStatement {
 }
 data class UnvalidatedArgument(val name: String, val type: UnvalidatedType, val location: Location? = null)
 data class Argument(val name: String, val type: Type)
-// TODO: Consider making this just another statement (before validation)
-data class Block(val statements: List<Statement>, val lastStatement: Statement, val location: Location? = null)
+data class Block(val statements: List<Statement>, val location: Location? = null)
 // TODO: Rename to standardize
 // TODO: Probably do something different about the lastStatementAliasType
-data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val lastStatement: ValidatedStatement, val lastStatementAliasType: AliasType)
+data class TypedBlock(val type: Type, val statements: List<ValidatedStatement>, val lastStatementAliasType: AliasType) {
+    init {
+        if (statements.isEmpty()) {
+            error("The list of statements in a TypedBlock should not be empty; this should have already failed validation")
+        }
+    }
+}
 data class Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<UnvalidatedArgument>, val returnType: UnvalidatedType, val block: Block, override val annotations: List<Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): UnvalidatedType.FunctionType {
         return UnvalidatedType.FunctionType(

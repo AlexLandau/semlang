@@ -270,8 +270,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
 
     private fun parseBlock(block: Sem2Parser.BlockContext): S2Block {
         val statements = parseStatements(block.statements())
-        val lastStatement = parseStatement(block.statement())
-        return S2Block(statements, lastStatement, locationOf(block))
+        return S2Block(statements, locationOf(block))
     }
 
     private fun parseStatements(statements: Sem2Parser.StatementsContext): List<S2Statement> {
@@ -334,8 +333,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             if (expression.LBRACE() != null) {
                 val args = parseLambdaOptionalArguments(expression.optional_args())
                 val statements = parseStatements(expression.statements())
-                val lastStatement = parseStatement(expression.statement())
-                val block = S2Block(statements, lastStatement, locationOf(expression))
+                val block = S2Block(statements, locationOf(expression))
                 return S2Expression.InlineFunction(args, null, block, locationOf(expression))
             }
 

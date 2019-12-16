@@ -54,9 +54,8 @@ private fun renameWithinFunction(function: Function, renamingMap: Map<String, St
 }
 
 private fun renameBlock(block: Block, renamingMap: Map<String, String>): Block {
-    val assignments = block.statements.map { statement -> renameWithinStatement(statement, renamingMap) }
-    val lastStatement = renameWithinStatement(block.lastStatement, renamingMap)
-    return Block(assignments, lastStatement)
+    val statements = block.statements.map { statement -> renameWithinStatement(statement, renamingMap) }
+    return Block(statements)
 }
 
 private fun renameWithinStatement(statement: Statement, renamingMap: Map<String, String>): Statement {

@@ -44,9 +44,8 @@ private fun stripLocations(type: UnvalidatedType): UnvalidatedType {
 }
 
 private fun stripLocations(block: Block): Block {
-    val assignments = block.statements.map(::stripLocations)
-    val lastStatement = stripLocations(block.lastStatement)
-    return Block(assignments, lastStatement)
+    val statements = block.statements.map(::stripLocations)
+    return Block(statements)
 }
 
 private fun stripLocations(statement: Statement): Statement {

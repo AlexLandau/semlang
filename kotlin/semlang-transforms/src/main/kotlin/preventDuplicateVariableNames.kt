@@ -42,8 +42,7 @@ private class UniqueVariableRenamer(val initialBlock: Block, argumentNames: Coll
 
     private fun apply(block: Block, varTransformations: MutableMap<String, String>): Block {
         val statements = block.statements.map { apply(it, varTransformations) }
-        val lastStatement = apply(block.lastStatement, varTransformations)
-        return Block(statements, lastStatement)
+        return Block(statements)
     }
 
     private fun apply(statement: Statement, varTransformations: MutableMap<String, String>): Statement {

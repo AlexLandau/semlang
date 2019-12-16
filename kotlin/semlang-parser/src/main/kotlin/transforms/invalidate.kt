@@ -32,9 +32,8 @@ fun invalidate(struct: Struct): UnvalidatedStruct {
 }
 
 fun invalidate(block: TypedBlock): Block {
-    val assignments = block.statements.map(::invalidate)
-    val lastStatement = invalidate(block.lastStatement)
-    return Block(assignments, lastStatement)
+    val statements = block.statements.map(::invalidate)
+    return Block(statements)
 }
 
 fun invalidateFunctionType(type: Type.FunctionType): UnvalidatedType.FunctionType {

@@ -15,7 +15,6 @@ private fun collectVars(varsReferenced: MutableCollection<String>, block: TypedB
     for (statement in block.statements) {
         collectVars(varsReferenced, statement)
     }
-    collectVars(varsReferenced, block.lastStatement)
 }
 
 private fun collectVars(varsReferenced: MutableCollection<String>, statement: ValidatedStatement) {

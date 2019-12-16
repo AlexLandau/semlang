@@ -82,7 +82,7 @@ struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE statements statement RBRACE ;
+block : LBRACE statements RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }
@@ -163,7 +163,7 @@ expression : IF LPAREN expression RPAREN block ELSE block
   | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
   | FUNCTION LPAREN function_arguments RPAREN COLON type block
   | FUNCTION LPAREN function_arguments RPAREN block
-  | LBRACE optional_args statements statement RBRACE
+  | LBRACE optional_args statements RBRACE
   | expression DOT ID
   // NOTE: Higher expressions have higher precedence
   | expression LBRACKET cd_expressions RBRACKET // [] (get) operator

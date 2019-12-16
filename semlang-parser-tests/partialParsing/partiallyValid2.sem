@@ -1,5 +1,6 @@
 // Invalid function declaration (parsing error)
 function foo(): Natural {
+  =
 }
 
 // Valid function declaration

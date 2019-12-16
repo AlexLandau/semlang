@@ -49,7 +49,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
     val newStatements = ArrayList<Statement>()
 
     fun apply(): Block {
-        for (statement in block.statements) {
+        for (statement in block.statements.dropLast(1)) {
             val unused = when (statement) {
                 is Statement.Assignment -> {
                     val splitResult = trySplitting(statement.expression)
@@ -62,7 +62,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
             }
         }
 
-        val newLastStatement = when (val statement = block.lastStatement) {
+        val newLastStatement = when (val statement = block.statements.last()) {
             is Statement.Assignment -> {
                 // This is probably an error case
                 val splitResult = trySplitting(statement.expression)
@@ -74,7 +74,7 @@ private class ExpressionsInBlockHoister(val block: Block, varsAlreadyInScope: Co
             }
         }
 
-        return Block(newStatements, newLastStatement)
+        return Block(newStatements + newLastStatement)
     }
 
     /**

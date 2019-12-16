@@ -80,6 +80,11 @@ fun writeErrorFileText(errorFile: ErrorFile): String {
 
 fun writeErrorLine(error: Issue): String {
     val location = error.location!!
+
+    if (location.range.start.lineNumber != location.range.end.lineNumber) {
+        error("Error files currently don't support multi-line errors. Error was: $error")
+    }
+
     val startCol = location.range.start.column
     val endCol = location.range.end.column
     return "".padEnd(startCol, ' ') +

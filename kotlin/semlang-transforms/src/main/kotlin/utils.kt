@@ -22,7 +22,6 @@ private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
     for (statement in block.statements) {
         addAllDeclaredVarNames(statement, varNames)
     }
-    addAllDeclaredVarNames(block.lastStatement, varNames)
 }
 
 private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<String>) {
@@ -130,8 +129,7 @@ fun replaceSomeExpressionsPostvisit(block: Block, transformation: (Expression) -
 private class PostvisitExpressionReplacer(val transformation: (Expression) -> Expression?) {
     fun apply(block: Block): Block {
         val assignments = block.statements.map(this::apply)
-        val lastStatement = apply(block.lastStatement)
-        return Block(assignments, lastStatement, block.location)
+        return Block(assignments, block.location)
     }
 
     private fun apply(expression: Expression): Expression {

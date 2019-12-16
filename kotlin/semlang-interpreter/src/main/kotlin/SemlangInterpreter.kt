@@ -298,7 +298,9 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
 
     private fun evaluateBlock(block: TypedBlock, initialAssignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {
         val assignments: MutableMap<String, SemObject> = HashMap(initialAssignments)
+        var lastEvaluatedExpression: SemObject? = null
         for (statement in block.statements) {
+            lastEvaluatedExpression = null
             val unused = when (statement) {
                 is ValidatedStatement.Assignment -> {
                     val value = evaluateExpression(statement.expression, assignments, containingModule)
@@ -308,18 +310,14 @@ class SemlangForwardInterpreter(val mainModule: ValidatedModule, val options: In
                     assignments.put(statement.name, value)
                 }
                 is ValidatedStatement.Bare -> {
-                    evaluateExpression(statement.expression, assignments, containingModule)
+                    lastEvaluatedExpression = evaluateExpression(statement.expression, assignments, containingModule)
                 }
             }
         }
-        when (val lastStatement = block.lastStatement) {
-            is ValidatedStatement.Assignment -> {
-                error("The last statement in a block is not supposed to be an assignment")
-            }
-            is ValidatedStatement.Bare -> {
-                return evaluateExpression(lastStatement.expression, assignments, containingModule)
-            }
+        if (lastEvaluatedExpression == null) {
+            error("Block did not result in an expression (empty, ends with assignment, or other problem)")
         }
+        return lastEvaluatedExpression
     }
 
     private fun evaluateExpression(expression: TypedExpression, assignments: Map<String, SemObject>, containingModule: ValidatedModule?): SemObject {

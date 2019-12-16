@@ -511,7 +511,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
     private fun writeBlock(block: TypedBlock, varToAssign: String?): CodeBlock {
         val builder = CodeBlock.builder()
 
-        for (statement in block.statements) {
+        for (statement in block.statements.dropLast(1)) {
             val unused: Any? = when (statement) {
                 is ValidatedStatement.Assignment -> {
                     // TODO: Test case where a variable within the block has the same name as the variable we're going to assign to
@@ -537,7 +537,7 @@ private class JavaCodeWriter(val module: ValidatedModule, val javaPackage: List<
         }
 
         // TODO: Handle case where returnedExpression is if/then (?) -- or will that get factored out?
-        val lastExpression = when (val statement = block.lastStatement) {
+        val lastExpression = when (val statement = block.statements.last()) {
             is ValidatedStatement.Assignment -> TODO()
             is ValidatedStatement.Bare -> statement.expression
         }

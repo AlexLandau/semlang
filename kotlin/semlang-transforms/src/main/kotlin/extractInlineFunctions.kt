@@ -62,7 +62,7 @@ private class InlineFunctionExtractor(val inputModule: ValidatedModule) {
 
     private fun transformBlock(block: TypedBlock): Block {
         val statements = block.statements.map(::transform)
-        return Block(statements, transform(block.lastStatement))
+        return Block(statements)
     }
 
     private fun transform(statement: ValidatedStatement): Statement {

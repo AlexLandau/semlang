@@ -18,16 +18,15 @@ class TransformInspectionTest {
     @Test
     fun testNamedFunctionCallFromNamespacedFunctionCall() {
         val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
-                statements = listOf(),
-                lastStatement = S2Statement.Bare(S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
+                statements = listOf(S2Statement.Bare(S2Expression.FunctionCall( // Integer.plus(Integer."1", Integer."1")
                         expression = s2IntegerPlus,
                         arguments = listOf(s2Integer1, s2Integer1),
                         chosenParameters = listOf()
-                ))
+                )))
         ), listOf())
 
         val sem1Function = translateFunction(sem2Function)
-        val lastStatement = sem1Function.block.lastStatement
+        val lastStatement = sem1Function.block.statements.last()
         if (lastStatement !is Statement.Bare) {
             fail("Expected a bare statement, but was: $lastStatement") as Nothing
         }
@@ -41,19 +40,18 @@ class TransformInspectionTest {
     @Test
     fun testNamedFunctionCallFromLocalFunctionCall() {
         val sem2Function = S2Function(s2F1Id, listOf(), listOf(), s2IntType, S2Block(
-                statements = listOf(),
-                lastStatement = S2Statement.Bare(S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
+                statements = listOf(S2Statement.Bare(S2Expression.FunctionCall( // Integer."1".plus(Integer."1")
                         expression = S2Expression.DotAccess( // Integer."1".plus
                                 subexpression = s2Integer1,
                                 name = "plus"
                         ),
                         arguments = listOf(s2Integer1),
                         chosenParameters = listOf()
-                ))
+                )))
         ), listOf())
 
         val sem1Function = translateFunction(sem2Function)
-        val lastStatement = sem1Function.block.lastStatement
+        val lastStatement = sem1Function.block.statements.last()
         if (lastStatement !is Statement.Bare) {
             fail("Expected a bare statement, but was: $lastStatement") as Nothing
         }

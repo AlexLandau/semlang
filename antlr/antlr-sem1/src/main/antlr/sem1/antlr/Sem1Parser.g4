@@ -73,7 +73,7 @@ struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
   | annotations UNION entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE disjuncts RBRACE ;
 
-block : LBRACE statements statement RBRACE ;
+block : LBRACE statements RBRACE ;
     catch[RecognitionException e] { throw e; }
 function_arguments : | function_argument | function_argument COMMA function_arguments ;
     catch[RecognitionException e] { throw e; }

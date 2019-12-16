@@ -307,7 +307,7 @@ object NativeStruct {
                     Member("integer", NativeOpaqueType.INTEGER.getType())
             ),
             // requires: value > -1
-            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(), ValidatedStatement.Bare(
+            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(ValidatedStatement.Bare(
                 NativeOpaqueType.BOOLEAN.getType(),
                 TypedExpression.NamedFunctionCall(
                     NativeOpaqueType.BOOLEAN.getType(),
@@ -319,7 +319,7 @@ object NativeStruct {
                     listOf(),
                     listOf()
                 )
-            ), AliasType.NotAliased),
+            )), AliasType.NotAliased),
             listOf()
     )
     val SEQUENCE = Struct(
@@ -341,7 +341,7 @@ object NativeStruct {
                     Member("natural", NativeStruct.NATURAL.getType())
             ),
             // requires: value < 1114112
-            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(), ValidatedStatement.Bare(
+            TypedBlock(NativeOpaqueType.BOOLEAN.getType(), listOf(ValidatedStatement.Bare(
                 NativeOpaqueType.BOOLEAN.getType(),
                 TypedExpression.NamedFunctionCall(
                     NativeOpaqueType.BOOLEAN.getType(),
@@ -358,7 +358,7 @@ object NativeStruct {
                     listOf(),
                     listOf()
                 )
-            ), AliasType.NotAliased),
+            )), AliasType.NotAliased),
             listOf()
     )
     val STRING = Struct(

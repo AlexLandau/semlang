@@ -1,9 +1,0 @@
-
-// Empty requires block
-
-struct Foo {
-  a: Integer
-  requires {
-
-  }
-}

@@ -337,7 +337,6 @@ private fun addBlock(node: ArrayNode, block: TypedBlock) {
     for (statement in block.statements) {
         addStatement(node.addObject(), statement)
     }
-    addStatement(node.addObject(), block.lastStatement)
 }
 
 private fun parseBlock(node: JsonNode): Block {
@@ -347,13 +346,9 @@ private fun parseBlock(node: JsonNode): Block {
     if (size < 1) {
         error("Expected at least one entry in the block array")
     }
-    val statements = ArrayList<Statement>()
-    for (index in 0..(node.size() - 2)) {
-        statements.add(parseStatement(node[index]))
-    }
-    val lastStatement = parseStatement(node.last())
+    val statements = node.map(::parseStatement)
 
-    return Block(statements, lastStatement)
+    return Block(statements)
 }
 
 private fun addStatement(node: ObjectNode, assignment: ValidatedStatement) {

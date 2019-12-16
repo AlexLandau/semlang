@@ -86,9 +86,8 @@ private data class NameAssignment(val newNames: Map<ResolvedEntityRef, EntityId>
     }
 
     private fun apply(block: TypedBlock): Block {
-        val assignments = block.statements.map(this::apply)
-        val lastStatement = apply(block.lastStatement)
-        return Block(assignments, lastStatement)
+        val statements = block.statements.map(this::apply)
+        return Block(statements)
     }
 
     private fun apply(statement: ValidatedStatement): Statement {
@@ -440,7 +439,6 @@ private class RelevantEntitiesFinder(val rootModule: ValidatedModule) {
             enqueueStatement(statement, containingModule)
         }
         enqueueType(block.type, containingModule)
-        enqueueStatement(block.lastStatement, containingModule)
     }
 
     private fun enqueueStatement(statement: ValidatedStatement, containingModule: ValidatedModule) {

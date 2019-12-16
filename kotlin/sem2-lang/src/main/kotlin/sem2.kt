@@ -224,8 +224,7 @@ sealed class S2Statement {
 }
 
 data class S2Argument(val name: String, val type: S2Type, val location: Location? = null)
-// TODO: Consider making this just one list of statements
-data class S2Block(val statements: List<S2Statement>, val lastStatement: S2Statement, val location: Location? = null)
+data class S2Block(val statements: List<S2Statement>, val location: Location? = null)
 data class S2Function(override val id: EntityId, val typeParameters: List<TypeParameter>, val arguments: List<S2Argument>, val returnType: S2Type, val block: S2Block, override val annotations: List<S2Annotation>, val idLocation: Location? = null, val returnTypeLocation: Location? = null) : TopLevelEntity {
     fun getType(): S2Type.FunctionType {
         return S2Type.FunctionType(

@@ -166,9 +166,6 @@ private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, dete
         writeStatement(statement, indentationLevel, writer, deterministicMode)
         writer.append(newline)
     }
-    writer.append(indent)
-    writeStatement(block.lastStatement, indentationLevel, writer, deterministicMode)
-    writer.append(newline)
 }
 
 // TODO: Move this to a class structure

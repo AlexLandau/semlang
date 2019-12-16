@@ -116,6 +116,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         val varNamesInScope = HashMap<String, UnvalidatedType?>(externalVarTypes)
         val s1Statements = ArrayList<Statement>()
 
+        if (block.statements.isEmpty()) {
+            // Let the sem1 validator deal with this error
+            return TypedBlock(Block(listOf(), block.location), null)
+        }
+
+        var lastStatementType: UnvalidatedType? = null
+        // TODO: Functions can have a type hint for the declared return type
+        // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
         for (s2Statement in block.statements) {
             val (s1Statement, statementType) = translate(s2Statement, varNamesInScope)
             if (s1Statement is Statement.Assignment) {
@@ -125,32 +133,32 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 varNamesInScope.put(s1Statement.name, statementType)
             }
             s1Statements.add(s1Statement)
+            lastStatementType = statementType
         }
 
-        // TODO: Functions can have a type hint for the declared return type
-        // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
-        val (s1LastStatement, blockType) = translate(block.lastStatement, varNamesInScope)
-        if (options.failOnUninferredType && blockType == null) {
-            error("Could not infer type for returned expression $s1LastStatement in block $block")
+        val s1LastStatement = s1Statements.last()
+        // TODO: This check may not make sense if e.g. a block ends with a while loop
+        if (options.failOnUninferredType && lastStatementType == null) {
+            error("Could not infer type for returned expression in block $block")
         }
 
         if (options.outputExplicitTypes && s1LastStatement is Statement.Bare && s1LastStatement.expression !is Expression.Variable) {
             // Have the returned expression also make its expected type explicit by putting it into a variable before
             // we return it
             val varName = getUnusedVarName(varNamesInScope.keys)
-            val finalAssignment = Statement.Assignment(varName, blockType, s1LastStatement.expression)
+            s1Statements.removeAt(s1Statements.size - 1)
+            val finalAssignment = Statement.Assignment(varName, lastStatementType, s1LastStatement.expression)
             s1Statements.add(finalAssignment)
+            s1Statements.add(Statement.Bare(Expression.Variable(varName)))
             return TypedBlock(Block(
                     statements = s1Statements,
-                    lastStatement = Statement.Bare(Expression.Variable(varName)),
                     location = block.location
-            ), blockType)
+            ), lastStatementType)
         }
         return TypedBlock(Block(
                 statements = s1Statements,
-                lastStatement = s1LastStatement,
                 location = block.location
-        ), blockType)
+        ), lastStatementType)
     }
 
     private fun getUnusedVarName(keys: Set<String>): String {
@@ -182,6 +190,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         expression = expression,
                         location = statement.location,
                         nameLocation = statement.nameLocation
+                // TODO: It's not clear that we want the type here
                 ), declaredType ?: expressionType)
             }
             is S2Statement.Bare -> {
@@ -202,8 +211,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                                 arguments = listOf(),
                                                 returnType = invalidate(NativeOpaqueType.BOOLEAN.getType()),
                                                 block = Block(
-                                                        statements = listOf(),
-                                                        lastStatement = Statement.Bare(conditionExpression),
+                                                        statements = listOf(Statement.Bare(conditionExpression)),
                                                         location = conditionExpression.location
                                                 ),
                                                 location = conditionExpression.location
@@ -905,7 +913,6 @@ private fun addVarNames(block: S2Block, varNames: MutableSet<String>) {
     for (statement in block.statements) {
         addVarNames(statement, varNames)
     }
-    addVarNames(block.lastStatement, varNames)
 }
 private fun addVarNames(statement: S2Statement, varNames: MutableSet<String>) {
     val unused: Any = when (statement) {

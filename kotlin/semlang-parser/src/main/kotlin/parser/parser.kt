@@ -313,8 +313,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             statements.add(statement)
         }
 
-        val lastStatement = parseStatement(block.statement(), varsInBlockScope)
-        return Block(statements, lastStatement, locationOf(block))
+        return Block(statements, locationOf(block))
     }
 
     private fun getStatementContexts(statements: Sem1Parser.StatementsContext): List<Sem1Parser.StatementContext> {
