@@ -106,27 +106,6 @@ private class DeclaredVarNamesCollector {
     }
 }
 
-fun replaceLocalFunctionNameReferences(block: Block, replacements: Map<EntityId, EntityId>): Block {
-    return replaceSomeExpressionsPostvisit(block, fun(expression: Expression): Expression? {
-        if (expression is Expression.NamedFunctionCall) {
-            // TODO: Do we need something subtler around the reference as a whole?
-            val oldName = expression.functionRef.id
-            val replacement = replacements[oldName]
-            if (replacement != null) {
-                return expression.copy(functionRef = replacement.asRef())
-            }
-        } else if (expression is Expression.NamedFunctionBinding) {
-            // TODO: Do we need something subtler around the reference as a whole?
-            val oldName = expression.functionRef.id
-            val replacement = replacements[oldName]
-            if (replacement != null) {
-                return expression.copy(functionRef = replacement.asRef())
-            }
-        }
-        return null
-    })
-}
-
 /**
  * Given a function from Expression to Expression?, replaces expressions for which the function
  * returns a non-null value with the value returned.
