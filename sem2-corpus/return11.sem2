@@ -1,0 +1,10 @@
+@Test(["true"], "1")
+@Test(["false"], "3")
+function conditionalEarlyReturn(b: Boolean): Integer {
+  let n = if (b) {
+    return Integer."1"
+  } else {
+    Integer."2"
+  }
+  return Integer."3"
+}

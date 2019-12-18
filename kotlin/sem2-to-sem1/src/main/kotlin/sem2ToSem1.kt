@@ -50,15 +50,26 @@ data class Sem2ToSem1Options(
         val outputExplicitTypes: Boolean = false
 )
 
-private data class TypedBlock(val block: Block, val type: UnvalidatedType?)
-private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?, val isReturning: Boolean)
+private data class TypedBlock(val block: Block, val type: UnvalidatedType?, val isReturning: IsReturning)
+private data class TypedStatement(val statement: Statement, val type: UnvalidatedType?, val isReturning: IsReturning)
 
 private sealed class TypedExpression
-private data class RealExpression(val expression: Expression, val type: UnvalidatedType?): TypedExpression()
+private data class RealExpression(val expression: Expression, val type: UnvalidatedType?, val isReturning: IsReturning): TypedExpression()
 private data class NamespacePartExpression(val names: List<String>): TypedExpression()
 private data class IntegerLiteralExpression(val literal: String): TypedExpression()
 
 private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(null, net.semlang.api.EntityId.of("Unknown")), false, listOf())
+
+// TODO: Add restrictions to returns to prevent ambiguities
+// e.g.: foo(if (c1) { return x } else { y }, bar(if (c2) { return m } else { n }))
+// is unclear whether we should return x or m if both c1 and c2 are true
+// similarly for items in a list literal
+// This *could* be handled within sem2, but maybe we don't want to
+private sealed class IsReturning {
+    object Yes: IsReturning()
+    object No: IsReturning()
+    object Conditional: IsReturning()
+}
 
 private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val typesMetadata: TypesMetadata, val options: Sem2ToSem1Options) {
     val errors = ArrayList<Issue>()
@@ -79,12 +90,16 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
     private fun translate(function: S2Function): Function? {
         try {
+            val returnType = translate(function.returnType)
+            val (block, _, isReturning) = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap())
+            // So far, we can ignore isReturning here... that might change when we handle sometimes-returning expressions
+//            TODO("Deal with isReturning")
             return Function(
                     id = translate(function.id),
                     typeParameters = function.typeParameters.map(::translate),
                     arguments = function.arguments.map(::translate),
                     returnType = translate(function.returnType),
-                    block = translate(function.block, function.arguments.map { it.name to translate(it.type) }.toMap()).block,
+                    block = block,
                     annotations = function.annotations.map(::translate),
                     idLocation = function.idLocation,
                     returnTypeLocation = function.returnTypeLocation
@@ -118,10 +133,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
         if (block.statements.isEmpty()) {
             // Let the sem1 validator deal with this error
-            return TypedBlock(Block(listOf(), block.location), null)
+            return TypedBlock(Block(listOf(), block.location), null, IsReturning.No)
         }
 
         var lastStatementType: UnvalidatedType? = null
+        var isReturning: Boolean = false
         // TODO: Functions can have a type hint for the declared return type
         // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
         for (s2Statement in block.statements) {
@@ -135,6 +151,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             s1Statements.add(s1Statement)
             lastStatementType = statementType
             if (statementIsReturning) {
+                isReturning = true
                 break
             }
         }
@@ -154,14 +171,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             s1Statements.add(finalAssignment)
             s1Statements.add(Statement.Bare(Expression.Variable(varName)))
             return TypedBlock(Block(
-                    statements = s1Statements,
-                    location = block.location
-            ), lastStatementType)
-        }
-        return TypedBlock(Block(
                 statements = s1Statements,
                 location = block.location
-        ), lastStatementType)
+            ), lastStatementType, isReturning)
+        }
+        return TypedBlock(Block(
+            statements = s1Statements,
+            location = block.location
+        ), lastStatementType, isReturning)
     }
 
     private fun getUnusedVarName(keys: Set<String>): String {
@@ -181,7 +198,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     private fun translate(statement: S2Statement, varTypes: Map<String, UnvalidatedType?>): TypedStatement {
         return when (statement) {
             is S2Statement.Assignment -> {
-                val (expression, expressionType) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
+                val (expression, expressionType, isReturning) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
+                if (isReturning == IsReturning.Yes) {
+                    return TypedStatement(Statement.Bare(expression), expressionType, isReturning)
+                }
                 val declaredType = statement.type?.let<S2Type, UnvalidatedType>(::translate)
                 TypedStatement(Statement.Assignment(
                         name = statement.name,
@@ -194,13 +214,13 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         location = statement.location,
                         nameLocation = statement.nameLocation
                 // TODO: It's not clear that we want the type here
-                ), declaredType ?: expressionType, false)
+                ), declaredType ?: expressionType, isReturning)
             }
             is S2Statement.Bare -> {
-                val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
+                val (expression, expressionType, isReturning) = translateFullExpression(statement.expression, null, varTypes)
                 TypedStatement(Statement.Bare(
                     expression = expression
-                ), expressionType, false)
+                ), expressionType, isReturning)
             }
             is S2Statement.Return -> {
                 /*
@@ -209,11 +229,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                  */
                 val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
                 TypedStatement(Statement.Bare(expression), expressionType, true)
-                TODO("Make this work!")
             }
             is S2Statement.WhileLoop -> {
                 val (conditionExpression, conditionExpressionType) = translateFullExpression(statement.conditionExpression, null, varTypes)
-                val (actionBlock, actionBlockType) = translate(statement.actionBlock, varTypes)
+                val (actionBlock, actionBlockType, isReturning) = translate(statement.actionBlock, varTypes)
+                TODO("Use isReturning")
 
                 TypedStatement(Statement.Bare(
                         expression = Expression.NamedFunctionCall(
@@ -410,15 +430,31 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 }
             }
             is S2Expression.IfThen -> {
-                // Shortcut: Just assume the then-block has the correct type
-                val (thenBlock, typeInfo) = translate(expression.thenBlock, varTypes)
+                val (thenBlock, thenType, thenIsReturning) = translate(expression.thenBlock, varTypes)
+                val (elseBlock, elseType, elseIsReturning) = translate(expression.elseBlock, varTypes)
+//                TODO("Deal with returning here")
+                val (combinedType, isReturning) = if (thenIsReturning && elseIsReturning) {
+                    // TODO: Not sure if the type is right here, or if it matters
+                    Pair(thenType, IsReturning.Yes)
+                } else if (!thenIsReturning && !elseIsReturning) {
+                    // Shortcut: Just assume the then-block has the correct type
+                    Pair(thenType, IsReturning.No)
+                } else if (thenIsReturning) {
+                    // TODO: Also need to tweak the ends of the blocks here to get the conditional type
+                    // Return the type of the non-returning half
+                    Pair(elseType, IsReturning.Conditional)
+                } else {
+                    // TODO: Also need to tweak the ends of the blocks here to get the conditional type
+                    Pair(thenType, IsReturning.Conditional)
+                }
+
 //                val boolType = S2Type.NamedType(EntityRef(S2ModuleRef(CURRENT_NATIVE_MODULE_ID.name.group, CURRENT_NATIVE_MODULE_ID.name.module, null), EntityId.of("Boolean")), false)
                 RealExpression(Expression.IfThen(
                         condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression,
                         thenBlock = thenBlock,
-                        elseBlock = translate(expression.elseBlock, varTypes).block,
+                        elseBlock = elseBlock,
                         location = expression.location
-                ), typeInfo)
+                ), combinedType, isReturning)
             }
             is S2Expression.FunctionCall -> {
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
@@ -493,7 +529,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         type = type,
                         literal = expression.literal,
                         location = expression.location
-                ), type)
+                ), type, IsReturning.No)
             }
             is S2Expression.IntegerLiteral -> {
                 IntegerLiteralExpression(
@@ -586,7 +622,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
                 val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
 
-                val (block, blockType) = translate(expression.block, varTypesInBlock)
+                val (block, blockType, isReturning) = translate(expression.block, varTypesInBlock)
+                TODO("Deal with isReturning here")
 
                 val varNamesInBlock = collectVarNames(expression.block)
                 val isReference = varNamesInBlock.any {
@@ -753,7 +790,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     id = translate(struct.id),
                     typeParameters = struct.typeParameters.map(::translate),
                     members = struct.members.map(::translate),
-                    requires = struct.requires?.let { translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block },
+                    requires = struct.requires?.let {
+                        val (block, _, isReturning) = translate(it, struct.members.map { it.name to translate(it.type) }.toMap())
+                        TODO("Deal with isReturning")
+                        block
+                    },
                     annotations = struct.annotations.map(::translate),
                     idLocation = struct.idLocation
             )

@@ -1,0 +1,39 @@
+@Test(["true"], "1")
+@Test(["false"], "3")
+function conditionalEarlyReturn(b: Boolean): Integer {
+  let s: String = if (b) {
+    return Integer."1"
+  } else {
+    String."foo"
+  }
+  List.size(s->codePoints)
+}
+
+/*
+
+This should get translated into something like:
+
+function conditionalEarlyReturn(b: Boolean): Integer {
+  let s1: Returnable<String, Integer> = if (b) {
+    Returnable.Return(Integer."1")
+  } else {
+    Returnable.Continue(String."foo")
+  }
+  Returnable.continue(s1, function (s: String) {
+    List.size(s->codePoints)
+  })
+}
+
+With the relevant "native" bits:
+
+union Returnable<ContinueT, ReturnT> {
+  Continue: ContinueT
+  Return: ReturnT
+}
+function Returnable.continue<ContinueT, ReturnT>(returnable: Returnable<ContinueT, ReturnT>, continuation: (ContinueT) -> ReturnT): ReturnT {
+  Returnable.when(returnable,
+    function(toReturn: ReturnT): ReturnT { toReturn },
+    continuation
+  )
+}
+*/
