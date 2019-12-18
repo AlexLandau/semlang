@@ -4,93 +4,106 @@ import net.semlang.api.*
 import net.semlang.api.Function
 
 fun getAllDeclaredVarNames(function: Function): Set<String> {
-    val varNames = LinkedHashSet<String>()
-    for (argument in function.arguments) {
-        varNames.add(argument.name)
-    }
-    addAllDeclaredVarNames(function.block, varNames)
-    return varNames
+    return DeclaredVarNamesCollector.run(function)
 }
 
 fun getAllDeclaredVarNames(block: Block): Set<String> {
-    val varNames = LinkedHashSet<String>()
-    addAllDeclaredVarNames(block, varNames)
-    return varNames
+    return DeclaredVarNamesCollector.run(block)
 }
 
-private fun addAllDeclaredVarNames(block: Block, varNames: HashSet<String>) {
-    for (statement in block.statements) {
-        addAllDeclaredVarNames(statement, varNames)
+private class DeclaredVarNamesCollector {
+    val varNames = HashSet<String>()
+    companion object {
+        fun run(function: Function): Set<String> {
+            val collector = DeclaredVarNamesCollector()
+            collector.addFrom(function)
+            return collector.varNames
+        }
+
+        fun run(block: Block): Set<String> {
+            val collector = DeclaredVarNamesCollector()
+            collector.addFrom(block)
+            return collector.varNames
+        }
     }
-}
 
-private fun addAllDeclaredVarNames(expression: Expression, varNames: HashSet<String>) {
-    val unused: Unit = when (expression) {
-        is Expression.IfThen -> {
-            addAllDeclaredVarNames(expression.thenBlock, varNames)
-            addAllDeclaredVarNames(expression.elseBlock, varNames)
+    private fun addFrom(function: Function) {
+        for (argument in function.arguments) {
+            varNames.add(argument.name)
         }
-        is Expression.InlineFunction -> {
-            for (argument in expression.arguments) {
-                varNames.add(argument.name)
+        addFrom(function.block)
+    }
+
+    private fun addFrom(block: Block) {
+        for (statement in block.statements) {
+            addFrom(statement)
+        }
+    }
+
+    private fun addFrom(expression: Expression) {
+        val unused: Unit = when (expression) {
+            is Expression.IfThen -> {
+                addFrom(expression.thenBlock)
+                addFrom(expression.elseBlock)
             }
-            addAllDeclaredVarNames(expression.block, varNames)
-        }
-        is Expression.Variable -> {}
-        is Expression.NamedFunctionCall -> {
-            for (argument in expression.arguments) {
-                addAllDeclaredVarNames(argument, varNames)
+            is Expression.InlineFunction -> {
+                for (argument in expression.arguments) {
+                    varNames.add(argument.name)
+                }
+                addFrom(expression.block)
             }
-        }
-        is Expression.ExpressionFunctionCall -> {
-            addAllDeclaredVarNames(expression.functionExpression, varNames)
-            for (argument in expression.arguments) {
-                addAllDeclaredVarNames(argument, varNames)
+            is Expression.Variable -> {
             }
-        }
-        is Expression.Literal -> {}
-        is Expression.ListLiteral -> {
-            for (item in expression.contents) {
-                addAllDeclaredVarNames(item, varNames)
-            }
-        }
-        is Expression.NamedFunctionBinding -> {
-            for (binding in expression.bindings) {
-                if (binding != null) {
-                    addAllDeclaredVarNames(binding, varNames)
+            is Expression.NamedFunctionCall -> {
+                for (argument in expression.arguments) {
+                    addFrom(argument)
                 }
             }
-        }
-        is Expression.ExpressionFunctionBinding -> {
-            addAllDeclaredVarNames(expression.functionExpression, varNames)
-            for (binding in expression.bindings) {
-                if (binding != null) {
-                    addAllDeclaredVarNames(binding, varNames)
+            is Expression.ExpressionFunctionCall -> {
+                addFrom(expression.functionExpression)
+                for (argument in expression.arguments) {
+                    addFrom(argument)
                 }
             }
-        }
-        is Expression.Follow -> {
-            addAllDeclaredVarNames(expression.structureExpression, varNames)
+            is Expression.Literal -> {
+            }
+            is Expression.ListLiteral -> {
+                for (item in expression.contents) {
+                    addFrom(item)
+                }
+            }
+            is Expression.NamedFunctionBinding -> {
+                for (binding in expression.bindings) {
+                    if (binding != null) {
+                        addFrom(binding)
+                    }
+                }
+            }
+            is Expression.ExpressionFunctionBinding -> {
+                addFrom(expression.functionExpression)
+                for (binding in expression.bindings) {
+                    if (binding != null) {
+                        addFrom(binding)
+                    }
+                }
+            }
+            is Expression.Follow -> {
+                addFrom(expression.structureExpression)
+            }
         }
     }
-}
 
-private fun addAllDeclaredVarNames(statement: Statement, varNames: HashSet<String>) {
-    val unused = when (statement) {
-        is Statement.Assignment -> {
-            varNames.add(statement.name)
-            addAllDeclaredVarNames(statement.expression, varNames)
-        }
-        is Statement.Bare -> {
-            addAllDeclaredVarNames(statement.expression, varNames)
+    private fun addFrom(statement: Statement) {
+        val unused = when (statement) {
+            is Statement.Assignment -> {
+                varNames.add(statement.name)
+                addFrom(statement.expression)
+            }
+            is Statement.Bare -> {
+                addFrom(statement.expression)
+            }
         }
     }
-}
-
-fun replaceLocalFunctionNameReferences(function: Function, replacements: Map<EntityId, EntityId>): Function {
-    return function.copy(
-            block = replaceLocalFunctionNameReferences(function.block, replacements)
-    )
 }
 
 fun replaceLocalFunctionNameReferences(block: Block, replacements: Map<EntityId, EntityId>): Block {
