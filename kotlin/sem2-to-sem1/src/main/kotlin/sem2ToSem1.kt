@@ -208,7 +208,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
         val s1LastStatement = s1Statements.last()
         // TODO: This check may not make sense if e.g. a block ends with a while loop
-        if (options.failOnUninferredType && lastStatementType == null) {
+        if (options.failOnUninferredType && isReturning !is IsReturning.Yes && lastStatementType == null) {
             error("Could not infer type for returned expression in block $block")
         }
 
