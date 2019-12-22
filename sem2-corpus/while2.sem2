@@ -1,0 +1,18 @@
+@Test([], "127")
+function testWhileLoop(): Integer {
+  // Some opportunities for syntactic improvement here... (integer literals, `n.= n[] * 2` or `n *= 2`)
+  let list = ListBuilder<Integer>()
+  addToList(list)
+  List.reduce(list.build(), 0, Integer.plus)
+}
+
+// Function ending with a while loop
+function addToList(list: &ListBuilder<Integer>): Void {
+  let n = Var(1)
+  while (n[] < 100) {
+    let curN = n[] // TODO: Allow this and the next line to be combined
+    list.append(curN)
+    let newN = n[] * 2
+    n.= newN
+  }
+}
