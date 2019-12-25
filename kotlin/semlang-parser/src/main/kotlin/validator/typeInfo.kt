@@ -116,7 +116,7 @@ class TypesInfo(
         val resolved = upstreamResolver.resolve(ref, ResolutionType.Function)
         return when (resolved) {
             is EntityResolution -> {
-                upstreamFunctions[resolved.entityRef]!!
+                upstreamFunctions.getValue(resolved.entityRef)
             }
             is ResolutionResult.Error -> FunctionInfoResult.Error(resolved.errorMessage)
         }
@@ -457,6 +457,14 @@ private class TypesSummaryToInfoConverter(
         for (function in getNativeFunctionOnlyDefinitions().values) {
             val ref = ResolvedEntityRef(nativeModuleId, function.id)
             upstreamFunctions.put(ref, functionInfo(ref, function))
+        }
+        for (union in getNativeUnions().values) {
+            val whenRef = ResolvedEntityRef(nativeModuleId, union.whenId)
+            upstreamFunctions.put(whenRef, functionInfo(whenRef, union.getWhenSignature()))
+            for (option in union.options) {
+                val optionRef = ResolvedEntityRef(nativeModuleId, union.getOptionId(option))
+                upstreamFunctions.put(optionRef, functionInfo(optionRef, union.getOptionConstructorSignature(option)))
+            }
         }
 
         for (module in upstreamModules) {

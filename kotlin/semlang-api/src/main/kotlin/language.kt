@@ -891,21 +891,70 @@ data class Union(override val id: EntityId, val moduleId: ModuleUniqueId, val ty
         return optionIndexLookup[functionId]
     }
 
-    fun getType(): Type {
-        return Type.NamedType(resolvedRef, this.id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
+    fun getOptionConstructorRef(optionName: String): ResolvedEntityRef {
+        if (options.none { it.name == optionName }) {
+            error("No such option name $optionName")
+        }
+        return ResolvedEntityRef(moduleId, EntityId(id.namespacedName + listOf(optionName)))
+    }
+
+    fun getType(vararg chosenParameters: Type = arrayOf()): Type.NamedType {
+        if (chosenParameters.size != typeParameters.size) {
+            error("Incorrect number of type parameters")
+        }
+        return Type.NamedType(resolvedRef, id.asRef(), false, chosenParameters.toList())
+    }
+
+    fun getTypeWithDefaultParameters(): Type {
+        return Type.NamedType(resolvedRef, id.asRef(), false, typeParameters.map { name -> Type.ParameterType(name) })
     }
 
     fun getOptionConstructorSignatureForId(optionId: EntityId): FunctionSignature {
-        val optionIndex = optionIndexLookup[optionId] ?: error("The union ${id} has no option with ID $optionId")
+        val optionIndex = optionIndexLookup[optionId] ?: error("The union $id has no option with ID $optionId")
         val option = options[optionIndex]
+//        return getOptionConstructorSignature(option)
         val optionType = option.type
         if (optionType != null) {
-            return FunctionSignature.create(optionId, listOf(optionType), this.getType(), typeParameters)
+            return FunctionSignature.create(optionId, listOf(optionType), this.getTypeWithDefaultParameters(), typeParameters)
         } else {
-            return FunctionSignature.create(optionId, listOf(), this.getType(), typeParameters)
+            return FunctionSignature.create(optionId, listOf(), this.getTypeWithDefaultParameters(), typeParameters)
         }
     }
 
+    fun getOptionConstructorSignature(option: Option): FunctionSignature {
+        if (!options.contains(option)) error("Invalid option")
+        val optionId = EntityId(id.namespacedName + option.name)
+        val optionType = option.type
+        if (optionType != null) {
+            return FunctionSignature.create(optionId, listOf(optionType), this.getTypeWithDefaultParameters(), typeParameters)
+        } else {
+            return FunctionSignature.create(optionId, listOf(), this.getTypeWithDefaultParameters(), typeParameters)
+        }
+    }
+
+    fun getOptionId(option: Option): EntityId {
+        if (!options.contains(option)) error("Invalid option")
+        return EntityId(id.namespacedName + option.name)
+    }
+
+    fun getWhenSignature(): FunctionSignature {
+        val outputParameterName = getUnusedTypeParameterName(typeParameters)
+//        val outputParameterType = Type.NamedType(EntityId.of(outputParameterName).asRef(), false)
+        val outputTypeParameter = TypeParameter(outputParameterName, null)
+        val outputParameterType = Type.ParameterType(outputTypeParameter)
+        val whenTypeParameters = typeParameters + outputTypeParameter
+
+        val argumentTypes = listOf(getTypeWithDefaultParameters()) + options.map { option ->
+            val optionArgTypes = if (option.type == null) {
+                listOf()
+            } else {
+                listOf(option.type)
+            }
+            Type.FunctionType.create(false, listOf(), optionArgTypes, outputParameterType)
+        }
+
+        return FunctionSignature.create(whenId, argumentTypes, outputParameterType, whenTypeParameters)
+    }
 }
 data class UnvalidatedOption(val name: String, val type: UnvalidatedType?, val idLocation: Location? = null)
 data class Option(val name: String, val type: Type?)

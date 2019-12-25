@@ -538,6 +538,21 @@ private fun addNativeOpaqueTypeFunctions(list: MutableList<NativeFunction>) {
         SemObject.Void
     }))
 
+    // Returnable.continue
+    list.add(NativeFunction(EntityId.of("Returnable", "continue"), { args: List<SemObject>, apply: InterpreterCallback ->
+        val returnable = args[0] as? SemObject.Union ?: typeError()
+        val continueFn = args[1] as? SemObject.FunctionBinding ?: typeError()
+
+        if (returnable.optionIndex == 0) {
+            // Returnable case
+            returnable.contents!!
+        } else {
+            // Continue case
+            val continueArg = returnable.contents!!
+            apply(continueFn, listOf(continueArg))
+        }
+    }))
+
 }
 
 private fun typeError(): Nothing {

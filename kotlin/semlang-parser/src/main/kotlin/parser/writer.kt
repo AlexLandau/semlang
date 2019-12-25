@@ -303,7 +303,7 @@ private fun writeExpression(expression: Expression, indentationLevel: Int, write
             val indent: String = SINGLE_INDENTATION.repeat(indentationLevel)
             writer.append("if (")
             writeExpression(expression.condition, indentationLevel, writer, deterministicMode)
-            writer.append(" ) {$newline")
+            writer.append(") {$newline")
             writeBlock(expression.thenBlock, indentationLevel + 1, writer, deterministicMode)
             writer.append(indent)
                     .append("} else {$newline")

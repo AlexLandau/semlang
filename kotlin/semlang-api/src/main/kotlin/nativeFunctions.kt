@@ -13,26 +13,6 @@ fun isNativeModule(id: ModuleUniqueId): Boolean {
     return isNativeModule(id.name)
 }
 
-/**
- * Note: This includes signatures for struct and union constructors.
- */
-// TODO: Maybe rename?
-fun getAllNativeFunctionLikeDefinitions(): Map<EntityId, FunctionSignature> {
-    val definitions = ArrayList<FunctionSignature>()
-
-    definitions.addAll(getNativeFunctionOnlyDefinitions().values)
-
-    getNativeStructs().values.forEach { struct ->
-        definitions.add(struct.getConstructorSignature())
-    }
-
-    getNativeUnions().values.forEach { union ->
-        TODO()
-    }
-
-    return toMap(definitions)
-}
-
 // TODO: Rename
 fun getNativeFunctionOnlyDefinitions(): Map<EntityId, FunctionSignature> {
     val definitions = ArrayList<FunctionSignature>()
@@ -293,6 +273,20 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
             argumentTypes = listOf(Type.FunctionType.create(true, listOf(), listOf(), NativeOpaqueType.BOOLEAN.getType()), Type.FunctionType.create(true, listOf(), listOf(), NativeStruct.VOID.getType())),
             outputType = NativeStruct.VOID.getType()))
 
+    // TODO: This should go in a separate module for Returnable at some point
+    // Returnable.continue
+    val returnT = TypeParameter("returnT", null)
+    val typeReturnT = Type.ParameterType(returnT)
+    val continueT = TypeParameter("continueT", null)
+    val typeContinueT = Type.ParameterType(continueT)
+    definitions.add(FunctionSignature.create(EntityId.of("Returnable", "continue"), typeParameters = listOf(returnT, continueT),
+        argumentTypes = listOf(
+            Type.NamedType(NativeUnion.RETURNABLE.resolvedRef, NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(typeReturnT, typeContinueT)),
+            Type.FunctionType.create(false, listOf(), listOf(typeContinueT), typeReturnT)
+        ),
+        outputType = typeReturnT
+    ))
+
 }
 
 object NativeStruct {
@@ -393,8 +387,28 @@ fun getNativeStructs(): Map<EntityId, Struct> {
     return toMap(structs)
 }
 
+object NativeUnion {
+    private val returnT = TypeParameter("ReturnT", null)
+    private val continueT = TypeParameter("ContinueT", null)
+
+    //TODO: Move this out of the native module
+    private val returnableId = EntityId.of("Returnable")
+    val RETURNABLE = Union(
+        id = returnableId,
+        moduleId = CURRENT_NATIVE_MODULE_ID,
+        typeParameters = listOf(returnT, continueT),
+        options = listOf(
+            Option("Return", Type.ParameterType(returnT)),
+            Option("Continue", Type.ParameterType(continueT))
+        ),
+        annotations = listOf()
+    )
+}
+
 fun getNativeUnions(): Map<EntityId, Union> {
     val unions = ArrayList<Union>()
+
+    unions.add(NativeUnion.RETURNABLE)
 
     return toMap(unions)
 }

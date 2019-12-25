@@ -1,16 +1,5 @@
-// Return within a requires block
-struct Foo {
-  integer: Integer
-  requires {
-    return Integer.greaterThan(integer, Integer."3")
-    Integer.greaterThan(integer, Integer."1")
-  }
-}
-
-@Test(["1"], [])
-@Test(["2"], [])
-@Test(["3"], [])
-@Test(["4"], ["4"])
-function tryFoo(i: Integer): Maybe<Foo> {
-  Foo(i)
+@Test(["true"], [])
+@Test(["false"], [])
+function deeplyNestedReturn(b: Boolean): Integer {
+  Integer.times(2, Integer.plus(1, if (b) { 3 } else { return Integer."0" }))
 }

@@ -65,6 +65,129 @@ private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(nu
 // is unclear whether we should return x or m if both c1 and c2 are true
 // similarly for items in a list literal
 // This *could* be handled within sem2, but maybe we don't want to
+// TODO: Here's an idea for how we could handle things...
+// At the time we generate the OutcomeType, we decide on the variable name and store an assignment in the OutcomeType,
+// as well as the variable to use in the expression, which turns into the expression itself to continue developing
+/*
+  Integer.times(2, Integer.plus(1, if (b) { 3 } else { return 0 }))
+
+  When evaluating the if/then:
+  OutcomeType.Conditional(
+    type = Integer,
+    returnType = Integer,
+    preAssignments = [let tmp2 = if (b) { Returnable.Continue(3) } else { Returnable.Return(0) } ],
+    preAssignmentVariables = {tmp2: tmp1}
+    newExpression = tmp1 // Actually, not part of the object
+  )
+  Then the Integer.plus would see that and take the newExpression as its argument, and return:
+  OutcomeType.Conditional(
+    type = Integer, // Integer.plus output type
+    returnType = Integer,
+    preAssignments = [let tmp2 = if (b) { Returnable.Continue(3) } else { Returnable.Return(0) } ],
+    newExpression = Integer.plus(1, tmp1)
+  )
+  // Eventually turns into:
+  let tmp2 = if (b) { Returnable.Continue(3) } else { Returnable.Return(0) }
+  Returnable.continue(tmp2, function(tmp1: Integer): Integer {
+    Integer.times(2, Integer.plus(1, tmp1))
+  })
+ */
+
+/*
+  let n = if (c1) {
+    return 1
+  } else {
+    Integer.plus(1, if (c2) { return 2 } else { m })
+  }
+
+  When evaluating the inner if/then:
+  OutcomeType.Conditional(
+    types = ...,
+    preAssignments = [let tmp2 = if (c2) Returnable.Return(2) else Returnable.Continue(m) ],
+    preAssignmentVars = { tmp2: tmp1 }
+  ), expression = tmp1
+  Then evaluate the outer:
+  OutcomeType.Conditional(
+    types = ...,
+    preAssignments = [let tmp2 = if (c2) Returnable.Return(2) else Returnable.Continue(m),
+      let tmp4 = Returnable.map(tmp2, {tmp1 -> if (c1) Returnable.Return(1) else { Integer.plus(1, tmp1) }})], // See fix below
+    preAssignmentVars = { tmp2: tmp1, tmp4: tmp3 }
+  ), expression = tmp3
+  So finally:
+  let tmp2 = if (c2) Returnable.Return(2) else Returnable.Continue(m)
+  let tmp4 = Returnable.flatMap(tmp2, {tmp1 -> if (c1) Returnable.Return(1) else { Returnable.continue(Integer.plus(1, tmp1)) }})],
+  let n = tmp4 (?)
+  or:
+  Returnable.continue(tmp4, { tmp3 -> let n = tmp3; ... })
+  // Note that all these would be assignments of if/then expressions, which makes it easier to evaluate the use of map vs. flatMap vs. neither
+  // But is that always going to be true? What would it look like if multiple conditional args are passed into a function call?
+
+  function Returnable.map<R, C1, C2>(returnable: Returnable<C1, R>, fn: (C1) -> C2): Returnable<C2, R> {
+    Returnable.when(returnable,
+      // when it's Return
+      { return -> return } // except re-construct to change the type parameters
+      // when it's continue
+      { continue -> Returnable.Continue(fn(continue)) }
+    )
+  }
+  function Returnable.flatMap<R, C1, C2>(returnable: Returnable<C1, R>, fn: (C1) -> Returnable<C2, R>): Returnable<C2, R> {
+    Returnable.when(returnable,
+      // when it's Return
+      { return -> return } // except re-construct to change the type parameters
+      // when it's continue
+      { continue -> fn(continue) }
+    )
+  }
+
+  foo(if (c1) { a } else { return 1 }, if (c2) { b } else { return 2})
+  foo is (A, B) -> F
+
+  First arg:
+  OutcomeType.Conditional(
+    type = A,
+    returnedType = Integer,
+    preAssignments = [let tmp2 = if (c1) { R.C(a) } else { R.R(1) }],
+    preAssignmentVars = { tmp2: tmp1 }
+  ), expression = tmp1
+  Important note here: Choices of new variable names must be picked globally across the transformation!
+  Second arg:
+  OutcomeType.Conditional(
+    type = B,
+    returnedType = Integer,
+    preAssignments = [let tmp4 = if (c2) { R.C(b) } else { R.R(2) }],
+    preAssignmentVars = { tmp4: tmp3 }
+  ), expression = tmp2
+
+  So for the function call *expression*...
+  OutcomeType.Conditional(
+    type = F,
+    returnedType = Integer,
+    preAssignments = [let tmp2 = ..., let tmp4 = ...],
+    preAssignmentVars = { tmp2: tmp1, tmp4: tmp3 }
+  ), expression = foo(tmp1, tmp3)
+
+  But let's say we follow this up with getResult(foo) -> Integer; that looks something like:
+
+  let tmp2: Returnable<A, Integer> = ...
+  Returnable.continue(tmp2, { tmp1 ->
+    let tmp4: Returnable<B, Integer> = ...
+    Returnable.continue(tmp4, { tmp3 ->
+      let f = foo(tmp1, tmp3)
+      getResult(f)
+    }
+  }
+  This is not the same as the previous examples sort of imply. We're not just stacking up the resulting assignments;
+  instead, this changes how things end up in the outer block (function or requires block or inline function).
+
+  The objects going into the preAssignments should combine the assignment itself, the new variable name, and its type.
+
+  If you get to the end of a bare statement, and the expression has outcome type Conditional...
+  * Take the first preAssignments object
+  * Add its assignment to the statements in the current block
+  * Finish out the list of assignments with a Returnable.continue() taking that created variable
+  * Further statements go into that block in the continue
+ */
+
 private sealed class OutcomeType {
     abstract val type: UnvalidatedType?
     abstract val returnedType: UnvalidatedType?
@@ -74,7 +197,7 @@ private sealed class OutcomeType {
      * Represents that an expression, block, or statement evaluates to a type without returning early.
      */
     data class Value(override val type: UnvalidatedType?): OutcomeType() {
-        override val returnedType: net.semlang.api.UnvalidatedType?
+        override val returnedType: UnvalidatedType?
             get() = null
         override fun hasUnknownType(): Boolean {
             return type == null
@@ -85,7 +208,7 @@ private sealed class OutcomeType {
      * Represents that an expression, block, or statement returns without the possibility of being evaluated to a type.
      */
     data class ReturnOnly(override val returnedType: UnvalidatedType?): OutcomeType() {
-        override val type: net.semlang.api.UnvalidatedType?
+        override val type: UnvalidatedType?
             get() = null
         override fun hasUnknownType(): Boolean {
             return returnedType == null
@@ -96,12 +219,19 @@ private sealed class OutcomeType {
      * Represents that an expression, block, or statement may either be evaluated to a type or return early, conditionally.
      * This will be represented in sem1 with the Returnable type.
      */
-    data class Conditional(override val type: UnvalidatedType?, override val returnedType: UnvalidatedType?): OutcomeType() {
+    data class Conditional(
+        override val type: UnvalidatedType?,
+        override val returnedType: UnvalidatedType?,
+        val preAssignments: List<PreAssignment>
+    ): OutcomeType() {
         override fun hasUnknownType(): Boolean {
             return type == null || returnedType == null
         }
     }
 }
+
+data class PreAssignment(val assignment: Statement.Assignment, val assignedVarName: String, val argumentVarName: String,
+                         val returnType: UnvalidatedType, val continueType: UnvalidatedType)
 
 // Just for use within functions
 private sealed class IsReturning {
@@ -172,12 +302,16 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
 
     private fun translate(block: S2Block, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
+        return translateBlock(listOf(), block.statements, externalVarTypes, block.location)
+    }
+    private fun translateBlock(s1PreStatements: List<Statement>, s2Statements: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, blockLocation: Location?): TypedBlock {
         val varNamesInScope = HashMap<String, UnvalidatedType?>(externalVarTypes)
         val s1Statements = ArrayList<Statement>()
+        s1Statements.addAll(s1PreStatements)
 
-        if (block.statements.isEmpty()) {
+        if (s1Statements.isEmpty() && s2Statements.isEmpty()) {
             // Let the sem1 validator deal with this error
-            return TypedBlock(Block(listOf(), block.location), OutcomeType.Value(null))
+            return TypedBlock(Block(listOf(), blockLocation), OutcomeType.Value(null))
         }
 
 
@@ -185,36 +319,65 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         var isReturning: IsReturning = IsReturning.No
         // TODO: Functions can have a type hint for the declared return type
         // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
-        for (s2Statement in block.statements) {
+        statementsLoop@for ((s2StatementIndex, s2Statement) in s2Statements.withIndex()) {
             val (s1Statement, statementOutcome) = translate(s2Statement, varNamesInScope)
             if (s1Statement is Statement.Assignment) {
                 if (options.failOnUninferredType && statementOutcome.hasUnknownType()) {
-                    error("Could not infer type for statement $s2Statement in block $block")
+                    error("Could not infer type for statement $s2Statement in block $blockLocation")
                 }
                 if (statementOutcome.type != null) {
                     varNamesInScope.put(s1Statement.name, statementOutcome.type)
                 }
             }
-            s1Statements.add(s1Statement)
             lastStatementType = statementOutcome.type
-            if (statementOutcome is OutcomeType.Conditional) {
-                isReturning = IsReturning.Maybe(statementOutcome.returnedType)
-                TODO("Put the rest of the statements in a Return")
-            } else if (statementOutcome is OutcomeType.ReturnOnly) {
-                isReturning = IsReturning.Yes(statementOutcome.returnedType)
-                break
+            val unused = when (statementOutcome) {
+                is OutcomeType.Value -> {
+                    s1Statements.add(s1Statement)
+                }
+                is OutcomeType.ReturnOnly -> {
+                    s1Statements.add(s1Statement)
+                    isReturning = IsReturning.Yes(statementOutcome.returnedType)
+                    break@statementsLoop
+                }
+                is OutcomeType.Conditional -> {
+                    isReturning = IsReturning.Maybe(statementOutcome.returnedType)
+
+                    val firstPreAssignment = statementOutcome.preAssignments.first()
+                    val returnType = firstPreAssignment.returnType
+                    val continueType = firstPreAssignment.continueType
+                    s1Statements.add(firstPreAssignment.assignment)
+
+                    // TODO: Continue the rest of the block
+                    val otherStatementsInBlock = s2Statements.drop(s2StatementIndex + 1)
+                    val continueBlock = translateContinuingBlock(s1Statement, otherStatementsInBlock, varNamesInScope + mapOf(
+                        firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
+                        firstPreAssignment.argumentVarName to continueType
+                    )).block
+
+                    s1Statements.add(Statement.Bare(Expression.NamedFunctionCall(
+                        functionRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Returnable", "continue")),
+                        arguments = listOf(
+                            Expression.Variable(firstPreAssignment.assignedVarName),
+                            Expression.InlineFunction(listOf(UnvalidatedArgument(firstPreAssignment.argumentVarName, continueType)),
+                                returnType,
+                                continueBlock)
+                        ),
+                        chosenParameters = listOf(returnType, continueType)
+                    )))
+                    break@statementsLoop
+                }
             }
         }
 
         val s1LastStatement = s1Statements.last()
         // TODO: This check may not make sense if e.g. a block ends with a while loop
         if (options.failOnUninferredType && isReturning !is IsReturning.Yes && lastStatementType == null) {
-            error("Could not infer type for returned expression in block $block")
+            error("Could not infer type for returned expression in block $blockLocation")
         }
 
         val statementOutcome = when (isReturning) {
             IsReturning.No -> OutcomeType.Value(lastStatementType)
-            is IsReturning.Maybe -> OutcomeType.Conditional(lastStatementType, isReturning.returnedType)
+            is IsReturning.Maybe -> OutcomeType.Conditional(lastStatementType, isReturning.returnedType, listOf())
             is IsReturning.Yes -> OutcomeType.ReturnOnly(isReturning.returnedType)
         }
 
@@ -229,13 +392,17 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             s1Statements.add(Statement.Bare(Expression.Variable(varName)))
             return TypedBlock(Block(
                 statements = s1Statements,
-                location = block.location
+                location = blockLocation
             ), statementOutcome)
         }
         return TypedBlock(Block(
             statements = s1Statements,
-            location = block.location
+            location = blockLocation
         ), statementOutcome)
+    }
+
+    private fun translateContinuingBlock(s1Statement: Statement, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
+        return translateBlock(listOf(s1Statement), otherStatementsInBlock, externalVarTypes, null)
     }
 
     private fun getUnusedVarName(keys: Set<String>): String {
@@ -505,35 +672,62 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.IfThen -> {
                 val (thenBlock, thenOutcome) = translate(expression.thenBlock, varTypes)
                 val (elseBlock, elseOutcome) = translate(expression.elseBlock, varTypes)
+                val condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression
 //                TODO("Deal with returning here")
                 // TODO: Deal better with type disagreements; currently we assume the types will pretty much agree and be defined
-                val outcomeType = when (thenOutcome) {
+                return when (thenOutcome) {
                     is OutcomeType.Value -> {
                         when (elseOutcome) {
-                            is OutcomeType.Value -> OutcomeType.Value(thenOutcome.type ?: elseOutcome.type)
-                            is OutcomeType.ReturnOnly -> OutcomeType.Conditional(thenOutcome.type, elseOutcome.returnedType)
-                            is OutcomeType.Conditional -> elseOutcome
+                            is OutcomeType.Value -> {
+                                val outcomeType = OutcomeType.Value(thenOutcome.type ?: elseOutcome.type)
+                                return RealExpression(Expression.IfThen(
+                                    condition = condition,
+                                    thenBlock = thenBlock,
+                                    elseBlock = elseBlock,
+                                    location = expression.location
+                                ), outcomeType)
+                            }
+                            is OutcomeType.ReturnOnly -> {
+                                // TODO: Get a real var name
+                                val var1Name = "temp1Fake"
+                                val var2Name = "temp2Fake"
+                                val returnType = elseOutcome.returnedType ?: UnknownType
+                                val continueType = thenOutcome.type ?: UnknownType
+                                val assignment = Statement.Assignment(
+                                    name = var2Name,
+                                    type = UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
+                                    expression = Expression.IfThen(
+                                        condition = condition,
+                                        thenBlock = wrapEndWithReturnableContinue(thenBlock, returnType, continueType),
+                                        elseBlock = wrapEndWithReturnableReturn(elseBlock, returnType, continueType)
+                                    )
+                                )
+                                val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
+                                val outcomeType = OutcomeType.Conditional(thenOutcome.type, elseOutcome.returnedType, listOf(preAssignment))
+                                return RealExpression(Expression.Variable(var1Name), outcomeType)
+                            }
+                            is OutcomeType.Conditional -> TODO() //elseOutcome
                         }
                     }
                     is OutcomeType.ReturnOnly -> {
                         when (elseOutcome) {
-                            is OutcomeType.Value -> OutcomeType.Conditional(elseOutcome.type, thenOutcome.returnedType)
-                            is OutcomeType.ReturnOnly -> OutcomeType.ReturnOnly(thenOutcome.returnedType ?: elseOutcome.returnedType)
-                            is OutcomeType.Conditional -> elseOutcome
+                            is OutcomeType.Value -> TODO() //OutcomeType.Conditional(elseOutcome.type, thenOutcome.returnedType)
+                            is OutcomeType.ReturnOnly -> TODO() //OutcomeType.ReturnOnly(thenOutcome.returnedType ?: elseOutcome.returnedType)
+                            is OutcomeType.Conditional -> TODO() //elseOutcome
                         }
                     }
                     is OutcomeType.Conditional -> {
-                        thenOutcome
+                        TODO() //thenOutcome
                     }
                 }
 
 //                val boolType = S2Type.NamedType(EntityRef(S2ModuleRef(CURRENT_NATIVE_MODULE_ID.name.group, CURRENT_NATIVE_MODULE_ID.name.module, null), EntityId.of("Boolean")), false)
-                RealExpression(Expression.IfThen(
-                        condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression,
-                        thenBlock = thenBlock,
-                        elseBlock = elseBlock,
-                        location = expression.location
-                ), outcomeType)
+//                RealExpression(Expression.IfThen(
+//                        condition = condition,
+//                        thenBlock = thenBlock,
+//                        elseBlock = elseBlock,
+//                        location = expression.location
+//                ), outcomeType)
             }
             is S2Expression.FunctionCall -> {
                 val (functionExpression, expressionOutcome) = translateFullExpression(expression.expression, null, varTypes)
@@ -543,6 +737,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 // Pad with nulls to safely zippable length
                 val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size), null)
                 val (arguments, argumentOutcomes) = expression.arguments.zip(argTypeHints).map { (argument, typeHint) -> translateFullExpression(argument, typeHint(typeHint), varTypes) }.map { it.expression to it.outcomeType }.unzip()
+                // So what does a general solution look like to this return issue?
                 val argumentTypes = argumentOutcomes.map { if (it !is OutcomeType.Value) TODO(); it.type }
 
                 // Steps to do here:
@@ -773,6 +968,37 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 translate(equivalentExpression, varTypes)
             }
         }
+    }
+
+    private fun wrapEndWithReturnableContinue(
+        block: Block,
+        returnType: UnvalidatedType,
+        continueType: UnvalidatedType
+    ): Block {
+        return wrapEndWithReturnableOptionConstructor(block, returnType, continueType, "Continue")
+    }
+    private fun wrapEndWithReturnableReturn(
+        block: Block,
+        returnType: UnvalidatedType,
+        continueType: UnvalidatedType
+    ): Block {
+        return wrapEndWithReturnableOptionConstructor(block, returnType, continueType, "Return")
+    }
+    private fun wrapEndWithReturnableOptionConstructor(
+        block: Block,
+        returnType: UnvalidatedType,
+        continueType: UnvalidatedType,
+        optionName: String
+    ): Block {
+        val newStatements = ArrayList(block.statements)
+        val toWrap = newStatements.last() as? Statement.Bare ?: TODO()
+        val wrapped = Statement.Bare(Expression.NamedFunctionCall(
+            functionRef = NativeUnion.RETURNABLE.getOptionConstructorRef(optionName).toUnresolvedRef(),
+            arguments = listOf(toWrap.expression),
+            chosenParameters = listOf(returnType, continueType)
+        ))
+        newStatements.set(newStatements.lastIndex, wrapped)
+        return block.copy(statements = newStatements)
     }
 
     private fun applyAutoboxingToArguments(functionType: UnvalidatedType.FunctionType?, arguments: List<Expression>, argumentTypes: List<UnvalidatedType?>): List<Expression> {
