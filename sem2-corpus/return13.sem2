@@ -6,7 +6,7 @@ function conditionalEarlyReturn(b: Boolean): Integer {
   } else {
     String."foo"
   }
-  List.size(s->codePoints)
+  List.size(s->codePoints).integer
 }
 
 /*

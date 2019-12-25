@@ -6,5 +6,5 @@ function conditionalEarlyReturn(b: Boolean): Integer {
   } else {
     return Integer."2"
   }
-  List.size(s->codePoints)
+  List.size(s->codePoints).integer
 }

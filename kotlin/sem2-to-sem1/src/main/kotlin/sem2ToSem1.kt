@@ -364,6 +364,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         ),
                         chosenParameters = listOf(returnType, continueType)
                     )))
+                    lastStatementType = returnType
                     break@statementsLoop
                 }
             }
@@ -423,15 +424,26 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         return when (statement) {
             is S2Statement.Assignment -> {
                 val (expression, expressionOutcome) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
-                when (expressionOutcome) {
+                return when (expressionOutcome) {
                     is OutcomeType.ReturnOnly -> {
                         return TypedStatement(Statement.Bare(expression), expressionOutcome)
                     }
                     is OutcomeType.Conditional -> {
-                        TODO("Handle this case")
+                        val declaredType = statement.type?.let(::translate)
+                        return TypedStatement(Statement.Assignment(
+                            name = statement.name,
+                            type = if (options.outputExplicitTypes) {
+                                declaredType ?: expressionOutcome.type
+                            } else {
+                                declaredType
+                            },
+                            expression = expression,
+                            location = statement.location,
+                            nameLocation = statement.nameLocation
+                        ), expressionOutcome)
                     }
                     is OutcomeType.Value -> {
-                        val declaredType = statement.type?.let<S2Type, UnvalidatedType>(::translate)
+                        val declaredType = statement.type?.let(::translate)
                         TypedStatement(Statement.Assignment(
                             name = statement.name,
                             type = if (options.outputExplicitTypes) {
