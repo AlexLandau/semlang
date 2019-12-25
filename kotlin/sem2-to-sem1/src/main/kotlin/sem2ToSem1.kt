@@ -703,7 +703,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                     )
                                 )
                                 val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
-                                val outcomeType = OutcomeType.Conditional(thenOutcome.type, elseOutcome.returnedType, listOf(preAssignment))
+                                val outcomeType = OutcomeType.Conditional(continueType, returnType, listOf(preAssignment))
                                 return RealExpression(Expression.Variable(var1Name), outcomeType)
                             }
                             is OutcomeType.Conditional -> TODO() //elseOutcome
@@ -711,8 +711,34 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     }
                     is OutcomeType.ReturnOnly -> {
                         when (elseOutcome) {
-                            is OutcomeType.Value -> TODO() //OutcomeType.Conditional(elseOutcome.type, thenOutcome.returnedType)
-                            is OutcomeType.ReturnOnly -> TODO() //OutcomeType.ReturnOnly(thenOutcome.returnedType ?: elseOutcome.returnedType)
+                            is OutcomeType.Value -> {
+                                // TODO: Get a real var name
+                                val var1Name = "temp1Fake"
+                                val var2Name = "temp2Fake"
+                                val returnType = thenOutcome.returnedType ?: UnknownType
+                                val continueType = elseOutcome.type ?: UnknownType
+                                val assignment = Statement.Assignment(
+                                    name = var2Name,
+                                    type = UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
+                                    expression = Expression.IfThen(
+                                        condition = condition,
+                                        thenBlock = wrapEndWithReturnableReturn(thenBlock, returnType, continueType),
+                                        elseBlock = wrapEndWithReturnableContinue(elseBlock, returnType, continueType)
+                                    )
+                                )
+                                val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
+                                val outcomeType = OutcomeType.Conditional(continueType, returnType, listOf(preAssignment))
+                                return RealExpression(Expression.Variable(var1Name), outcomeType)
+                            }
+                            is OutcomeType.ReturnOnly -> {
+                                val outcomeType = OutcomeType.ReturnOnly(thenOutcome.returnedType ?: elseOutcome.returnedType)
+                                return RealExpression(Expression.IfThen(
+                                    condition = condition,
+                                    thenBlock = thenBlock,
+                                    elseBlock = elseBlock,
+                                    location = expression.location
+                                ), outcomeType)
+                            }
                             is OutcomeType.Conditional -> TODO() //elseOutcome
                         }
                     }
