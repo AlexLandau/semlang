@@ -1,0 +1,15 @@
+@Test(["true", "true"], "3")
+@Test(["false", "true"], "2")
+@Test(["false", "false"], "4")
+function conditionalEarlyReturn(b1: Boolean, b2: Boolean): Integer {
+  let s: String = if (b1) {
+    return Integer."3"
+  } else {
+    if (b2) {
+      return Integer."2"
+    } else {
+      String."bars"
+    }
+  }
+  List.size(s->codePoints).integer
+}
