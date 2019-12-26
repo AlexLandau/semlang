@@ -9,7 +9,7 @@ function conditionalEarlyReturn(b1: Boolean, b2: Boolean): Integer {
       return Integer."1"
     }
   } else {
-    Integer."4"
+    return Integer."4"
   }
   List.size(s->codePoints).integer
 }

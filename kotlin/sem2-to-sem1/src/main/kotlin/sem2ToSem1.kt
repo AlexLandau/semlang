@@ -302,9 +302,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
 
     private fun translate(block: S2Block, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
-        return translateBlock(listOf(), block.statements, externalVarTypes, block.location)
+        return translateBlock(listOf(), null, block.statements, externalVarTypes, block.location)
     }
-    private fun translateBlock(s1PreStatements: List<Statement>, s2Statements: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, blockLocation: Location?): TypedBlock {
+    private fun translateBlock(s1PreStatements: List<Statement>, s1LastStatementType: UnvalidatedType?, s2Statements: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, blockLocation: Location?): TypedBlock {
         val varNamesInScope = HashMap<String, UnvalidatedType?>(externalVarTypes)
         val s1Statements = ArrayList<Statement>()
         s1Statements.addAll(s1PreStatements)
@@ -315,7 +315,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         }
 
 
-        var lastStatementType: UnvalidatedType? = null
+        var lastStatementType: UnvalidatedType? = s1LastStatementType
         var isReturning: IsReturning = IsReturning.No
         // TODO: Functions can have a type hint for the declared return type
         // TODO: Then/else blocks can have a type hint if e.g. their output is assigned to a var with declared type
@@ -349,7 +349,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
                     // TODO: Continue the rest of the block
                     val otherStatementsInBlock = s2Statements.drop(s2StatementIndex + 1)
-                    val continueBlock = translateContinuingBlock(s1Statement, otherStatementsInBlock, varNamesInScope + mapOf(
+                    val continueBlock = translateContinuingBlock(s1Statement, returnType, otherStatementsInBlock, varNamesInScope + mapOf(
                         firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
                         firstPreAssignment.argumentVarName to continueType
                     )).block
@@ -373,7 +373,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         val s1LastStatement = s1Statements.last()
         // TODO: This check may not make sense if e.g. a block ends with a while loop
         if (options.failOnUninferredType && isReturning !is IsReturning.Yes && lastStatementType == null) {
-            error("Could not infer type for returned expression in block $blockLocation")
+            error("Could not infer type for returned expression in block $blockLocation; statements were:\n${s1Statements.joinToString("\n")}")
         }
 
         val statementOutcome = when (isReturning) {
@@ -402,8 +402,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         ), statementOutcome)
     }
 
-    private fun translateContinuingBlock(s1Statement: Statement, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
-        return translateBlock(listOf(s1Statement), otherStatementsInBlock, externalVarTypes, null)
+    private fun translateContinuingBlock(s1Statement: Statement, s1StatementType: UnvalidatedType?, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
+        return translateBlock(listOf(s1Statement), s1StatementType, otherStatementsInBlock, externalVarTypes, null)
     }
 
     private fun getUnusedVarName(keys: Set<String>): String {
@@ -722,7 +722,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         }
                     }
                     is OutcomeType.ReturnOnly -> {
-                        when (elseOutcome) {
+                        return when (elseOutcome) {
                             is OutcomeType.Value -> {
                                 // TODO: Get a real var name
                                 val var1Name = "temp1Fake"
@@ -755,7 +755,11 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         }
                     }
                     is OutcomeType.Conditional -> {
-                        TODO() //thenOutcome
+                        return when (elseOutcome) {
+                            is OutcomeType.Value -> TODO()
+                            is OutcomeType.ReturnOnly -> TODO()
+                            is OutcomeType.Conditional -> TODO()
+                        }
                     }
                 }
 
