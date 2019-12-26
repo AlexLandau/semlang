@@ -779,7 +779,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 // Pad with nulls to safely zippable length
                 val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size), null)
                 val (arguments, argumentOutcomes) = expression.arguments.zip(argTypeHints).map { (argument, typeHint) -> translateFullExpression(argument, typeHint(typeHint), varTypes) }.map { it.expression to it.outcomeType }.unzip()
-                // So what does a general solution look like to this return issue?
                 val argumentTypes = argumentOutcomes.map { it.type }
 
                 // Steps to do here:
@@ -861,11 +860,13 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.ListLiteral -> {
                 val chosenParameter = translate(expression.chosenParameter)
                 val listType = UnvalidatedType.NamedType(NativeOpaqueType.LIST.resolvedRef.toUnresolvedRef(), false, listOf(chosenParameter))
+                val (expressions, expressionOutcomes) = expression.contents.map { translateFullExpression(it, typeHint(expression.chosenParameter), varTypes) }.map { it.expression to it.outcomeType }.unzip()
+                val outcomeType = combineOutcomeTypes(expressionOutcomes, listType)
                 RealExpression(Expression.ListLiteral(
-                        contents = expression.contents.map { translateFullExpression(it, typeHint(expression.chosenParameter), varTypes).expression },
+                        contents = expressions,
                         chosenParameter = chosenParameter,
                         location = expression.location
-                ), OutcomeType.Value(listType))
+                ), outcomeType)
             }
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
@@ -877,7 +878,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.bindings.size - argTypesMaybeWrongLength.size), null)
 
                 val (bindings, bindingOutcomes) = expression.bindings.zip(argTypeHints).map { (binding, typeHint) -> if (binding == null) null else translateFullExpression(binding, typeHint(typeHint), varTypes) }.map { it?.expression to it?.outcomeType }.unzip()
-                val bindingTypes = bindingOutcomes.map { if (it != null && it !is OutcomeType.Value) TODO(); it?.type }
+                val bindingTypes = bindingOutcomes.map { it?.type }
 
                 // TODO: The output function type needs to be adjusted based on the parameters and bindings
 
@@ -911,6 +912,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     postBindingType = null
                 }
 
+                val outcomeType = combineOutcomeTypes(bindingOutcomes.filterNotNull(), postBindingType)
+
                 // Apply autoboxing and autounboxing
                 val postBoxingBindings = applyAutoboxingToBindings(parameterizedFunctionType, bindings, bindingTypes)
 
@@ -919,7 +922,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         bindings = postBoxingBindings,
                         chosenParameters = expression.chosenParameters.map { if (it == null) null else translate(it) },
                         location = expression.location
-                ), OutcomeType.Value(postBindingType))
+                ), outcomeType)
             }
             is S2Expression.Follow -> {
                 val (structureExpression, structureOutcome) = translateFullExpression(expression.structureExpression, null, varTypes)

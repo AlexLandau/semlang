@@ -1,0 +1,6 @@
+@Test(["true"], "8")
+@Test(["false"], "0")
+function deeplyNestedReturn(b: Boolean): Integer {
+  let fn = Integer.times|(2, Integer.plus(1, if (b) { 3 } else { return Integer."0" }))
+  fn()
+}

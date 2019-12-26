@@ -1,0 +1,6 @@
+@Test(["true"], "7")
+@Test(["false"], "8")
+function deeplyNestedReturn(b: Boolean): Integer {
+  let list = [4, 2, if (b) { 1 } else { return Integer."8" }]<Integer>
+  List.reduce(list, 0, Integer.plus)
+}
