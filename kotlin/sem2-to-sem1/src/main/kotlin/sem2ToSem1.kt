@@ -780,7 +780,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size), null)
                 val (arguments, argumentOutcomes) = expression.arguments.zip(argTypeHints).map { (argument, typeHint) -> translateFullExpression(argument, typeHint(typeHint), varTypes) }.map { it.expression to it.outcomeType }.unzip()
                 // So what does a general solution look like to this return issue?
-                val argumentTypes = argumentOutcomes.map { if (it !is OutcomeType.Value) TODO(); it.type }
+                val argumentTypes = argumentOutcomes.map { it.type }
 
                 // Steps to do here:
                 // Phase 1: Infer any missing type parameters
@@ -820,6 +820,9 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 // Apply autoboxing and autounboxing
                 val postBoxingArguments = applyAutoboxingToArguments(parameterizedFunctionType, arguments, argumentTypes)
 
+                // TODO: "returnType" is a confusing name in this context
+                val outcomeValue = combineOutcomeTypes(argumentOutcomes, returnType)
+
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
                 // TODO: Also do this in the FunctionBinding section
                 if (functionExpression is Expression.NamedFunctionBinding && functionType is UnvalidatedType.FunctionType) {
@@ -832,14 +835,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                             chosenParameters = combinedChosenParameters,
                             location = expression.location,
                             functionRefLocation = expression.expression.location
-                    ), OutcomeType.Value(returnType))
+                    ), outcomeValue)
                 } else {
                     RealExpression(Expression.ExpressionFunctionCall(
                             functionExpression = functionExpression,
                             arguments = postBoxingArguments,
                             chosenParameters = combinedChosenParameters,
                             location = expression.location
-                    ), OutcomeType.Value(returnType))
+                    ), outcomeValue)
                 }
             }
             is S2Expression.Literal -> {
@@ -1010,6 +1013,29 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 translate(equivalentExpression, varTypes)
             }
         }
+    }
+
+    private fun combineOutcomeTypes(outcomes: List<OutcomeType>, newValueType: UnvalidatedType?): OutcomeType {
+        val conditionalReturnTypes = ArrayList<UnvalidatedType?>()
+        val preAssignments = ArrayList<PreAssignment>()
+        for (outcome in outcomes) {
+            val unused: Any = when (outcome) {
+                is OutcomeType.Value -> { /* do nothing */ }
+                is OutcomeType.ReturnOnly -> {
+                    return outcome
+                }
+                is OutcomeType.Conditional -> {
+                    conditionalReturnTypes.add(outcome.returnedType)
+                    preAssignments.addAll(outcome.preAssignments)
+                }
+            }
+        }
+        if (conditionalReturnTypes.isEmpty()) {
+            return OutcomeType.Value(newValueType)
+        }
+        // TODO: Maybe report an error if there are different return types
+        val returnType = conditionalReturnTypes.filterNotNull().firstOrNull()
+        return OutcomeType.Conditional(newValueType, returnType, preAssignments)
     }
 
     private fun wrapEndWithReturnableContinue(
