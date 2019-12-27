@@ -265,8 +265,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 block = function.block,
                 externalVarTypes = function.arguments.map { it.name to translate(it.type) }.toMap()
             )
-            // So far, we can ignore isReturning here... that might change when we handle sometimes-returning expressions
-//            TODO("Deal with isReturning")
             return Function(
                     id = translate(function.id),
                     typeParameters = function.typeParameters.map(::translate),
@@ -613,14 +611,17 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
                 when (subexpression) {
                     is RealExpression -> {
-                        if (subexpression.outcomeType !is OutcomeType.Value) TODO()
                         val subexpressionType = subexpression.outcomeType.type
                         if (subexpressionType is UnvalidatedType.NamedType) {
                             val typeInfo = typeInfo.getTypeInfo(subexpressionType.ref)
                             if (typeInfo != null && typeInfo is TypeInfo.Struct) {
                                 val memberType = typeInfo.memberTypes[name]
                                 if (memberType != null) {
-                                    return RealExpression(Expression.Follow(subexpression.expression, name), OutcomeType.Value(memberType))
+                                    val outcomeType = combineOutcomeTypes(listOf(subexpression.outcomeType), memberType)
+                                    return RealExpression(
+                                        Expression.Follow(subexpression.expression, name),
+                                        outcomeType
+                                    )
                                 }
                             }
                         }
@@ -656,13 +657,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                         if (options.failOnUninferredType && functionType == null) {
                             error("Could not infer a function type for expression $expression")
                         }
+                        val outcomeType = combineOutcomeTypes(listOf(subexpression.outcomeType), functionType)
                         return RealExpression(Expression.NamedFunctionBinding(
                                 functionRef = functionRef,
                                 bindings = bindings,
                                 chosenParameters = chosenParameters,
                                 location = expression.location,
                                 functionRefLocation = expression.nameLocation
-                        ), OutcomeType.Value(functionType))
+                        ), outcomeType)
                     }
                     is NamespacePartExpression -> {
                         // Add to the namespace part!
@@ -685,7 +687,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val (thenBlock, thenOutcome) = translate(expression.thenBlock, varTypes)
                 val (elseBlock, elseOutcome) = translate(expression.elseBlock, varTypes)
                 val condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression
-//                TODO("Deal with returning here")
                 // TODO: Deal better with type disagreements; currently we assume the types will pretty much agree and be defined
                 return when (thenOutcome) {
                     is OutcomeType.Value -> {
@@ -773,7 +774,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             }
             is S2Expression.FunctionCall -> {
                 val (functionExpression, expressionOutcome) = translateFullExpression(expression.expression, null, varTypes)
-                if (expressionOutcome !is OutcomeType.Value) TODO()
                 val functionType = expressionOutcome.type
                 val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
                 // Pad with nulls to safely zippable length
@@ -820,7 +820,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val postBoxingArguments = applyAutoboxingToArguments(parameterizedFunctionType, arguments, argumentTypes)
 
                 // TODO: "returnType" is a confusing name in this context
-                val outcomeValue = combineOutcomeTypes(argumentOutcomes, returnType)
+                val outcomeValue = combineOutcomeTypes(listOf(expressionOutcome) + argumentOutcomes, returnType)
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
                 // TODO: Also do this in the FunctionBinding section
@@ -871,7 +871,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             is S2Expression.FunctionBinding -> {
                 // TODO: If the translated expression is a function binding, compress this
                 val (functionExpression, functionOutcome) = translateFullExpression(expression.expression, null, varTypes)
-                if (functionOutcome !is OutcomeType.Value) TODO()
                 val functionType = functionOutcome.type
                 val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
                 // Pad with nulls to safely zippable length
@@ -912,7 +911,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     postBindingType = null
                 }
 
-                val outcomeType = combineOutcomeTypes(bindingOutcomes.filterNotNull(), postBindingType)
+                val outcomeType = combineOutcomeTypes(listOf(functionOutcome) + bindingOutcomes.filterNotNull(), postBindingType)
 
                 // Apply autoboxing and autounboxing
                 val postBoxingBindings = applyAutoboxingToBindings(parameterizedFunctionType, bindings, bindingTypes)
@@ -926,7 +925,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             }
             is S2Expression.Follow -> {
                 val (structureExpression, structureOutcome) = translateFullExpression(expression.structureExpression, null, varTypes)
-                if (structureOutcome !is OutcomeType.Value) TODO()
                 val structureType = structureOutcome.type
                 val elementType = if (structureType is UnvalidatedType.NamedType) {
                     val typeInfo = typeInfo.getTypeInfo(structureType.ref)
@@ -942,11 +940,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 if (options.failOnUninferredType && elementType == null) {
                     error("Could not determine type for follow expression $expression with structure type $structureType")
                 }
+                val outcomeType = combineOutcomeTypes(listOf(structureOutcome), elementType)
                 RealExpression(Expression.Follow(
                         structureExpression = structureExpression,
                         name = expression.name,
                         location = expression.location
-                ), OutcomeType.Value(elementType))
+                ), outcomeType)
             }
             is S2Expression.InlineFunction -> {
                 val arguments = expression.arguments.map(::translate)
@@ -954,7 +953,6 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
 
                 val (block, blockOutcome) = translate(expression.block, varTypesInBlock)
-//                TODO("Deal with isReturning here")
 
                 val varNamesInBlock = collectVarNames(expression.block)
                 val isReference = varNamesInBlock.any {

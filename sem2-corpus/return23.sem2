@@ -1,0 +1,9 @@
+struct MyInt {
+  integer: Integer
+}
+
+@Test(["true"], "3")
+@Test(["false"], "0")
+function returnInFollow(b: Boolean): Integer {
+  if (b) { MyInt."3" } else { return Integer."0" }->integer
+}

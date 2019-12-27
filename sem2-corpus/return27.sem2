@@ -1,0 +1,7 @@
+@Test(["true"], "5")
+@Test(["false"], "0")
+function returnInFunctionExpression(b: Boolean): Integer {
+  // TODO: Get use of parentheses for expressions working better so we can use them here
+  let fn = if (b) { Integer.plus|(_, 3) } else { return Integer."0" }|(2)
+  fn()
+}
