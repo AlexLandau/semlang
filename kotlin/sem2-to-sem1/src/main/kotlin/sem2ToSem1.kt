@@ -8,6 +8,7 @@ import net.semlang.api.parser.Issue
 import net.semlang.api.parser.IssueLevel
 import net.semlang.api.parser.Location
 import net.semlang.parser.ParsingResult
+import net.semlang.parser.write
 import net.semlang.sem2.api.*
 import net.semlang.sem2.api.EntityId
 import net.semlang.sem2.api.EntityRef
@@ -242,7 +243,9 @@ private sealed class IsReturning {
 
 
 private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesInfo, val typesMetadata: TypesMetadata, val options: Sem2ToSem1Options) {
-    val errors = ArrayList<Issue>()
+    private val errors = ArrayList<Issue>()
+    // Track existing variable names so we can generate fresh ones
+    private val varNamesInCurrentConstruct = HashSet<String>()
 
     fun translate(): ParsingResult {
         val functions = context.functions.mapNotNull(::translate)
@@ -259,11 +262,13 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     private data class TypeHint(val ref: net.semlang.api.EntityRef, val type: UnvalidatedType)
 
     private fun translate(function: S2Function): Function? {
+        populateVarNames(function)
         try {
             val returnType = translate(function.returnType)
             val (block, blockOutcome) = translate(
                 block = function.block,
-                externalVarTypes = function.arguments.map { it.name to translate(it.type) }.toMap()
+                externalVarTypes = function.arguments.map { it.name to translate(it.type) }.toMap(),
+                isReturnTarget = true
             )
             return Function(
                     id = translate(function.id),
@@ -299,10 +304,20 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     }
 
 
-    private fun translate(block: S2Block, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
-        return translateBlock(listOf(), null, block.statements, externalVarTypes, block.location)
+    private fun translate(block: S2Block, externalVarTypes: Map<String, UnvalidatedType?>, isReturnTarget: Boolean): TypedBlock {
+        return translateBlock(listOf(), null, block.statements, externalVarTypes, isReturnTarget, block.location)
     }
-    private fun translateBlock(s1PreStatements: List<Statement>, s1LastStatementType: UnvalidatedType?, s2Statements: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, blockLocation: Location?): TypedBlock {
+    private fun translateContinuingBlock(s1Statement: Statement, s1StatementType: UnvalidatedType?, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, isReturnTarget: Boolean): TypedBlock {
+        return translateBlock(listOf(s1Statement), s1StatementType, otherStatementsInBlock, externalVarTypes, isReturnTarget, null)
+    }
+    private fun translateBlock(
+        s1PreStatements: List<Statement>,
+        s1LastStatementType: UnvalidatedType?,
+        s2Statements: List<S2Statement>,
+        externalVarTypes: Map<String, UnvalidatedType?>,
+        isReturnTarget: Boolean,
+        blockLocation: Location?)
+            : TypedBlock {
         val varNamesInScope = HashMap<String, UnvalidatedType?>(externalVarTypes)
         val s1Statements = ArrayList<Statement>()
         s1Statements.addAll(s1PreStatements)
@@ -340,6 +355,15 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 is OutcomeType.Conditional -> {
                     isReturning = IsReturning.Maybe(statementOutcome.returnedType)
 
+                    // TODO: Deal with both multiple argument returns (limit to one pre-assignment) and the possibility of no pre-assignments...
+                    if (statementOutcome.preAssignments.isEmpty()) {
+                        println("We're in the no-pre-assignments state")
+                        println("s1Statements so far:\n${s1Statements.joinToString("\n")}")
+                        println("Current s2 statement: $s2Statement")
+                        println("Current s1 statement: ${write(s1Statement)}")
+                        println("Current outcome: $statementOutcome")
+                        TODO()
+                    }
                     val firstPreAssignment = statementOutcome.preAssignments.first()
                     val returnType = firstPreAssignment.returnType
                     val continueType = firstPreAssignment.continueType
@@ -350,7 +374,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     val continueBlock = translateContinuingBlock(s1Statement, returnType, otherStatementsInBlock, varNamesInScope + mapOf(
                         firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
                         firstPreAssignment.argumentVarName to continueType
-                    )).block
+                    ), isReturnTarget).block
 
                     s1Statements.add(Statement.Bare(Expression.NamedFunctionCall(
                         functionRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Returnable", "continue")),
@@ -400,10 +424,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         ), statementOutcome)
     }
 
-    private fun translateContinuingBlock(s1Statement: Statement, s1StatementType: UnvalidatedType?, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>): TypedBlock {
-        return translateBlock(listOf(s1Statement), s1StatementType, otherStatementsInBlock, externalVarTypes, null)
-    }
-
+    // TODO: Dedupe with the other var name generation
     private fun getUnusedVarName(keys: Set<String>): String {
         if (!keys.contains("result")) {
             return "result"
@@ -479,7 +500,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 if (conditionExpressionOutcome !is OutcomeType.Value) {
                     TODO()
                 }
-                val (actionBlock, actionBlockOutcome) = translate(statement.actionBlock, varTypes)
+                val (actionBlock, actionBlockOutcome) = translate(statement.actionBlock, varTypes, false)
                 if (actionBlockOutcome !is OutcomeType.Value) {
                     TODO()
                 }
@@ -684,8 +705,8 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 }
             }
             is S2Expression.IfThen -> {
-                val (thenBlock, thenOutcome) = translate(expression.thenBlock, varTypes)
-                val (elseBlock, elseOutcome) = translate(expression.elseBlock, varTypes)
+                val (thenBlock, thenOutcome) = translate(expression.thenBlock, varTypes, false)
+                val (elseBlock, elseOutcome) = translate(expression.elseBlock, varTypes, false)
                 val condition = translateFullExpression(expression.condition, typeHint(NativeOpaqueType.BOOLEAN), varTypes).expression
                 // TODO: Deal better with type disagreements; currently we assume the types will pretty much agree and be defined
                 return when (thenOutcome) {
@@ -701,13 +722,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                 ), outcomeType)
                             }
                             is OutcomeType.ReturnOnly -> {
-                                // TODO: Get a real var name
-                                val var1Name = "temp1Fake"
-                                val var2Name = "temp2Fake"
+                                val argumentVarName = makeUnusedVarName()
+                                val assignedVarName = makeUnusedVarName()
                                 val returnType = elseOutcome.returnedType ?: UnknownType
                                 val continueType = thenOutcome.type ?: UnknownType
                                 val assignment = Statement.Assignment(
-                                    name = var2Name,
+                                    name = assignedVarName,
                                     type = UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
                                     expression = Expression.IfThen(
                                         condition = condition,
@@ -715,23 +735,50 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                         elseBlock = wrapEndWithReturnableReturn(elseBlock, returnType, continueType)
                                     )
                                 )
-                                val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
+                                val preAssignment = PreAssignment(assignment, assignedVarName, argumentVarName, returnType, continueType)
                                 val outcomeType = OutcomeType.Conditional(continueType, returnType, listOf(preAssignment))
-                                return RealExpression(Expression.Variable(var1Name), outcomeType)
+                                return RealExpression(Expression.Variable(argumentVarName), outcomeType)
                             }
-                            is OutcomeType.Conditional -> TODO() //elseOutcome
+                            is OutcomeType.Conditional -> {
+//                                let s: String = if (b1) {
+//                                    String."foo"
+//                                } else {
+                                // this is going to be a Returnable<Integer, String>
+//                                    if (b2) {
+//                                        return Integer."2"
+//                                    } else {
+//                                        String."bars"
+//                                    }
+//                                }
+                                val returnType = elseOutcome.returnedType ?: UnknownType
+                                // TODO: Check agreement between then and else value types
+                                val continueType = thenOutcome.type ?: UnknownType
+//                                val assignment = Statement.Assignment(
+//                                    name = var2Name,
+//                                    type = UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
+//                                )
+                                val newIfThen = Expression.IfThen(
+                                    condition = condition,
+                                    thenBlock = wrapEndWithReturnableContinue(thenBlock, returnType, continueType),
+                                    elseBlock = elseBlock
+                                )
+//                                val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
+                                println("elseOutcome: $elseOutcome")
+                                val outcomeType = OutcomeType.Conditional(continueType, returnType, elseOutcome.preAssignments)
+                                println("outcomeType: $outcomeType")
+                                return RealExpression(newIfThen, outcomeType)
+                            }
                         }
                     }
                     is OutcomeType.ReturnOnly -> {
                         return when (elseOutcome) {
                             is OutcomeType.Value -> {
-                                // TODO: Get a real var name
-                                val var1Name = "temp1Fake"
-                                val var2Name = "temp2Fake"
+                                val argumentVarName = makeUnusedVarName()
+                                val assignedVarName = makeUnusedVarName()
                                 val returnType = thenOutcome.returnedType ?: UnknownType
                                 val continueType = elseOutcome.type ?: UnknownType
                                 val assignment = Statement.Assignment(
-                                    name = var2Name,
+                                    name = assignedVarName,
                                     type = UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
                                     expression = Expression.IfThen(
                                         condition = condition,
@@ -739,9 +786,10 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                         elseBlock = wrapEndWithReturnableContinue(elseBlock, returnType, continueType)
                                     )
                                 )
-                                val preAssignment = PreAssignment(assignment, var2Name, var1Name, returnType, continueType)
+                                val preAssignment = PreAssignment(assignment, assignedVarName, argumentVarName, returnType, continueType)
                                 val outcomeType = OutcomeType.Conditional(continueType, returnType, listOf(preAssignment))
-                                return RealExpression(Expression.Variable(var1Name), outcomeType)
+                                println("outcomeType out of other place: $outcomeType")
+                                return RealExpression(Expression.Variable(argumentVarName), outcomeType)
                             }
                             is OutcomeType.ReturnOnly -> {
                                 val outcomeType = OutcomeType.ReturnOnly(thenOutcome.returnedType ?: elseOutcome.returnedType)
@@ -952,7 +1000,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
 
                 val varTypesInBlock = varTypes + arguments.map { it.name to it.type }.toMap()
 
-                val (block, blockOutcome) = translate(expression.block, varTypesInBlock)
+                val (block, blockOutcome) = translate(expression.block, varTypesInBlock, true)
 
                 val varNamesInBlock = collectVarNames(expression.block)
                 val isReference = varNamesInBlock.any {
@@ -1168,13 +1216,14 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     }
 
     private fun translate(struct: S2Struct): UnvalidatedStruct? {
+        populateVarNames(struct)
         try {
             return UnvalidatedStruct(
                     id = translate(struct.id),
                     typeParameters = struct.typeParameters.map(::translate),
                     members = struct.members.map(::translate),
                     requires = struct.requires?.let {
-                        translate(it, struct.members.map { it.name to translate(it.type) }.toMap()).block
+                        translate(it, struct.members.map { it.name to translate(it.type) }.toMap(), true).block
                     },
                     annotations = struct.annotations.map(::translate),
                     idLocation = struct.idLocation
@@ -1205,6 +1254,139 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
             val exceptionString = exceptionStringWriter.toString()
             errors.add(Issue("Uncaught exception in sem2-to-sem1 translation:\n$exceptionString", union.idLocation, IssueLevel.ERROR))
             return null
+        }
+    }
+
+    private fun populateVarNames(function: S2Function) {
+        varNamesInCurrentConstruct.clear()
+        for (argument in function.arguments) {
+            varNamesInCurrentConstruct.add(argument.name)
+        }
+        populateVarNames(function.block)
+    }
+    private fun populateVarNames(struct: S2Struct) {
+        varNamesInCurrentConstruct.clear()
+        for (member in struct.members) {
+            varNamesInCurrentConstruct.add(member.name)
+        }
+        val requires = struct.requires
+        if (requires != null) {
+            populateVarNames(requires)
+        }
+    }
+    private fun populateVarNames(block: S2Block) {
+        for (statement in block.statements) {
+            populateVarNames(statement)
+        }
+    }
+    private fun populateVarNames(statement: S2Statement) {
+        val unused = when (statement) {
+            is S2Statement.Assignment -> {
+                varNamesInCurrentConstruct.add(statement.name)
+                populateVarNames(statement.expression)
+            }
+            is S2Statement.Bare -> populateVarNames(statement.expression)
+            is S2Statement.Return -> populateVarNames(statement.expression)
+            is S2Statement.WhileLoop -> {
+                populateVarNames(statement.conditionExpression)
+                populateVarNames(statement.actionBlock)
+            }
+        }
+    }
+    private fun populateVarNames(expression: S2Expression) {
+        val unused = when (expression) {
+            is S2Expression.RawId -> { /* Do nothing; deal with variable names at creation time, not reference time */ }
+            is S2Expression.DotAccess -> populateVarNames(expression.subexpression)
+            is S2Expression.IfThen -> {
+                populateVarNames(expression.condition)
+                populateVarNames(expression.thenBlock)
+                populateVarNames(expression.elseBlock)
+            }
+            is S2Expression.FunctionCall -> {
+                populateVarNames(expression.expression)
+                for (argument in expression.arguments) {
+                    populateVarNames(argument)
+                }
+            }
+            is S2Expression.Literal -> { /* Do nothing */ }
+            is S2Expression.IntegerLiteral -> { /* Do nothing */ }
+            is S2Expression.ListLiteral -> {
+                for (item in expression.contents) {
+                    populateVarNames(item)
+                }
+            }
+            is S2Expression.FunctionBinding -> {
+                populateVarNames(expression.expression)
+                for (binding in expression.bindings) {
+                    if (binding != null) {
+                        populateVarNames(binding)
+                    }
+                }
+            }
+            is S2Expression.Follow -> populateVarNames(expression.structureExpression)
+            is S2Expression.InlineFunction -> {
+                for (argument in expression.arguments) {
+                    varNamesInCurrentConstruct.add(argument.name)
+                }
+                populateVarNames(expression.block)
+            }
+            is S2Expression.PlusOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.MinusOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.TimesOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.EqualsOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.NotEqualsOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.LessThanOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.GreaterThanOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.DotAssignOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.GetOp -> {
+                populateVarNames(expression.subject)
+                for (argument in expression.arguments) {
+                    populateVarNames(argument)
+                }
+            }
+            is S2Expression.AndOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+            is S2Expression.OrOp -> {
+                populateVarNames(expression.left)
+                populateVarNames(expression.right)
+            }
+        }
+    }
+    private fun makeUnusedVarName(): String {
+        var i = 0
+        while (true) {
+            val candidate = "tmp$i"
+            if (!varNamesInCurrentConstruct.contains(candidate)) {
+                varNamesInCurrentConstruct.add(candidate)
+                return candidate
+            }
+            i++
         }
     }
 }

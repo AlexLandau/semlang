@@ -157,6 +157,7 @@ private fun writeAnnotationArguments(annotationArgs: List<AnnotationArgument>, w
     }
 }
 
+// TODO: Configurability (when making this a class)
 private val SINGLE_INDENTATION = "    "
 private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
     val newline = if (deterministicMode) "\n" else System.lineSeparator()
@@ -168,7 +169,14 @@ private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, dete
     }
 }
 
+fun write(statement: Statement): String {
+    val writer = StringWriter()
+    writeStatement(statement, 0, writer, false)
+    return writer.toString()
+}
+
 // TODO: Move this to a class structure
+// TODO: Make it not a PITA to write random statements or expressions (for debugging)
 // Note: This doesn't include indentation or newlines
 private fun writeStatement(statement: Statement, indentationLevel: Int, writer: Writer, deterministicMode: Boolean) {
     val unused: Any? = when (statement) {

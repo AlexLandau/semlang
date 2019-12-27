@@ -1,0 +1,20 @@
+@Test(["true", "true", "true"], "3")
+@Test(["false", "true", "true"], "2")
+@Test(["false", "false", "true"], "5")
+@Test(["false", "false", "false"], "4")
+function nestedConditionalEarlyReturn(b1: Boolean, b2: Boolean, b3: Boolean): Integer {
+  let s: String = if (b1) {
+    String."foo"
+  } else {
+    if (b2) {
+      String."hi"
+    } else {
+      if (b3) {
+        return Integer."5"
+      } else {
+        String."bars"
+      }
+    }
+  }
+  List.size(s->codePoints).integer
+}

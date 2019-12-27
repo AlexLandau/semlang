@@ -286,6 +286,19 @@ private fun addOpaqueTypeFunctions(definitions: ArrayList<FunctionSignature>) {
         ),
         outputType = typeReturnT
     ))
+    // TODO: This should go in a separate module for Returnable at some point
+    // Returnable.map
+    val continue1T = TypeParameter("continue1T", null)
+    val typeContinue1T = Type.ParameterType(continue1T)
+    val continue2T = TypeParameter("continue2T", null)
+    val typeContinue2T = Type.ParameterType(continue2T)
+    definitions.add(FunctionSignature.create(EntityId.of("Returnable", "map"), typeParameters = listOf(returnT, continue1T, continue2T),
+        argumentTypes = listOf(
+            Type.NamedType(NativeUnion.RETURNABLE.resolvedRef, NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(typeReturnT, typeContinue1T)),
+            Type.FunctionType.create(false, listOf(), listOf(typeContinue1T), typeContinue2T)
+        ),
+        outputType = Type.NamedType(NativeUnion.RETURNABLE.resolvedRef, NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(typeReturnT, typeContinue2T))
+    ))
 
 }
 
