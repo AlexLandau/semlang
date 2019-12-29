@@ -52,7 +52,7 @@ data class Sem2ToSem1Options(
 )
 
 private data class TypedBlock(val block: Block, val outcomeType: OutcomeType)
-private data class TypedStatement(val statement: Statement, val outcomeType: OutcomeType)
+private data class TypedStatement(val statement: Statement, val outcomeType: StatementOutcomeType)
 
 private sealed class TypedExpression
 private data class RealExpression(val expression: Expression, val outcomeType: OutcomeType): TypedExpression()
@@ -189,6 +189,21 @@ private val UnknownType = UnvalidatedType.NamedType(net.semlang.api.EntityRef(nu
   * Further statements go into that block in the continue
  */
 
+private sealed class StatementOutcomeType {
+    data class ReturnOnly(val returnedType: UnvalidatedType?): StatementOutcomeType()
+    data class BareNoReturn(val type: UnvalidatedType?): StatementOutcomeType()
+    data class BareConditional(val type: UnvalidatedType?, val returnedType: UnvalidatedType?, val preAssignments: List<PreAssignment>): StatementOutcomeType()
+    sealed class Assignment: StatementOutcomeType() {
+        abstract val type: UnvalidatedType?
+        abstract fun hasUnknownType(): Boolean
+        data class NoReturn(override val type: UnvalidatedType?): Assignment() {
+            override fun hasUnknownType(): Boolean {
+                return type == null
+            }
+        }
+    }
+}
+
 private sealed class OutcomeType {
     abstract val type: UnvalidatedType?
     abstract val returnedType: UnvalidatedType?
@@ -274,7 +289,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     id = translate(function.id),
                     typeParameters = function.typeParameters.map(::translate),
                     arguments = function.arguments.map(::translate),
-                    returnType = translate(function.returnType),
+                    returnType = returnType,
                     block = block,
                     annotations = function.annotations.map(::translate),
                     idLocation = function.idLocation,
@@ -335,6 +350,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
         statementsLoop@for ((s2StatementIndex, s2Statement) in s2Statements.withIndex()) {
             val (s1Statement, statementOutcome) = translate(s2Statement, varNamesInScope)
             if (s1Statement is Statement.Assignment) {
+                statementOutcome as StatementOutcomeType.Assignment
                 if (options.failOnUninferredType && statementOutcome.hasUnknownType()) {
                     error("Could not infer type for statement $s2Statement in block $blockLocation")
                 }
@@ -342,17 +358,25 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     varNamesInScope.put(s1Statement.name, statementOutcome.type)
                 }
             }
-            lastStatementType = statementOutcome.type
+            lastStatementType = when (statementOutcome) {
+                is StatementOutcomeType.ReturnOnly -> null
+                is StatementOutcomeType.BareNoReturn -> statementOutcome.type
+                is StatementOutcomeType.Assignment.NoReturn -> null // We might be expecting this to be the type somewhere
+                is StatementOutcomeType.BareConditional -> statementOutcome.type
+            }
             val unused = when (statementOutcome) {
-                is OutcomeType.Value -> {
+                is StatementOutcomeType.BareNoReturn -> {
                     s1Statements.add(s1Statement)
                 }
-                is OutcomeType.ReturnOnly -> {
+                is StatementOutcomeType.Assignment.NoReturn -> {
+                    s1Statements.add(s1Statement)
+                }
+                is StatementOutcomeType.ReturnOnly -> {
                     s1Statements.add(s1Statement)
                     isReturning = IsReturning.Yes(statementOutcome.returnedType)
                     break@statementsLoop
                 }
-                is OutcomeType.Conditional -> {
+                is StatementOutcomeType.BareConditional -> {
                     // TODO: Deal with both multiple argument returns (limit to one pre-assignment) and the possibility of no pre-assignments...
 
                     // Hey, so how should we deal when there are vs. aren't pre-assignments?
@@ -583,16 +607,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                 val (expression, expressionOutcome) = translateFullExpression(statement.expression, typeHint(statement.type), varTypes)
                 return when (expressionOutcome) {
                     is OutcomeType.ReturnOnly -> {
-                        return TypedStatement(Statement.Bare(expression), expressionOutcome)
+                        return TypedStatement(Statement.Bare(expression), StatementOutcomeType.ReturnOnly(expressionOutcome.returnedType))
                     }
                     is OutcomeType.Conditional -> {
                         val declaredType = statement.type?.let(::translate)
-                        // TODO: We want to modify this if... there are no pre-assignments, I think? (probably not quite right)
-                        val modifiedType = if (expressionOutcome.preAssignments.isEmpty()) {
-                            expressionOutcome
-                        } else {
-                            declaredType
-                        }
                         return TypedStatement(Statement.Assignment(
                             name = statement.name,
                             type = if (options.outputExplicitTypes) {
@@ -603,7 +621,7 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                             expression = expression,
                             location = statement.location,
                             nameLocation = statement.nameLocation
-                        ), expressionOutcome)
+                        ), TODO())
                     }
                     is OutcomeType.Value -> {
                         val declaredType = statement.type?.let(::translate)
@@ -618,15 +636,20 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                             location = statement.location,
                             nameLocation = statement.nameLocation
                             // TODO: It's not clear that we want the type here
-                        ), declaredType?.let { OutcomeType.Value(it) } ?: expressionOutcome)
+                        ), StatementOutcomeType.Assignment.NoReturn(declaredType ?: expressionOutcome.type))
                     }
                 }
             }
             is S2Statement.Bare -> {
                 val (expression, expressionOutcome) = translateFullExpression(statement.expression, null, varTypes)
+                val statementOutcome = when (expressionOutcome) {
+                    is OutcomeType.Value -> StatementOutcomeType.BareNoReturn(expressionOutcome.type)
+                    is OutcomeType.ReturnOnly -> StatementOutcomeType.ReturnOnly(expressionOutcome.returnedType)
+                    is OutcomeType.Conditional -> StatementOutcomeType.BareConditional(expressionOutcome.type, expressionOutcome.returnedType, expressionOutcome.preAssignments)
+                }
                 TypedStatement(Statement.Bare(
                     expression = expression
-                ), expressionOutcome)
+                ), statementOutcome)
             }
             is S2Statement.Return -> {
                 val (expression, expressionType) = translateFullExpression(statement.expression, null, varTypes)
@@ -637,7 +660,7 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                     // TODO: Maybe check the return types are the same
                     is OutcomeType.Conditional -> expressionType.type
                 }
-                TypedStatement(Statement.Bare(expression), OutcomeType.ReturnOnly(returnedType))
+                TypedStatement(Statement.Bare(expression), StatementOutcomeType.ReturnOnly(returnedType))
             }
             is S2Statement.WhileLoop -> {
                 val (conditionExpression, conditionExpressionOutcome) = translateFullExpression(statement.conditionExpression, null, varTypes)
@@ -673,7 +696,7 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                                 location = statement.location,
                                 functionRefLocation = null
                         )
-                ), OutcomeType.Value(invalidate(NativeStruct.VOID.getType())))
+                ), StatementOutcomeType.BareNoReturn(invalidate(NativeStruct.VOID.getType())))
             }
         }
     }
