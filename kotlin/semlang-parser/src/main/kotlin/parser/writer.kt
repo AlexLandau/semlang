@@ -169,6 +169,12 @@ private fun writeBlock(block: Block, indentationLevel: Int, writer: Writer, dete
     }
 }
 
+fun write(block: Block): String {
+    val writer = StringWriter()
+    writeBlock(block, 0, writer, false)
+    return writer.toString()
+}
+
 fun write(statement: Statement): String {
     val writer = StringWriter()
     writeStatement(statement, 0, writer, false)

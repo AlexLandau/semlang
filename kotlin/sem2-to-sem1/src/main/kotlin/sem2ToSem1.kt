@@ -353,41 +353,179 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     break@statementsLoop
                 }
                 is OutcomeType.Conditional -> {
-                    isReturning = IsReturning.Maybe(statementOutcome.returnedType)
-
                     // TODO: Deal with both multiple argument returns (limit to one pre-assignment) and the possibility of no pre-assignments...
-                    if (statementOutcome.preAssignments.isEmpty()) {
-                        println("We're in the no-pre-assignments state")
-                        println("s1Statements so far:\n${s1Statements.joinToString("\n")}")
-                        println("Current s2 statement: $s2Statement")
-                        println("Current s1 statement: ${write(s1Statement)}")
-                        println("Current outcome: $statementOutcome")
-                        TODO()
+
+                    // Hey, so how should we deal when there are vs. aren't pre-assignments?
+                    // I think the big issue is, how do we handle this case?
+                    /*
+                    if (c) {
+                      Returnable.Continue(foo)
+                    } else {
+                      // Thing that results in a Returnable
                     }
+
+                    We should really turn that into:
+                    let tmp2 = if (c) { ... } else { ... }
+                    Returnable.continue(...)
+
+                    So in that case, we're still sort of doing the whole "wrap the rest of the block in a returnable statement"
+                    thing... what ends up being interesting is how we turn this whole if-then statement into an assignment.
+                    Is that something that should be done at the level of processing the if-then statement? Move that into
+                    the pre-assignments as the last step? I mean... it seems potentially kind of silly (lots of identity mapping).
+                    How does that compare to what we're otherwise doing?
+
+                    We want the continue -> map thing if we're the return target, and there's something else we'll need,
+                    but I don't know exactly what that is yet.
+
+                     */
+                    println("Dealing with a conditional outcome $statementOutcome")
+                    println("The statement is: ${write(s1Statement)}")
+
+                    isReturning = IsReturning.Maybe(statementOutcome.returnedType) // This is correct
+
                     val firstPreAssignment = statementOutcome.preAssignments.first()
                     val returnType = firstPreAssignment.returnType
                     val continueType = firstPreAssignment.continueType
                     s1Statements.add(firstPreAssignment.assignment)
+                    println("Added an assignment: ${write(firstPreAssignment.assignment)}")
 
                     // TODO: Continue the rest of the block
+                    println("About to recurse and translate the rest of the block")
                     val otherStatementsInBlock = s2Statements.drop(s2StatementIndex + 1)
-                    val continueBlock = translateContinuingBlock(s1Statement, returnType, otherStatementsInBlock, varNamesInScope + mapOf(
-                        firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(), false, listOf(returnType, continueType)),
-                        firstPreAssignment.argumentVarName to continueType
-                    ), isReturnTarget).block
+                    // TODO: Another place to change for break/continue
+                    val s1StatementType = if (isReturnTarget) returnType else continueType // TODO: Is this correct?
+                    val (continueBlock, continueBlockOutcome) = translateContinuingBlock(
+                        // What is returnType here? It's telling us what the type of the s1Statement is, in case it ends up
+                        // being the _last_ statement. This means using returnType is probably wrong...
+                        s1Statement, s1StatementType, otherStatementsInBlock, varNamesInScope + mapOf(
+                            firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(
+                                NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(),
+                                false,
+                                listOf(returnType, continueType)
+                            ),
+                            firstPreAssignment.argumentVarName to continueType
+                        ), isReturnTarget
+                    )
+                    println("Done recursing and translating the rest of the block")
+                    println("continueBlockOutcome: $continueBlockOutcome")
+                    val continueBlockOutputType = when (continueBlockOutcome) {
+                        is OutcomeType.Value -> continueBlockOutcome.type!!
+                        is OutcomeType.ReturnOnly -> continueBlockOutcome.returnedType!!
+                        is OutcomeType.Conditional -> {
+                            if (continueBlockOutcome.type != null && continueBlockOutcome.type == continueBlockOutcome.returnedType) {
+                                // TODO: Returning Conditional in the case I'm seeing this might not be correct
+                                // ???
+                                continueBlockOutcome.type!!
+                            } else {
+                                println("The continue block is: ${write(continueBlock)}")
+                                TODO()
+                            }
+                        }
+                    }
+                    println("We think the output type of the continue block is: ${continueBlockOutputType}")
 
-                    s1Statements.add(Statement.Bare(Expression.NamedFunctionCall(
-                        functionRef = net.semlang.api.EntityRef(CURRENT_NATIVE_MODULE_ID.asRef(), net.semlang.api.EntityId.of("Returnable", "continue")),
-                        arguments = listOf(
-                            Expression.Variable(firstPreAssignment.assignedVarName),
-                            Expression.InlineFunction(listOf(UnvalidatedArgument(firstPreAssignment.argumentVarName, continueType)),
-                                returnType,
-                                continueBlock)
-                        ),
-                        chosenParameters = listOf(returnType, continueType)
-                    )))
+                    // TODO: Should be conditional on if we are *the* return target, to support break/continue
+                    val (continueFunction, continueFunctionParams) = if (isReturnTarget) {
+                        net.semlang.api.EntityId.of("Returnable", "continue") to
+                                listOf(returnType, continueType)
+                    } else {
+                        net.semlang.api.EntityId.of("Returnable", "map") to
+                                listOf(returnType, continueType, continueBlockOutputType)
+                    }
+
+                    s1Statements.add(
+                        Statement.Bare(
+                            Expression.NamedFunctionCall(
+                                functionRef = net.semlang.api.EntityRef(
+                                    CURRENT_NATIVE_MODULE_ID.asRef(),
+                                    continueFunction
+                                ),
+                                arguments = listOf(
+                                    Expression.Variable(firstPreAssignment.assignedVarName),
+                                    Expression.InlineFunction(
+                                        listOf(
+                                            UnvalidatedArgument(
+                                                firstPreAssignment.argumentVarName,
+                                                continueType
+                                            )
+                                        ),
+                                        continueBlockOutputType,
+                                        continueBlock
+                                    )
+                                ),
+                                chosenParameters = continueFunctionParams
+                            )
+                        )
+                    )
+                    println("Last statement: ${write(s1Statements.last())}")
                     lastStatementType = returnType
                     break@statementsLoop
+
+                    /*
+                    So, example case:
+
+Simple input:
+function conditionalEarlyReturn(b1: Boolean, b2: Boolean): Integer {
+  let s: String = if (b1) {
+    String."foo"
+  } else {
+    if (b2) {
+      return Integer."2"
+    } else {
+      String."bars"
+    }
+  }
+  List.size(s->codePoints).integer
+}
+
+Simple output:
+let sTmp: Returnable<Integer, String> = if (b1) {
+  Returnable.Continue(String."foo")
+} else {
+  let tmp1: Returnable<Integer, String> = if (b2) {
+    Returnable.Return(Integer."2")
+  } else {
+    Returnable.Continue(String."bars")
+  }
+  // Could do this:
+  tmp1
+  // Or this useless identity transformation:
+  Returnable.map<Integer, String, String>(tmp1, { string -> string })
+  // So was the idea of using Returnable.map correct, and just the implementation wrong?
+}
+Returnable.continue(sTmp, ...)
+List.size(s->codePoints).integer
+
+Complex input:
+if (b1) {
+  3
+} else {
+  let b2 = computeSomethingReferential(r)
+  let s = if (b2) {
+    return 2
+  } else {
+    "bars"
+  }
+  s.length()
+}
+
+Complex output:
+let tmp1: Returnable<Integer, Integer> = if (b1) {
+  Returnable.Continue(3)
+} else {
+  let b2 = computeSomethingReferential(r)
+  let sTmp: Returnable<Integer, String> = if (b2) {
+    Returnable.Return(2)
+  } else {
+    Returnable.Continue("bars")
+  }
+  // Turn a Returnable<Integer, String> into a Returnable<Integer, Integer> given (String) -> Integer
+  Returnable.map(sTmp, { s ->
+    s.length()
+  })
+}
+                         */
+
                 }
             }
         }
@@ -449,6 +587,12 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                     }
                     is OutcomeType.Conditional -> {
                         val declaredType = statement.type?.let(::translate)
+                        // TODO: We want to modify this if... there are no pre-assignments, I think? (probably not quite right)
+                        val modifiedType = if (expressionOutcome.preAssignments.isEmpty()) {
+                            expressionOutcome
+                        } else {
+                            declaredType
+                        }
                         return TypedStatement(Statement.Assignment(
                             name = statement.name,
                             type = if (options.outputExplicitTypes) {
