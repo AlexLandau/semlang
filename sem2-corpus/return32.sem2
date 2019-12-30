@@ -1,0 +1,11 @@
+@Test(["true", "true"], "1")
+@Test(["true", "false"], "1")
+@Test(["false", "true"], "2")
+@Test(["false", "false"], "2")
+function multipleListLiteralArguments(b1: Boolean, b2: Boolean): Integer {
+  let l = [
+    if (b1) { return Integer."1" } else { return Integer."2" },
+    if (b2) { return Integer."3" } else { return Integer."4" }
+  ]<Integer>
+  List.reduce(l, 0, Integer.plus)
+}

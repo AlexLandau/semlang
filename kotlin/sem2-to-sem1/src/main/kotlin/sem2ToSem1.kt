@@ -610,6 +610,60 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                         return TypedStatement(Statement.Bare(expression), StatementOutcomeType.ReturnOnly(expressionOutcome.returnedType))
                     }
                     is OutcomeType.Conditional -> {
+                        println("incoming statement: ${writeSem2(statement)}")
+                        println("conditional outcomeType: $expressionOutcome")
+                        println("expression: ${write(expression)}")
+                        println("assignment variable: ${statement.name}")
+                        // So the question here, I think, is: Is this assignment itself going to go in the continue block,
+                        // where all the Returnable-ness has been removed? Or is it going to be somewhere where the
+                        // assigned variable is going to end up still being Returnable? In the former case, keep the
+                        // declared type; in the latter, something different needs to happen.
+                        /* Example of the former type in return10:
+                        function conditionalEarlyReturn(b: Boolean): Integer {
+  let n = if (b) {
+    Integer."1"
+  } else {
+    return Integer."2"
+  }
+  return Integer."3"
+}
+Becomes:
+let tmp2 = if (b) { R.C(1) } else { R.R(2) }
+R.continue(tmp2, { tmp1 ->
+  let n = tmp1
+  3
+}
+
+
+Example of the latter type in return16:
+function conditionalEarlyReturn(b1: Boolean, b2: Boolean): Integer {
+  let s: String = if (b1) {
+    String."foo"
+  } else {
+    if (b2) {
+      return Integer."2"
+    } else {
+      String."bars"
+    }
+  }
+  List.size(s->codePoints).integer
+}
+In progress:
+let tmp3: R<..., String> = if (b1) {
+  R.C("foo") // as part of the if/then translation
+} else {
+  let tmp1 = if (b2) { R.R(2) } else { R.C("bars") }
+  R.map(tmp1, { tmp2 -> tmp2 })
+}
+R.continue(
+  tmp3, { tmp4 ->
+    let s = tmp4
+    List.size(s->codePoints).integer
+  }
+)
+
+So these would actually be the same
+                         */
                         val declaredType = statement.type?.let(::translate)
                         return TypedStatement(Statement.Assignment(
                             name = statement.name,
@@ -805,7 +859,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                             if (typeInfo != null && typeInfo is TypeInfo.Struct) {
                                 val memberType = typeInfo.memberTypes[name]
                                 if (memberType != null) {
-                                    val outcomeType = combineOutcomeTypes(listOf(subexpression.outcomeType), memberType)
+                                    val (outcomeType, expressionOverrideIndex) = combineOutcomeTypes(listOf(subexpression.outcomeType), memberType)
+                                    if (expressionOverrideIndex != null) {
+                                        return subexpression
+                                    }
                                     return RealExpression(
                                         Expression.Follow(subexpression.expression, name),
                                         outcomeType
@@ -845,7 +902,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                         if (options.failOnUninferredType && functionType == null) {
                             error("Could not infer a function type for expression $expression")
                         }
-                        val outcomeType = combineOutcomeTypes(listOf(subexpression.outcomeType), functionType)
+                        val (outcomeType, expressionOverrideIndex) = combineOutcomeTypes(listOf(subexpression.outcomeType), functionType)
+                        if (expressionOverrideIndex != null) {
+                            return subexpression
+                        }
                         return RealExpression(Expression.NamedFunctionBinding(
                                 functionRef = functionRef,
                                 bindings = bindings,
@@ -1035,7 +1095,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                 val postBoxingArguments = applyAutoboxingToArguments(parameterizedFunctionType, arguments, argumentTypes)
 
                 // TODO: "returnType" is a confusing name in this context
-                val outcomeValue = combineOutcomeTypes(listOf(expressionOutcome) + argumentOutcomes, returnType)
+                val (outcomeValue, expressionOverrideIndex) = combineOutcomeTypes(listOf(expressionOutcome) + argumentOutcomes, returnType)
+                if (expressionOverrideIndex != null) {
+                    return RealExpression((listOf(functionExpression) + arguments)[expressionOverrideIndex], outcomeValue)
+                }
 
                 // TODO: Also have a case for Expression.ExpressionFunctionBinding (which also needs a previouslyChosenParameters change)
                 // TODO: Also do this in the FunctionBinding section
@@ -1076,7 +1139,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                 val chosenParameter = translate(expression.chosenParameter)
                 val listType = UnvalidatedType.NamedType(NativeOpaqueType.LIST.resolvedRef.toUnresolvedRef(), false, listOf(chosenParameter))
                 val (expressions, expressionOutcomes) = expression.contents.map { translateFullExpression(it, typeHint(expression.chosenParameter), varTypes) }.map { it.expression to it.outcomeType }.unzip()
-                val outcomeType = combineOutcomeTypes(expressionOutcomes, listType)
+                val (outcomeType, expressionOverrideIndex) = combineOutcomeTypes(expressionOutcomes, listType)
+                if (expressionOverrideIndex != null) {
+                    return RealExpression(expressions[expressionOverrideIndex], outcomeType)
+                }
                 RealExpression(Expression.ListLiteral(
                         contents = expressions,
                         chosenParameter = chosenParameter,
@@ -1126,7 +1192,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                     postBindingType = null
                 }
 
-                val outcomeType = combineOutcomeTypes(listOf(functionOutcome) + bindingOutcomes.filterNotNull(), postBindingType)
+                val (outcomeType, expressionOverrideIndex) = combineOutcomeTypes(listOf(functionOutcome) + bindingOutcomes.filterNotNull(), postBindingType)
+                if (expressionOverrideIndex != null) {
+                    return RealExpression((listOf(functionExpression) + bindings.filterNotNull())[expressionOverrideIndex], outcomeType)
+                }
 
                 // Apply autoboxing and autounboxing
                 val postBoxingBindings = applyAutoboxingToBindings(parameterizedFunctionType, bindings, bindingTypes)
@@ -1155,7 +1224,10 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
                 if (options.failOnUninferredType && elementType == null) {
                     error("Could not determine type for follow expression $expression with structure type $structureType")
                 }
-                val outcomeType = combineOutcomeTypes(listOf(structureOutcome), elementType)
+                val (outcomeType, expressionOverrideIndex) = combineOutcomeTypes(listOf(structureOutcome), elementType)
+                if (expressionOverrideIndex != null) {
+                    return RealExpression(structureExpression, structureOutcome)
+                }
                 RealExpression(Expression.Follow(
                         structureExpression = structureExpression,
                         name = expression.name,
@@ -1231,14 +1303,15 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
         }
     }
 
-    private fun combineOutcomeTypes(outcomes: List<OutcomeType>, newValueType: UnvalidatedType?): OutcomeType {
+    private data class OutcomeTypeAndExpressionOverride(val outcomeType: OutcomeType, val expressionOverrideIndex: Int?)
+    private fun combineOutcomeTypes(outcomes: List<OutcomeType>, newValueType: UnvalidatedType?): OutcomeTypeAndExpressionOverride {
         val conditionalReturnTypes = ArrayList<UnvalidatedType?>()
         val preAssignments = ArrayList<PreAssignment>()
-        for (outcome in outcomes) {
+        for ((outcomeIndex, outcome) in outcomes.withIndex()) {
             val unused: Any = when (outcome) {
                 is OutcomeType.Value -> { /* do nothing */ }
                 is OutcomeType.ReturnOnly -> {
-                    return outcome
+                    return OutcomeTypeAndExpressionOverride(outcome, outcomeIndex)
                 }
                 is OutcomeType.Conditional -> {
                     conditionalReturnTypes.add(outcome.returnedType)
@@ -1247,11 +1320,11 @@ let tmp1: Returnable<Integer, Integer> = if (b1) {
             }
         }
         if (conditionalReturnTypes.isEmpty()) {
-            return OutcomeType.Value(newValueType)
+            return OutcomeTypeAndExpressionOverride(OutcomeType.Value(newValueType), null)
         }
         // TODO: Maybe report an error if there are different return types
         val returnType = conditionalReturnTypes.filterNotNull().firstOrNull()
-        return OutcomeType.Conditional(newValueType, returnType, preAssignments)
+        return OutcomeTypeAndExpressionOverride(OutcomeType.Conditional(newValueType, returnType, preAssignments), null)
     }
 
     private fun wrapEndWithReturnableContinue(
