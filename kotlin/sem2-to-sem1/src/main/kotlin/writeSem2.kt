@@ -113,7 +113,16 @@ private class Sem2Writer(val writer: Writer) {
             is S2Expression.LessThanOp -> TODO()
             is S2Expression.GreaterThanOp -> TODO()
             is S2Expression.DotAssignOp -> TODO()
-            is S2Expression.GetOp -> TODO()
+            is S2Expression.GetOp -> {
+                write(expression.subject)
+                writer.append("[")
+                for (argument in expression.arguments) {
+                    write(argument)
+                    // TODO: Fix up here
+                    writer.append(", ")
+                }
+                writer.append("]")
+            }
             is S2Expression.AndOp -> TODO()
             is S2Expression.OrOp -> TODO()
         }
