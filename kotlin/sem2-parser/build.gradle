@@ -4,4 +4,6 @@ dependencies {
   compile "org.antlr:antlr4:4.5"
 
   compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
+
+  testCompile project(':kotlin:semlang-test-utils')
 }

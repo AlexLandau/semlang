@@ -21,6 +21,7 @@ data class S2ModuleRef(val group: String?, val module: String, val version: Stri
 
 // An EntityId uniquely identifies an entity within a module. An EntityRef refers to an entity that may be in this
 // module or another, and may or may not have hints pointing to a particular module.
+// TODO: Use a common type across dialects
 data class EntityId(val namespacedName: List<String>) {
     init {
         if (namespacedName.isEmpty()) {
@@ -204,17 +205,17 @@ sealed class S2Expression {
     data class FunctionBinding(val expression: S2Expression, val bindings: List<S2Expression?>, val chosenParameters: List<S2Type?>, override val location: Location? = null): S2Expression()
     data class Follow(val structureExpression: S2Expression, val name: String, override val location: Location? = null): S2Expression()
     data class InlineFunction(val arguments: List<S2Argument>, val returnType: S2Type?, val block: S2Block, override val location: Location? = null): S2Expression()
-    data class PlusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class MinusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class TimesOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class EqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class NotEqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class LessThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class GreaterThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class DotAssignOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class GetOp(val subject: S2Expression, val arguments: List<S2Expression>, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class AndOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
-    data class OrOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location?): S2Expression()
+    data class PlusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class MinusOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class TimesOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class EqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class NotEqualsOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class LessThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class GreaterThanOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class DotAssignOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class GetOp(val subject: S2Expression, val arguments: List<S2Expression>, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class AndOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
+    data class OrOp(val left: S2Expression, val right: S2Expression, override val location: Location? = null, val operatorLocation: Location? = null): S2Expression()
 }
 
 sealed class S2Statement {
