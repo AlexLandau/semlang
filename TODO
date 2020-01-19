@@ -1,4 +1,12 @@
+Things to finish up for return after the current PR:
+- Get returns working inside while loops
+- Add continue and break statements for while loops
+- (Probably) allow arbitrary expressions to be "return", not just statements
+- Allow labels for blocks that can be targeted by returns/continues/breaks (@@Name?)
+- Move imperative constructs into a different module
+
 Major near-term projects:
+- Add VS Code plugin support for a split-screen view where you can see the translated sem1 of a sem2 file in real-time
 - Reference types, console-out support, and application functions
   - Isolated (&) vs. shared (&&) reference types?
   - Recreate mock tests

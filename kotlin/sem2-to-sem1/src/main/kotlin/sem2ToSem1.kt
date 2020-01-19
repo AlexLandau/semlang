@@ -330,6 +330,95 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
     private fun translateContinuingBlock(s1Statement: Statement, s1StatementType: UnvalidatedType?, otherStatementsInBlock: List<S2Statement>, externalVarTypes: Map<String, UnvalidatedType?>, isReturnTarget: Boolean): TypedBlock {
         return translateBlock(listOf(s1Statement), s1StatementType, otherStatementsInBlock, externalVarTypes, isReturnTarget, null)
     }
+
+    private fun writeContinuingBlockAndPreassignments(preAssignments: List<PreAssignment>,
+                                                      otherStatementsInBlock: List<S2Statement>,
+                                                      isReturnTarget: Boolean,
+                                                      s1Statement: Statement,
+                                                      varNamesInScope: Map<String, UnvalidatedType?>): Pair<Statement, Statement> {
+
+        // Already done...
+        val firstPreAssignment = preAssignments.first()
+        val returnType = firstPreAssignment.returnType
+        val continueType = firstPreAssignment.continueType
+        val firstStatement = firstPreAssignment.assignment
+        println("Added an assignment: ${write(firstPreAssignment.assignment)}")
+
+        // TODO: Continue the rest of the block
+        println("About to recurse and translate the rest of the block")
+//        val otherStatementsInBlock = s2Statements.drop(s2StatementIndex + 1)
+        // TODO: Another place to change for break/continue
+        val s1StatementType = if (isReturnTarget) returnType else continueType // TODO: Is this correct?
+        val (continueBlock, continueBlockOutcome) = if (preAssignments.size == 1) {
+            translateContinuingBlock(
+                // What is returnType here? It's telling us what the type of the s1Statement is, in case it ends up
+                // being the _last_ statement. This means using returnType is probably wrong...
+                s1Statement, s1StatementType, otherStatementsInBlock, varNamesInScope + mapOf(
+                    firstPreAssignment.assignedVarName to UnvalidatedType.NamedType(
+                        NativeUnion.RETURNABLE.resolvedRef.toUnresolvedRef(),
+                        false,
+                        listOf(returnType, continueType)
+                    ),
+                    firstPreAssignment.argumentVarName to continueType
+                ), isReturnTarget
+            )
+        } else {
+            val remainingPreAssignments = preAssignments.drop(1)
+            val (s1, s2) = writeContinuingBlockAndPreassignments(remainingPreAssignments, otherStatementsInBlock, isReturnTarget, s1Statement, varNamesInScope)
+            TypedBlock(Block(listOf(s1, s2)), OutcomeType.)
+        }
+        println("Done recursing and translating the rest of the block")
+        println("continueBlockOutcome: $continueBlockOutcome")
+        val continueBlockOutputType = when (continueBlockOutcome) {
+            is OutcomeType.Value -> continueBlockOutcome.type!!
+            is OutcomeType.ReturnOnly -> continueBlockOutcome.returnedType!!
+            is OutcomeType.Conditional -> {
+                if (continueBlockOutcome.type != null && continueBlockOutcome.type == continueBlockOutcome.returnedType) {
+                    // TODO: Returning Conditional in the case I'm seeing this might not be correct
+                    // ???
+                    continueBlockOutcome.type!!
+                } else {
+                    println("The continue block is: ${write(continueBlock)}")
+                    TODO()
+                }
+            }
+        }
+        println("We think the output type of the continue block is: ${continueBlockOutputType}")
+
+        // TODO: Should be conditional on if we are *the* return target, to support break/continue
+        val (continueFunction, continueFunctionParams) = if (isReturnTarget) {
+            net.semlang.api.EntityId.of("Returnable", "continue") to
+                    listOf(returnType, continueType)
+        } else {
+            net.semlang.api.EntityId.of("Returnable", "map") to
+                    listOf(returnType, continueType, continueBlockOutputType)
+        }
+
+        val secondStatement = Statement.Bare(
+            Expression.NamedFunctionCall(
+                functionRef = net.semlang.api.EntityRef(
+                    CURRENT_NATIVE_MODULE_ID.asRef(),
+                    continueFunction
+                ),
+                arguments = listOf(
+                    Expression.Variable(firstPreAssignment.assignedVarName),
+                    Expression.InlineFunction(
+                        listOf(
+                            UnvalidatedArgument(
+                                firstPreAssignment.argumentVarName,
+                                continueType
+                            )
+                        ),
+                        continueBlockOutputType,
+                        continueBlock
+                    )
+                ),
+                chosenParameters = continueFunctionParams
+            )
+        )
+        return Pair(firstStatement, secondStatement)
+    }
+
     private fun translateBlock(
         s1PreStatements: List<Statement>,
         s1LastStatementType: UnvalidatedType?,
@@ -463,30 +552,36 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                                 listOf(returnType, continueType, continueBlockOutputType)
                     }
 
-                    s1Statements.add(
-                        Statement.Bare(
-                            Expression.NamedFunctionCall(
-                                functionRef = net.semlang.api.EntityRef(
-                                    CURRENT_NATIVE_MODULE_ID.asRef(),
-                                    continueFunction
-                                ),
-                                arguments = listOf(
-                                    Expression.Variable(firstPreAssignment.assignedVarName),
-                                    Expression.InlineFunction(
-                                        listOf(
-                                            UnvalidatedArgument(
-                                                firstPreAssignment.argumentVarName,
-                                                continueType
-                                            )
-                                        ),
-                                        continueBlockOutputType,
-                                        continueBlock
-                                    )
-                                ),
-                                chosenParameters = continueFunctionParams
-                            )
+                    val preassignmentAndRestOfBlockStatement = Statement.Bare(
+                        Expression.NamedFunctionCall(
+                            functionRef = net.semlang.api.EntityRef(
+                                CURRENT_NATIVE_MODULE_ID.asRef(),
+                                continueFunction
+                            ),
+                            arguments = listOf(
+                                Expression.Variable(firstPreAssignment.assignedVarName),
+                                Expression.InlineFunction(
+                                    listOf(
+                                        UnvalidatedArgument(
+                                            firstPreAssignment.argumentVarName,
+                                            continueType
+                                        )
+                                    ),
+                                    continueBlockOutputType,
+                                    continueBlock
+                                )
+                            ),
+                            chosenParameters = continueFunctionParams
                         )
                     )
+                    // TODO: Switch to just using these
+                    val (preassignmentStatement, restOfBlockStatement) = writeContinuingBlockAndPreassignments(
+                        statementOutcome.preAssignments,
+                        s2Statements.drop(s2StatementIndex + 1),
+                        isReturnTarget,
+                        s1Statement,
+                        varNamesInScope)
+                    s1Statements.add(preassignmentAndRestOfBlockStatement)
                     println("Last statement: ${write(s1Statements.last())}")
                     lastStatementType = returnType
                     break@statementsLoop
