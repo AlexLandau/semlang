@@ -5,6 +5,8 @@ lexer grammar Sem1Lexer;
 }
 
 // Whitespace
+// Left parentheses are special, and need to know if they had preceding whitespace
+LPAREN_AFTER_WS    : [\t\r\n ]+ '(' ;
 NEWLINE            : ('\r\n' | 'r' | '\n') -> skip ;
 WS                 : [\t ]+ -> skip ;
 
@@ -33,7 +35,7 @@ COMMA              : ',' ;
 COLON              : ':' ;
 ASSIGN             : '=' ;
 EQUALS             : '==' ;
-LPAREN             : '(' ;
+LPAREN_NO_WS       : '(' ;
 RPAREN             : ')' ;
 LBRACKET           : '[' ;
 RBRACKET           : ']' ;

@@ -1,0 +1,7 @@
+// Regression test
+@Test([["1", "2", "3"]], "2")
+function List.reverse<T>(list: List<T>): List<T> {
+  let foo = Var<Integer>()
+  let index = Var<Integer>(Integer.minus(list.size(), 1))
+  index[]
+}

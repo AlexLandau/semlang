@@ -344,7 +344,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.Follow(inner, name, locationOf(expression))
             }
 
-            if (expression.LPAREN() != null) {
+            if (expression.lparen() != null || expression.LPAREN_NO_WS() != null) {
                 val innerExpression = if (expression.expression() != null) {
                     parseExpression(expression.expression(0))
                 } else {
@@ -371,6 +371,9 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
                     return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
+
+                // It's just an expression in parentheses
+                return innerExpression!!
             }
 
             if (expression.LBRACKET() != null) {

@@ -1,0 +1,8 @@
+@Test([], "2")
+function parenthesesForChainedFunctionCalls(): Integer {
+  getIncrementer()(Integer."1")
+}
+
+function getIncrementer(): (Integer) -> Integer {
+  Integer.plus|(_, Integer."1")
+}

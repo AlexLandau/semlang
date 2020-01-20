@@ -412,7 +412,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
                 val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
                 // Pad with nulls to safely zippable length
-                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size), null)
+                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.arguments.size - argTypesMaybeWrongLength.size).coerceAtLeast(0), null)
                 val (arguments, argumentTypes) = expression.arguments.zip(argTypeHints).map { (argument, typeHint) -> translateFullExpression(argument, typeHint(typeHint), varTypes) }.map { it.expression to it.type }.unzip()
 
                 // Steps to do here:
@@ -501,7 +501,7 @@ private class Sem2ToSem1Translator(val context: S2Context, val typeInfo: TypesIn
                 val (functionExpression, functionType) = translateFullExpression(expression.expression, null, varTypes)
                 val argTypesMaybeWrongLength = (functionType as? UnvalidatedType.FunctionType)?.argTypes ?: listOf()
                 // Pad with nulls to safely zippable length
-                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.bindings.size - argTypesMaybeWrongLength.size), null)
+                val argTypeHints = argTypesMaybeWrongLength + Collections.nCopies((expression.bindings.size - argTypesMaybeWrongLength.size).coerceAtLeast(0), null)
 
                 val (bindings, bindingTypes) = expression.bindings.zip(argTypeHints).map { (binding, typeHint) -> if (binding == null) null else translateFullExpression(binding, typeHint(typeHint), varTypes) }.map { it?.expression to it?.type }.unzip()
 

@@ -5,6 +5,7 @@ parser grammar Sem1Parser;
 }
 
 tokens {
+  LPAREN_AFTER_WS,
   NEWLINE,
   WS,
   LINE_COMMENT,
@@ -25,7 +26,7 @@ tokens {
   COLON,
   ASSIGN,
   EQUALS,
-  LPAREN,
+  LPAREN_NO_WS,
   RPAREN,
   LBRACKET,
   RBRACKET,
@@ -66,8 +67,8 @@ top_level_entities :
   | struct top_level_entities
   | union top_level_entities ;
 
-function : annotations FUNCTION entity_id LPAREN function_arguments RPAREN COLON type block
-         | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN LPAREN function_arguments RPAREN COLON type block ;
+function : annotations FUNCTION entity_id lparen function_arguments RPAREN COLON type block
+         | annotations FUNCTION entity_id LESS_THAN cd_type_parameters GREATER_THAN lparen function_arguments RPAREN COLON type block ;
 struct : annotations STRUCT entity_id LBRACE members maybe_requires RBRACE
   | annotations STRUCT entity_id LESS_THAN cd_type_parameters GREATER_THAN LBRACE members maybe_requires RBRACE ;
 union : annotations UNION entity_id LBRACE disjuncts RBRACE
@@ -95,7 +96,7 @@ disjunct: ID COLON type | ID ;
 annotations : | annotation annotations ;
     catch[RecognitionException e] { throw e; }
 annotation : annotation_name
-  | annotation_name LPAREN annotation_contents_list RPAREN ;
+  | annotation_name lparen annotation_contents_list RPAREN ;
     catch[RecognitionException e] { throw e; }
 annotation_name : AT entity_id ;
     catch[RecognitionException e] { throw e; }
@@ -125,10 +126,10 @@ assignment : LET ID ASSIGN expression
 
 type : type_ref
   | type_ref LESS_THAN cd_types GREATER_THAN
-  | LPAREN cd_types RPAREN ARROW type
-  | AMPERSAND LPAREN cd_types RPAREN ARROW type
-  | LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type
-  | AMPERSAND LESS_THAN cd_type_parameters GREATER_THAN LPAREN cd_types RPAREN ARROW type ;
+  | lparen cd_types RPAREN ARROW type
+  | AMPERSAND lparen cd_types RPAREN ARROW type
+  | LESS_THAN cd_type_parameters GREATER_THAN lparen cd_types RPAREN ARROW type
+  | AMPERSAND LESS_THAN cd_type_parameters GREATER_THAN lparen cd_types RPAREN ARROW type ;
     catch[RecognitionException e] { throw e; }
 cd_types : | type | type COMMA | type COMMA cd_types ;
     catch[RecognitionException e] { throw e; }
@@ -138,20 +139,21 @@ cd_types_or_underscores_nonempty : type_or_underscore | type_or_underscore COMMA
     catch[RecognitionException e] { throw e; }
 type_or_underscore : UNDERSCORE | type ;
     catch[RecognitionException e] { throw e; }
-expression : IF LPAREN expression RPAREN block ELSE block
+expression : IF lparen expression RPAREN block ELSE block
   | type_ref DOT LITERAL
   | LBRACKET cd_expressions RBRACKET LESS_THAN type GREATER_THAN
   | expression ARROW ID
-  | expression PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
-  | entity_ref PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding
-  | expression LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
-  | entity_ref LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN cd_expressions_or_underscores RPAREN // Function binding with type parameters
-  | expression LPAREN cd_expressions RPAREN // Calling function reference OR function variable
-  | entity_ref LPAREN cd_expressions RPAREN // Calling function reference OR function variable
-  | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
-  | entity_ref LESS_THAN cd_types_nonempty GREATER_THAN LPAREN cd_expressions RPAREN
-  | FUNCTION LPAREN function_arguments RPAREN COLON type block
+  | expression PIPE LPAREN_NO_WS cd_expressions_or_underscores RPAREN // Function binding
+  | entity_ref PIPE LPAREN_NO_WS cd_expressions_or_underscores RPAREN // Function binding
+  | expression LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN_NO_WS cd_expressions_or_underscores RPAREN // Function binding with type parameters
+  | entity_ref LESS_THAN cd_types_or_underscores_nonempty GREATER_THAN PIPE LPAREN_NO_WS cd_expressions_or_underscores RPAREN // Function binding with type parameters
+  | expression LPAREN_NO_WS cd_expressions RPAREN // Calling function reference OR function variable
+  | entity_ref LPAREN_NO_WS cd_expressions RPAREN // Calling function reference OR function variable
+  | expression LESS_THAN cd_types_nonempty GREATER_THAN LPAREN_NO_WS cd_expressions RPAREN
+  | entity_ref LESS_THAN cd_types_nonempty GREATER_THAN LPAREN_NO_WS cd_expressions RPAREN
+  | FUNCTION lparen function_arguments RPAREN COLON type block
   | ID // Variable
+  | lparen expression RPAREN
   ;
     catch[RecognitionException e] { throw e; }
 
@@ -162,3 +164,5 @@ cd_expressions_or_underscores : | expression_or_underscore | expression_or_under
     catch[RecognitionException e] { throw e; }
 expression_or_underscore : UNDERSCORE | expression ;
     catch[RecognitionException e] { throw e; }
+
+lparen: LPAREN_AFTER_WS | LPAREN_NO_WS ;

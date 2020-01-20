@@ -1,0 +1,7 @@
+// Regression test
+function callVarWithNoArg(): Integer {
+  // This shouldn't fail prematurely on not finding enough type parameters for the function call
+  let v = Var<Integer>()
+          ~~~ The function Var expects 1 arguments (with types [T]), but 0 were given
+  v[]
+}

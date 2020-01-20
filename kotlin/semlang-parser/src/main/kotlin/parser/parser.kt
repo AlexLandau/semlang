@@ -364,7 +364,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 return Expression.Follow(inner, name, locationOf(expression))
             }
 
-            if (expression.LPAREN() != null) {
+            if (expression.lparen() != null || expression.LPAREN_NO_WS() != null) {
                 val innerExpression = if (expression.expression() != null) {
                     parseExpression(expression.expression(), varsInScope)
                 } else {
@@ -398,6 +398,11 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                         // Named functions are expected to be handled by entityRef
                         return Expression.ExpressionFunctionBinding(innerExpression!!, bindings, chosenParameters, locationOf(expression))
                     }
+                }
+
+                if (expression.cd_expressions() == null) {
+                    // Just an expression in parentheses
+                    return innerExpression!!
                 }
 
                 val chosenParameters = if (expression.LESS_THAN() != null) {
