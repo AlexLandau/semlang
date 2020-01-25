@@ -1,0 +1,11 @@
+// Regression test
+function callVarWithNoArg(): Integer {
+  // This shouldn't fail prematurely on not finding enough type parameters for the function call
+  let successor = Integer.plus|(_, Integer."1")
+  foo(successor)
+  ~~~~~~~~~~~~~~ The function foo<Integer, Integer, Integer> expects arguments with types [(Integer, Integer) -> Integer], but was given arguments with types [(Integer) -> Integer]
+}
+
+function foo<T, U, V>(fn: (T, U) -> V): Integer {
+  Integer."1"
+}

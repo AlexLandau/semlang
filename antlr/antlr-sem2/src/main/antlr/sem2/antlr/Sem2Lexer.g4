@@ -5,6 +5,11 @@ lexer grammar Sem2Lexer;
 }
 
 // Whitespace
+// Left parentheses are special, and need to know if they had preceding whitespace
+LPAREN_AFTER_WS    : [\t\r\n ]+ '(' ;
+// Also for less-than symbols
+// This is a fix around foo<bar>(baz) getting parsed as a greater-than expression; see https://github.com/AlexLandau/antlr-preferring-later-rule
+LESS_THAN_AFTER_WS : [\t\r\n ]+ '<' ;
 NEWLINE            : ('\r\n' | 'r' | '\n') -> skip ;
 WS                 : [\t ]+ -> skip ;
 
@@ -37,7 +42,7 @@ ASSIGN             : '=' ;
 DOT_ASSIGN         : '.=' ;
 EQUALS             : '==' ;
 NOT_EQUALS         : '!=' ;
-LPAREN             : '(' ;
+LPAREN_NO_WS       : '(' ;
 RPAREN             : ')' ;
 LBRACKET           : '[' ;
 RBRACKET           : ']' ;
@@ -46,7 +51,7 @@ RBRACE             : '}' ;
 D_QUOTE            : '"' ;
 S_QUOTE            : '\'' ;
 ARROW              : '->' ;
-LESS_THAN          : '<' ;
+LESS_THAN_NO_WS    : '<' ;
 GREATER_THAN       : '>' ;
 PIPE               : '|' ;
 AT                 : '@' ;

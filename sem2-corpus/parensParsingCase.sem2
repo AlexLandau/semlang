@@ -1,0 +1,8 @@
+// Regression test
+// This is why we differentiate between < appearing before and after whitespace
+// See https://github.com/AlexLandau/antlr-preferring-later-rule for a simplified example
+@Test([["1", "2", "3"]], "2")
+function foo(list: List<Integer>): Integer {
+  let index = Var<Integer>(Integer.minus(list.size(), 1))
+  index[]
+}

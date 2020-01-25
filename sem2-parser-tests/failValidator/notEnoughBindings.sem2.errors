@@ -1,0 +1,5 @@
+function notEnoughArguments(): Integer {
+  let fn = Integer.plus|(Integer."3")
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~ The function binding here expects 2 arguments, but 1 were given
+  fn()
+}

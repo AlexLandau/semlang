@@ -12,7 +12,7 @@ internal sealed class TypeParameterInferenceSource {
 
     data class ArgumentType(val index: Int): TypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<Type?>): Type? {
-            return argumentTypes[index]
+            return argumentTypes.getOrNull(index)
         }
     }
     data class FunctionTypeArgument(val containingSource: TypeParameterInferenceSource, val argumentIndex: Int): TypeParameterInferenceSource() {
@@ -20,7 +20,7 @@ internal sealed class TypeParameterInferenceSource {
             val currentType = containingSource.findType(argumentTypes)
             val functionType = currentType as? Type.FunctionType ?: return null
             val groundFunctionType = functionType.getDefaultGrounding()
-            return groundFunctionType.argTypes[argumentIndex]
+            return groundFunctionType.argTypes.getOrNull(argumentIndex)
         }
     }
     data class FunctionTypeOutput(val containingSource: TypeParameterInferenceSource): TypeParameterInferenceSource() {
@@ -99,14 +99,14 @@ sealed class UnvalidatedTypeParameterInferenceSource {
 
     data class ArgumentType(val index: Int): UnvalidatedTypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
-            return argumentTypes[index]
+            return argumentTypes.getOrNull(index)
         }
     }
     data class FunctionTypeArgument(val containingSource: UnvalidatedTypeParameterInferenceSource, val argumentIndex: Int): UnvalidatedTypeParameterInferenceSource() {
         override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
             val currentType = containingSource.findType(argumentTypes)
             val functionType = currentType as? UnvalidatedType.FunctionType ?: return null
-            return functionType.argTypes[argumentIndex]
+            return functionType.argTypes.getOrNull(argumentIndex)
         }
     }
     data class FunctionTypeOutput(val containingSource: UnvalidatedTypeParameterInferenceSource): UnvalidatedTypeParameterInferenceSource() {
@@ -120,11 +120,7 @@ sealed class UnvalidatedTypeParameterInferenceSource {
         override fun findType(argumentTypes: List<UnvalidatedType?>): UnvalidatedType? {
             val currentType = containingSource.findType(argumentTypes)
             val parameters = (currentType as? UnvalidatedType.NamedType ?: return null).parameters
-            if (parameters.size > index) {
-                return parameters[index]
-            } else {
-                return null
-            }
+            return parameters.getOrNull(index)
         }
     }
 }

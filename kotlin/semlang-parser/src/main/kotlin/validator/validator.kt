@@ -87,7 +87,7 @@ sealed class ValidationResult {
             return errors + warnings
         }
         override fun assumeSuccess(): ValidatedModule {
-            error("Encountered errors in validation: ${formatForCliOutput(errors)}")
+            error("Encountered errors in validation:\n${formatForCliOutput(errors)}")
         }
         fun getErrorInfoInCliFormat(): String {
             return formatForCliOutput(errors)

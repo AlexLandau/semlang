@@ -1,0 +1,4 @@
+function notEnoughArguments(): Integer {
+  Integer.plus(Integer."3", Integer."4", Integer."5")
+  ~~~~~~~~~~~~ The function Integer.plus expects 2 arguments (with types [Integer, Integer]), but 3 were given
+}

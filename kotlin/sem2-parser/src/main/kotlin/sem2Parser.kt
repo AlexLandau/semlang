@@ -344,7 +344,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.Follow(inner, name, locationOf(expression))
             }
 
-            if (expression.LPAREN() != null) {
+            if (expression.lparen() != null || expression.LPAREN_NO_WS() != null) {
                 val innerExpression = if (expression.expression() != null) {
                     parseExpression(expression.expression(0))
                 } else {
@@ -352,7 +352,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 }
 
                 if (expression.PIPE() != null) {
-                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                    val chosenParameters = if (expression.LESS_THAN_NO_WS() != null) {
                         parseCommaDelimitedTypesOrUnderscores(expression.cd_types_or_underscores_nonempty())
                     } else {
                         listOf()
@@ -363,7 +363,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 }
 
                 if (expression.cd_expressions() != null) {
-                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                    val chosenParameters = if (expression.LESS_THAN_NO_WS() != null) {
                         parseCommaDelimitedTypes(expression.cd_types_nonempty())
                     } else {
                         listOf()
@@ -371,6 +371,9 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                     val arguments = parseCommaDelimitedExpressions(expression.cd_expressions())
                     return S2Expression.FunctionCall(innerExpression!!, arguments, chosenParameters, locationOf(expression))
                 }
+
+                // It's just an expression in parentheses
+                return innerExpression!!
             }
 
             if (expression.LBRACKET() != null) {
@@ -424,10 +427,10 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
                 return S2Expression.NotEqualsOp(left, right, locationOf(expression), locationOf(expression.NOT_EQUALS().symbol))
             }
 
-            if (expression.LESS_THAN() != null) {
+            if (expression.LESS_THAN_AFTER_WS() != null) {
                 val left = parseExpression(expression.expression(0))
                 val right = parseExpression(expression.expression(1))
-                return S2Expression.LessThanOp(left, right, locationOf(expression), locationOf(expression.LESS_THAN().symbol))
+                return S2Expression.LessThanOp(left, right, locationOf(expression), locationOf(expression.LESS_THAN_AFTER_WS().symbol))
             }
 
             if (expression.GREATER_THAN() != null) {
@@ -599,7 +602,7 @@ private class ContextListener(val documentId: String) : Sem2ParserBaseListener()
             return S2Type.FunctionType(isReference, typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
-        if (type.LESS_THAN() != null) {
+        if (type.less_than() != null) {
             val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
             return parseTypeGivenParameters(type.type_ref(), parameterTypes, locationOf(type))
         }
