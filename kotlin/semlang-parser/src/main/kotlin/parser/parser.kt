@@ -377,7 +377,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                 }
 
                 if (expression.PIPE() != null) {
-                    val chosenParameters = if (expression.LESS_THAN() != null) {
+                    val chosenParameters = if (expression.LESS_THAN_NO_WS() != null) {
                         parseCommaDelimitedTypesOrUnderscores(expression.cd_types_or_underscores_nonempty())
                     } else {
                         listOf()
@@ -405,7 +405,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
                     return innerExpression!!
                 }
 
-                val chosenParameters = if (expression.LESS_THAN() != null) {
+                val chosenParameters = if (expression.LESS_THAN_NO_WS() != null) {
                     parseCommaDelimitedTypes(expression.cd_types_nonempty())
                 } else {
                     listOf()
@@ -565,7 +565,7 @@ private class ContextListener(val documentId: String) : Sem1ParserBaseListener()
             return UnvalidatedType.FunctionType(isReference, typeParameters, argumentTypes, outputType, locationOf(type))
         }
 
-        if (type.LESS_THAN() != null) {
+        if (type.less_than() != null) {
             val parameterTypes = parseCommaDelimitedTypes(type.cd_types())
             return parseTypeGivenParameters(type.type_ref(), parameterTypes, locationOf(type))
         }
