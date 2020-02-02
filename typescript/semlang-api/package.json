@@ -13,10 +13,10 @@
     "utfstring": "2.0.0"
   },
   "devDependencies": {
-    "@types/jest": "^24.0.9",
+    "@types/jest": "^25.1.1",
     "@types/lodash.isequal": "4.5.3",
     "@types/node": "^11.10.4",
-    "jest": "^24.8.0",
+    "jest": "^25.1.0",
     "jest-junit": "3.4.1",
     "typescript": "~3.7.5"
   },
