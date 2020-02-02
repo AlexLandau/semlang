@@ -1,27 +1,13 @@
 tasks.yarn_compile.dependsOn yarn
-// tasks.yarn_build {
-//     inputs.file 'package.json'
-//     inputs.file 'tsconfig.json'
-//     inputs.dir 'src'
-//     outputs.dir 'lib'
-// }
+tasks.yarn_compile {
+    inputs.file 'package.json'
+    inputs.file 'tsconfig.json'
+    inputs.dir 'src'
+    outputs.dir 'out'
+}
 task assemble {
     dependsOn yarn_compile
 }
-// tasks.yarn_test.dependsOn assemble
-// tasks.yarn_test.dependsOn ':kotlin:typescript-support:translateCorpusToJson'
-// tasks.yarn_test {
-//     inputs.file 'package.json'
-//     inputs.file 'jest.config.js'
-//     inputs.dir 'src'
-//     inputs.dir '../../semlang-corpus/build/translations/json'
-//     inputs.dir '../../semlang-library-corpus/build/translations/json'
-//     outputs.file 'build/test-results/jest/semlang-api.xml'
-// }
-// task test {
-//     dependsOn yarn_test
-// }
 task build {
     dependsOn assemble
-    // dependsOn test
 }
