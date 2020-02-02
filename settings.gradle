@@ -21,5 +21,5 @@ include 'kotlin:semlang-transforms'
 include 'kotlin:semlang-project-euler'
 include 'kotlin:typescript-support'
 include 'typescript:semlang-api'
-// Note: The typescript/semlang-code project is not currently integrated with Gradle
+include 'typescript:semlang-code'
 rootProject.name = 'semlang'
