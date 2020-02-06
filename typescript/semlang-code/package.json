@@ -42,7 +42,21 @@
                 "scopeName": "source.semlang",
                 "path": "./syntaxes/semlang.tmLanguage.json"
             }
-        ]
+        ],
+        "commands": [
+			{
+				"command": "semlang.openTranspilation",
+				"title": "Semlang: Open transpiled sem1"
+			}
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "semlang.openTranspilation",
+                    "when": "editorLangId == semlang"
+                }
+            ]
+        }
     },
     "dependencies": {
         "vscode-languageclient": "^6.1.0"
