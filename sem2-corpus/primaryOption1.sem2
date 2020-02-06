@@ -1,0 +1,16 @@
+union FallibleInteger {
+  @Primary
+  Integer: Integer
+  Error
+}
+
+@Test(["0"], ["Integer", "1"])
+@Test(["1"], "Error")
+function getInteger(input: Integer): FallibleInteger {
+  // TODO: Support else/if chains
+  if (input == Integer."0") {
+    Integer."1"
+  } else {
+    FallibleInteger.Error()
+  }
+}
