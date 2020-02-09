@@ -1,0 +1,84 @@
+Some thoughts about references from where the last bit left off (a while ago, chronologically):
+
+I've had some ideas about "isolated references" vs. "shared references". The idea is that if
+a reference is isolated, then modifications to it (or observations of it; assume "modifications"
+include that in this discussion) can't affect or be affected by modifications to some other
+isolated reference, except insofar as information is travelling through the code.
+
+// & designates an argument as an "isolated reference"
+function foo(left: &MutableList<Integer>, right: &MutableList<Integer>) {
+  // These two statements can be reordered by the runtime
+  left.add(1)
+  right.add(2)
+  // The next two have an ordering imposed by the structure of the code
+  let first = left.get(0)
+  right.add(first)
+}
+// && designates an argument as a "shared reference"
+function foo2(left: &&MutableList<Integer>, right: &&MutableList<Integer>) {
+  // These cannot be reordered; left and right could be the same list
+  left.add(1)
+  right.add(1)
+}
+
+These also affect how these can be "consumed":
+
+function bar(left: &ML<Int>, right: &ML<Int>): &MutableList<Integer> {
+  // ERROR: This could result in multiple "isolated" references to this list in the calling code
+  // (still an error if the return type is &&)
+  return left
+}
+function bar2(left: &&ML<Int>, right: &&ML<Int>): &&ML<Int> {
+  // This is fine
+  return left
+}
+// &* marks a "consuming reference"
+function bar3(left: &*ML<Int>, right: &ML<Int>): &ML<Int> {
+  // This is fine; the caller can now only use the result, not the reference from "left"
+  return left
+}
+
+Consuming references are also how structs and unions may be able to have isolated references as
+members:
+
+struct MyFoo {
+  list: &MutableList<Integer>
+}
+// The constructor of MyFoo has the signature (&*MutableList<Integer>) -> MyFoo
+union MyBar {
+  Left: &MutableList<Integer>
+  Right
+}
+// MyBar.Left has the signature (&*MutableList<Integer>) -> MyBar
+
+There may also be reason to have a middle ground, with reference groups:
+
+function baz(f1: &[groupId]Foo, f2: &[groupId]Foo, f3: &Foo) { ... }
+
+Shared references would be used by anything touching the outside world, namely I/O. This means
+disk accesses and console output/input and the like would be implicitly serialized, unless other
+reference types were used to introduce non-determinism to decouple them.
+
+One other thing to mention is that this was annoying:
+
+// Not allowed according to current semantics
+n.= n[] + 1
+// Translates as:
+Var.set(n, Integer.plus(Var.get(n), Integer."1"))
+
+This is because we disallowed multiple "referential actions" in one statement, to avoid
+ambiguities over their ordering.
+
+The semantics suggested above about isolated references mean this would already be solved if
+two different (and independent) variables were involved: we could do as many actions as we
+wanted if each one involved a separate independent variable.
+
+But even in this case, there shouldn't really be ambiguity, because the get must happen before
+the set. I believe the obvious way to exclude this case is: If a referential action is getting
+its reference as a direct variable in one argument, and the other referential action is another
+argument of that action, then the ordering is unambiguous.
+
+// Ambiguous
+foo(bar(n), bar(n))
+// Unambiguous
+foo(n, bar(n))
