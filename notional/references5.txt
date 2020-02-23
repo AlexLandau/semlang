@@ -82,3 +82,84 @@ argument of that action, then the ordering is unambiguous.
 foo(bar(n), bar(n))
 // Unambiguous
 foo(n, bar(n))
+
+So, let's puzzle over the details of structs, unions, and function bindings a little more.
+Again, the semantic intent should be pretty clear: A type that is & affects only itself when
+used, while a type that is && can affect other && things. If we pass two & things to two different
+function calls, the runtime can run them in either order or in parallel; if we pass two && things
+to two different functions, the order must be strictly defined by the code and that order must
+be obeyed by the runtime. A pair of & arguments to a function must be different things, while
+a pair of && arguments may be the same thing. And so on.
+
+Structs: The more obvious case is that we can have a &&MyStruct that contains && members. We
+can freely access those members as && types. It cannot contain & members, as the struct itself
+could end up with two different aliases, which would provide two different ways to alias the
+isolated reference.
+
+What about a &MyStruct? Having members that are values should be fine (to be clear: these still
+cannot be edited after construction). Accessing myStruct->integer wouldn't be different from
+using a function with type (&MyStruct) -> Integer. What about & members? Let's use an example:
+
+struct ListPair {
+  first: &MList<Integer>
+  second: &MList<Integer>
+}
+
+let myPair: &ListPair = ListPair(first, second) // Function signature is (&*MList<Int>, &*MList<Int>) -> &ListPair
+// getCountsDiff has signature (&ListPair) -> Integer
+let countsDiff = getCountsDiff(myPair) // Fine so far
+
+// What does that implementation look like, actually using the struct?
+function getCountsDiff(pair: &ListPair): Integer {
+  // Using variables naively might look like this:
+  let firstList = pair->first
+  let firstCount = List.size(firstList)
+  let secondList = pair->second
+  let secondCount = List.size(secondList)
+  Integer.subtract(secondCount, firstCount)
+  // That's something of a problem because we have multiple aliases here for each list. And
+  // we can't just disable access to the whole struct after using pair -- though it might be
+  // possible to suppress access to just the one field (but probably over-complicated and not
+  // worth it). Or, dialects might allow the user to define a variable that gets replaced by
+  // the follow statement before sem1 validation.
+
+  // The following approach, by contrast, should work and be acceptable:
+  let firstCount = List.size(pair->first)
+  let secondCount = List.size(pair->second)
+  Integer.subtract(secondCount, firstCount)
+
+  // But now we have an interesting third implementation:
+  Integer.subtract(List.size(pair->first), List.size(pair->second))
+}
+
+Right now, this is seen as breaking the "unambiguous ordering" rules for references (in
+which calls affecting references need to be put in separate statements). And if we
+consider the following similar case:
+
+Integer.subtract(List.size(unknownFn1(pair)), List.size(unknownFn2(pair)))
+
+... obviously we need special knowledge that 1) the "pair" is not getting modified by
+those functions, and 2) the outputs of the two are isolated from one another. So
+we need to know that all the bits of the pair "in use" in this statement are different
+ nodes on the struct "tree", none of which contain one another.
+
+Allowed: f(struct.a, struct.b, struct.c)
+Not allowed: f(struct.a, struct.a)
+Allowed: f(struct.justAValue, struct.justAValue)
+Allowed: f(struct.a, struct.b.y, struct.b.z)
+Not allowed: f(struct.a, struct.a.y, struct.b.z)
+Not allowed: f(struct, struct.a, struct.b)
+
+This may be just an acceptable special case. Or maybe we go back to the idea of having
+a destructuring construct that either suppresses or consumes the original alias. (Worth throwing
+into the mix here, since it would be affected, is the idea of auto-generating getter functions
+for structs for the purposes of function references. This is the first case implying they'd
+work differently from a flat -> operator.)
+
+In any case... we can't allow && members in & structs, because it leaks relationships between
+what's supposed to be an isolated & struct and outside factors. This maybe reduces the urgency
+of implementing & structs.
+
+Not yet mentioned... it should be permissible to turn a & reference into a && reference.
+Obviously, this needs some restrictions (e.g. you can't do it in a function where the & reference
+was a non-consuming argument).
