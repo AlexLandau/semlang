@@ -5,5 +5,5 @@ dependencies {
   compile project(':kotlin:sem2-parser')
   compile project(':kotlin:sem2-to-sem1')
 
-  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
+  compile "com.fasterxml.jackson.core:jackson-databind:2.10.3"
 }

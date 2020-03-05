@@ -3,7 +3,7 @@ dependencies {
   compile project(':kotlin:semlang-api')
   compile "org.antlr:antlr4:4.5"
 
-  compile "com.fasterxml.jackson.core:jackson-databind:2.8.8"
+  compile "com.fasterxml.jackson.core:jackson-databind:2.10.3"
 
   testCompile project(':kotlin:semlang-test-utils')
   // TODO: Currently we depend on sem2-to-sem1 by way of semlang-module-repository; this feels wrong

@@ -140,7 +140,7 @@ private fun parseMembers(node: JsonNode): List<UnvalidatedMember> {
 
 private fun addMember(node: ObjectNode, member: Member) {
     node.put("name", member.name)
-    node.set("type", toTypeNode(member.type))
+    node.replace("type", toTypeNode(member.type))
 }
 
 private fun toTypeNode(type: Type): JsonNode {
@@ -149,7 +149,7 @@ private fun toTypeNode(type: Type): JsonNode {
         is Type.FunctionType -> {
             val node = ObjectNode(factory)
             if (type.isReference()) {
-                node.set("ref", BooleanNode.getTrue())
+                node.replace("ref", BooleanNode.getTrue())
             }
             if (type.typeParameters.isNotEmpty()) {
                 addTypeParameters(node.putArray("typeParameters"), type.typeParameters)
@@ -159,7 +159,7 @@ private fun toTypeNode(type: Type): JsonNode {
             for (argType in groundType.argTypes) {
                 argsArray.add(toTypeNode(argType))
             }
-            node.set("to", toTypeNode(groundType.outputType))
+            node.replace("to", toTypeNode(groundType.outputType))
             node
         }
         is Type.NamedType -> {
@@ -296,7 +296,7 @@ private fun addOption(node: ObjectNode, option: Option) {
     node.put("name", option.name)
     val type = option.type
     if (type != null) {
-        node.set("type", toTypeNode(type))
+        node.replace("type", toTypeNode(type))
     }
 }
 
@@ -315,7 +315,7 @@ private fun addFunction(node: ObjectNode, function: ValidatedFunction) {
         addTypeParameters(node.putArray("typeParameters"), function.typeParameters)
     }
     addArray(node, "arguments", function.arguments, ::addFunctionArgument)
-    node.set("returnType", toTypeNode(function.returnType))
+    node.replace("returnType", toTypeNode(function.returnType))
 
     addBlock(node.putArray("block"), function.block)
 }
@@ -411,13 +411,13 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         }
         is TypedExpression.Literal -> {
             node.put("type", "literal")
-            node.set("literalType", toTypeNode(expression.type))
+            node.replace("literalType", toTypeNode(expression.type))
             node.put("value", expression.literal)
             return
         }
         is TypedExpression.ListLiteral -> {
             node.put("type", "list")
-            node.set("chosenParameter", toTypeNode(expression.chosenParameter))
+            node.replace("chosenParameter", toTypeNode(expression.chosenParameter))
             addArray(node, "contents", expression.contents, ::addExpression)
         }
         is TypedExpression.Follow -> {
@@ -443,7 +443,7 @@ private fun addExpression(node: ObjectNode, expression: TypedExpression) {
         is TypedExpression.InlineFunction -> {
             node.put("type", "inlineFunction")
             addArray(node, "arguments", expression.arguments, ::addFunctionArgument)
-            node.set("returnType", toTypeNode(expression.returnType))
+            node.replace("returnType", toTypeNode(expression.returnType))
             addBlock(node.putArray("body"), expression.block)
             return
         }
@@ -578,7 +578,7 @@ private fun addChosenParameters(node: ArrayNode, chosenParameters: List<Type>) {
 
 private fun addFunctionArgument(node: ObjectNode, argument: Argument) {
     node.put("name", argument.name)
-    node.set("type", toTypeNode(argument.type))
+    node.replace("type", toTypeNode(argument.type))
 }
 
 private fun parseArgument(node: JsonNode): UnvalidatedArgument {
