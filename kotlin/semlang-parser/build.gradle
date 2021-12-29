@@ -1,14 +1,14 @@
 dependencies {
-  compile project(':antlr:antlr-sem1')
-  compile project(':kotlin:semlang-api')
-  compile "org.antlr:antlr4:4.5"
+  implementation project(':antlr:antlr-sem1')
+  api project(':kotlin:semlang-api')
+  implementation "org.antlr:antlr4:4.5"
 
-  compile "com.fasterxml.jackson.core:jackson-databind:2.10.3"
+  implementation "com.fasterxml.jackson.core:jackson-databind:2.10.3"
 
-  testCompile project(':kotlin:semlang-test-utils')
+  testImplementation project(':kotlin:semlang-test-utils')
   // TODO: Currently we depend on sem2-to-sem1 by way of semlang-module-repository; this feels wrong
   // Move multiModuleTests elsewhere so we don't need to understand sem2 to do this
-  testCompile project(':kotlin:semlang-module-test-utils')
+  testImplementation project(':kotlin:semlang-module-test-utils')
 }
 
 task regenerateFailValidatorTests(type: JavaExec) {

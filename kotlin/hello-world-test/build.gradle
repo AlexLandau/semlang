@@ -1,6 +1,6 @@
 dependencies {
-  testCompile project(":kotlin:semlang-interpreter")
-  testCompile project(":kotlin:semlang-parser")
+  testImplementation project(":kotlin:semlang-interpreter")
+  testImplementation project(":kotlin:semlang-parser")
 }
 
 tasks.test.inputs.dir('../../semlang-hello-world/src/main/semlang')

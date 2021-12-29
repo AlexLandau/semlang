@@ -1,7 +1,7 @@
 dependencies {
-  compile project(':kotlin:semlang-parser')
+  api project(':kotlin:semlang-parser')
 
-  testCompile project(':kotlin:semlang-linker')
-  testCompile project(':kotlin:semlang-test-utils')
-  testCompile project(':kotlin:semlang-module-test-utils')
+  testImplementation project(':kotlin:semlang-linker')
+  testImplementation project(':kotlin:semlang-test-utils')
+  testImplementation project(':kotlin:semlang-module-test-utils')
 }
