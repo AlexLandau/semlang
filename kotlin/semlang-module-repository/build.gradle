@@ -1,9 +1,9 @@
 dependencies {
-  compile project(':kotlin:refill')
-  compile project(':kotlin:semlang-api')
-  compile project(':kotlin:semlang-parser')
-  compile project(':kotlin:sem2-parser')
-  compile project(':kotlin:sem2-to-sem1')
+  implementation project(':kotlin:refill')
+  implementation project(':kotlin:semlang-api')
+  implementation project(':kotlin:semlang-parser')
+  implementation project(':kotlin:sem2-parser')
+  implementation project(':kotlin:sem2-to-sem1')
 
-  compile "com.fasterxml.jackson.core:jackson-databind:2.10.3"
+  implementation "com.fasterxml.jackson.core:jackson-databind:2.10.3"
 }

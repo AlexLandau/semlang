@@ -1,15 +1,15 @@
 dependencies {
-  compile project(':kotlin:semlang-parser')
-  compile project(':kotlin:semlang-transforms')
+  implementation project(':kotlin:semlang-parser')
+  implementation project(':kotlin:semlang-transforms')
 
   // TODO: Make this make sense
-  compile project(':kotlin:semlang-test-utils')
+  implementation project(':kotlin:semlang-test-utils')
 
-  testCompile project(':kotlin:semlang-module-test-utils')
-  testCompile project(':java:semlang-java-runtime')
-  testCompile project(':kotlin:semlang-linker')
+  testImplementation project(':kotlin:semlang-module-test-utils')
+  testImplementation project(':java:semlang-java-runtime')
+  testImplementation project(':kotlin:semlang-linker')
 
-  compile 'com.squareup:javapoet:1.9.0'
+  implementation 'com.squareup:javapoet:1.9.0'
 }
 
 tasks.test.inputs.dir("../../semlang-corpus/src/main/semlang")

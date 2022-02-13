@@ -1,11 +1,11 @@
 dependencies {
-  compile project(':kotlin:sem2-lang')
-  compile project(':kotlin:semlang-api')
-  compile project(':kotlin:semlang-parser')
+  implementation project(':kotlin:sem2-lang')
+  implementation project(':kotlin:semlang-api')
+  implementation project(':kotlin:semlang-parser')
 
-  testCompile project(':kotlin:sem2-parser')
-  testCompile project(':kotlin:semlang-test-utils')
-  testCompile project(':kotlin:semlang-module-test-utils')
+  testImplementation project(':kotlin:sem2-parser')
+  testImplementation project(':kotlin:semlang-test-utils')
+  testImplementation project(':kotlin:semlang-module-test-utils')
 }
 
 tasks.test.inputs.dir("../../semlang-corpus/")

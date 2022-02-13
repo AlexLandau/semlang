@@ -16,11 +16,12 @@ apply plugin: 'com.github.johnrengelman.shadow'
 mainClassName = 'net.semlang.languageserver.MainKt'
 
 dependencies {
-  compile project(':kotlin:semlang-api')
-  compile project(':kotlin:semlang-parser')
-  compile project(':kotlin:semlang-module-repository') // TODO: It may be better to split out the module config from the repo code itself
+  implementation project(':kotlin:refill')
+  implementation project(':kotlin:semlang-api')
+  implementation project(':kotlin:semlang-parser')
+  implementation project(':kotlin:semlang-module-repository') // TODO: It may be better to split out the module config from the repo code itself
 
-  compile 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.3.0'
+  implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.3.0'
 }
 
 task copyLanguageServerJarToCodePlugin(type: Copy) {

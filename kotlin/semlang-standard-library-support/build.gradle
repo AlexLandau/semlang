@@ -1,8 +1,8 @@
 dependencies {
-  compile project(":kotlin:semlang-module-repository")
-  compile project(":kotlin:semlang-parser")
-  testCompile project(":kotlin:semlang-interpreter")
-  testCompile project(":kotlin:semlang-test-utils")
+  implementation project(":kotlin:semlang-module-repository")
+  implementation project(":kotlin:semlang-parser")
+  testImplementation project(":kotlin:semlang-interpreter")
+  testImplementation project(":kotlin:semlang-test-utils")
 }
 
 File semlangFolder = new File(System.getProperty("user.home"), ".semlang")

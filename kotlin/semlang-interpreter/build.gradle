@@ -1,8 +1,8 @@
 dependencies {
-  compile project(':kotlin:semlang-api')
+  implementation project(':kotlin:semlang-api')
 
-  testCompile project(':kotlin:semlang-parser')
-  testCompile project(':kotlin:semlang-test-utils')
+  testImplementation project(':kotlin:semlang-parser')
+  testImplementation project(':kotlin:semlang-test-utils')
 }
 
 tasks.test.inputs.dir('../../semlang-corpus/src/main/semlang')

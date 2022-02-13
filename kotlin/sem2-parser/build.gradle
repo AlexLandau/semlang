@@ -1,9 +1,9 @@
 dependencies {
-  compile project(':antlr:antlr-sem2')
-  compile project(':kotlin:sem2-lang')
-  compile "org.antlr:antlr4:4.5"
+  implementation project(':antlr:antlr-sem2')
+  api project(':kotlin:sem2-lang')
+  implementation "org.antlr:antlr4:4.5"
 
-  compile "com.fasterxml.jackson.core:jackson-databind:2.10.3"
+  implementation "com.fasterxml.jackson.core:jackson-databind:2.10.3"
 
-  testCompile project(':kotlin:semlang-test-utils')
+  testImplementation project(':kotlin:semlang-test-utils')
 }
